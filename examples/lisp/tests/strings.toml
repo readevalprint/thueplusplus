@@ -1,0 +1,35 @@
+program = "../lisp.w"
+timeout = 5
+
+[bindings.procs]
+calc = "bc -lq"
+
+[requires]
+commands = ["bc"]
+
+[[case]]
+name = "simple string"
+input = "\"hello\""
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "hello"
+
+[[case]]
+name = "string with spaces"
+input = "\"hello world\""
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "hello world"
+
+[[case]]
+name = "empty string"
+input = "\"\""
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = ""

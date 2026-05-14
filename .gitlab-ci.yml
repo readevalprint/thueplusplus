@@ -1,8 +1,7 @@
 test:
   image: python:3.11-slim
   script:
-    - python3 -m py_compile python/thuepp.py python/tests/test_thuepp_regressions.py python/tests/test_lisp.py python/tests/test_examples.py
+    - python3 -m py_compile python/thuepp.py python/tests/test_thuepp_regressions.py python/tests/test_examples.py
     - ./python/thuepp.py examples/hello/hello.w
     - python3 -m unittest -v python.tests.test_thuepp_regressions
     - python3 -m unittest -v python.tests.test_examples
-    - python3 -m unittest -q python/tests/test_lisp.py

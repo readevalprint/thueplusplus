@@ -1,0 +1,134 @@
+program = "../lisp.w"
+timeout = 5
+
+[bindings.procs]
+calc = "bc -lq"
+
+[requires]
+commands = ["bc"]
+
+[[case]]
+name = "hash create"
+input = "{hash :a 1 :b 2}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "{hash :a 1 :b 2}"
+
+[[case]]
+name = "hash empty"
+input = "{hash}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "{hash}"
+
+[[case]]
+name = "hash get first"
+input = "{hash-get {hash :a 1 :b 2} :a}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "hash get second"
+input = "{hash-get {hash :a 1 :b 2} :b}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "hash get missing"
+input = "{hash-get {hash :a 1} :z}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "hash get empty"
+input = "{hash-get {hash} :a}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "hash set new"
+input = "{hash-set {hash :a 1} :b 2}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_contains = [":a", ":b"]
+
+[[case]]
+name = "hash set empty"
+input = "{hash-set {hash} :a 1}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "{hash :a 1}"
+
+[[case]]
+name = "hash has true"
+input = "{hash-has? {hash :a 1 :b 2} :a}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "hash has false"
+input = "{hash-has? {hash :a 1 :b 2} :z}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "hash has empty"
+input = "{hash-has? {hash} :a}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "hash keys"
+input = "{hash-keys {hash :a 1 :b 2}}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_contains = [":a", ":b"]
+
+[[case]]
+name = "hash keys empty"
+input = "{hash-keys {hash}}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "hash with string value"
+input = "{hash-get {hash :name \"Alice\"} :name}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "Alice"

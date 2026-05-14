@@ -1,0 +1,197 @@
+program = "../lisp.w"
+timeout = 5
+
+[bindings.procs]
+calc = "bc -lq"
+
+[requires]
+commands = ["bc"]
+
+[[case]]
+name = "if true"
+input = "{if true \"yes\" \"no\"}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "yes"
+
+[[case]]
+name = "if false"
+input = "{if false \"yes\" \"no\"}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "no"
+
+[[case]]
+name = "if with comparison"
+input = "{if {gt 5 3} \"bigger\" \"smaller\"}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "bigger"
+
+[[case]]
+name = "eq numbers true"
+input = "{eq 5 5}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "eq numbers false"
+input = "{eq 5 6}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "eq strings true"
+input = "{eq \"hello\" \"hello\"}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "eq strings false"
+input = "{eq \"hello\" \"world\"}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "lt true"
+input = "{lt 3 5}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "lt false"
+input = "{lt 5 3}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "lt equal"
+input = "{lt 5 5}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "gt true"
+input = "{gt 5 3}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "gt false"
+input = "{gt 3 5}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "not true"
+input = "{not true}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "not false"
+input = "{not false}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "and tt"
+input = "{and true true}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "and tf"
+input = "{and true false}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "and ff"
+input = "{and false false}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "or tt"
+input = "{or true true}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "or tf"
+input = "{or true false}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "or ff"
+input = "{or false false}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "nested boolean"
+input = "{and {or true false} {not false}}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
