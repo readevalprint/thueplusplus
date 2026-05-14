@@ -1,5 +1,5 @@
 name = "echo file input currently exits cleanly"
-program = "../echo.w"
+program = "../echo.tpp"
 
 [bindings.files]
 input = { fixture = "fixtures/input.txt" }

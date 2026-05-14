@@ -1,5 +1,5 @@
 name = "hello prints greeting"
-program = "../hello.w"
+program = "../hello.tpp"
 
 [expect]
 stdout = "Hello, World!\n"

@@ -1,5 +1,5 @@
 name = "kv writes value to temp fixture"
-program = "../kv.w"
+program = "../kv.tpp"
 input = "set b two"
 
 [bindings.files]

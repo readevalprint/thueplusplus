@@ -1,5 +1,5 @@
 name = "fibonacci example"
-program = "../fibonacci.w"
+program = "../fibonacci.tpp"
 
 [expect]
 stdout = "Fib: 1\n"
