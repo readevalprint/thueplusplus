@@ -1,3 +1,0 @@
-# thue++ Python Interpreter
-# No external dependencies required - uses Python standard library only
-# Python 3.10+ recommended for modern type hints
