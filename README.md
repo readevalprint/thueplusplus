@@ -37,6 +37,22 @@ Run this quickstart example from the repository root:
 
 <!-- thuepp-readme-example: source=examples/hello/hello.tpp expected-output=examples/hello/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
+Example source (`examples/hello/hello.tpp`):
+
+```thuepp
+# Hello World in thue++
+# Writes "Hello, World!" to stdout and exits
+
+hello ::> stdout Hello, World!\n
+done ::- 0
+
+::=
+hello
+done
+```
+
+Run it:
+
 ```bash
 ./python/thuepp.py examples/hello/hello.tpp
 ```
