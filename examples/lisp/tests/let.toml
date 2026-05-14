@@ -9,7 +9,7 @@ commands = ["bc"]
 
 [[case]]
 name = "simple let"
-input = "{let {[x 5]} $x}"
+input = "(let ([x 5]) $x)"
 
 [case.expect]
 exit_code = 0
@@ -18,7 +18,7 @@ stdout_stripped = "5"
 
 [[case]]
 name = "let with arithmetic"
-input = "{let {[x 5]} {+ $x 3}}"
+input = "(let ([x 5]) (+ $x 3))"
 
 [case.expect]
 exit_code = 0
@@ -27,7 +27,7 @@ stdout_stripped = "8"
 
 [[case]]
 name = "let multiple uses"
-input = "{let {[x 5]} {+ $x $x}}"
+input = "(let ([x 5]) (+ $x $x))"
 
 [case.expect]
 exit_code = 0
@@ -36,7 +36,7 @@ stdout_stripped = "10"
 
 [[case]]
 name = "nested let"
-input = "{let {[x 2]} {let {[y 3]} {* $x $y}}}"
+input = "(let ([x 2]) (let ([y 3]) (* $x $y)))"
 
 [case.expect]
 exit_code = 0
@@ -45,7 +45,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "let with condition"
-input = "{let {[x 10]} {if {gt $x 5} \"big\" \"small\"}}"
+input = "(let ([x 10]) (if (gt $x 5) \"big\" \"small\"))"
 
 [case.expect]
 exit_code = 0
@@ -54,7 +54,7 @@ stdout_stripped = "big"
 
 [[case]]
 name = "let with string"
-input = "{let {[name \"Alice\"]} $name}"
+input = "(let ([name \"Alice\"]) $name)"
 
 [case.expect]
 exit_code = 0
@@ -63,7 +63,7 @@ stdout_stripped = "Alice"
 
 [[case]]
 name = "let with comparison"
-input = "{let {[a 5] [b 10]} {lt $a $b}}"
+input = "(let ([a 5] [b 10]) (lt $a $b))"
 
 [case.expect]
 exit_code = 0
@@ -72,7 +72,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let with list"
-input = "{let {[x 1]} {list $x 2 3}}"
+input = "(let ([x 1]) (list $x 2 3))"
 
 [case.expect]
 exit_code = 0
@@ -81,7 +81,7 @@ stdout_stripped = "(1 . (2 . (3 . nil)))"
 
 [[case]]
 name = "let value from expression"
-input = "{let {[x 7]} {let {[y {+ $x 3}]} {* $y 2}}}"
+input = "(let ([x 7]) (let ([y (+ $x 3)]) (* $y 2)))"
 
 [case.expect]
 exit_code = 0
@@ -90,7 +90,7 @@ stdout_stripped = "20"
 
 [[case]]
 name = "let shadowing"
-input = "{let {[x 1]} {let {[x 2]} $x}}"
+input = "(let ([x 1]) (let ([x 2]) $x))"
 
 [case.expect]
 exit_code = 0
@@ -99,7 +99,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "let substring variable"
-input = "{let {[x 1] [xy 2]} {+ $x $xy}}"
+input = "(let ([x 1] [xy 2]) (+ $x $xy))"
 
 [case.expect]
 exit_code = 0
@@ -108,7 +108,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "let unused variable"
-input = "{let {[x 999]} 42}"
+input = "(let ([x 999]) 42)"
 
 [case.expect]
 exit_code = 0
@@ -117,7 +117,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "let underscore variable"
-input = "{let {[my_var 5]} {+ $my_var 1}}"
+input = "(let ([my_var 5]) (+ $my_var 1))"
 
 [case.expect]
 exit_code = 0
@@ -126,7 +126,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "let leading underscore"
-input = "{let {[_x 5]} $_x}"
+input = "(let ([_x 5]) $_x)"
 
 [case.expect]
 exit_code = 0
@@ -135,7 +135,7 @@ stdout_stripped = "5"
 
 [[case]]
 name = "let snake case"
-input = "{let {[foo_bar_baz 100]} $foo_bar_baz}"
+input = "(let ([foo_bar_baz 100]) $foo_bar_baz)"
 
 [case.expect]
 exit_code = 0
@@ -144,7 +144,7 @@ stdout_stripped = "100"
 
 [[case]]
 name = "let boolean value"
-input = "{let {[flag true]} {if $flag \"yes\" \"no\"}}"
+input = "(let ([flag true]) (if $flag \"yes\" \"no\"))"
 
 [case.expect]
 exit_code = 0
@@ -153,7 +153,7 @@ stdout_stripped = "yes"
 
 [[case]]
 name = "let deeply nested"
-input = "{let {[a 1]} {let {[b {+ $a 1}]} {let {[c {+ $b 1}]} {+ $a {+ $b $c}}}}}"
+input = "(let ([a 1]) (let ([b (+ $a 1)]) (let ([c (+ $b 1)]) (+ $a (+ $b $c)))))"
 
 [case.expect]
 exit_code = 0
@@ -162,7 +162,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "let in nested position"
-input = "{let {[x 2]} {* {+ $x 1} $x}}"
+input = "(let ([x 2]) (* (+ $x 1) $x))"
 
 [case.expect]
 exit_code = 0
@@ -171,7 +171,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "two bindings"
-input = "{let {[x 10] [y 20]} {+ $x $y}}"
+input = "(let ([x 10] [y 20]) (+ $x $y))"
 
 [case.expect]
 exit_code = 0
@@ -180,7 +180,7 @@ stdout_stripped = "30"
 
 [[case]]
 name = "let with cons value"
-input = "{let {[p {cons 1 2}]} $p}"
+input = "(let ([p (cons 1 2)]) $p)"
 
 [case.expect]
 exit_code = 0
@@ -189,7 +189,7 @@ stdout_stripped = "(1 . 2)"
 
 [[case]]
 name = "let cons in body"
-input = "{let {[p {cons 1 2}]} {cons $p 3}}"
+input = "(let ([p (cons 1 2)]) (cons $p 3))"
 
 [case.expect]
 exit_code = 0

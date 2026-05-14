@@ -18,7 +18,7 @@ stdout_stripped = "'foo"
 
 [[case]]
 name = "symbol in list"
-input = "{list 'a 'b 'c}"
+input = "(list 'a 'b 'c)"
 
 [case.expect]
 exit_code = 0
@@ -27,7 +27,7 @@ stdout_stripped = "('a . ('b . ('c . nil)))"
 
 [[case]]
 name = "symbol cons"
-input = "{cons 'key 'value}"
+input = "(cons 'key 'value)"
 
 [case.expect]
 exit_code = 0
@@ -36,7 +36,7 @@ stdout_stripped = "('key . 'value)"
 
 [[case]]
 name = "eq symbols true"
-input = "{eq 'foo 'foo}"
+input = "(eq 'foo 'foo)"
 
 [case.expect]
 exit_code = 0
@@ -45,7 +45,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "eq symbols false"
-input = "{eq 'foo 'bar}"
+input = "(eq 'foo 'bar)"
 
 [case.expect]
 exit_code = 0

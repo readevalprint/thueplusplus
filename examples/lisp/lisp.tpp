@@ -27,41 +27,46 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # "hello"          string (&quot; &apos; &amp; for escapes)
 # 42               number
 # 'foo             symbol (quoted identifier)
-# {quote expr}     quote (prevent evaluation)
+# (quote expr)     quote (prevent evaluation)
 # :name            keyword (self-evaluating)
 # [1 2 3]          vector (indexed array)
 # #\a              character
-# {cons a b}       cons cell
-# {list a b c}     list
-# {car x} {cdr x}  accessors
-# {+ 1 2}          arithmetic
-# {eq a b}         equality (numbers, strings, symbols, keywords)
-# {lt a b}         less than (numbers)
-# {gt a b}         greater than (numbers)
-# {if c t e}       conditional
-# {not x}          boolean not
-# {and x y}        boolean and
-# {or x y}         boolean or
+# (cons a b)       cons cell
+# (list a b c)     list
+# (car x) (cdr x)  accessors
+# (+ 1 2)          arithmetic
+# (eq a b)         equality (numbers, strings, symbols, keywords)
+# (lt a b)         less than (numbers)
+# (gt a b)         greater than (numbers)
+# (if c t e)       conditional
+# (not x)          boolean not
+# (and x y)        boolean and
+# (or x y)         boolean or
 # true / false     boolean literals
 # nil              empty list
-# {let {[x v]...} body}  bind $x to v in body (square brackets for bindings)
-# {lambda {x} body}      anonymous function (1-3 params)
-# {lambda {{x 0}} body}  lambda with default param value
-# {{lambda {x} body} v}  function application
-# {begin e1 e2 e3}       sequence exprs, return last
-# {vec-ref v i}    vector element at index
-# {vec-len v}      vector length
-# {hash :a 1 :b 2} hash map (key-value pairs)
-# {hash-get m k}   get value for key
-# {hash-set m k v} new map with key set
-# {hash-keys m}    list of keys
-# {hash-has? m k}  check if key exists
+# (let ([x v]...) body)  bind $x to v in body (square brackets for bindings)
+# (lambda (x) body)      anonymous function (1-3 params)
+# (lambda ((x 0)) body)  lambda with default param value
+# ((lambda (x) body) v)  function application
+# (begin e1 e2 e3)       sequence exprs, return last
+# (vec-ref v i)    vector element at index
+# (vec-len v)      vector length
+# (hash :a 1 :b 2) hash map (key-value pairs)
+# (hash-get m k)   get value for key
+# (hash-set m k v) new map with key set
+# (hash-keys m)    list of keys
+# (hash-has? m k)  check if key exists
 
 # ============================================================
 # INIT: Setup multiline state
 # ============================================================
 ^(?!W:)(?<i>.+)$ ::= W:{{i}}\nF:\nB:\nS:\nO:
 
+
+# Normalize user-facing parentheses to the existing internal brace form.
+# This keeps the evaluator rules stable while examples use Lisp-style parentheses.
+^W:(?<p>[^\n]*)\((?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{{q}}\n{{r}}
+^W:(?<p>[^\n]*)\)(?<q>[^\n]*)\n<|R|> ::= W:{{p}}}{{q}}\n{{r}}
 
 # ============================================================
 # PARSE: Convert literals to XML types (run everywhere)
@@ -476,21 +481,21 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Vector: <V>items</V> -> [items]
 ^W:\nS:\nO:(?<p>.*)<V>(?<items>[^<]*)</V>(?<q>.*)$ ::= W:\nS:\nO:{{p}}[{{items}}]{{q}}
 ^W:\nS:\nO:(?<p>.*)<V/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}[]{{q}}
-# HashMap: <H>...</H> -> {hash ...}
-^W:\nS:\nO:(?<p>.*)<H>(?<pairs>[^<]+)</H>(?<q>.*)$ ::= W:\nS:\nO:{{p}}{hash {{pairs}}}{{q}}
-^W:\nS:\nO:(?<p>.*)<H/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}{hash}{{q}}
+# HashMap: <H>...</H> -> (hash ...)
+^W:\nS:\nO:(?<p>.*)<H>(?<pairs>[^<]+)</H>(?<q>.*)$ ::= W:\nS:\nO:{{p}}(hash {{pairs}}){{q}}
+^W:\nS:\nO:(?<p>.*)<H/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}(hash){{q}}
 # Cons cell: find innermost (one without nested <C>) 
 ^W:\nS:\nO:(?<p>.*)<C>(?<inner>[^<]+)</C>(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{inner}}){{q}}
 
 # Add dots: (a b) -> (a . b) for various cases
 # Simple: (a b) where neither has parens
-^W:\nS:\nO:(?<p>.*)\((?<a>[^.()\n]+) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
+^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>[^.()\n]+) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 # a is simple, b is nested: (a (...))
-^W:\nS:\nO:(?<p>.*)\((?<a>[^.()\n]+) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
+^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>[^.()\n]+) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 # a is nested, b is simple: ((...) b)
-^W:\nS:\nO:(?<p>.*)\((?<a>\([^)]*\)) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
+^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>\([^)]*\)) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 # Both nested: ((...) (...))
-^W:\nS:\nO:(?<p>.*)\((?<a>\([^)]*\)) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
+^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>\([^)]*\)) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 
 # Decode entities
 ^W:\nS:\nO:(?<p>.*)&quot;(?<q>.*)$ ::= W:\nS:\nO:{{p}}"{{q}}
@@ -505,4 +510,4 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^ERR:resource:.*$ ::- 1
 
 ::=
-{+ {car {list 10 20 30}} {* {cdr {cons 3 4}} 5}}
+(+ (car (list 10 20 30)) (* (cdr (cons 3 4)) 5))

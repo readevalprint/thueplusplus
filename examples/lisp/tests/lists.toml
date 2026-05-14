@@ -9,7 +9,7 @@ commands = ["bc"]
 
 [[case]]
 name = "cons"
-input = "{cons 1 2}"
+input = "(cons 1 2)"
 
 [case.expect]
 exit_code = 0
@@ -18,7 +18,7 @@ stdout_stripped = "(1 . 2)"
 
 [[case]]
 name = "car"
-input = "{car {cons 1 2}}"
+input = "(car (cons 1 2))"
 
 [case.expect]
 exit_code = 0
@@ -27,7 +27,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "cdr"
-input = "{cdr {cons 1 2}}"
+input = "(cdr (cons 1 2))"
 
 [case.expect]
 exit_code = 0
@@ -36,7 +36,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "list single"
-input = "{list 1}"
+input = "(list 1)"
 
 [case.expect]
 exit_code = 0
@@ -45,7 +45,7 @@ stdout_stripped = "(1 . nil)"
 
 [[case]]
 name = "list multiple"
-input = "{list 1 2 3}"
+input = "(list 1 2 3)"
 
 [case.expect]
 exit_code = 0
@@ -54,7 +54,7 @@ stdout_stripped = "(1 . (2 . (3 . nil)))"
 
 [[case]]
 name = "nested cons"
-input = "{car {cons {+ 1 1} 3}}"
+input = "(car (cons (+ 1 1) 3))"
 
 [case.expect]
 exit_code = 0
@@ -63,7 +63,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "car of list"
-input = "{car {list 1 2 3}}"
+input = "(car (list 1 2 3))"
 
 [case.expect]
 exit_code = 0
@@ -72,7 +72,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "cdr of list"
-input = "{cdr {list 1 2 3}}"
+input = "(cdr (list 1 2 3))"
 
 [case.expect]
 exit_code = 0

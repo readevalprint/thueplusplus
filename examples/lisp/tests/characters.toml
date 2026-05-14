@@ -27,7 +27,7 @@ stdout_stripped = "#\\5"
 
 [[case]]
 name = "char in list"
-input = "{list #\\a #\\b #\\c}"
+input = "(list #\\a #\\b #\\c)"
 
 [case.expect]
 exit_code = 0

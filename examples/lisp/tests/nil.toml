@@ -18,7 +18,7 @@ stdout_stripped = "nil"
 
 [[case]]
 name = "nil in cons"
-input = "{cons 1 nil}"
+input = "(cons 1 nil)"
 
 [case.expect]
 exit_code = 0
@@ -27,7 +27,7 @@ stdout_stripped = "(1 . nil)"
 
 [[case]]
 name = "eq nil"
-input = "{eq nil nil}"
+input = "(eq nil nil)"
 
 [case.expect]
 exit_code = 0

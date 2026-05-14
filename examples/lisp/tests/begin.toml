@@ -9,7 +9,7 @@ commands = ["bc"]
 
 [[case]]
 name = "begin single"
-input = "{begin 42}"
+input = "(begin 42)"
 
 [case.expect]
 exit_code = 0
@@ -18,7 +18,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "begin two"
-input = "{begin 1 2}"
+input = "(begin 1 2)"
 
 [case.expect]
 exit_code = 0
@@ -27,7 +27,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "begin three"
-input = "{begin 1 2 3}"
+input = "(begin 1 2 3)"
 
 [case.expect]
 exit_code = 0
@@ -36,7 +36,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "begin with expressions"
-input = "{begin {+ 1 1} {+ 2 2} {+ 3 3}}"
+input = "(begin (+ 1 1) (+ 2 2) (+ 3 3))"
 
 [case.expect]
 exit_code = 0
