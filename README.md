@@ -48,11 +48,7 @@ Hello, World!
 ```
 <!-- thuepp-readme-example:end -->
 
-The marker comment above names the example program and test config that supply this block. Regenerate it with:
-
-```bash
-python3 tools/update-readme-example.py
-```
+<!-- The marker comment above names the example program and test config that supply this block. Regenerate it with: python3 tools/update-readme-example.py -->
 
 All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`.
 
