@@ -1,28 +1,23 @@
 # Fibonacci sequence generator in thue++
-# Uses unary numbers (tally marks) for arithmetic
+# Uses a bc process binding for arithmetic.
+# Usage: ./python/thuepp.py examples/fibonacci/fibonacci.tpp --proc:calc "bc -lq"
 
-# Output current number (convert unary to message)
-output:(?<n>1*) ::> stdout Fib: {{n}}\n
-output: ::= next
+# Print the current value without consuming the continuation state.
+^@OUT\[(?<n>[0-9]+)\]\n ::> stdout Fib: {{n}}\n
+# Send an addition expression to bc. The following next: state remains.
+^@S\[(?<expr>[^\]]+)\]@\n ::> calc {{expr}}\n
+# Read the computed sum back from bc.
+^next:(?<remaining>1*):(?<b>[0-9]+) ::< calc got:{{remaining}}:{{b}}:{{data}}
 
-# Add numbers: a + b -> result
-# Format: add:aaa:bbb -> result
-add:(?<a>1*):(?<b>1*) ::= {{a}}{{b}}
+# Normalize bc's newline-delimited numeric result and advance the pair.
+^got:(?<remaining>1*):(?<b>[0-9]+):[\r\n]*(?<sum>[0-9]+)[\r\n]* ::= step:{{remaining}}:{{b}}:{{sum}}
 
-# Main loop: fib:current:next
-# Print current, then compute new next = current + next
-fib:(?<a>1+):(?<b>1+) ::= output:{{a}}
-next ::= shift
+# Main loop: remaining unary counter, current value, next value.
+^step:1(?<remaining>1*):(?<a>[0-9]+):(?<b>[0-9]+) ::= @OUT[{{a}}]\n@S[{{a}}+{{b}}]@\nnext:{{remaining}}:{{b}}
 
-# Shift to next iteration
-shift:(?<a>1*):(?<b>1*) ::= fib:{{b}}:add:{{a}}:{{b}}
-
-# Stop when we've done enough iterations
-count:(?<n>1{10}) ::= done
-count:(?<n>1*) ::= count:{{n}}1
-
-# Exit
+# Exit once the counter is exhausted.
+^step::(?<a>[0-9]+):(?<b>[0-9]+) ::= done
 done ::- 0
 
 ::=
-count:fib:1:1
+step:1111111111:1:1
