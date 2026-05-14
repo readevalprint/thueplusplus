@@ -33,25 +33,28 @@ Requirements:
 
 ## Examples
 
-Run the shared examples from the repository root:
+Run this quickstart example from the repository root:
+
+<!-- thuepp-readme-example: example=examples/hello/hello.tpp output=examples/hello/tests/basic.toml -->
+<!-- thuepp-readme-example:start -->
+```bash
+./python/thuepp.py examples/hello/hello.tpp
+```
+
+Expected output:
+
+```text
+Hello, World!
+```
+<!-- thuepp-readme-example:end -->
+
+The marker comment above names the example program and test config that supply this block. Regenerate it with:
 
 ```bash
-# Hello World
-./python/thuepp.py examples/hello/hello.tpp
-
-# Counter (0 to 5)
-./python/thuepp.py examples/counter/counter.tpp
-
-# Echo a file to stdout
-./python/thuepp.py examples/echo/echo.tpp --file:input /path/to/file.txt
-
-# Multiline text processing
-./python/thuepp.py examples/multiline/multiline.tpp
-
-# Core Lisp-like calculator example using bc
-./python/thuepp.py examples/lisp/lisp.tpp --proc:calc "bc -lq"
-# Evaluates: {* 2 {+ 3 {- 10 5}}} -> 16
+python3 tools/update-readme-example.py
 ```
+
+All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`.
 
 ## Python features
 
