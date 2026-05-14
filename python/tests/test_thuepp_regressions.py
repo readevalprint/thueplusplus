@@ -118,6 +118,61 @@ class TestThueppRegressions(unittest.TestCase):
 
         self.assertEqual(result.returncode, 7, result.stderr)
 
+    def test_substitute_replaces_only_matched_span(self):
+        result = run_program(
+            r"""
+            mid ::= X
+            ^preXpost$ ::- 7
+
+            ::=
+            premidpost
+            """
+        )
+
+        self.assertEqual(result.returncode, 7, result.stderr)
+
+    def test_write_success_removes_only_matched_span(self):
+        result = run_program(
+            r"""
+            a ::> stdout A
+            ^b$ ::- 7
+
+            ::=
+            ab
+            """
+        )
+
+        self.assertEqual(result.returncode, 7, result.stderr)
+        self.assertEqual(result.stdout, "A")
+
+    def test_read_missing_binding_replaces_only_matched_span(self):
+        result = run_program(
+            r"""
+            read ::< missing
+            ^preERR:resource:missingpost$ ::- 7
+
+            ::=
+            prereadpost
+            """
+        )
+
+        self.assertEqual(result.returncode, 7, result.stderr)
+
+    def test_match_replacement_still_applies_max_state_bytes(self):
+        result = run_program(
+            r"""
+            a ::= abc
+
+            ::=
+            a
+            """,
+            "--max-state-bytes",
+            "2",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("State size (3 bytes) exceeds maximum (2 bytes)", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

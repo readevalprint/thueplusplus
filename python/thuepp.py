@@ -442,6 +442,12 @@ class ThueppInterpreter:
                 )
         self.state = new_state
 
+    def _replace_match(self, match: re.Match, replacement: str) -> str:
+        """Replace a regex match in state, preserving max-state validation."""
+        new_state = self.state[:match.start()] + replacement + self.state[match.end():]
+        self._set_state(new_state)
+        return new_state
+
     def run(self) -> int:
         """Execute the program. Returns exit code."""
         while True:
@@ -470,18 +476,13 @@ class ThueppInterpreter:
 
                     if rule.operator == Operator.SUBSTITUTE:
                         replacement = self._expand_template(rule.rhs, groups)
-                        new_state = (
-                            self.state[:match.start()]
-                            + replacement
-                            + self.state[match.end():]
-                        )
+                        new_state = self._replace_match(match, replacement)
                         if self.debug:
                             result_preview = new_state[:200].replace('\n', '\\n')
                             if len(new_state) > 200:
                                 result_preview += '...'
                             print(f"[{self.eval_count}] RESULT: {result_preview}", file=sys.stderr)
                             print(file=sys.stderr)
-                        self._set_state(new_state)
 
                     elif rule.operator == Operator.READ:
                         # Bulk read: resource_name [template]
@@ -492,34 +493,18 @@ class ThueppInterpreter:
 
                         binding = self._get_binding(resource)
                         if not binding:
-                            error = f"ERR:resource:{resource}"
-                            new_state = (
-                                self.state[:match.start()]
-                                + error
-                                + self.state[match.end():]
-                            )
-                            self._set_state(new_state)
+                            self._replace_match(match, f"ERR:resource:{resource}")
                         else:
                             content, error = self._read_all(binding)
                             if error:
-                                new_state = (
-                                    self.state[:match.start()]
-                                    + error
-                                    + self.state[match.end():]
+                                replacement = error
+                            elif len(parts) > 1:
+                                replacement = self._expand_template(
+                                    parts[1], groups, {"data": content}
                                 )
                             else:
-                                if len(parts) > 1:
-                                    replacement = self._expand_template(
-                                        parts[1], groups, {"data": content}
-                                    )
-                                else:
-                                    replacement = content
-                                new_state = (
-                                    self.state[:match.start()]
-                                    + replacement
-                                    + self.state[match.end():]
-                                )
-                            self._set_state(new_state)
+                                replacement = content
+                            self._replace_match(match, replacement)
 
                     elif rule.operator == Operator.WRITE:
                         # RHS format: resource_name content
@@ -539,27 +524,11 @@ class ThueppInterpreter:
 
                         binding = self._get_binding(resource)
                         if not binding:
-                            error = f"ERR:resource:{resource}"
-                            new_state = (
-                                self.state[:match.start()]
-                                + error
-                                + self.state[match.end():]
-                            )
+                            replacement = f"ERR:resource:{resource}"
                         else:
                             write_error = self._write_string(binding, content)
-                            if write_error:
-                                new_state = (
-                                    self.state[:match.start()]
-                                    + write_error
-                                    + self.state[match.end():]
-                                )
-                            else:
-                                # Replace match with empty string
-                                new_state = (
-                                    self.state[:match.start()]
-                                    + self.state[match.end():]
-                                )
-                        self._set_state(new_state)
+                            replacement = write_error or ""
+                        self._replace_match(match, replacement)
 
                     elif rule.operator == Operator.EXIT:
                         # RHS format: {code} or just code
