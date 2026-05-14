@@ -43,3 +43,58 @@ input = "(quote (list 1 2))"
 exit_code = 0
 stderr = ""
 stdout_stripped = "'(list 1 2)"
+
+
+[[case]]
+name = "quote string with parentheses preserves string identity"
+input = '(quote "()")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(\"()\")"
+
+[[case]]
+name = "quote string with open paren preserves string identity"
+input = '(quote "(")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(\"(\")"
+
+[[case]]
+name = "quote string with close paren preserves string identity"
+input = '(quote ")")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(\")\")"
+
+[[case]]
+name = "quote entity-like string preserves string identity"
+input = '(quote "&lparen;")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(\"&lparen;\")"
+
+[[case]]
+name = "quote deeper nested arithmetic"
+input = "(quote (+ 1 (* 2 3)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(+ 1 (* 2 3))"
+
+[[case]]
+name = "quote nested list with nested list"
+input = "(quote (list 1 (list 2 3)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(list 1 (list 2 3))"

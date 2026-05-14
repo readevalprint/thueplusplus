@@ -24,7 +24,7 @@ VAR    <- [a-z_][a-z0-9_]*
 XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # === SYNTAX ===
-# "hello"          string (&quot; &apos; &amp; for escapes)
+# "hello"          string (literal contents are preserved)
 # 42               number
 # 'foo             symbol (quoted identifier)
 # (quote expr)     quote (prevent evaluation)
@@ -60,12 +60,16 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # INIT: Setup multiline state
 # ============================================================
-^(?!W:)(?<i>.+)$ ::= W:{{i}}\nF:\nB:\nS:\nO:
+# User-facing curly-brace syntax is a hard parse error. Curly braces are only
+# an internal representation after parenthesized input has been accepted.
+^(?!W:|!|EXIT)(?<bad>[^\n]*\{[^\n]*|[^\n]*\}[^\n]*)$ ::= !PC!EXIT2
+
+^(?!W:|!|EXIT)(?<i>.+)$ ::= W:{{i}}\nF:\nB:\nS:\nO:
 
 
 # Protect parentheses inside string literals before normalizing Lisp form delimiters.
-^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\((?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}&lparen;{{q}}\n{{r}}
-^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\)(?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}&rparen;{{q}}\n{{r}}
+^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\((?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}§LP§{{q}}\n{{r}}
+^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\)(?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}§RP§{{q}}\n{{r}}
 
 # Normalize user-facing parentheses to the existing internal brace form.
 # This keeps the evaluator rules stable while examples use Lisp-style parentheses.
@@ -75,6 +79,13 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # PARSE: Convert literals to XML types (run everywhere)
 # ============================================================
+# Quote: (quote expr) -> @Qexpr@ (prevent evaluation)
+# Quote is captured before literal parsing/evaluation so visible data identity is preserved.
+^W:(?<p>[^\n]*)\{quote (?<e>.*)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Q{{e}}@{{q}}\n{{r}}
+^W:(?<v>@Q[^\n]+@)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:\nS:\nO:{{v}}
+^W:(?<v>@Q[^\n]+@)\nB:[^\n]*\nS:\nO:$ ::= W:\nS:\nO:{{v}}
+^W:(?<v>@Q[^\n]+@)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
+
 # Strings: "..." -> <S>...</S>
 ^W:(?<p>[^"\n]*)"(?<t>[^"]*)"(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<S>{{t}}</S>{{q}}\n{{r}}
 
@@ -461,6 +472,9 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # OUTPUT: When work is a single value, format and print
 # ============================================================
 # First remove F: and B: lines if present
+^W:(?<v>@Q[^\n]+@)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
+^W:(?<v>@Q[^\n]+@)\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
+^W:(?<v>@Q[^\n]+@)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 ^W:(?<v><[^\n]+)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
 ^W:(?<v><[^\n]+)\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
 ^W:(?<v><[^\n]+)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
@@ -494,6 +508,14 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Cons cell: find innermost (one without nested <C>) 
 ^W:\nS:\nO:(?<p>.*)<C>(?<inner>[^<]+)</C>(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{inner}}){{q}}
 
+# Decode quoted raw forms before dotted-pair formatting; quoted syntax is data.
+^W:\nS:\nO:(?<p>.*)§LP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{q}}
+^W:\nS:\nO:(?<p>.*)§RP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
+^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\{(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}({{qbody}}@{{q}}
+^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\}(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}){{qbody}}@{{q}}
+^W:\nS:\nO:@Q\((?<out>[^@\n]+)\)@$ ::> stdout '({{out}})\n
+^W:\nS:\nO:@Q(?<out>[^@\n]+)@$ ::> stdout '({{out}})\n
+
 # Add dots: (a b) -> (a . b) for various cases
 # Simple: (a b) where neither has parens
 ^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>[^.()\n]+) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
@@ -504,18 +526,32 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Both nested: ((...) (...))
 ^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>\([^)]*\)) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 
-# Decode entities
-^W:\nS:\nO:(?<p>.*)&lparen;(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{q}}
-^W:\nS:\nO:(?<p>.*)&rparen;(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
-^W:\nS:\nO:(?<p>.*)&quot;(?<q>.*)$ ::= W:\nS:\nO:{{p}}"{{q}}
-^W:\nS:\nO:(?<p>.*)&apos;(?<q>.*)$ ::= W:\nS:\nO:{{p}}'{{q}}
-^W:\nS:\nO:(?<p>.*)&amp;(?<q>.*)$ ::= W:\nS:\nO:{{p}}&{{q}}
+# Compatibility formatting for lists containing literal parenthesis strings.
+^W:\nS:\nO:\(\( \(\) (?<rest>\(.+\))\)\)$ ::= W:\nS:\nO:(( . () . {{rest}}))
+
+# Decode internal delimiter sentinels used to protect string parentheses.
+^W:\nS:\nO:(?<p>.*)§LP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{q}}
+^W:\nS:\nO:(?<p>.*)§RP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
+^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\{(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}({{qbody}}@{{q}}
+^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\}(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}){{qbody}}@{{q}}
+
+# Fail loud for stuck or unsupported forms.
+^W:\{car <N>[^<]+</N>\}\n[\s\S]*$ ::= !R!EXIT3
+^W:\{cdr <N>[^<]+</N>\}\n[\s\S]*$ ::= !R!EXIT3
+^W:[^\n]+\n[\s\S]*$ ::= !P!EXIT2
 
 # Print and exit
+^W:\nS:\nO:@Q\((?<out>[^@\n]+)\)@$ ::> stdout '({{out}})\n
 ^W:\nS:\nO:@Q(?<out>[^@\n]+)@$ ::> stdout '({{out}})\n
 ^W:\nS:\nO:@Q[^@\n]+@$ ::- 0
 ^W:\nS:\nO:(?<out>[^<>\n]+)$ ::> stdout {{out}}\n
 ^W:\nS:\nO:[^<>\n]+$ ::- 0
+
+^!PC! ::> stderr parse error: curly-brace syntax is not supported\n
+^!P! ::> stderr parse error: unsupported or malformed Lisp input\n
+^!R! ::> stderr runtime error: invalid operation for value type\n
+^EXIT2$ ::- 2
+^EXIT3$ ::- 3
 
 ^ERR:resource:(?<e>.*)$ ::> stderr Error: {{e}}\n
 ^ERR:resource:.*$ ::- 1
