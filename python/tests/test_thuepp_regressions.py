@@ -158,6 +158,42 @@ class TestThueppRegressions(unittest.TestCase):
 
         self.assertEqual(result.returncode, 7, result.stderr)
 
+    def test_file_binding_read_still_works(self):
+        with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as f:
+            f.write("file-data")
+            fixture = f.name
+        try:
+            result = run_program(
+                r"""
+                read ::< input got:{{data}}
+                ^got:file-data$ ::- 7
+
+                ::=
+                read
+                """,
+                "--file:input",
+                fixture,
+            )
+        finally:
+            Path(fixture).unlink(missing_ok=True)
+
+        self.assertEqual(result.returncode, 7, result.stderr)
+
+    def test_process_binding_read_still_works(self):
+        result = run_program(
+            r"""
+            read ::< p got:{{data}}
+            ^got:proc-data$ ::- 7
+
+            ::=
+            read
+            """,
+            "--proc:p",
+            "printf proc-data",
+        )
+
+        self.assertEqual(result.returncode, 7, result.stderr)
+
     def test_match_replacement_still_applies_max_state_bytes(self):
         result = run_program(
             r"""

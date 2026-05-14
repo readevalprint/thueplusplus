@@ -341,10 +341,6 @@ class ThueppInterpreter:
 
         return result
 
-    def _get_binding(self, name: str) -> Optional[Binding]:
-        """Get a binding by name."""
-        return self.bindings.get(name)
-
     def _ensure_process(self, binding: Binding) -> None:
         """Ensure a process binding has a running process."""
         if binding.is_process and binding.process is None:
@@ -491,7 +487,7 @@ class ThueppInterpreter:
                         resource_template = parts[0] if parts else rhs_stripped
                         resource = self._expand_template(resource_template, groups)
 
-                        binding = self._get_binding(resource)
+                        binding = self.bindings.get(resource)
                         if not binding:
                             self._replace_match(match, f"ERR:resource:{resource}")
                         else:
@@ -522,7 +518,7 @@ class ThueppInterpreter:
                             resource = expanded
                             content = ""
 
-                        binding = self._get_binding(resource)
+                        binding = self.bindings.get(resource)
                         if not binding:
                             replacement = f"ERR:resource:{resource}"
                         else:
