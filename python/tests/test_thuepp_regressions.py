@@ -74,6 +74,23 @@ class TestThueppRegressions(unittest.TestCase):
 
         self.assertEqual(result.returncode, 7)
 
+    def test_double_dash_is_not_initial_state(self):
+        result = run_program(
+            r"""
+            default ::- 3
+            ^get a$ ::- 7
+
+            ::=
+            default
+            """,
+            "--",
+            "get",
+            "a",
+        )
+
+        self.assertNotEqual(result.returncode, 7)
+        self.assertIn("Unknown argument: get", result.stderr)
+
     def test_emit_cache_flag_is_not_accepted_as_noop(self):
         result = run_program(
             r"""

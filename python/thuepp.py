@@ -591,7 +591,7 @@ class ThueppInterpreter:
 def main():
     parser = argparse.ArgumentParser(
         description="thue++ interpreter",
-        usage="thuepp <program> [--file:<name> <path>]... [--proc:<name> <command>]... [--input <state>] [options] [-- args...]",
+        usage="thuepp.py <program> [--file:<name> <path>]... [--proc:<name> <command>]... [--input <state>] [options]",
     )
     parser.add_argument("program", help="Path to the thue++ program")
     parser.add_argument(
@@ -628,7 +628,6 @@ def main():
     )
 
     # Parse binding arguments
-    program_args: list[str] = []
     i = 0
     while i < len(remaining):
         arg = remaining[i]
@@ -650,10 +649,6 @@ def main():
             command = remaining[i + 1]
             interpreter.add_proc_binding(name, command)
             i += 2
-        elif arg == "--":
-            # Everything after -- is program arguments (initial state if no --input)
-            program_args = remaining[i + 1:]
-            break
         else:
             print(f"Error: Unknown argument: {arg}", file=sys.stderr)
             sys.exit(1)
@@ -661,12 +656,8 @@ def main():
     try:
         interpreter.load_program(args.program)
         
-        # Override or append to initial state
         if args.input is not None:
             interpreter.state = args.input
-        elif program_args:
-            # Join args with space and use as initial state
-            interpreter.state = " ".join(program_args)
         
         exit_code = interpreter.run()
     except RuntimeError as e:
