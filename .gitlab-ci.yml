@@ -1,0 +1,7 @@
+test:
+  image: python:3.11-slim
+  script:
+    - python3 -m py_compile thuepp.py tests/test_thuepp_regressions.py tests/test_lisp.py
+    - ./thuepp examples/hello.w
+    - python3 -m unittest -v tests.test_thuepp_regressions
+    - python3 -m unittest -q tests/test_lisp.py
