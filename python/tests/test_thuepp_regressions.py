@@ -74,6 +74,20 @@ class TestThueppRegressions(unittest.TestCase):
 
         self.assertEqual(result.returncode, 7)
 
+    def test_emit_cache_flag_is_not_accepted_as_noop(self):
+        result = run_program(
+            r"""
+            ok ::- 0
+
+            ::=
+            ok
+            """,
+            "--emit-cache",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unknown argument: --emit-cache", result.stderr)
+
     def test_operator_like_token_inside_regex_group_does_not_split_rule(self):
         result = run_program(
             r"""
