@@ -1,7 +1,7 @@
 # Lisp with XML internal representation
 # Nested operations evaluate inside-out automatically
 #
-# Usage: ./thuepp examples/lisp.w --proc:calc "bc -lq"
+# Usage: ./python/thuepp.py examples/lisp/lisp.w --proc:calc "bc -lq"
 
 # ============================================================
 # PATTERN DEFINITIONS (PEG-style)
