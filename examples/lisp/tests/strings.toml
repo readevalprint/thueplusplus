@@ -61,3 +61,40 @@ input = '")"'
 exit_code = 0
 stderr = ""
 stdout_stripped = ")"
+
+
+[[case]]
+name = "string with entity-like text stays literal"
+input = '"&lparen;"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "&lparen;"
+
+[[case]]
+name = "string with close entity-like text stays literal"
+input = '"&rparen;"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "&rparen;"
+
+[[case]]
+name = "string with quote entity-like text stays literal"
+input = '"&quot;"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "&quot;"
+
+[[case]]
+name = "string with ampersand entity-like text stays literal"
+input = '"&amp;"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "&amp;"

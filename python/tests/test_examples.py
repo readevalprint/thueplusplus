@@ -112,6 +112,10 @@ class TestExampleConfigs(unittest.TestCase):
                 self.assertIn(text, result.stdout.strip())
             if "stderr" in expect:
                 self.assertEqual(result.stderr, expect["stderr"])
+            if "stderr_stripped" in expect:
+                self.assertEqual(result.stderr.strip(), expect["stderr_stripped"])
+            for text in expect.get("stderr_contains", []):
+                self.assertIn(text, result.stderr.strip())
 
             for name, expected_path in expect.get("files", {}).items():
                 actual = bound_files[name].read_text(encoding="utf-8")

@@ -1,0 +1,179 @@
+program = "../lisp.tpp"
+timeout = 5
+
+[bindings.procs]
+calc = "bc -lq"
+
+[requires]
+commands = ["bc"]
+
+[[case]]
+name = "curly arithmetic is parse error"
+input = "{+ 1 2}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error", "curly-brace syntax is not supported"]
+
+[[case]]
+name = "curly list is parse error"
+input = "{list 1 2}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error", "curly-brace syntax is not supported"]
+
+[[case]]
+name = "curly quote is parse error"
+input = "{quote {+ 1 2}}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error", "curly-brace syntax is not supported"]
+
+[[case]]
+name = "curly hash is parse error"
+input = "{hash :a 1}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error", "curly-brace syntax is not supported"]
+
+[[case]]
+name = "unclosed form is parse error"
+input = "(+ 1 2"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "too few arithmetic args is parse error"
+input = "(+ 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "too many arithmetic args is parse error"
+input = "(+ 1 2 3)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "if missing else is parse error"
+input = "(if true 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "hash missing value is parse error"
+input = "(hash :a)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "car non-list is runtime error"
+input = "(car 1)"
+
+[case.expect]
+exit_code = 3
+stdout = ""
+stderr_contains = ["runtime error"]
+
+[[case]]
+name = "cdr non-list is runtime error"
+input = "(cdr 1)"
+
+[case.expect]
+exit_code = 3
+stdout = ""
+stderr_contains = ["runtime error"]
+
+[[case]]
+name = "strict whitespace rejects extra operator spacing"
+input = "(+  1 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "strict whitespace rejects extra argument spacing"
+input = "(+ 1  2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "strict whitespace rejects leading form space"
+input = "( + 1 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "strict whitespace rejects trailing form space"
+input = "(+ 1 2 )"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "unsupported compound if branch errors loudly"
+input = "(if true (list 1 2) (list 3 4))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "unsupported compound let body errors loudly"
+input = "(let ([x 1]) (list x 2))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "unsupported compound lambda body errors loudly"
+input = "((lambda (x) (list x 2)) 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "unsupported compound hash value errors loudly"
+input = "(hash :a (list 1 2))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
