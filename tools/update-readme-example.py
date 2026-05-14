@@ -19,7 +19,7 @@ README = REPO_ROOT / "README.md"
 
 MARKER_RE = re.compile(
     r"<!--\s*thuepp-readme-example:\s*"
-    r"example=(?P<example>\S+)\s+output=(?P<output>\S+)\s*-->"
+    r"source=(?P<source>\S+)\s+expected-output=(?P<expected_output>\S+)\s*-->"
 )
 START = "<!-- thuepp-readme-example:start -->"
 END = "<!-- thuepp-readme-example:end -->"
@@ -36,11 +36,11 @@ def _load_expected_stdout(config_path: Path) -> str:
     raise SystemExit(f"{config_path}: expected output must define expect.stdout")
 
 
-def _render(example_path: str, output_path: str) -> str:
-    stdout = _load_expected_stdout(REPO_ROOT / output_path)
+def _render(source_path: str, expected_output_path: str) -> str:
+    stdout = _load_expected_stdout(REPO_ROOT / expected_output_path)
     return (
         "```bash\n"
-        f"./python/thuepp.py {example_path}\n"
+        f"./python/thuepp.py {source_path}\n"
         "```\n\n"
         "Expected output:\n\n"
         "```text\n"
@@ -53,7 +53,7 @@ def update_readme(readme: Path = README) -> str:
     text = readme.read_text(encoding="utf-8")
     marker = MARKER_RE.search(text)
     if not marker:
-        raise SystemExit("README marker not found: <!-- thuepp-readme-example: example=... output=... -->")
+        raise SystemExit("README marker not found: <!-- thuepp-readme-example: source=... expected-output=... -->")
 
     start = text.find(START, marker.end())
     if start == -1:
@@ -63,7 +63,7 @@ def update_readme(readme: Path = README) -> str:
     if end == -1:
         raise SystemExit(f"README marker block end not found: {END}")
 
-    generated = _render(marker.group("example"), marker.group("output"))
+    generated = _render(marker.group("source"), marker.group("expected_output"))
     return text[:content_start] + "\n" + generated + "\n" + text[end:]
 
 
