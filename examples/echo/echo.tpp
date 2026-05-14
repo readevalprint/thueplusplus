@@ -1,6 +1,6 @@
 # Echo input to output
 # Reads from 'input' binding and writes to stdout
-# Usage: ./python/thuepp.py examples/echo/echo.w --file:input /path/to/file
+# Usage: ./python/thuepp.py examples/echo/echo.tpp --file:input /path/to/file
 
 # Read a character - produces "Xloop" where X is the char
 read: ::< input {{data}}loop

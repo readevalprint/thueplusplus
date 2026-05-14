@@ -14,16 +14,16 @@ python/tests/    Python implementation tests
 
 ```bash
 # Run a program
-./python/thuepp.py <program.w>
+./python/thuepp.py <program.tpp>
 
 # With file bindings
-./python/thuepp.py <program.wt> --file:<name> <path>
+./python/thuepp.py <program.tpp> --file:<name> <path>
 
 # With process bindings
-./python/thuepp.py <program.wt> --proc:<name> <command>
+./python/thuepp.py <program.tpp> --proc:<name> <command>
 
 # With execution limits
-./python/thuepp.py <program.wt> --max-evals 1000 --max-state-bytes 10000
+./python/thuepp.py <program.tpp> --max-evals 1000 --max-state-bytes 10000
 ```
 
 Requirements:
@@ -37,19 +37,19 @@ Run the shared examples from the repository root:
 
 ```bash
 # Hello World
-./python/thuepp.py examples/hello/hello.w
+./python/thuepp.py examples/hello/hello.tpp
 
 # Counter (0 to 5)
-./python/thuepp.py examples/counter/counter.w
+./python/thuepp.py examples/counter/counter.tpp
 
 # Echo a file to stdout
-./python/thuepp.py examples/echo/echo.w --file:input /path/to/file.txt
+./python/thuepp.py examples/echo/echo.tpp --file:input /path/to/file.txt
 
 # Multiline text processing
-./python/thuepp.py examples/multiline/multiline.w
+./python/thuepp.py examples/multiline/multiline.tpp
 
 # Core Lisp-like calculator example using bc
-./python/thuepp.py examples/lisp/lisp.w --proc:calc "bc -lq"
+./python/thuepp.py examples/lisp/lisp.tpp --proc:calc "bc -lq"
 # Evaluates: {* 2 {+ 3 {- 10 5}}} -> 16
 ```
 

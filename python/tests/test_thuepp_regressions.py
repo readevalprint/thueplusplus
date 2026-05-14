@@ -12,7 +12,7 @@ THUEPP_PY = Path(__file__).parent.parent / "thuepp.py"
 
 def run_program(source: str, *args: str, timeout: float = 5) -> subprocess.CompletedProcess[str]:
     """Write a temporary thue++ program and run it."""
-    with tempfile.NamedTemporaryFile("w", suffix=".w", delete=False, encoding="utf-8") as f:
+    with tempfile.NamedTemporaryFile("w", suffix=".tpp", delete=False, encoding="utf-8") as f:
         f.write(textwrap.dedent(source).lstrip())
         program = f.name
     try:

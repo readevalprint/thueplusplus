@@ -1,6 +1,6 @@
 # Include demo - shows @include directive
 
-@include lib/greet.w
+@include lib/greet.tpp
 
 # Flow: say hello, then goodbye, then exit
 start ::= >helloHELLO

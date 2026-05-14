@@ -1,5 +1,5 @@
 name = "regex demo extracts name and value"
-program = "../regex-demo.w"
+program = "../regex-demo.tpp"
 
 [expect]
 stdout = "Name: foo, Value: 42\n"

@@ -1,5 +1,5 @@
 name = "simple example"
-program = "../simple.w"
+program = "../simple.tpp"
 
 [expect]
 stdout = "This is thue++!\n"

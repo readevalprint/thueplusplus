@@ -1,5 +1,5 @@
 name = "multiline processing"
-program = "../multiline.w"
+program = "../multiline.tpp"
 
 [expect]
 stdout = "Trimmed:\n\nhello world\nindented line\nanother line\n"

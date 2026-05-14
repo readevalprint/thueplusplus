@@ -1,5 +1,5 @@
 name = "include demo prints greeting sequence"
-program = "../include_demo.w"
+program = "../include_demo.tpp"
 
 [expect]
 stdout = "Hello!\nGoodbye!\n"

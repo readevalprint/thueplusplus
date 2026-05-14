@@ -1,5 +1,5 @@
 name = "kv reads existing value"
-program = "../kv.w"
+program = "../kv.tpp"
 input = "get a"
 
 [bindings.files]
