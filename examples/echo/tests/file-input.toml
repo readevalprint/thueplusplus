@@ -1,10 +1,10 @@
-name = "echo file input currently exits cleanly"
+name = "echo file input with bulk read"
 program = "../echo.tpp"
 
 [bindings.files]
 input = { fixture = "fixtures/input.txt" }
 
 [expect]
-stdout = ""
+stdout = "abc\ndef\n"
 stderr = ""
 exit_code = 0
