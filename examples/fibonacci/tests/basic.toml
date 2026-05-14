@@ -1,0 +1,7 @@
+name = "fibonacci example"
+program = "../fibonacci.w"
+
+[expect]
+stdout = "Fib: 1\n"
+stderr = ""
+exit_code = 0

@@ -1,0 +1,7 @@
+name = "regex demo extracts name and value"
+program = "../regex-demo.w"
+
+[expect]
+stdout = "Name: foo, Value: 42\n"
+stderr = ""
+exit_code = 0
