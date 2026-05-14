@@ -33,3 +33,31 @@ input = "\"\""
 exit_code = 0
 stderr = ""
 stdout_stripped = ""
+
+
+[[case]]
+name = "string with parentheses"
+input = '"()"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
+
+[[case]]
+name = "string with open parenthesis"
+input = '"("'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "("
+
+[[case]]
+name = "string with close parenthesis"
+input = '")"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = ")"

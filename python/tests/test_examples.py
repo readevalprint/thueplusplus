@@ -1,5 +1,6 @@
 """Run nested example test configs from examples/<slug>/tests/*.toml."""
 
+import re
 import shutil
 import subprocess
 import sys
@@ -53,6 +54,16 @@ class TestExampleConfigs(unittest.TestCase):
                 name = case.get("name", config_path.stem)
                 with self.subTest(config=str(config_path.relative_to(REPO_ROOT)), name=name):
                     self._run_case(config_path, case)
+
+    def test_lisp_comments_use_parenthesized_user_facing_forms(self):
+        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
+        stale_form = re.compile(
+            r"^# .*\{(quote|cons|list|car|cdr|[+*/-]|eq|lt|gt|le|ge|if|not|and|or|let|lambda|begin|vec|vec-ref|vec-len|hash|hash-get|hash-set|hash-keys|hash-has\?)\b",
+            re.MULTILINE,
+        )
+        text = program.read_text(encoding="utf-8")
+        matches = [match.group(0) for match in stale_form.finditer(text)]
+        self.assertEqual(matches, [])
 
     def _run_case(self, config_path: Path, case: dict):
         tests_dir = config_path.parent

@@ -78,3 +78,13 @@ input = "(/ 7 2)"
 exit_code = 0
 stderr = ""
 stdout_startswith = "3.5"
+
+
+[[case]]
+name = "old curly arithmetic compatibility"
+input = "{+ 1 2}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"

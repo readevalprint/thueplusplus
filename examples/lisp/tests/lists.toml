@@ -78,3 +78,22 @@ input = "(cdr (list 1 2 3))"
 exit_code = 0
 stderr = ""
 stdout_stripped = "(2 . (3 . nil))"
+
+
+[[case]]
+name = "list preserves string parentheses"
+input = '(list "(" ")" "()")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(( . () . (() . nil)))"
+
+[[case]]
+name = "list preserves nested form after string"
+input = '(list "a" (list "b"))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(a . ((b . nil) . nil))"
