@@ -5,7 +5,7 @@ Implementations of the thue++ language (v0.2 spec).
 ## Repository layout
 
 ```text
-examples/        Shared thue++ example programs
+examples/        Shared thue++ example programs, each in its own directory
 python/          Python implementation
 python/tests/    Python implementation tests
 ```
@@ -37,19 +37,19 @@ Run the shared examples from the repository root:
 
 ```bash
 # Hello World
-./python/thuepp.py examples/hello.w
+./python/thuepp.py examples/hello/hello.w
 
 # Counter (0 to 5)
-./python/thuepp.py examples/counter.w
+./python/thuepp.py examples/counter/counter.w
 
 # Echo a file to stdout
-./python/thuepp.py examples/echo.w --file:input /path/to/file.txt
+./python/thuepp.py examples/echo/echo.w --file:input /path/to/file.txt
 
 # Multiline text processing
-./python/thuepp.py examples/multiline.w
+./python/thuepp.py examples/multiline/multiline.w
 
-# Lisp-like calculator using bc
-./python/thuepp.py examples/lisp.w --proc:calc "bc -lq"
+# Core Lisp-like calculator example using bc
+./python/thuepp.py examples/lisp/lisp.w --proc:calc "bc -lq"
 # Evaluates: {* 2 {+ 3 {- 10 5}}} -> 16
 ```
 

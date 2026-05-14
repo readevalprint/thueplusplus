@@ -1,5 +1,5 @@
 # KV Store with bulk read (CSV: k,v per line)
-# Usage: ./python/thuepp.py examples/kv.w --file:db "examples/kv-db.state" --input "CMD KEY [VALUE]"
+# Usage: ./python/thuepp.py examples/kv/kv.w --file:db "examples/kv/kv-db.state" --input "CMD KEY [VALUE]"
 
 # INIT - parse command first, then bulk read
 ^set (?<k>[a-zA-Z0-9_-]+) (?<v>[^,\n]+)$ ::= SET,{{k}},{{v}}|@LOAD@
