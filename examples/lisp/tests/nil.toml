@@ -1,0 +1,35 @@
+program = "../lisp.w"
+timeout = 5
+
+[bindings.procs]
+calc = "bc -lq"
+
+[requires]
+commands = ["bc"]
+
+[[case]]
+name = "nil literal"
+input = "nil"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "nil in cons"
+input = "{cons 1 nil}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 . nil)"
+
+[[case]]
+name = "eq nil"
+input = "{eq nil nil}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"

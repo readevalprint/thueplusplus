@@ -1,0 +1,80 @@
+program = "../lisp.w"
+timeout = 5
+
+[bindings.procs]
+calc = "bc -lq"
+
+[requires]
+commands = ["bc"]
+
+[[case]]
+name = "add two"
+input = "{+ 1 2}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "add three"
+input = "{+ 1 {+ 2 3}}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
+
+[[case]]
+name = "sub"
+input = "{- 10 3}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "mul"
+input = "{* 4 5}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "20"
+
+[[case]]
+name = "div"
+input = "{/ 20 4}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_startswith = "5"
+
+[[case]]
+name = "nested arithmetic"
+input = "{+ {* 2 3} {- 10 5}}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "11"
+
+[[case]]
+name = "deeply nested"
+input = "{* {+ 1 2} {- {* 2 5} 3}}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "21"
+
+[[case]]
+name = "decimal result"
+input = "{/ 7 2}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_startswith = "3.5"

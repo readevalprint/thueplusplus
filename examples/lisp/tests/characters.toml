@@ -1,0 +1,35 @@
+program = "../lisp.w"
+timeout = 5
+
+[bindings.procs]
+calc = "bc -lq"
+
+[requires]
+commands = ["bc"]
+
+[[case]]
+name = "char simple"
+input = "#\\a"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#\\a"
+
+[[case]]
+name = "char digit"
+input = "#\\5"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#\\5"
+
+[[case]]
+name = "char in list"
+input = "{list #\\a #\\b #\\c}"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(#\\a . (#\\b . (#\\c . nil)))"

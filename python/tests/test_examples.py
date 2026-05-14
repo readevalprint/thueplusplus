@@ -90,6 +90,15 @@ class TestExampleConfigs(unittest.TestCase):
                 self.assertEqual(result.returncode, expect["exit_code"], result.stderr)
             if "stdout" in expect:
                 self.assertEqual(result.stdout, expect["stdout"])
+            if "stdout_stripped" in expect:
+                self.assertEqual(result.stdout.strip(), expect["stdout_stripped"])
+            if "stdout_startswith" in expect:
+                self.assertTrue(
+                    result.stdout.strip().startswith(expect["stdout_startswith"]),
+                    f"stdout did not start with {expect['stdout_startswith']!r}: {result.stdout!r}",
+                )
+            for text in expect.get("stdout_contains", []):
+                self.assertIn(text, result.stdout.strip())
             if "stderr" in expect:
                 self.assertEqual(result.stderr, expect["stderr"])
 
