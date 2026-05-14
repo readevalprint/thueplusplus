@@ -9,7 +9,7 @@ commands = ["bc"]
 
 [[case]]
 name = "le less"
-input = "{le 3 5}"
+input = "(le 3 5)"
 
 [case.expect]
 exit_code = 0
@@ -18,7 +18,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "le equal"
-input = "{le 5 5}"
+input = "(le 5 5)"
 
 [case.expect]
 exit_code = 0
@@ -27,7 +27,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "le greater"
-input = "{le 7 5}"
+input = "(le 7 5)"
 
 [case.expect]
 exit_code = 0
@@ -36,7 +36,7 @@ stdout_stripped = "false"
 
 [[case]]
 name = "ge greater"
-input = "{ge 7 5}"
+input = "(ge 7 5)"
 
 [case.expect]
 exit_code = 0
@@ -45,7 +45,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "ge equal"
-input = "{ge 5 5}"
+input = "(ge 5 5)"
 
 [case.expect]
 exit_code = 0
@@ -54,7 +54,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "ge less"
-input = "{ge 3 5}"
+input = "(ge 3 5)"
 
 [case.expect]
 exit_code = 0

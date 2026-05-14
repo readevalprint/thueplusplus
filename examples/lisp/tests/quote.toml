@@ -9,7 +9,7 @@ commands = ["bc"]
 
 [[case]]
 name = "quote symbol"
-input = "{quote foo}"
+input = "(quote foo)"
 
 [case.expect]
 exit_code = 0
@@ -18,7 +18,7 @@ stdout_stripped = "'(foo)"
 
 [[case]]
 name = "quote number"
-input = "{quote 42}"
+input = "(quote 42)"
 
 [case.expect]
 exit_code = 0
