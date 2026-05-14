@@ -1,0 +1,11 @@
+name = "kv reads existing value"
+program = "../kv.w"
+input = "get a"
+
+[bindings.files]
+db = { fixture = "fixtures/kv-db.state" }
+
+[expect]
+stdout = "one\n"
+stderr = ""
+exit_code = 0

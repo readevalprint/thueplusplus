@@ -1,0 +1,7 @@
+name = "hello prints greeting"
+program = "../hello.w"
+
+[expect]
+stdout = "Hello, World!\n"
+stderr = ""
+exit_code = 0
