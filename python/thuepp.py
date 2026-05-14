@@ -613,11 +613,6 @@ def main():
         help="Override initial state with this value",
     )
     parser.add_argument(
-        "--emit-cache",
-        action="store_true",
-        help="Emit compiled cache file (not yet implemented)",
-    )
-    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug logging of rule evaluation",
