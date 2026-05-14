@@ -37,8 +37,14 @@ def _load_expected_stdout(config_path: Path) -> str:
 
 
 def _render(source_path: str, expected_output_path: str) -> str:
+    source = (REPO_ROOT / source_path).read_text(encoding="utf-8")
     stdout = _load_expected_stdout(REPO_ROOT / expected_output_path)
     return (
+        f"Example source (`{source_path}`):\n\n"
+        "```thuepp\n"
+        f"{source.rstrip(chr(10))}\n"
+        "```\n\n"
+        "Run it:\n\n"
         "```bash\n"
         f"./python/thuepp.py {source_path}\n"
         "```\n\n"
