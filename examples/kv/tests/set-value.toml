@@ -1,0 +1,14 @@
+name = "kv writes value to temp fixture"
+program = "../kv.w"
+input = "set b two"
+
+[bindings.files]
+db = { fixture = "fixtures/kv-db.state", writable = true }
+
+[expect]
+stdout = "ok\n"
+stderr = ""
+exit_code = 0
+
+[expect.files]
+db = "fixtures/kv-db-after-set.state"
