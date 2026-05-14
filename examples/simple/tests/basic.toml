@@ -1,0 +1,7 @@
+name = "simple example"
+program = "../simple.w"
+
+[expect]
+stdout = "This is thue++!\n"
+stderr = ""
+exit_code = 0

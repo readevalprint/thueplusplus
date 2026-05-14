@@ -1,0 +1,7 @@
+name = "multiline processing"
+program = "../multiline.w"
+
+[expect]
+stdout = "Trimmed:\n\nhello world\nindented line\nanother line\n"
+stderr = ""
+exit_code = 0
