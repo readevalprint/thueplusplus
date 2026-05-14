@@ -24,3 +24,22 @@ input = "(quote 42)"
 exit_code = 0
 stderr = ""
 stdout_stripped = "'(42)"
+
+
+[[case]]
+name = "quote nested arithmetic"
+input = "(quote (+ 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(+ 1 2)"
+
+[[case]]
+name = "quote nested list form"
+input = "(quote (list 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "'(list 1 2)"

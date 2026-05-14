@@ -63,6 +63,10 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^(?!W:)(?<i>.+)$ ::= W:{{i}}\nF:\nB:\nS:\nO:
 
 
+# Protect parentheses inside string literals before normalizing Lisp form delimiters.
+^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\((?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}&lparen;{{q}}\n{{r}}
+^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\)(?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}&rparen;{{q}}\n{{r}}
+
 # Normalize user-facing parentheses to the existing internal brace form.
 # This keeps the evaluator rules stable while examples use Lisp-style parentheses.
 ^W:(?<p>[^\n]*)\((?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{{q}}\n{{r}}
@@ -91,8 +95,9 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Symbols: 'name -> <Y>name</Y> (quoted identifier)
 ^W:(?<p>[^\n]*)'(?<s>[a-zA-Z_][a-zA-Z0-9_-]*)(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<Y>{{s}}</Y>{{q}}\n{{r}}
 
-# Quote: {quote expr} -> <Q>expr</Q> (prevent evaluation)
+# Quote: (quote expr) -> <Q>expr</Q> (prevent evaluation)
 # Quote preserves the expression as data
+^W:(?<p>[^\n]*)\{quote \{(?<e>.+)\}\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<Q>{{e}}</Q>{{q}}\n{{r}}
 ^W:(?<p>[^\n]*)\{quote (?<e>[^{}]+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<Q>{{e}}</Q>{{q}}\n{{r}}
 
 # Keywords: :name -> <K>name</K> (self-evaluating)
@@ -110,14 +115,14 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Vectors: #[a b c] -> <V>a b c</V> (indexed array)
 # Use #[...] syntax to avoid conflict with let bindings [name val]
 ^W:(?<p>[^\n]*)#\[(?<items>[^\[\]]*)\](?<q>[^\n]*)\n<|R|> ::= W:{{p}}{vec {{items}}}{{q}}\n{{r}}
-# {vec items...} with all values -> <V>values</V>
+# (vec items...) with all values -> <V>values</V>
 ^W:(?<p>[^\n]*)\{vec (?<items><[^{}]+>(\s+<[^{}]+>)*)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<V>{{items}}</V>{{q}}\n{{r}}
 # Empty vector
 ^W:(?<p>[^\n]*)\{vec \}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<V/>{{q}}\n{{r}}
 
-# HashMap: {hash :k1 v1 :k2 v2 ...} -> <H>k1 v1 k2 v2 ...</H>
+# HashMap: (hash :k1 v1 :k2 v2 ...) -> <H>k1 v1 k2 v2 ...</H>
 # Keys must be keywords, values can be any XML
-# {hash key val key val...} with all values ready -> <H>...</H>
+# (hash key val key val...) with all values ready -> <H>...</H>
 ^W:<|P|>\{hash (?<pairs>(<K>[^<]+</K> <[A-Z](?:/>|>[^<]*</[A-Z]>)\s*)+)\}<|Q|>\n<|R|> ::= W:{{p}}<H>{{pairs}}</H>{{q}}\n{{r}}
 # Empty hash
 ^W:<|P|>\{hash\}<|Q|>\n<|R|> ::= W:{{p}}<H/>{{q}}\n{{r}}
@@ -137,23 +142,23 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # CONDITIONALS
 # ============================================================
-# if: {if <T/> then else} -> then
+# if: (if <T/> then else) -> then
 ^W:(?<p>[^\n]*)\{if <T/> (?<then><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<else><[A-Z][^}]*(?:</[A-Z]>|/>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{then}}{{q}}\n{{r}}
-# if: {if <F/> then else} -> else
+# if: (if <F/> then else) -> else
 ^W:(?<p>[^\n]*)\{if <F/> (?<then><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<else><[A-Z][^}]*(?:</[A-Z]>|/>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{else}}{{q}}\n{{r}}
 
 # ============================================================
 # COMPARISONS (numbers)
 # ============================================================
-# eq: {eq <N>a</N> <N>b</N>} -> compare via bc (a==b)
+# eq: (eq <N>a</N> <N>b</N>) -> compare via bc (a==b)
 ^W:<|P|>\{eq <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= @S[{{a}}=={{b}}]@@B[]@\nW:{{p}}@X@{{q}}\n{{r}}
-# lt: {lt <N>a</N> <N>b</N>} -> a<b
+# lt: (lt <N>a</N> <N>b</N>) -> a<b
 ^W:<|P|>\{lt <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= @S[{{a}}<{{b}}]@@B[]@\nW:{{p}}@X@{{q}}\n{{r}}
-# gt: {gt <N>a</N> <N>b</N>} -> a>b
+# gt: (gt <N>a</N> <N>b</N>) -> a>b
 ^W:<|P|>\{gt <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= @S[{{a}}>{{b}}]@@B[]@\nW:{{p}}@X@{{q}}\n{{r}}
-# le: {le <N>a</N> <N>b</N>} -> a<=b
+# le: (le <N>a</N> <N>b</N>) -> a<=b
 ^W:<|P|>\{le <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= @S[{{a}}<={{b}}]@@B[]@\nW:{{p}}@X@{{q}}\n{{r}}
-# ge: {ge <N>a</N> <N>b</N>} -> a>=b
+# ge: (ge <N>a</N> <N>b</N>) -> a>=b
 ^W:<|P|>\{ge <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= @S[{{a}}>={{b}}]@@B[]@\nW:{{p}}@X@{{q}}\n{{r}}
 
 # Boolean result from bc: 1 -> <T/>, 0 -> <F/>
@@ -161,47 +166,47 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^@B\[[\r\n]*1[\r\n]*\]@\nW:(?<p>[^\n]*)@X@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 ^@B\[[\r\n]*0[\r\n]*\]@\nW:(?<p>[^\n]*)@X@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
-# eq for strings: {eq <S>a</S> <S>a</S>} -> true if same
+# eq for strings: (eq <S>a</S> <S>a</S>) -> true if same
 ^W:<|P|>\{eq <S>(?<a>[^<]*)</S> <S>(?P=a)</S>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 ^W:<|P|>\{eq <S>[^<]*</S> <S>[^<]*</S>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
-# eq for symbols: {eq <Y>a</Y> <Y>a</Y>} -> true if same
+# eq for symbols: (eq <Y>a</Y> <Y>a</Y>) -> true if same
 ^W:<|P|>\{eq <Y>(?<a>[^<]+)</Y> <Y>(?P=a)</Y>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 ^W:<|P|>\{eq <Y>[^<]+</Y> <Y>[^<]+</Y>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
-# eq for keywords: {eq <K>a</K> <K>a</K>} -> true if same
+# eq for keywords: (eq <K>a</K> <K>a</K>) -> true if same
 ^W:<|P|>\{eq <K>(?<a>[^<]+)</K> <K>(?P=a)</K>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 ^W:<|P|>\{eq <K>[^<]+</K> <K>[^<]+</K>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
-# eq for nil: {eq <X/> <X/>} -> true
+# eq for nil: (eq <X/> <X/>) -> true
 ^W:<|P|>\{eq <X/> <X/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 
 # ============================================================
 # BOOLEAN OPERATIONS
 # ============================================================
-# not: {not <T/>} -> <F/>, {not <F/>} -> <T/>
+# not: (not <T/>) -> <F/>, (not <F/>) -> <T/>
 ^W:<|P|>\{not <T/>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 ^W:<|P|>\{not <F/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 
-# and: {and <T/> <T/>} -> <T/>, else <F/>
+# and: (and <T/> <T/>) -> <T/>, else <F/>
 ^W:<|P|>\{and <T/> <T/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 ^W:<|P|>\{and <[TF]/> <[TF]/>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
-# or: {or <F/> <F/>} -> <F/>, else <T/>
+# or: (or <F/> <F/>) -> <F/>, else <T/>
 ^W:<|P|>\{or <F/> <F/>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 ^W:<|P|>\{or <[TF]/> <[TF]/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 
 # ============================================================
-# LET BINDING - {let {[x val]...} body}
+# LET BINDING - (let ([x val]...) body)
 # ============================================================
-# Syntax: {let {[x 10] [y 20]} {+ $x $y}}
+# Syntax: (let ([x 10] [y 20]) (+ $x $y))
 # Bindings use SQUARE BRACKETS [name val] - clearer than braces
 #
 # BINDING FRAMES: B: uses | to separate frames from different let scopes
 #   B:|x=5,y=3|a=1|   ← two frames, inner has x,y, outer has a
 #
 # EVALUATION:
-# 1. {let {[x v]...} body} → push new frame to B:, evaluate body
+# 1. (let ([x v]...) body) → push new frame to B:, evaluate body
 # 2. When body is a value, pop frame and return value
 # 3. Variable lookup: $x checks INNERMOST frame first
 
@@ -214,7 +219,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # Process binding: [x val] -> add x=val to current frame
 # If value is a lambda, parse it first AND encode $ as @ in body to protect from lookup
-# {lambda {p} b} -> <L><P>p</P><BODY>b_with_$_as_@</BODY></L>
+# (lambda (p) b) -> <L><P>p</P><BODY>b_with_$_as_@</BODY></L>
 # Lambda binding: use .+ with backtracking to find }]
 ^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) \{lambda \{(?<lp>[^}]+)\} (?<lb>.+)\}\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}#LB«{{n}}»{{lp}}»{{lb}}»@LET{{{rest}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
 ^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) \{lambda \{(?<lp>[^}]+)\} (?<lb>.+)\}\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}#LB«{{n}}»{{lp}}»{{lb}}»@LET{{{rest}}}{{body}}@{{q}}\nB:|{{b}}\n{{r}}
@@ -266,13 +271,13 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # LAMBDA (anonymous functions) - BRACE COUNTING APPROACH
 # ============================================================
 # Lambda body should NOT be evaluated at definition time.
-# Use brace counter to find matching }:
-# 1. {lambda {params} body} → @L|params|0«body» (0 = brace depth)
-# 2. @L|p|N«...{... → @L|p|N+1«...{... (increment on {)
-# 3. @L|p|N«...}... → @L|p|N-1«...}... (decrement on }) 
+# Use brace counter to find matching internal }:
+# 1. (lambda (params) body) → @L|params|0«body» (0 = brace depth)
+# 2. @L|p|N«...(... → @L|p|N+1«...(... (increment on (internal {)
+# 3. @L|p|N«...)... → @L|p|N-1«...)... (decrement on internal }) 
 # 4. @L|p|0«body» → <L><P>p</P><BODY>body</BODY></L> (depth 0 = done)
 
-# Start: convert {lambda {params} to marker, initial depth 0
+# Start: convert (lambda (params) to marker, initial depth 0
 ^W:(?<p>[^\n]*)\{lambda \{(?<params>[^}]+)\} (?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|0«{{rest}}\n{{r}}
 
 # Process body character by character using markers
@@ -335,10 +340,10 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # BEGIN (SEQUENCE) - evaluate all exprs, return last
 # ============================================================
 # Values are space-separated, so [^< ]* prevents matching across values
-# {begin val} -> val (single value, done)
+# (begin val) -> val (single value, done)
 ^W:(?<p>[^\n]*)\{begin (?<v><[A-Z](?:/>|>[^< ]*</[A-Z]>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\n{{r}}
 
-# {begin val rest...} -> {begin rest...} (drop first value, continue)
+# (begin val rest...) -> (begin rest...) (drop first value, continue)
 ^W:(?<p>[^\n]*)\{begin (?<v><[A-Z](?:/>|>[^< ]*</[A-Z]>)) (?<rest>.+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{begin {{rest}}}{{q}}\n{{r}}
 
 # Handle cons cells in begin (they contain spaces internally)
@@ -348,7 +353,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # LAMBDA WITH DEFAULT PARAMS
 # ============================================================
-# {lambda {{x default}} body} -> <L><P>x=default</P><BODY>body</BODY></L>
+# (lambda ((x default)) body) -> <L><P>x=default</P><BODY>body</BODY></L>
 
 # Parsing: single param with default
 ^W:<|P|>\{lambda \{\{(?<param><|VAR|>) (?<default><|XMLVAL|>)\}\} (?<body>\$<|VAR|>|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})\}<|Q|>\n<|R|> ::= W:{{p}}<L><P>{{param}}={{default}}</P><BODY>{{body}}</BODY></L>{{q}}\n{{r}}
@@ -362,30 +367,30 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # LIST OPERATIONS
 # ============================================================
-# cons: {cons <X> <Y>} -> <C><X> <Y></C>
+# cons: (cons <X> <Y>) -> <C><X> <Y></C>
 # Simple values: <N>, <S>, <T/>, <F/>, <X/>, <Y>, <K>, <R>, <Q>, <V>, <L>
 # Cons cells: <C>...</C> - match greedily to last </C>
 ^W:(?<p>[^\n]*)\{cons (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>) (?<b><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} {{b}}</C>{{q}}\n{{r}}
 
-# list: {list} -> <X/>
+# list: (list) -> <X/>
 ^W:(?<p>[^\n]*)\{list\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
-# list: {list <X>} -> <C><X> <X/></C>
-^W:(?<p>[^\n]*)\{list (?<a><[A-Z][^<]*(?:</[A-Z]>|/>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} <X/></C>{{q}}\n{{r}}
-# list: {list <X> ...} -> <C><X> {list ...}</C>
-^W:(?<p>[^\n]*)\{list (?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<rest>[^}]+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} {list {{rest}}}</C>{{q}}\n{{r}}
+# list: (list <X>) -> <C><X> <X/></C>
+^W:(?<p>[^\n]*)\{list (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} <X/></C>{{q}}\n{{r}}
+# list: (list <X> ...) -> <C><X> (list ...)</C>
+^W:(?<p>[^\n]*)\{list (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>) (?<rest>[^}]+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} {list {{rest}}}</C>{{q}}\n{{r}}
 
-# car: {car <C>...first... ...rest...</C>} -> first
+# car: (car <C>...first... ...rest...</C>) -> first
 ^W:(?<p>[^\n]*)\{car <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b>[^}]+)</C>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{a}}{{q}}\n{{r}}
 ^W:(?<p>[^\n]*)\{car <X/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
-# cdr: {cdr <C>...first... ...rest...</C>} -> rest  
+# cdr: (cdr <C>...first... ...rest...</C>) -> rest  
 ^W:(?<p>[^\n]*)\{cdr <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b><[A-Z].*(?:</[A-Z]>|/>))</C>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{b}}{{q}}\n{{r}}
 ^W:(?<p>[^\n]*)\{cdr <X/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # ============================================================
 # VECTOR OPERATIONS
 # ============================================================
-# vec-ref: {vec-ref <V>items</V> <N>index</N>} -> item at index
+# vec-ref: (vec-ref <V>items</V> <N>index</N>) -> item at index
 # Uses @Vi~index~items~@ marker for iteration (~ delimiter to avoid conflict with [])
 ^W:(?<p>[^\n]*)\{vec-ref <V>(?<items>.+)</V> <N>(?<idx>[0-9]+)</N>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vi~{{idx}}~{{items}}~@{{q}}\n{{r}}
 
@@ -399,7 +404,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Result handler: replace @I@ with computed index
 ^@R\[[\r\n]*(?<n>[0-9]+)[\r\n]+\]@\nW:(?<p>[^\n]*)@Vi~@I@~(?<rest>.+)~@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vi~{{n}}~{{rest}}~@{{q}}\n{{r}}
 
-# vec-len: {vec-len <V>items</V>} -> count of items
+# vec-len: (vec-len <V>items</V>) -> count of items
 ^W:(?<p>[^\n]*)\{vec-len <V/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<N>0</N>{{q}}\n{{r}}
 ^W:(?<p>[^\n]*)\{vec-len <V>(?<items>.+)</V>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vl~0~{{items}}~@{{q}}\n{{r}}
 # Count items: @Vl~n~item rest~@ -> send n+1 to bc, continue with rest
@@ -414,7 +419,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # HASHMAP OPERATIONS
 # ============================================================
-# hash-get: {hash-get <H>...</H> <K>key</K>} -> value for key
+# hash-get: (hash-get <H>...</H> <K>key</K>) -> value for key
 # Uses @Hg~key~pairs~@ marker for lookup
 ^W:<|P|>\{hash-get <H>(?<pairs>.+)</H> <K>(?<key>[^<]+)</K>\}<|Q|>\n<|R|> ::= W:{{p}}@Hg~{{key}}~{{pairs}}~@{{q}}\n{{r}}
 # Empty hash returns nil
@@ -429,7 +434,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # @Hg~key~<K>other</K> val~@ -> nil (not found, end of hash)
 ^W:<|P|>@Hg~(?<key>[^~]+)~<K>[^<]+</K> <[A-Z](?:/>|>[^<]*</[A-Z]>)~@<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
-# hash-has?: {hash-has? <H>...</H> <K>key</K>} -> true/false
+# hash-has?: (hash-has? <H>...</H> <K>key</K>) -> true/false
 ^W:<|P|>\{hash-has\? <H>(?<pairs>.+)</H> <K>(?<key>[^<]+)</K>\}<|Q|>\n<|R|> ::= W:{{p}}@Hh~{{key}}~{{pairs}}~@{{q}}\n{{r}}
 ^W:<|P|>\{hash-has\? <H/> <K>[^<]+</K>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 # @Hh~key~<K>key</K> val...~@ -> true
@@ -439,17 +444,17 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # @Hh~key~<K>other</K> val~@ -> false (end)
 ^W:<|P|>@Hh~(?<key>[^~]+)~<K>[^<]+</K> <[A-Z](?:/>|>[^<]*</[A-Z]>)~@<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
-# hash-set: {hash-set <H>...</H> <K>key</K> val} -> new hash with key updated/added
+# hash-set: (hash-set <H>...</H> <K>key</K> val) -> new hash with key updated/added
 # For simplicity, always prepend the new key-value (shadowing old)
 ^W:<|P|>\{hash-set <H>(?<pairs>.+)</H> (?<key><K>[^<]+</K>) (?<val><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}<H>{{key}} {{val}} {{pairs}}</H>{{q}}\n{{r}}
 ^W:<|P|>\{hash-set <H/> (?<key><K>[^<]+</K>) (?<val><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}<H>{{key}} {{val}}</H>{{q}}\n{{r}}
 
-# hash-keys: {hash-keys <H>...</H>} -> list of keys
+# hash-keys: (hash-keys <H>...</H>) -> list of keys
 ^W:<|P|>\{hash-keys <H/>\}<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 ^W:<|P|>\{hash-keys <H>(?<pairs>.+)</H>\}<|Q|>\n<|R|> ::= W:{{p}}@Hk~{{pairs}}~@{{q}}\n{{r}}
-# @Hk~<K>k</K> val rest~@ -> {cons <K>k</K> {hash-keys rest}}
+# @Hk~<K>k</K> val rest~@ -> (cons <K>k</K> (hash-keys rest))
 ^W:<|P|>@Hk~(?<key><K>[^<]+</K>) <[A-Z](?:/>|>[^<]*</[A-Z]>) (?<rest>.+)~@<|Q|>\n<|R|> ::= W:{{p}}<C>{{key}} @Hk~{{rest}}~@</C>{{q}}\n{{r}}
-# @Hk~<K>k</K> val~@ -> {cons <K>k</K> nil}
+# @Hk~<K>k</K> val~@ -> (cons <K>k</K> nil)
 ^W:<|P|>@Hk~(?<key><K>[^<]+</K>) <[A-Z](?:/>|>[^<]*</[A-Z]>)~@<|Q|>\n<|R|> ::= W:{{p}}<C>{{key}} <X/></C>{{q}}\n{{r}}
 
 # ============================================================
@@ -474,7 +479,9 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Lambda: <L><P>params</P><BODY>body</BODY></L> -> [lambda params]
 ^W:\nS:\nO:(?<p>.*)<L><P>(?<params>[^<]+)</P><BODY>(?<body>.+)</BODY></L>(?<q>.*)$ ::= W:\nS:\nO:{{p}}[lambda {{params}}]{{q}}
 # Quote: <Q>expr</Q> -> '(expr)
-^W:\nS:\nO:(?<p>.*)<Q>(?<e>[^<]+)</Q>(?<q>.*)$ ::= W:\nS:\nO:{{p}}'({{e}}){{q}}
+^W:\nS:\nO:(?<p>.*)<Q>(?<e>[^<]*)\{(?<qbody>[^<]*)</Q>(?<q>.*)$ ::= W:\nS:\nO:{{p}}<Q>{{e}}({{qbody}}</Q>{{q}}
+^W:\nS:\nO:(?<p>.*)<Q>(?<e>[^<]*)\}(?<qbody>[^<]*)</Q>(?<q>.*)$ ::= W:\nS:\nO:{{p}}<Q>{{e}}){{qbody}}</Q>{{q}}
+^W:\nS:\nO:(?<p>.*)<Q>(?<e>[^<]+)</Q>(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}@{{q}}
 ^W:\nS:\nO:(?<p>.*)<X/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}nil{{q}}
 ^W:\nS:\nO:(?<p>.*)<T/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}true{{q}}
 ^W:\nS:\nO:(?<p>.*)<F/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}false{{q}}
@@ -491,18 +498,22 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Simple: (a b) where neither has parens
 ^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>[^.()\n]+) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 # a is simple, b is nested: (a (...))
-^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>[^.()\n]+) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
+^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>[^.()\n]+) (?<b>\(.+\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 # a is nested, b is simple: ((...) b)
 ^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>\([^)]*\)) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 # Both nested: ((...) (...))
 ^W:\nS:\nO:(?<p>.*)\((?!hash(?: |\)))(?<a>\([^)]*\)) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 
 # Decode entities
+^W:\nS:\nO:(?<p>.*)&lparen;(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{q}}
+^W:\nS:\nO:(?<p>.*)&rparen;(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
 ^W:\nS:\nO:(?<p>.*)&quot;(?<q>.*)$ ::= W:\nS:\nO:{{p}}"{{q}}
 ^W:\nS:\nO:(?<p>.*)&apos;(?<q>.*)$ ::= W:\nS:\nO:{{p}}'{{q}}
 ^W:\nS:\nO:(?<p>.*)&amp;(?<q>.*)$ ::= W:\nS:\nO:{{p}}&{{q}}
 
 # Print and exit
+^W:\nS:\nO:@Q(?<out>[^@\n]+)@$ ::> stdout '({{out}})\n
+^W:\nS:\nO:@Q[^@\n]+@$ ::- 0
 ^W:\nS:\nO:(?<out>[^<>\n]+)$ ::> stdout {{out}}\n
 ^W:\nS:\nO:[^<>\n]+$ ::- 0
 
