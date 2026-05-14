@@ -35,7 +35,7 @@ Requirements:
 
 Run this quickstart example from the repository root:
 
-<!-- thuepp-readme-example: example=examples/hello/hello.tpp output=examples/hello/tests/basic.toml -->
+<!-- thuepp-readme-example: source=examples/hello/hello.tpp expected-output=examples/hello/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
 ```bash
 ./python/thuepp.py examples/hello/hello.tpp
