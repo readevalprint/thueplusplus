@@ -5,8 +5,10 @@ import subprocess
 import unittest
 from pathlib import Path
 
-THUEPP = Path(__file__).parent.parent / "thuepp"
-LISP_W = Path(__file__).parent.parent / "examples" / "lisp.w"
+PYTHON_DIR = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
+THUEPP = PYTHON_DIR / "thuepp"
+LISP_W = REPO_ROOT / "examples" / "lisp.w"
 
 
 def run_lisp(expr: str) -> str:
