@@ -143,3 +143,39 @@ input = '(eq "@()[]=#" "@()[]=#")'
 exit_code = 0
 stderr = ""
 stdout_stripped = "true"
+
+[[case]]
+name = "string with left brace literal"
+input = '"{"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "{"
+
+[[case]]
+name = "string with right brace literal"
+input = '"}"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "}"
+
+[[case]]
+name = "string equality handles brace literals"
+input = '(eq "{}" "{}")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "string equality distinguishes brace literals"
+input = '(eq "{" "}")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
