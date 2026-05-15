@@ -1,5 +1,8 @@
 test:
   image: python:3.11-slim
   script:
+    - apt-get update && apt-get install -y --no-install-recommends build-essential libre2-dev libabsl-dev && rm -rf /var/lib/apt/lists/*
+    - python3 -m pip install pybind11 tomli
+    - python3 -m pip install --no-build-isolation google-re2==1.1
     - python3 -m py_compile python/thuepp.py python/tests/*.py
     - python3 -m unittest discover -s python/tests -v

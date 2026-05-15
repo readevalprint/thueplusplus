@@ -11,7 +11,7 @@ from pathlib import Path
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - exercised only on Python < 3.11
-    tomllib = None
+    import tomli as tomllib
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,8 +20,6 @@ EXAMPLES_ROOT = REPO_ROOT / "examples"
 
 
 def _load_toml(path: Path) -> dict:
-    if tomllib is None:
-        raise unittest.SkipTest("tomllib is required to read example TOML configs")
     with path.open("rb") as f:
         return tomllib.load(f)
 
