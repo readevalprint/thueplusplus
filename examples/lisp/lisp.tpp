@@ -60,6 +60,11 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # INIT: Setup multiline state
 # ============================================================
+# Protect delimiter characters inside string literals before rejecting legacy curly syntax
+# or normalizing accepted parenthesized forms. User-facing curly-brace forms remain
+# parse errors; only braces between quotes are treated as string data.
+^(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\{(?<q>[^"]*"[^\n]*)$ ::= {{p}}§LB§{{q}}
+^(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\}(?<q>[^"]*"[^\n]*)$ ::= {{p}}§RB§{{q}}
 # User-facing curly-brace syntax is a hard parse error. Curly braces are only
 # an internal representation after parenthesized input has been accepted.
 ^(?<bad>[^!WE\n][^\n]*[{}][^\n]*|W[^:\n][^\n]*[{}][^\n]*|E[^X\n][^\n]*[{}][^\n]*|EX[^I\n][^\n]*[{}][^\n]*|EXI[^T\n][^\n]*[{}][^\n]*)$ ::= !PC!EXIT2
@@ -798,7 +803,9 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Compatibility formatting for lists containing literal parenthesis strings.
 ^W:\nS:\nO:\(\( \(\) (?<rest>\(.+\))\)\)$ ::= W:\nS:\nO:(( . () . {{rest}}))
 
-# Decode internal delimiter sentinels used to protect string parentheses.
+# Decode internal delimiter sentinels used to protect string data.
+^W:\nS:\nO:(?<p>.*)§LB§(?<q>.*)$ ::= W:\nS:\nO:{{p}}{{{q}}
+^W:\nS:\nO:(?<p>.*)§RB§(?<q>.*)$ ::= W:\nS:\nO:{{p}}}{{q}}
 ^W:\nS:\nO:(?<p>.*)§LP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{q}}
 ^W:\nS:\nO:(?<p>.*)§RP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
 ^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\{(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}({{qbody}}@{{q}}
