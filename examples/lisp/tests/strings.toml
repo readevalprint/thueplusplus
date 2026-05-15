@@ -98,3 +98,48 @@ input = '"&amp;"'
 exit_code = 0
 stderr = ""
 stdout_stripped = "&amp;"
+
+[[case]]
+name = "string equality handles plus punctuation"
+input = '(eq "+" "+")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "string equality distinguishes plus and star punctuation"
+input = '(eq "+" "*")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "string equality handles compound punctuation"
+input = '(eq "a+b" "a+b")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "string equality distinguishes compound punctuation"
+input = '(eq "a+b" "a*b")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "string equality handles delimiter-adjacent punctuation"
+input = '(eq "@()[]=#" "@()[]=#")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
