@@ -63,6 +63,12 @@ class TestExampleConfigs(unittest.TestCase):
         matches = [match.group(0) for match in stale_form.finditer(text)]
         self.assertEqual(matches, [])
 
+    def test_lisp_lambda_arity_comment_matches_five_param_support(self):
+        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
+        text = program.read_text(encoding="utf-8")
+        self.assertNotIn("1-3 params", text)
+        self.assertIn("1-5 fixed params", text)
+
     def test_lisp_uses_re2_common_regex_subset(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         unsupported = re.compile(r"\(\?P=|\(\?!|\(\?=|\(\?<=|\(\?<!|(?<!\\)\\[1-9]")

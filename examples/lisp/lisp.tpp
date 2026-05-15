@@ -45,7 +45,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # true / false     boolean literals
 # nil              empty list
 # (let ([x v]...) body)  bind $x to v in body (square brackets for bindings)
-# (lambda (x) body)      anonymous function (1-3 params)
+# (lambda (x y ...) body) anonymous function (1-5 fixed params)
 # (lambda ((x 0)) body)  lambda with default param value
 # ((lambda (x) body) v)  function application
 # (begin e1 e2 e3)       sequence exprs, return last
