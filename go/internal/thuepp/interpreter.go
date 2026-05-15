@@ -28,7 +28,6 @@ type Rule struct {
 	LHS        string
 	Pattern    *regexp.Regexp
 	Backrefs   map[string]string
-	Guard      func(string) bool
 	Operator   Operator
 	RHS        string
 	LineNumber int
@@ -204,12 +203,12 @@ func parseRule(line string, lineNumber int) (*Rule, error) {
 			if pat == "" {
 				pat = "^"
 			}
-			pat, backrefs, guard := translatePattern(pat)
+			pat, backrefs := translatePattern(pat)
 			re, err := regexp.Compile(pat)
 			if err != nil {
 				return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
 			}
-			return &Rule{LHS: lhs, Pattern: re, Backrefs: backrefs, Guard: guard, Operator: oo.op, RHS: rhs, LineNumber: lineNumber}, nil
+			return &Rule{LHS: lhs, Pattern: re, Backrefs: backrefs, Operator: oo.op, RHS: rhs, LineNumber: lineNumber}, nil
 		}
 	}
 	if strings.TrimSpace(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "#") {
@@ -220,30 +219,7 @@ func parseRule(line string, lineNumber int) (*Rule, error) {
 
 var pyBackref = regexp.MustCompile(`\(\?P=([^)]+)\)`)
 
-func translatePattern(s string) (string, map[string]string, func(string) bool) {
-	var guard func(string) bool
-	if strings.HasPrefix(s, "^(?!W:|!|EXIT)") {
-		s = "^" + strings.TrimPrefix(s, "^(?!W:|!|EXIT)")
-		guard = func(state string) bool {
-			return !(strings.HasPrefix(state, "W:") || strings.HasPrefix(state, "!") || strings.HasPrefix(state, "EXIT"))
-		}
-	}
-	s = strings.ReplaceAll(s, `(?:(?!\\{let ).)+`, `.+`)
-	s = strings.ReplaceAll(s, `(?:(?!\{let ).)+`, `.+`)
-	if strings.Contains(s, `\((?!hash(?: |\)))`) {
-		s = strings.ReplaceAll(s, `\((?!hash(?: |\)))`, `\(`)
-		old := guard
-		guard = func(state string) bool {
-			if old != nil && !old(state) {
-				return false
-			}
-			return !strings.Contains(state, "(hash ") && !strings.Contains(state, "(hash)")
-		}
-	}
-	if strings.Contains(s, `(?P=n)`) {
-		s = strings.ReplaceAll(s, `(?<frame>[^|]*)`, `(?<frame>[^|]*?)`)
-		s = strings.ReplaceAll(s, `(?<outer>[^|]*)`, `(?<outer>[^|]*?)`)
-	}
+func translatePattern(s string) (string, map[string]string) {
 	backrefs := map[string]string{}
 	s = pyBackref.ReplaceAllStringFunc(s, func(m string) string {
 		name := m[4 : len(m)-1]
@@ -251,7 +227,7 @@ func translatePattern(s string) (string, map[string]string, func(string) bool) {
 		backrefs[br] = name
 		return "(?P<" + br + ">.*?)"
 	})
-	return s, backrefs, guard
+	return s, backrefs
 }
 
 func findOperator(line, op string) int {
@@ -584,16 +560,6 @@ func (i *Interpreter) Run() (int, error) {
 }
 
 func findMatch(rule Rule, state string) (matchInfo, bool) {
-	if rule.Guard != nil && !rule.Guard(state) {
-		return matchInfo{}, false
-	}
-	isVariableLookupRule := strings.Contains(rule.LHS, `\$(?<n>`) && strings.Contains(rule.LHS, `B:\|`)
-	if m, ok := findVariableLookupMatch(rule, state); ok {
-		return m, true
-	}
-	if isVariableLookupRule {
-		return matchInfo{}, false
-	}
 	idx := rule.Pattern.FindStringSubmatchIndex(state)
 	if idx == nil {
 		return matchInfo{}, false
@@ -611,129 +577,6 @@ func findMatch(rule Rule, state string) (matchInfo, bool) {
 		}
 	}
 	return matchInfo{start: idx[0], end: idx[1], groups: groups}, true
-}
-
-func findVariableLookupMatch(rule Rule, state string) (matchInfo, bool) {
-	if !strings.Contains(rule.LHS, `\$(?<n>`) || !strings.Contains(rule.LHS, `B:\|`) {
-		return matchInfo{}, false
-	}
-	wEnd := strings.IndexByte(state, '\n')
-	if wEnd < 0 || !strings.HasPrefix(state, "W:") {
-		return matchInfo{}, false
-	}
-	w := state[2:wEnd]
-	type candidate struct {
-		start int
-		end   int
-		name  string
-	}
-	var candidates []candidate
-	for idx := 0; idx < len(w); idx++ {
-		if w[idx] != '$' || idx+1 >= len(w) || !isIdentStart(w[idx+1]) {
-			continue
-		}
-		end := idx + 2
-		for end < len(w) && isIdentPart(w[end]) {
-			end++
-		}
-		candidates = append(candidates, candidate{start: idx, end: end, name: w[idx+1 : end]})
-	}
-	if len(candidates) == 0 {
-		return matchInfo{}, false
-	}
-	lines := strings.SplitAfter(state[wEnd+1:], "\n")
-	pos := wEnd + 1
-	baseGroups := map[string]string{}
-	wantE := strings.Contains(rule.LHS, `\nE:`)
-	wantF := strings.Contains(rule.LHS, `\nF:`)
-	if wantE {
-		if len(lines) == 0 || !strings.HasPrefix(lines[0], "E:") {
-			return matchInfo{}, false
-		}
-		baseGroups["e"] = strings.TrimSuffix(strings.TrimPrefix(lines[0], "E:"), "\n")
-		pos += len(lines[0])
-		lines = lines[1:]
-	}
-	if wantF {
-		if len(lines) == 0 || !strings.HasPrefix(lines[0], "F:") {
-			return matchInfo{}, false
-		}
-		baseGroups["f"] = strings.TrimSuffix(strings.TrimPrefix(lines[0], "F:"), "\n")
-		pos += len(lines[0])
-		lines = lines[1:]
-	}
-	if len(lines) == 0 || !strings.HasPrefix(lines[0], "B:|") {
-		return matchInfo{}, false
-	}
-	bLineWithPrefix := strings.TrimSuffix(lines[0], "\n")
-	b := strings.TrimPrefix(bLineWithPrefix, "B:|")
-	bLineEnd := pos + len(lines[0])
-	trailing := state[bLineEnd:]
-	if strings.HasPrefix(trailing, "\n") {
-		trailing = trailing[1:]
-	}
-	baseGroups["r"] = trailing
-
-	outerRule := strings.Contains(rule.LHS, `(?<inner>[^|]*)\|(?<outer>`)
-	for ci := len(candidates) - 1; ci >= 0; ci-- {
-		cand := candidates[ci]
-		name := cand.name
-		groups := map[string]string{"p": w[:cand.start], "n": name, "q": w[cand.end:]}
-		for k, v := range baseGroups {
-			groups[k] = v
-		}
-		if outerRule {
-			sep := strings.IndexByte(b, '|')
-			if sep < 0 {
-				continue
-			}
-			inner, outerText := b[:sep], b[sep+1:]
-			idx := strings.Index(outerText, name+"=")
-			if idx < 0 {
-				continue
-			}
-			valStart := idx + len(name) + 1
-			valEnd := valStart
-			for valEnd < len(outerText) && outerText[valEnd] != ',' && outerText[valEnd] != '|' {
-				valEnd++
-			}
-			groups["inner"] = inner
-			groups["outer"] = outerText[:idx]
-			groups["v"] = outerText[valStart:valEnd]
-			groups["rest"] = outerText[valEnd:]
-			return matchInfo{start: 0, end: len(state), groups: groups}, true
-		}
-
-		frameText := b
-		if sep := strings.IndexByte(frameText, '|'); sep >= 0 {
-			if strings.Contains(frameText[sep+1:], name+"=") {
-				continue
-			}
-			frameText = frameText[:sep]
-		}
-		idx := strings.Index(frameText, name+"=")
-		if idx < 0 {
-			continue
-		}
-		valStart := idx + len(name) + 1
-		valEnd := valStart
-		for valEnd < len(frameText) && frameText[valEnd] != ',' && frameText[valEnd] != '|' {
-			valEnd++
-		}
-		groups["frame"] = frameText[:idx]
-		groups["v"] = frameText[valStart:valEnd]
-		groups["rest"] = frameText[valEnd:] + b[len(frameText):]
-		return matchInfo{start: 0, end: len(state), groups: groups}, true
-	}
-	return matchInfo{}, false
-}
-
-func isIdentStart(c byte) bool {
-	return c == '_' || c >= 'a' && c <= 'z'
-}
-
-func isIdentPart(c byte) bool {
-	return isIdentStart(c) || c >= '0' && c <= '9'
 }
 
 func splitResource(expanded string) (string, string) {

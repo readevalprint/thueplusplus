@@ -63,6 +63,17 @@ class TestExampleConfigs(unittest.TestCase):
         matches = [match.group(0) for match in stale_form.finditer(text)]
         self.assertEqual(matches, [])
 
+    def test_lisp_uses_re2_common_regex_subset(self):
+        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
+        unsupported = re.compile(r"\(\?P=|\(\?!|\(\?=|\(\?<=|\(\?<!|(?<!\\)\\[1-9]")
+        matches = []
+        for line_number, line in enumerate(program.read_text(encoding="utf-8").splitlines(), 1):
+            if line.strip().startswith("#"):
+                continue
+            if unsupported.search(line):
+                matches.append(f"{line_number}: {line}")
+        self.assertEqual(matches, [])
+
     def _run_case(self, config_path: Path, case: dict):
         tests_dir = config_path.parent
 

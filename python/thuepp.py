@@ -32,7 +32,6 @@ class Rule:
     rhs: str
     line_number: int
     backrefs: dict[str, str]
-    guard: Optional[Any] = None
 
 
 @dataclass
@@ -42,22 +41,6 @@ class Binding:
     is_process: bool
     path_or_command: str
     process: Optional[subprocess.Popen] = None
-
-
-class _SyntheticMatch:
-    def __init__(self, start: int, end: int, groups: dict[str, str]):
-        self._start = start
-        self._end = end
-        self._groups = groups
-
-    def start(self) -> int:
-        return self._start
-
-    def end(self) -> int:
-        return self._end
-
-    def groupdict(self) -> dict[str, str]:
-        return self._groups
 
 
 class ThueppInterpreter:
@@ -205,27 +188,11 @@ class ThueppInterpreter:
         # Join initial state (preserve internal newlines)
         self.state = "\n".join(initial_state_lines).strip("\n")
 
-    def _translate_lhs(self, lhs: str) -> tuple[str, dict[str, str], Optional[Any]]:
+    def _translate_lhs(self, lhs: str) -> tuple[str, dict[str, str]]:
         """Translate supported Python-regex conveniences to RE2 plus explicit checks."""
         if not lhs:
-            return "", {}, None
-        guard = None
+            return "", {}
         pattern_lhs = lhs
-        if pattern_lhs.startswith("^(?!W:|!|EXIT)"):
-            pattern_lhs = "^" + pattern_lhs[len("^(?!W:|!|EXIT)"):]
-            guard = lambda state: not (
-                state.startswith("W:") or state.startswith("!") or state.startswith("EXIT")
-            )
-        pattern_lhs = pattern_lhs.replace(r"(?:(?!\\{let ).)+", r".+")
-        pattern_lhs = pattern_lhs.replace(r"(?:(?!\{let ).)+", r".+")
-        if r"\((?!hash(?: |\)))" in pattern_lhs:
-            old_guard = guard
-            pattern_lhs = pattern_lhs.replace(r"\((?!hash(?: |\)))", r"\(")
-            def no_hash_guard(state: str) -> bool:
-                if old_guard is not None and not old_guard(state):
-                    return False
-                return "(hash " not in state and "(hash)" not in state
-            guard = no_hash_guard
 
         # Convert RE2-style named captures (?<name>...) to google-re2's Python spelling.
         pattern_lhs = py_re.sub(r"\(\?<([^>]+)>", r"(?P<\1>", pattern_lhs)
@@ -237,7 +204,7 @@ class ThueppInterpreter:
             backrefs[synthetic] = name
             return f"(?P<{synthetic}>.*?)"
         pattern_lhs = py_re.sub(r"\(\?P=([^)]+)\)", replace_backref, pattern_lhs)
-        return pattern_lhs, backrefs, guard
+        return pattern_lhs, backrefs
 
     def _parse_rule(self, line: str, line_number: int) -> Optional[Rule]:
         """Parse a single rule line."""
@@ -262,14 +229,14 @@ class ThueppInterpreter:
                     )
 
                 try:
-                    pattern_lhs, backrefs, guard = self._translate_lhs(lhs)
+                    pattern_lhs, backrefs = self._translate_lhs(lhs)
                     pattern = re.compile(pattern_lhs) if pattern_lhs else re.compile("^")
                 except re.error as e:
                     raise RuntimeError(
                         f"Line {line_number}: Invalid regex '{lhs}': {e}"
                     )
 
-                return Rule(lhs, pattern, op, rhs, line_number, backrefs, guard)
+                return Rule(lhs, pattern, op, rhs, line_number, backrefs)
 
         # Line doesn't contain a valid rule - might be a comment or empty
         if line.strip() and not line.strip().startswith("#"):
@@ -492,93 +459,6 @@ class ThueppInterpreter:
         self._set_state(new_state)
         return new_state
 
-    @staticmethod
-    def _is_ident_start(ch: str) -> bool:
-        return ch == "_" or "a" <= ch <= "z"
-
-    @classmethod
-    def _is_ident_part(cls, ch: str) -> bool:
-        return cls._is_ident_start(ch) or "0" <= ch <= "9"
-
-    def _find_variable_lookup_match(self, rule: Rule) -> Optional[_SyntheticMatch]:
-        if r"\$(?<n>" not in rule.lhs or r"B:\|" not in rule.lhs:
-            return None
-        first_newline = self.state.find("\n")
-        if first_newline < 0 or not self.state.startswith("W:"):
-            return None
-        w = self.state[2:first_newline]
-        candidates = []
-        idx = 0
-        while idx < len(w):
-            if w[idx] == "$" and idx + 1 < len(w) and self._is_ident_start(w[idx + 1]):
-                end = idx + 2
-                while end < len(w) and self._is_ident_part(w[end]):
-                    end += 1
-                candidates.append((idx, end, w[idx + 1:end]))
-                idx = end
-            else:
-                idx += 1
-        if not candidates:
-            return None
-        rest_lines = self.state[first_newline + 1:].splitlines(keepends=True)
-        pos = first_newline + 1
-        base_groups: dict[str, str] = {}
-        if r"\nE:" in rule.lhs:
-            if not rest_lines or not rest_lines[0].startswith("E:"):
-                return None
-            base_groups["e"] = rest_lines[0][2:].rstrip("\n")
-            pos += len(rest_lines[0])
-            rest_lines = rest_lines[1:]
-        if r"\nF:" in rule.lhs:
-            if not rest_lines or not rest_lines[0].startswith("F:"):
-                return None
-            base_groups["f"] = rest_lines[0][2:].rstrip("\n")
-            pos += len(rest_lines[0])
-            rest_lines = rest_lines[1:]
-        if not rest_lines or not rest_lines[0].startswith("B:|"):
-            return None
-        b = rest_lines[0].removesuffix("\n")[3:]
-        trailing = self.state[pos + len(rest_lines[0]):]
-        if trailing.startswith("\n"):
-            trailing = trailing[1:]
-        base_groups["r"] = trailing
-        outer_rule = r"(?<inner>[^|]*)\|(?<outer>" in rule.lhs
-        for start, end, name in reversed(candidates):
-            groups = {"p": w[:start], "n": name, "q": w[end:], **base_groups}
-            for synthetic, original in rule.backrefs.items():
-                if original == "n":
-                    groups[synthetic] = name
-            if outer_rule:
-                sep = b.find("|")
-                if sep < 0:
-                    continue
-                inner, outer_text = b[:sep], b[sep + 1:]
-                bind = outer_text.rfind(name + "=")
-                if bind < 0:
-                    continue
-                val_start = bind + len(name) + 1
-                val_end = val_start
-                while val_end < len(outer_text) and outer_text[val_end] not in ",|":
-                    val_end += 1
-                groups.update({"inner": inner, "outer": outer_text[:bind], "v": outer_text[val_start:val_end], "rest": outer_text[val_end:]})
-                return _SyntheticMatch(0, len(self.state), groups)
-            frame_text = b
-            sep = frame_text.find("|")
-            if sep >= 0:
-                if name + "=" in frame_text[sep + 1:]:
-                    continue
-                frame_text = frame_text[:sep]
-            bind = frame_text.rfind(name + "=")
-            if bind < 0:
-                continue
-            val_start = bind + len(name) + 1
-            val_end = val_start
-            while val_end < len(frame_text) and frame_text[val_end] not in ",|":
-                val_end += 1
-            groups.update({"frame": frame_text[:bind], "v": frame_text[val_start:val_end], "rest": frame_text[val_end:] + b[len(frame_text):]})
-            return _SyntheticMatch(0, len(self.state), groups)
-        return None
-
     def run(self) -> int:
         """Execute the program. Returns exit code."""
         while True:
@@ -592,9 +472,7 @@ class ThueppInterpreter:
                     )
                 self.eval_count += 1
 
-                match = self._find_variable_lookup_match(rule) or rule.lhs_pattern.search(self.state)
-                if match and rule.guard is not None and not rule.guard(self.state):
-                    match = None
+                match = rule.lhs_pattern.search(self.state)
                 if match:
                     groups = match.groupdict()
                     if any(groups.get(synthetic) != groups.get(original) for synthetic, original in rule.backrefs.items()):
