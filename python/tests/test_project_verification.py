@@ -35,6 +35,12 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
 
         self.assertIn("## Verification", readme)
         self.assertIn("make test", readme)
+        self.assertIn("uv run", readme)
+        self.assertIn("pyproject.toml", readme)
+        self.assertIn("uv.lock", readme)
+        self.assertIn("python/thuepp.py", readme)
+        self.assertNotIn("standard library only", readme)
+        self.assertNotIn("No external dependencies", readme)
         self.assertIn("Python unittest suite", readme)
         self.assertIn("Go test suite", readme)
         self.assertIn("shared manifest parity runner", readme)

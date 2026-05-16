@@ -29,7 +29,10 @@ python/tests/    Python implementation tests
 Requirements:
 
 - Python 3.10+
-- No external dependencies (standard library only)
+- Project Python dependencies are managed by `uv` from `pyproject.toml` / `uv.lock`; use `uv run` or the `make` targets for deterministic development and tests.
+- Repository verification also requires `make` and Go for the shared Go implementation tests.
+
+The interpreter entry point remains `python/thuepp.py`. Direct `./python/thuepp.py ...` examples assume the project dependencies have already been installed or are being run in the `uv` environment.
 
 ## Examples
 
