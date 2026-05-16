@@ -283,6 +283,7 @@ func builtinArity(name string) (int, bool) {
 		"le":     2,
 		"gt":     2,
 		"ge":     2,
+		"num":    1,
 		"b64enc": 1,
 		"b64dec": 1,
 	}
@@ -353,6 +354,13 @@ func evalBuiltin(name string, values []string) (string, error) {
 	}
 	if name == "b64dec" {
 		return b64urlDecode(values[0])
+	}
+	if name == "num" {
+		n, err := parseNumber(values[0], name)
+		if err != nil {
+			return "", err
+		}
+		return "<num>" + formatRat(n) + "</num>", nil
 	}
 	a, err := parseNumber(values[0], name)
 	if err != nil {

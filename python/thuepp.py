@@ -294,6 +294,7 @@ class ThueppInterpreter:
             "le": 2,
             "gt": 2,
             "ge": 2,
+            "num": 1,
             "b64enc": 1,
             "b64dec": 1,
         }.get(name)
@@ -345,6 +346,8 @@ class ThueppInterpreter:
             return self._b64url_encode(values[0])
         if name == "b64dec":
             return self._b64url_decode(values[0])
+        if name == "num":
+            return f"<num>{self._format_rational(self._parse_number(values[0], name))}</num>"
 
         a = self._parse_number(values[0], name)
         b = self._parse_number(values[1], name)

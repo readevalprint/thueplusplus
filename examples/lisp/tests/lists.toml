@@ -2,8 +2,6 @@ program = "../lisp.tpp"
 timeout = 5
 
 
-[requires]
-commands = ["bc"]
 
 [[case]]
 name = "cons"
