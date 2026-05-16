@@ -1,5 +1,6 @@
 # Builtin pure replacement operator smoke tests
-# Numeric builtins accept canonical integer, decimal, and fraction forms.
+# Numeric builtins accept the canonical integer, decimal, and fraction forms
+# specified in ../../docs/numeric-builtins.md.
 N <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 
 ^add:(?<a><|N|>),(?<b><|N|>)$ ::! add a b

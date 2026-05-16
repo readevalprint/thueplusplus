@@ -68,6 +68,10 @@ Hello, World!
 
 All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`.
 
+## Numeric builtins
+
+Numeric builtins use exact rational arithmetic and canonical rational output, not floating-point arithmetic or decimal approximation. The accepted numeric input grammar and display policy are specified in `docs/numeric-builtins.md`.
+
 ## Python features
 
 - Full v0.2 spec compliance
