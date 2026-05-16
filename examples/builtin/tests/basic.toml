@@ -88,7 +88,7 @@ input = "rawadd:1e3,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["expected numeric input"]
+stderr_contains = ["Builtin 'add' expected numeric input, got '1e3'"]
 
 [[case]]
 name = "fraction division reduces"
@@ -267,60 +267,84 @@ stderr = ""
 stdout_stripped = "<num>2/3</num>"
 
 [[case]]
-name = "invalid zero denominator fraction fails loudly"
+name = "zero denominator fraction fails loudly"
 input = "rawadd:2/0,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["fraction denominator must be non-zero"]
+stderr_contains = ["Builtin 'add' fraction denominator must be non-zero"]
 
 [[case]]
-name = "invalid signed denominator fraction fails loudly"
+name = "zero denominator with leading zeros fails loudly"
+input = "rawadd:2/00,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'add' fraction denominator must be non-zero"]
+
+[[case]]
+name = "signed denominator fraction is malformed"
 input = "rawadd:2/-3,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["expected numeric input"]
+stderr_contains = ["Builtin 'add' expected numeric input, got '2/-3'"]
 
 [[case]]
-name = "invalid double-signed fraction fails loudly"
+name = "signed zero denominator fraction is malformed"
+input = "rawadd:2/-0,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'add' expected numeric input, got '2/-0'"]
+
+[[case]]
+name = "double-signed fraction is malformed"
 input = "rawadd:-2/-3,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["expected numeric input"]
+stderr_contains = ["Builtin 'add' expected numeric input, got '-2/-3'"]
 
 [[case]]
-name = "invalid repeated slash number fails loudly"
+name = "repeated slash number is malformed"
 input = "rawadd:1/2/3,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["expected numeric input"]
+stderr_contains = ["Builtin 'add' expected numeric input, got '1/2/3'"]
 
 [[case]]
-name = "invalid repeated decimal number fails loudly"
+name = "malformed decimal is rejected"
 input = "rawadd:1.2.3,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["expected numeric input"]
+stderr_contains = ["Builtin 'add' expected numeric input, got '1.2.3'"]
 
 [[case]]
-name = "leading-dot decimal rejected"
+name = "leading-dot decimal is malformed"
 input = "rawadd:.5,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["expected numeric input"]
+stderr_contains = ["Builtin 'add' expected numeric input, got '.5'"]
 
 [[case]]
-name = "trailing-dot decimal rejected"
+name = "trailing-dot decimal is malformed"
 input = "rawadd:5.,1"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["expected numeric input"]
+stderr_contains = ["Builtin 'add' expected numeric input, got '5.'"]
+
+[[case]]
+name = "modulo by zero fails loudly"
+input = "mod:1,0"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'mod' modulo by zero"]
 
 [[case]]
 name = "base64url encodes empty string"
