@@ -8,17 +8,27 @@
 # ============================================================
 # Use <|NAME|> to reference these patterns in rules
 #
-# STATE STRUCTURE:
-#   W:work        - current expression being evaluated  
-#   F:frames      - parsing frame stack (LAMBDA|x;LET|y=5;...)
-#   B:bindings    - variable bindings (x=val,y=val,...)
-#   E:eval        - call stack for function returns
-#   S:stack       - general stack
-#   O:output      - final output
+# INTERNAL STATE CONTRACT:
+#   The evaluator uses a single canonical state order:
+#     W:<work>
+#     E:<deferred return work>   # optional; present only during lambda/application return
+#     F:<frame metadata>         # always before B: when present
+#     B:<bindings>               # innermost let frame starts after leading |
+#     S:<scratch stack>
+#     O:<final output>
+#
+#   Value markers are XML-ish tags: <N>, <S>, <T/>, <F/>, <X/>, <Y>, <K>, <R>,
+#   <V>, <H>, <C>, and <L>. Temporary work markers are @...@ or #...«...»
+#   envelopes and must never reach final output. Parser-protection sentinels use §...§
+#   only while preserving user string delimiters during source normalization.
+#
+#   Rules may explicitly consume E:/F:/B: when they mutate that line, but must preserve
+#   this order on rewrite. Malformed or leaked marker states fall through to fail-loud
+#   parse/runtime exits instead of silently printing implementation details.
 #
 P      <- (?<p>[^\n]*)
 Q      <- (?<q>[^\n]*)
-# R matches rest of state: F, E, B lines in any order, then S:
+# R matches the remaining canonical state tail after any lines consumed explicitly.
 R      <- (?<r>(?:E:[^\n]*\n)?(?:F:[^\n]*\n)?(?:B:[^\n]*\n)?S:.*)
 VAR    <- [a-z_][a-z0-9_]*
 XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
@@ -88,7 +98,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Quote is captured before literal parsing/evaluation so visible data identity is preserved.
 ^W:(?<p>[^\n]*)\{quote (?<e>.*)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Q{{e}}@{{q}}\n{{r}}
 ^W:(?<v>@Q[^\n]+@)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:\nS:\nO:{{v}}
-^W:(?<v>@Q[^\n]+@)\nB:[^\n]*\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 ^W:(?<v>@Q[^\n]+@)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 
 # Strings: "..." -> <S>...</S>
@@ -228,41 +237,31 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # 3. Variable lookup: $x checks INNERMOST frame first
 
 # Enter let: push new frame marker
-# Handle F:, E:, B: in various combinations (E: can be before or after F:)
+# Canonical state keeps F: before B: and E: before F: when present; noncanonical line order falls through to fail-loud parsing.
 ^W:(?<p>[^@\n]*?)\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}(?<q>[^}\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{bindings}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^@\n]*?)\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}(?<q>[^}\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{bindings}}}{{body}}@{{q}}\nB:|{{b}}\n{{r}}
 ^W:(?<p>[^@\n]*?)\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}(?<q>[^}\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{bindings}}}{{body}}@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^@\n]*?)\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}(?<q>[^}\n]*)\nE:(?<e>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{bindings}}}{{body}}@{{q}}\nE:{{e}}\nB:|{{b}}\n{{r}}
 
 # Process binding: [x val] -> add x=val to current frame
 # If value is a lambda, parse it first AND encode $ as @ in body to protect from lookup
 # (lambda (p) b) -> <L><P>p</P><BODY>b_with_$_as_@</BODY></L>
 # Lambda binding: use .+ with backtracking to find }]
 ^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) \{lambda \{(?<lp>[^}]+)\} (?<lb>.+)\}\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}#LB«{{n}}»{{lp}}»{{lb}}»@LET{{{rest}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) \{lambda \{(?<lp>[^}]+)\} (?<lb>.+)\}\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}#LB«{{n}}»{{lp}}»{{lb}}»@LET{{{rest}}}{{body}}@{{q}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) \{lambda \{(?<lp>[^}]+)\} (?<lb>.+)\}\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}#LB«{{n}}»{{lp}}»{{lb}}»@LET{{{rest}}}{{body}}@{{q}}\nE:{{e}}\nB:|{{b}}\n{{r}}
 # #LB processing: encode $var as #var in the lambda body, then store
 ^W:(?<pre>[^\n]*)#LB«(?<n>[^»]+)»(?<lp>[^»]+)»(?<b1>[^\n]*)\$(?<var>[a-z_][a-z0-9_]*)(?<b2>[^»]*)»(?<rest>[^\n]*)\n<|R|> ::= W:{{pre}}#LB«{{n}}»{{lp}}»{{b1}}#{{var}}{{b2}}»{{rest}}\n{{r}}
 # #LB done (no more $): store in bindings  
 ^W:(?<pre>[^\n]*)#LB«(?<n>[^»]+)»(?<lp>[^»]+)»(?<lb>[^$»]*)»@LET(?<rest>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{pre}}@LET{{rest}}\nF:{{f}}\nB:|{{n}}=<L><P>{{lp}}</P><BODY>{{lb}}</BODY></L>,{{b}}\n{{r}}
-^W:(?<pre>[^\n]*)#LB«(?<n>[^»]+)»(?<lp>[^»]+)»(?<lb>[^$»]*)»@LET(?<rest>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{pre}}@LET{{rest}}\nB:|{{n}}=<L><P>{{lp}}</P><BODY>{{lb}}</BODY></L>,{{b}}\n{{r}}
 # Regular binding (non-lambda values) - value must be XML (already evaluated)
 # Simple XML values like <N>5</N>, <S>text</S>, <T/>, <F/>, <X/>, <K>key</K>, <Y>sym</Y>
 ^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
 ^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nE:{{e}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
 # Cons cell values like <C>...</C> (can contain nested XML)
 ^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><C>[^<]*(?:<[^/][^<]*</[^>]+>[^<]*)*</C>)\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><C>[^<]*(?:<[^/][^<]*</[^>]+>[^<]*)*</C>)\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
 
 # All bindings processed (empty {}): evaluate body
 ^W:(?<p>[^\n]*)@LET\{\}(?<body>.+?)@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{body}}@{{q}}\n{{r}}
 # Enter a nested let inside an already-active @LET body while preserving the outer frame.
 ^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nB:|{{b}}\n{{r}}
 ^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nE:{{e}}\nB:|{{b}}\n{{r}}
 
 # Variable lookup: $name (or protected #name in stored lambda bodies) -> scan B: frames with builtin equality.
 ^W:(?<p>[^\n$«]*)\$(?<n>[a-z_][a-z0-9_]*)(?<q>[^\n]*)\n(?<mid>(?:E:[^\n]*\n)?(?:F:[^\n]*\n)?)B:(?<b>[^\n]*=[^\n]*)\n<|R|> ::= W:@LK«{{p}}»«{{q}}»«{{n}}»«{{b}}»\n{{mid}}B:{{b}}\n{{r}}
@@ -274,14 +273,11 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:@LKR«(?<p>[^»]*)»«(?<q>[^»]*)»«(?<orig>[^»]+)»«0»«(?<v>[^»]+)»«(?<rest>[^»]*)»\n<|R|> ::= W:@LK«{{p}}»«{{q}}»«{{orig}}»«{{rest}}»\n{{r}}
 
 # Let body evaluated to value: pop frame marker
-# Simple XML values (various line orderings)
+# Simple XML values in canonical E:/F:/B: order
 ^W:(?<p>[^\n]*)@LET(?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nF:{{f}}\nB:{{b}}\n{{r}}
 ^W:(?<p>[^\n]*)@LET(?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nE:{{e}}\nF:{{f}}\nB:{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET(?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))@(?<q>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nB:{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET(?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nE:{{e}}\nB:{{b}}\n{{r}}
 # Cons cell values (contain nested XML)
 ^W:(?<p>[^\n]*)@LET(?<v><C>[^@]+</C>)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nF:{{f}}\nB:{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET(?<v><C>[^@]+</C>)@(?<q>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nB:{{b}}\n{{r}}
 # Lambda values (contain nested XML)
 ^W:(?<p>[^\n]*)@LET(?<v><L><P>[^<]+</P><BODY>.+</BODY></L>)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nF:{{f}}\nB:{{b}}\n{{r}}
 
@@ -605,21 +601,19 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # hash-keys: (hash-keys <H>...</H>) -> list of keys
 ^W:<|P|>\{hash-keys <H/>\}<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
-^W:<|P|>\{hash-keys <H>(?<pairs>.+)</H>\}<|Q|>\n<|R|> ::= W:{{p}}@Hk~{{pairs}}~@{{q}}\n{{r}}
-# @Hk~<K>k</K> val rest~@ -> (cons <K>k</K> (hash-keys rest))
-^W:<|P|>@Hk~(?<key><K>[^<]+</K>) <[A-Z](?:/>|>[^<]*</[A-Z]>) (?<rest>.+)~@<|Q|>\n<|R|> ::= W:{{p}}<C>{{key}} @Hk~{{rest}}~@</C>{{q}}\n{{r}}
-# @Hk~<K>k</K> val~@ -> (cons <K>k</K> nil)
-^W:<|P|>@Hk~(?<key><K>[^<]+</K>) <[A-Z](?:/>|>[^<]*</[A-Z]>)~@<|Q|>\n<|R|> ::= W:{{p}}<C>{{key}} <X/></C>{{q}}\n{{r}}
+^W:<|P|>\{hash-keys <H>(?<pairs>.+)</H>\}<|Q|>\n<|R|> ::= W:{{p}}@Hk«{{pairs}}»{{q}}\n{{r}}
+# @Hk«<K>k</K> val rest» -> (cons <K>k</K> (hash-keys rest))
+^W:<|P|>@Hk«(?<key><K>[^<]+</K>) <[A-Z](?:/>|>[^<]*</[A-Z]>) (?<rest>.+)»<|Q|>\n<|R|> ::= W:{{p}}<C>{{key}} @Hk«{{rest}}»</C>{{q}}\n{{r}}
+# @Hk«<K>k</K> val» -> (cons <K>k</K> nil)
+^W:<|P|>@Hk«(?<key><K>[^<]+</K>) <[A-Z](?:/>|>[^<]*</[A-Z]>)»<|Q|>\n<|R|> ::= W:{{p}}<C>{{key}} <X/></C>{{q}}\n{{r}}
 
 # ============================================================
 # OUTPUT: When work is a single value, format and print
 # ============================================================
 # First remove F: and B: lines if present
 ^W:(?<v>@Q[^\n]+@)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
-^W:(?<v>@Q[^\n]+@)\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
 ^W:(?<v>@Q[^\n]+@)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 ^W:(?<v><[^\n]+)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
-^W:(?<v><[^\n]+)\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
 ^W:(?<v><[^\n]+)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 
 # Strip XML tags (innermost first)
