@@ -68,6 +68,24 @@ Hello, World!
 
 All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`.
 
+## Verification
+
+Use the repository-root truth-engine command before sending changes for review:
+
+```bash
+make test
+```
+
+`make test` runs the Python unittest suite, the Go test suite, and the shared rule-coverage gate for the Lisp target-language example. Optional helper targets are available for focused checks:
+
+```bash
+make test-python
+make test-go
+make test-coverage
+```
+
+A `test-js` slot is reserved for a future JavaScript implementation, but JavaScript is not required before that implementation exists.
+
 ## Numeric builtins
 
 Numeric builtins use exact rational arithmetic and canonical rational output, not floating-point arithmetic or decimal approximation. The accepted numeric input grammar, migration note for decimal-looking division output, and display policy are specified in `docs/numeric-builtins.md`. Example-level readable typed value wrappers are specified in `docs/typed-values.md`.
