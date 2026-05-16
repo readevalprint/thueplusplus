@@ -18,12 +18,23 @@ func main() {
 	program := args[0]
 	interp := thuepp.New()
 	inputSet := false
+	ruleCoveragePath := ""
 
 	for idx := 1; idx < len(args); {
 		arg := args[idx]
 		switch {
 		case arg == "--debug":
 			interp.Debug = true
+			idx++
+		case arg == "--rule-coverage":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --rule-coverage requires an argument")
+				os.Exit(1)
+			}
+			ruleCoveragePath = args[idx+1]
+			idx += 2
+		case strings.HasPrefix(arg, "--rule-coverage="):
+			ruleCoveragePath = strings.TrimPrefix(arg, "--rule-coverage=")
 			idx++
 		case arg == "--input":
 			if idx+1 >= len(args) {
@@ -99,6 +110,7 @@ func main() {
 		}
 	}
 
+	interp.RuleCoveragePath = ruleCoveragePath
 	if err := interp.LoadProgram(program); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -116,6 +128,10 @@ func main() {
 	code, err := interp.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		code = 1
+	}
+	if err := interp.WriteRuleCoverage(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to write rule coverage: %v\n", err)
 		code = 1
 	}
 	interp.Cleanup()
