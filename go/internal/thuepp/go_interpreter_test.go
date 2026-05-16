@@ -94,6 +94,78 @@ func TestGoInterpreterTemplateExpansionDoesNotSpecialCaseLispBindings(t *testing
 	}
 }
 
+func TestGoCLIInputOverrideParsing(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	goBin := buildGoInterpreter(t, repoRoot)
+	tmp := t.TempDir()
+	programPath := filepath.Join(tmp, "input-override.tpp")
+	program := strings.Join([]string{
+		`^abc$ ::- 11`,
+		`^xyz$ ::- 12`,
+		`^$ ::- 13`,
+		`^from-program$ ::- 14`,
+		``,
+		`::=`,
+		`from-program`,
+		``,
+	}, "\n")
+	if err := os.WriteFile(programPath, []byte(program), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name     string
+		args     []string
+		wantCode int
+	}{
+		{name: "separate input arg", args: []string{"--input", "abc"}, wantCode: 11},
+		{name: "equals input arg", args: []string{"--input=xyz"}, wantCode: 12},
+		{name: "explicit empty input", args: []string{"--input", ""}, wantCode: 13},
+		{name: "empty equals input", args: []string{"--input="}, wantCode: 13},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmdArgs := append([]string{programPath}, tt.args...)
+			cmd := exec.Command(goBin, cmdArgs...)
+			cmd.Dir = repoRoot
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err == nil {
+				t.Fatalf("go interpreter exit = 0, want %d", tt.wantCode)
+			} else if ee, ok := err.(*exec.ExitError); !ok || ee.ExitCode() != tt.wantCode {
+				t.Fatalf("go interpreter exit = %v, want %d\nstderr: %s", err, tt.wantCode, stderr.String())
+			}
+			if got := stdout.String(); got != "" {
+				t.Fatalf("stdout = %q, want empty", got)
+			}
+			if got := stderr.String(); got != "" {
+				t.Fatalf("stderr = %q, want empty", got)
+			}
+		})
+	}
+}
+
+func TestGoCLIUnknownArgumentFailsLoudly(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	cmd := exec.Command(buildGoInterpreter(t, repoRoot), "examples/hello/hello.tpp", "--bogus")
+	cmd.Dir = repoRoot
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("go interpreter exit = 0, want unknown argument failure")
+	}
+	if got := stdout.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+	want := "Error: Unknown argument: --bogus"
+	if !strings.Contains(stderr.String(), want) {
+		t.Fatalf("stderr = %q, want to contain %q", stderr.String(), want)
+	}
+}
+
 func TestGoInterpreterRuleCoverageCountsSuccessfulApplications(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	tmp := t.TempDir()

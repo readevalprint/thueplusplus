@@ -17,7 +17,7 @@ func main() {
 	}
 	program := args[0]
 	interp := thuepp.New()
-	inputSet := false
+	var inputOverride *string
 	ruleCoveragePath := ""
 
 	for idx := 1; idx < len(args); {
@@ -41,12 +41,12 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Error: --input requires an argument")
 				os.Exit(1)
 			}
-			interp.State = args[idx+1]
-			inputSet = true
+			value := args[idx+1]
+			inputOverride = &value
 			idx += 2
 		case strings.HasPrefix(arg, "--input="):
-			interp.State = strings.TrimPrefix(arg, "--input=")
-			inputSet = true
+			value := strings.TrimPrefix(arg, "--input=")
+			inputOverride = &value
 			idx++
 		case arg == "--max-evals":
 			if idx+1 >= len(args) {
@@ -115,15 +115,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	if inputSet { // LoadProgram sets initial state; restore explicit override.
-		for idx := 1; idx < len(args); idx++ {
-			if args[idx] == "--input" && idx+1 < len(args) {
-				interp.State = args[idx+1]
-			}
-			if strings.HasPrefix(args[idx], "--input=") {
-				interp.State = strings.TrimPrefix(args[idx], "--input=")
-			}
-		}
+	if inputOverride != nil { // LoadProgram sets initial state; restore explicit override.
+		interp.State = *inputOverride
 	}
 	code, err := interp.Run()
 	if err != nil {
