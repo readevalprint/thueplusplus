@@ -65,6 +65,32 @@ stderr = ""
 stdout_stripped = "1"
 
 [[case]]
+name = "leading zeros are accepted and normalized"
+input = "add:0001,02"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "negative zero is accepted and canonicalizes"
+input = "add:-0.0,0/3"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
+
+[[case]]
+name = "scientific notation is rejected"
+input = "rawadd:1e3,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["expected numeric input"]
+
+[[case]]
 name = "fraction division reduces"
 input = "div:1,2"
 
@@ -105,6 +131,24 @@ input = "mod:5/2,2"
 [case.expect]
 exit_code = 1
 stderr_contains = ["Builtin 'mod' expected integer inputs"]
+
+[[case]]
+name = "mod accepts decimal operands that normalize to integers"
+input = "mod:2.0,1.0"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
+
+[[case]]
+name = "mod accepts fraction operands that normalize to integers"
+input = "mod:4/2,1"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
 
 [[case]]
 name = "mod rejects negative inputs"
