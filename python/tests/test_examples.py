@@ -80,6 +80,35 @@ class TestExampleConfigs(unittest.TestCase):
                 matches.append(f"{line_number}: {line}")
         self.assertEqual(matches, [])
 
+    def test_lisp_documents_canonical_internal_state_contract(self):
+        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
+        text = program.read_text(encoding="utf-8")
+        self.assertIn("# INTERNAL STATE CONTRACT:", text)
+        self.assertIn("#     W:<work>", text)
+        self.assertIn("#     E:<deferred return work>", text)
+        self.assertIn("#     F:<frame metadata>", text)
+        self.assertIn("#     B:<bindings>", text)
+        self.assertIn("Temporary work markers are @...@ or #...«...»", text)
+        self.assertIn("Parser-protection sentinels use §...§", text)
+
+    def test_lisp_removes_noncanonical_b_only_state_variants(self):
+        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
+        offending = []
+        for line_number, line in enumerate(program.read_text(encoding="utf-8").splitlines(), 1):
+            if line.startswith("#"):
+                continue
+            if "\\nB:" not in line:
+                continue
+            if "\\nF:" not in line and "\\nE:" not in line:
+                offending.append(f"{line_number}: {line}")
+        self.assertEqual(offending, [])
+
+    def test_lisp_hash_keys_uses_canonical_temporary_envelope(self):
+        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
+        text = program.read_text(encoding="utf-8")
+        self.assertIn("@Hk«", text)
+        self.assertNotIn("@Hk~", text)
+
     def _run_case(self, config_path: Path, case: dict):
         tests_dir = config_path.parent
 
