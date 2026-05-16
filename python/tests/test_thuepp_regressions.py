@@ -209,6 +209,32 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("State size (3 bytes) exceeds maximum (2 bytes)", result.stderr)
 
+    def test_builtin_replaces_only_matched_span(self):
+        result = run_program(
+            r"""
+            (?<a>\d+),(?<b>\d+) ::! add a b
+            ^pre5post$ ::- 7
+
+            ::=
+            pre2,3post
+            """
+        )
+
+        self.assertEqual(result.returncode, 7, result.stderr)
+
+    def test_builtin_rejects_template_argument_spelling(self):
+        result = run_program(
+            r"""
+            ^(?<a>\d+),(?<b>\d+)$ ::! add {{a}} b
+
+            ::=
+            2,3
+            """
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("::! arguments must be capture names", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

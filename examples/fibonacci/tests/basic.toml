@@ -2,12 +2,6 @@ name = "fibonacci example"
 program = "../fibonacci.tpp"
 timeout = 5
 
-[bindings.procs]
-calc = "bc -lq"
-
-[requires]
-commands = ["bc"]
-
 [expect]
 stdout = "Fib: 1\nFib: 1\nFib: 2\nFib: 3\nFib: 5\nFib: 8\nFib: 13\nFib: 21\nFib: 34\nFib: 55\n"
 stderr = ""

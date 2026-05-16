@@ -20,13 +20,19 @@ ERR:resource:notfound:db$ ::= @D@
 # SET - append k,v
 ^SET,(?<k>[^,]+),(?<v>[^|]+)\|(?<db>[^@]*)@D@$ ::= @W[{{db}}{{k}},{{v}}\n]@@O[ok]@
 
-# GET - find k,v (backreference)
-^GET,(?<k>[^|]+)\|[^@]*?(?P=k),(?<v>[^\n@]+)[^@]*@D@$ ::= @O[{{v}}]@
+# GET - scan lines and compare keys with the pure eq builtin.
+^GET,(?<k>[^|]+)\|(?<linek>[^,\n@]+),(?<v>[^\n@]+)\n(?<rest>[^@]*)@D@$ ::= GET,{{k}}|@K[{{linek}}|{{k}}]@{{v}}\n{{rest}}@D@
+@K\[(?<linek>[^|\]]+)\|(?<k>[^\]]+)\]@ ::! eq linek k
+^GET,[^|]+\|1(?<v>[^\n@]+)\n[^@]*@D@$ ::= @O[{{v}}]@
+^GET,(?<k>[^|]+)\|0[^\n@]*\n(?<rest>[^@]*)@D@$ ::= GET,{{k}}|{{rest}}@D@
 ^GET,[^|]+\|[^@]*@D@$ ::= @O[nil]@
 
-# DEL - remove matching line
-^DEL,(?<k>[^|]+)\|(?<pre>[^@]*?)(?P=k),[^\n@]*\n(?<post>[^@]*)@D@$ ::= @W[{{pre}}{{post}}]@@O[ok]@
-^DEL,[^|]+\|(?<db>[^@]*)@D@$ ::= @W[{{db}}]@@O[ok]@
+# DEL - scan lines, carrying non-matching lines in @P[...].
+^DEL,(?<k>[^|]+)\|(?<db>[^@]*)@D@$ ::= DEL,{{k}}|@P[]@{{db}}@D@
+^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@(?<linek>[^,\n@]+),(?<v>[^\n@]*)\n(?<rest>[^@]*)@D@$ ::= DEL,{{k}}|@P[{{pre}}]@@K[{{linek}}|{{k}}]@{{linek}},{{v}}\n{{rest}}@D@
+^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@1[^\n@]*\n(?<rest>[^@]*)@D@$ ::= @W[{{pre}}{{rest}}]@@O[ok]@
+^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@0(?<line>[^\n@]*\n)(?<rest>[^@]*)@D@$ ::= DEL,{{k}}|@P[{{pre}}{{line}}]@{{rest}}@D@
+^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@@D@$ ::= @W[{{pre}}]@@O[ok]@
 
 # LIST
 ^LIST\|(?<db>[^@]*)@D@$ ::= @O[{{db}}]@
