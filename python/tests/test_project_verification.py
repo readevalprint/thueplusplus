@@ -9,9 +9,12 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
     def test_make_test_is_the_full_project_truth_engine(self):
         makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-        self.assertIn("test: test-python test-go test-coverage", makefile)
+        self.assertIn("test: test-python test-go test-shared test-coverage", makefile)
         self.assertIn("uv run python -m unittest discover -s python/tests -v", makefile)
         self.assertIn("cd go && go test -count=1 ./...", makefile)
+        self.assertIn("tools/run-example-manifests --parity", makefile)
+        self.assertIn("--interpreter \"python=uv run python python/thuepp.py\"", makefile)
+        self.assertIn("--interpreter \"go=$$tmp/thuepp-go\"", makefile)
         self.assertIn(
             "uv run python tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml",
             makefile,
@@ -34,6 +37,7 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
         self.assertIn("make test", readme)
         self.assertIn("Python unittest suite", readme)
         self.assertIn("Go test suite", readme)
+        self.assertIn("shared manifest parity runner", readme)
         self.assertIn("shared rule-coverage gate", readme)
         self.assertIn("test-js", readme)
 
