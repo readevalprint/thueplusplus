@@ -15,7 +15,7 @@ from example_runner import Interpreter, expand_cases, load_toml, run_case as run
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON_IMPLEMENTATION = Interpreter("python", (sys.executable, str(ROOT / "python" / "thuepp.py")))
-OPERATORS = ("::-", "::<", "::>", "::!", "::=")
+RULE_OPERATORS = ("::-", "::<", "::>", "::!", "::=")
 
 
 @dataclass(frozen=True)
@@ -26,9 +26,37 @@ class RuleSource:
     ignore_reason: str = ""
 
 
+def find_rule_operator(line: str, operator: str) -> int:
+    """Find a rule operator with interpreter-equivalent regex awareness."""
+    depth = 0
+    char_class = False
+    i = 0
+    while i < len(line):
+        char = line[i]
+        if char == "\\" and i + 1 < len(line):
+            i += 2
+            continue
+        if char == "[" and not char_class:
+            char_class = True
+        elif char == "]" and char_class:
+            char_class = False
+        elif char == "(" and not char_class:
+            depth += 1
+        elif char == ")" and not char_class:
+            depth = max(0, depth - 1)
+        if not char_class and depth == 0 and line[i:i + len(operator)] == operator:
+            before_ok = i == 0 or line[i - 1] in " \t"
+            after = i + len(operator)
+            after_ok = after >= len(line) or line[after] in " \t"
+            if before_ok and after_ok:
+                return i
+        i += 1
+    return -1
+
+
 def find_operator(line: str) -> int:
-    for operator in OPERATORS:
-        idx = line.find(operator)
+    for operator in RULE_OPERATORS:
+        idx = find_rule_operator(line, operator)
         if idx >= 0:
             return idx
     return -1
