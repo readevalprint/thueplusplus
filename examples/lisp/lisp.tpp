@@ -148,6 +148,13 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Pattern: match op with XML-typed args, works at any depth
 # ============================================================
 
+# Final output must not contain unfinished internal sentinel markers.
+# Place these guards before builtin sentinel rules so output data is validated
+# before any implementation marker can be accidentally executed from O:.
+^W:\nS:\nO:.*@(ADD|SUB|MUL|DIV|NUMEQ|LT|GT|LE|GE)\[[^\n]*$ ::= !P!EXIT2
+^W:\nS:\nO:.*@EQ«[^\n]*$ ::= !P!EXIT2
+^W:\nS:\nO:.*@B:[^\n]*$ ::= !P!EXIT2
+
 # Arithmetic: {op <N>a</N> <N>b</N>} -> compute with pure builtins.
 ^W:<|P|>\{\+ <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}<N>@ADD[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
 ^W:<|P|>\{\- <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}<N>@SUB[{{a}}|{{b}}]@</N>{{q}}\n{{r}}

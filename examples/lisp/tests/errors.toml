@@ -173,3 +173,30 @@ input = "(hash :a (list 1 2))"
 exit_code = 2
 stdout = ""
 stderr_contains = ["parse error"]
+
+[[case]]
+name = "unfinished add sentinel in output fails loudly"
+input = "<N>@ADD[5.|1]@</N>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "unfinished mul sentinel in output fails loudly"
+input = "<N>@MUL[7/2|two]@</N>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]
+
+[[case]]
+name = "unfinished comparison boolean sentinel in output fails loudly"
+input = "@B:@NUMEQ[1/2|bad]@@"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error"]

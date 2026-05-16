@@ -175,3 +175,21 @@ input = '(eq "{" "}")'
 exit_code = 0
 stderr = ""
 stdout_stripped = "false"
+
+[[case]]
+name = "string equality handles internal sentinel-like text"
+input = '(eq "@ADD[1|2]@" "@ADD[1|2]@")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "string equality distinguishes internal sentinel-like text"
+input = '(eq "@ADD[1|2]@" "@ADD[1|3]@")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
