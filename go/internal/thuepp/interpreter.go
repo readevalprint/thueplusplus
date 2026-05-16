@@ -34,6 +34,8 @@ var (
 	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
 )
 
+const MaxNumericLiteralChars = 4096
+
 type Rule struct {
 	LHS         string
 	Pattern     *regexp.Regexp
@@ -350,6 +352,9 @@ func b64urlDecode(value string) (string, error) {
 func parseNumber(value, builtin string) (*big.Rat, error) {
 	if !numericLiteralPattern.MatchString(value) {
 		return nil, fmt.Errorf("Builtin '%s' expected numeric input, got '%s'", builtin, value)
+	}
+	if len(value) > MaxNumericLiteralChars {
+		return nil, fmt.Errorf("Builtin '%s' numeric input exceeds maximum length (%d characters)", builtin, MaxNumericLiteralChars)
 	}
 	if zeroDenominatorPattern.MatchString(value) {
 		return nil, fmt.Errorf("Builtin '%s' fraction denominator must be non-zero", builtin)

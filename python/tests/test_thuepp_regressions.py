@@ -235,6 +235,35 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("::! arguments must be capture names", result.stderr)
 
+    def test_builtin_numeric_literal_length_is_bounded(self):
+        max_len = "1" * 4096
+        boundary = run_program(
+            f"""
+            ^(?<a>[0-9]+),(?<b>[0-9]+)$ ::! add a b
+            ^{max_len}$ ::- 7
+
+            ::=
+            {max_len},0
+            """,
+            timeout=5,
+        )
+        self.assertEqual(boundary.returncode, 7, boundary.stderr)
+
+        too_long = "1" * 4097
+        result = run_program(
+            r"""
+            ^(?<a>[0-9]+),(?<b>[0-9]+)$ ::! add a b
+
+            ::=
+            PLACEHOLDER,1
+            """.replace("PLACEHOLDER", too_long),
+            timeout=5,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("Builtin 'add' numeric input exceeds maximum length (4096 characters)", result.stderr)
+
     def test_rule_coverage_counts_successful_rule_applications(self):
         with tempfile.TemporaryDirectory() as tmp:
             program_path = Path(tmp) / "coverage.tpp"

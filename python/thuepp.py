@@ -19,6 +19,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 
+MAX_NUMERIC_LITERAL_CHARS = 4096
+
+
 class Operator(Enum):
     SUBSTITUTE = "::="
     READ = "::<"   # Bulk read entire file/stream
@@ -343,6 +346,11 @@ class ThueppInterpreter:
     def _parse_number(self, value: str, builtin: str) -> Fraction:
         if not py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value):
             raise RuntimeError(f"Builtin '{builtin}' expected numeric input, got '{value}'")
+        if len(value) > MAX_NUMERIC_LITERAL_CHARS:
+            raise RuntimeError(
+                f"Builtin '{builtin}' numeric input exceeds maximum length "
+                f"({MAX_NUMERIC_LITERAL_CHARS} characters)"
+            )
         if "/" in value:
             denominator = int(value.rsplit("/", 1)[1])
             if denominator == 0:
