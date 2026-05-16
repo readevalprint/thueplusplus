@@ -49,6 +49,24 @@ stderr = ""
 stdout_stripped = "false"
 
 [[case]]
+name = "eq rational intermediates true"
+input = "(eq (/ 2 4) (/ 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "eq rational intermediates false"
+input = "(eq (/ 2 4) (/ 2 3))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
 name = "eq strings true"
 input = "(eq \"hello\" \"hello\")"
 
