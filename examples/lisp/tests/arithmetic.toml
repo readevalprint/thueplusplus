@@ -99,3 +99,75 @@ input = "(+ 5. 1)"
 exit_code = 2
 stdout = ""
 stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "leading dot numeric literal fails loudly"
+input = "(+ .5 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "malformed decimal literal fails loudly"
+input = "(+ 1.2.3 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "repeated slash numeric literal fails loudly"
+input = "(+ 1/2/3 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "signed denominator literal fails loudly"
+input = "(+ 2/-3 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "signed zero denominator literal fails loudly"
+input = "(+ 2/-0 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "scientific notation literal fails loudly"
+input = "(+ 1e3 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "zero denominator literal reaches builtin error"
+input = "(+ 2/00 1)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'add' fraction denominator must be non-zero"]
+
+[[case]]
+name = "division by zero reaches builtin error"
+input = "(/ 1 0)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'div' division by zero"]

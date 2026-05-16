@@ -37,6 +37,23 @@ decimal inputs are exact rationals, not floating-point values. For example, `0.1
 
 scientific notation is not accepted. Use an integer, decimal, or fraction form instead.
 
+## Error taxonomy
+
+Numeric builtin errors are deterministic and intentionally distinguish syntax, numeric-domain, and operation-domain failures:
+
+| Category | Representative inputs | Error fragment |
+|---|---|---|
+| Malformed numeric input | `1.2.3`, `.5`, `5.`, `1/2/3`, `2/-3`, `2/-0`, `1e3` | `Builtin '<name>' expected numeric input, got '<value>'` |
+| Zero denominator fraction | `2/0`, `2/00` | `Builtin '<name>' fraction denominator must be non-zero` |
+| Division by zero | `div:1,0` | `Builtin 'div' division by zero` |
+| Modulo by zero | `mod:1,0` | `Builtin 'mod' modulo by zero` |
+| Non-integral modulo operand | `mod:5.5,2`, `mod:5/2,2` | `Builtin 'mod' expected integer inputs` |
+| Negative modulo operand | `mod:-5,2` | `Builtin 'mod' expected non-negative integer inputs` |
+
+Signed denominators are malformed syntax, not a separate denominator-sign category. `2/-0` is therefore malformed even though its denominator text contains zero. Zero denominator detection applies only after a fraction has matched the accepted unsigned-denominator grammar.
+
+Target-language examples such as Lisp may reject malformed source literals before a builtin runs. They must still fail loudly and must not emit internal sentinels such as `@ADD[...]@` as successful output.
+
 ## Canonical rational output
 
 Numeric builtins emit canonical rational output:
