@@ -26,11 +26,12 @@ class TestExampleConfigs(unittest.TestCase):
         self.assertNotIn("rawadd", text)
         self.assertNotIn("parser-add", text)
 
-        fixture = EXAMPLES_ROOT / "builtin" / "test-fixtures" / "builtin-parser-errors.tpp"
+        fixture = EXAMPLES_ROOT / "builtin" / "tests" / "fixtures" / "parser-error-fixture.tpp"
         self.assertTrue(fixture.exists(), "parser-error fixture should be test-only support file")
         fixture_text = fixture.read_text(encoding="utf-8")
         self.assertIn("Test-only fixture", fixture_text)
-        self.assertEqual(fixture.parent.name, "test-fixtures")
+        self.assertEqual(fixture.parent.relative_to(EXAMPLES_ROOT / "builtin"), Path("tests/fixtures"))
+        self.assertFalse((EXAMPLES_ROOT / "builtin" / "test-fixtures").exists())
 
     def test_lisp_comments_use_parenthesized_user_facing_forms(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
