@@ -74,6 +74,15 @@ stderr = ""
 stdout_stripped = "7/2"
 
 [[case]]
+name = "rational intermediate multiplies"
+input = "(* (/ 7 2) 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
 name = "fraction literals add"
 input = "(+ 1/2 1/3)"
 
