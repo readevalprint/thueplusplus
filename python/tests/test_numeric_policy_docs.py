@@ -21,6 +21,10 @@ class NumericPolicyDocsTest(unittest.TestCase):
             "No decimal formatting primitive exists",
             "capped at 4096 characters",
             "numeric input exceeds maximum length (4096 characters)",
+            "Migration note: rational output replaces decimal-looking division",
+            "`div:7,2` | `7/2`",
+            "`add:0.1,0.2` | `3/10`",
+            "Lisp `(/ 7 2)` | `7/2`",
         ]
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):

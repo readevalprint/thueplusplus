@@ -81,6 +81,20 @@ Examples:
 
 No decimal formatting primitive exists. If decimal display is added later, it must be a separate explicitly named operation rather than changing canonical numeric builtin output.
 
+## Migration note: rational output replaces decimal-looking division
+
+The numeric builtin contract intentionally canonicalizes every exact non-integer result as a reduced fraction. This is a compatibility break from older examples that showed division or decimal arithmetic with decimal-looking output such as `3.5`.
+
+Current behavior:
+
+| Expression | Canonical output |
+|---|---|
+| `div:7,2` | `7/2` |
+| `add:0.1,0.2` | `3/10` |
+| Lisp `(/ 7 2)` | `7/2` |
+
+Migrate consumers by treating numeric builtin output as an exact rational string: either consume reduced `numerator/denominator` values directly, or add an explicitly named decimal-formatting operation at the consumer boundary. Do not depend on division emitting decimal strings; no decimal formatting primitive exists in thue++ today.
+
 ## Modulo policy
 
 Modulo requires numerically integral operands, not syntactically integer operands. Decimal or fraction inputs that normalize to integers are valid.
