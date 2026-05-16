@@ -53,6 +53,18 @@ class TestExampleConfigs(unittest.TestCase):
                 with self.subTest(config=str(config_path.relative_to(REPO_ROOT)), name=name):
                     self._run_case(config_path, case)
 
+    def test_public_builtin_example_does_not_expose_parser_test_hook(self):
+        public_example = EXAMPLES_ROOT / "builtin" / "builtin.tpp"
+        text = public_example.read_text(encoding="utf-8")
+        self.assertNotIn("rawadd", text)
+        self.assertNotIn("parser-add", text)
+
+        fixture = EXAMPLES_ROOT / "builtin" / "test-fixtures" / "builtin-parser-errors.tpp"
+        self.assertTrue(fixture.exists(), "parser-error fixture should be test-only support file")
+        fixture_text = fixture.read_text(encoding="utf-8")
+        self.assertIn("Test-only fixture", fixture_text)
+        self.assertEqual(fixture.parent.name, "test-fixtures")
+
     def test_lisp_comments_use_parenthesized_user_facing_forms(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         stale_form = re.compile(
