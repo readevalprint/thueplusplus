@@ -86,3 +86,9 @@ The same contract applies to:
 - target-language examples such as `examples/lisp/lisp.tpp`
 
 Example `.tpp` programs should either use this same grammar directly or deliberately reject unsupported numeric syntax before an internal sentinel can leak to successful output.
+
+## Synchronization check
+
+The fenced `regex` block above is the canonical source contract for the repository-level sync check. `python/tests/test_numeric_regex_sync.py` reads that exact block and verifies that the intended numeric regex snippets in Python, Go, `examples/builtin/builtin.tpp`, and `examples/lisp/lisp.tpp` stay aligned.
+
+If this grammar changes, update this document first, then update every interpreter/example snippet in the same MR. The sync test is intentionally lightweight rather than generated: `.tpp` programs need local regex text, but drift must fail loudly in CI instead of silently changing accepted numeric syntax.
