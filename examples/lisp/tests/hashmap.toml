@@ -1,8 +1,6 @@
 program = "../lisp.tpp"
 timeout = 5
 
-[bindings.procs]
-calc = "bc -lq"
 
 [requires]
 commands = ["bc"]

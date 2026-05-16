@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,15 +23,17 @@ const (
 	Read       Operator = "::<"
 	Write      Operator = "::>"
 	Exit       Operator = "::-"
+	Builtin    Operator = "::!"
 )
 
 type Rule struct {
-	LHS        string
-	Pattern    *regexp.Regexp
-	Backrefs   map[string]string
-	Operator   Operator
-	RHS        string
-	LineNumber int
+	LHS         string
+	Pattern     *regexp.Regexp
+	Operator    Operator
+	RHS         string
+	LineNumber  int
+	BuiltinName string
+	BuiltinArgs []string
 }
 
 type Binding struct {
@@ -190,7 +193,7 @@ func parseRule(line string, lineNumber int) (*Rule, error) {
 	ops := []struct {
 		op Operator
 		s  string
-	}{{Exit, "::-"}, {Read, "::<"}, {Write, "::>"}, {Substitute, "::="}}
+	}{{Exit, "::-"}, {Read, "::<"}, {Write, "::>"}, {Builtin, "::!"}, {Substitute, "::="}}
 	for _, oo := range ops {
 		idx := findOperator(line, oo.s)
 		if idx != -1 {
@@ -203,12 +206,20 @@ func parseRule(line string, lineNumber int) (*Rule, error) {
 			if pat == "" {
 				pat = "^"
 			}
-			pat, backrefs := translatePattern(pat)
 			re, err := regexp.Compile(pat)
 			if err != nil {
 				return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
 			}
-			return &Rule{LHS: lhs, Pattern: re, Backrefs: backrefs, Operator: oo.op, RHS: rhs, LineNumber: lineNumber}, nil
+			builtinName := ""
+			var builtinArgs []string
+			if oo.op == Builtin {
+				var err error
+				builtinName, builtinArgs, err = parseBuiltinCall(rhs, lineNumber, captureNames(re))
+				if err != nil {
+					return nil, err
+				}
+			}
+			return &Rule{LHS: lhs, Pattern: re, Operator: oo.op, RHS: rhs, LineNumber: lineNumber, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
 		}
 	}
 	if strings.TrimSpace(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "#") {
@@ -217,17 +228,145 @@ func parseRule(line string, lineNumber int) (*Rule, error) {
 	return nil, nil
 }
 
-var pyBackref = regexp.MustCompile(`\(\?P=([^)]+)\)`)
+func captureNames(re *regexp.Regexp) map[string]bool {
+	names := map[string]bool{}
+	for _, name := range re.SubexpNames() {
+		if name != "" {
+			names[name] = true
+		}
+	}
+	return names
+}
 
-func translatePattern(s string) (string, map[string]string) {
-	backrefs := map[string]string{}
-	s = pyBackref.ReplaceAllStringFunc(s, func(m string) string {
-		name := m[4 : len(m)-1]
-		br := "__backref_" + name + "_" + strconv.Itoa(len(backrefs))
-		backrefs[br] = name
-		return "(?P<" + br + ">.*?)"
-	})
-	return s, backrefs
+func parseBuiltinCall(rhs string, lineNumber int, captures map[string]bool) (string, []string, error) {
+	tokens := strings.Fields(rhs)
+	if len(tokens) == 0 {
+		return "", nil, fmt.Errorf("Line %d: ::! requires a builtin name", lineNumber)
+	}
+	name := tokens[0]
+	arity, ok := builtinArity(name)
+	if !ok {
+		return "", nil, fmt.Errorf("Line %d: Unknown builtin '%s'", lineNumber, name)
+	}
+	args := tokens[1:]
+	if len(args) != arity {
+		return "", nil, fmt.Errorf("Line %d: Builtin '%s' expects %d args, got %d", lineNumber, name, arity, len(args))
+	}
+	for _, arg := range args {
+		if !isWord(arg) || arg[0] >= '0' && arg[0] <= '9' {
+			return "", nil, fmt.Errorf("Line %d: ::! arguments must be capture names, got '%s'", lineNumber, arg)
+		}
+		if !captures[arg] {
+			return "", nil, fmt.Errorf("Line %d: ::! argument '%s' is not a named capture", lineNumber, arg)
+		}
+	}
+	return name, args, nil
+}
+
+func builtinArity(name string) (int, bool) {
+	arities := map[string]int{
+		"eq":    2,
+		"add":   2,
+		"sub":   2,
+		"mul":   2,
+		"div":   2,
+		"mod":   2,
+		"numeq": 2,
+		"lt":    2,
+		"le":    2,
+		"gt":    2,
+		"ge":    2,
+	}
+	arity, ok := arities[name]
+	return arity, ok
+}
+
+func parseNumber(value, builtin string) (*big.Rat, error) {
+	n := new(big.Rat)
+	if _, ok := n.SetString(value); !ok {
+		return nil, fmt.Errorf("Builtin '%s' expected numeric input, got '%s'", builtin, value)
+	}
+	return n, nil
+}
+
+func formatRat(n *big.Rat) string {
+	if n.IsInt() {
+		return n.Num().String()
+	}
+	text := n.FloatString(50)
+	text = strings.TrimRight(text, "0")
+	text = strings.TrimRight(text, ".")
+	if text == "" || text == "-0" {
+		return "0"
+	}
+	return text
+}
+
+func evalBuiltin(name string, values []string) (string, error) {
+	if name == "eq" {
+		if values[0] == values[1] {
+			return "1", nil
+		}
+		return "0", nil
+	}
+	a, err := parseNumber(values[0], name)
+	if err != nil {
+		return "", err
+	}
+	b, err := parseNumber(values[1], name)
+	if err != nil {
+		return "", err
+	}
+	switch name {
+	case "add":
+		return formatRat(new(big.Rat).Add(a, b)), nil
+	case "sub":
+		return formatRat(new(big.Rat).Sub(a, b)), nil
+	case "mul":
+		return formatRat(new(big.Rat).Mul(a, b)), nil
+	case "div":
+		if b.Sign() == 0 {
+			return "", fmt.Errorf("Builtin 'div' division by zero")
+		}
+		return formatRat(new(big.Rat).Quo(a, b)), nil
+	case "mod":
+		if b.Sign() == 0 {
+			return "", fmt.Errorf("Builtin 'mod' modulo by zero")
+		}
+		if !a.IsInt() || !b.IsInt() {
+			return "", fmt.Errorf("Builtin 'mod' expected integer inputs")
+		}
+		if a.Sign() < 0 || b.Sign() < 0 {
+			return "", fmt.Errorf("Builtin 'mod' expected non-negative integer inputs")
+		}
+		return new(big.Int).Mod(a.Num(), b.Num()).String(), nil
+	case "numeq":
+		if a.Cmp(b) == 0 {
+			return "1", nil
+		}
+		return "0", nil
+	case "lt":
+		if a.Cmp(b) < 0 {
+			return "1", nil
+		}
+		return "0", nil
+	case "le":
+		if a.Cmp(b) <= 0 {
+			return "1", nil
+		}
+		return "0", nil
+	case "gt":
+		if a.Cmp(b) > 0 {
+			return "1", nil
+		}
+		return "0", nil
+	case "ge":
+		if a.Cmp(b) >= 0 {
+			return "1", nil
+		}
+		return "0", nil
+	}
+	return "", fmt.Errorf("Unknown builtin '%s'", name)
 }
 
 func findOperator(line, op string) int {
@@ -540,6 +679,22 @@ func (i *Interpreter) Run() (int, error) {
 				if err := i.replaceMatch(m, repl); err != nil {
 					return 1, err
 				}
+			case Builtin:
+				values := make([]string, 0, len(rule.BuiltinArgs))
+				for _, arg := range rule.BuiltinArgs {
+					value, ok := groups[arg]
+					if !ok {
+						return 1, fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
+					}
+					values = append(values, value)
+				}
+				repl, err := evalBuiltin(rule.BuiltinName, values)
+				if err != nil {
+					return 1, err
+				}
+				if err := i.replaceMatch(m, repl); err != nil {
+					return 1, err
+				}
 			case Exit:
 				codeStr := strings.TrimSpace(rule.RHS)
 				if strings.HasPrefix(codeStr, "{") && strings.HasSuffix(codeStr, "}") {
@@ -569,11 +724,6 @@ func findMatch(rule Rule, state string) (matchInfo, bool) {
 	for n := 1; n < len(names) && 2*n+1 < len(idx); n++ {
 		if names[n] != "" && idx[2*n] >= 0 {
 			groups[names[n]] = state[idx[2*n]:idx[2*n+1]]
-		}
-	}
-	for br, orig := range rule.Backrefs {
-		if groups[br] != groups[orig] {
-			return matchInfo{}, false
 		}
 	}
 	return matchInfo{start: idx[0], end: idx[1], groups: groups}, true

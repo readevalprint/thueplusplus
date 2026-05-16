@@ -11,6 +11,7 @@ import select
 import subprocess
 import sys
 from dataclasses import dataclass
+from decimal import Decimal, DivisionByZero, InvalidOperation, localcontext
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
@@ -21,6 +22,7 @@ class Operator(Enum):
     READ = "::<"   # Bulk read entire file/stream
     WRITE = "::>"
     EXIT = "::-"
+    BUILTIN = "::!"
 
 
 @dataclass
@@ -31,7 +33,8 @@ class Rule:
     operator: Operator
     rhs: str
     line_number: int
-    backrefs: dict[str, str]
+    builtin_name: str = ""
+    builtin_args: tuple[str, ...] = ()
 
 
 @dataclass
@@ -188,23 +191,15 @@ class ThueppInterpreter:
         # Join initial state (preserve internal newlines)
         self.state = "\n".join(initial_state_lines).strip("\n")
 
-    def _translate_lhs(self, lhs: str) -> tuple[str, dict[str, str]]:
-        """Translate supported Python-regex conveniences to RE2 plus explicit checks."""
+    def _translate_lhs(self, lhs: str) -> str:
+        """Translate supported RE2-style named captures for google-re2."""
         if not lhs:
-            return "", {}
+            return ""
         pattern_lhs = lhs
 
         # Convert RE2-style named captures (?<name>...) to google-re2's Python spelling.
         pattern_lhs = py_re.sub(r"\(\?<([^>]+)>", r"(?P<\1>", pattern_lhs)
-
-        backrefs: dict[str, str] = {}
-        def replace_backref(match: Any) -> str:
-            name = match.group(1)
-            synthetic = f"__backref_{name}_{len(backrefs)}"
-            backrefs[synthetic] = name
-            return f"(?P<{synthetic}>.*?)"
-        pattern_lhs = py_re.sub(r"\(\?P=([^)]+)\)", replace_backref, pattern_lhs)
-        return pattern_lhs, backrefs
+        return pattern_lhs
 
     def _parse_rule(self, line: str, line_number: int) -> Optional[Rule]:
         """Parse a single rule line."""
@@ -213,6 +208,7 @@ class ThueppInterpreter:
             (Operator.EXIT, "::-"),
             (Operator.READ, "::<"),
             (Operator.WRITE, "::>"),
+            (Operator.BUILTIN, "::!"),
             (Operator.SUBSTITUTE, "::="),
         ]
 
@@ -229,14 +225,21 @@ class ThueppInterpreter:
                     )
 
                 try:
-                    pattern_lhs, backrefs = self._translate_lhs(lhs)
+                    pattern_lhs = self._translate_lhs(lhs)
                     pattern = re.compile(pattern_lhs) if pattern_lhs else re.compile("^")
                 except re.error as e:
                     raise RuntimeError(
                         f"Line {line_number}: Invalid regex '{lhs}': {e}"
                     )
 
-                return Rule(lhs, pattern, op, rhs, line_number, backrefs)
+                builtin_name = ""
+                builtin_args: tuple[str, ...] = ()
+                if op == Operator.BUILTIN:
+                    builtin_name, builtin_args = self._parse_builtin_call(
+                        rhs, line_number, set(pattern.groupindex.keys())
+                    )
+
+                return Rule(lhs, pattern, op, rhs, line_number, builtin_name, builtin_args)
 
         # Line doesn't contain a valid rule - might be a comment or empty
         if line.strip() and not line.strip().startswith("#"):
@@ -244,6 +247,110 @@ class ThueppInterpreter:
                 f"Line {line_number}: Invalid rule syntax: {line}")
 
         return None
+
+    def _parse_builtin_call(
+        self,
+        rhs: str,
+        line_number: int,
+        capture_names: set[str],
+    ) -> tuple[str, tuple[str, ...]]:
+        """Parse and validate a ::! builtin call RHS."""
+        tokens = rhs.split()
+        if not tokens:
+            raise RuntimeError(f"Line {line_number}: ::! requires a builtin name")
+
+        name = tokens[0]
+        args = tuple(tokens[1:])
+        expected = self._builtin_arity(name)
+        if expected is None:
+            raise RuntimeError(f"Line {line_number}: Unknown builtin '{name}'")
+        if len(args) != expected:
+            raise RuntimeError(
+                f"Line {line_number}: Builtin '{name}' expects {expected} args, got {len(args)}"
+            )
+        for arg in args:
+            if not py_re.fullmatch(r"[A-Za-z_]\w*", arg):
+                raise RuntimeError(
+                    f"Line {line_number}: ::! arguments must be capture names, got '{arg}'"
+                )
+            if arg not in capture_names:
+                raise RuntimeError(
+                    f"Line {line_number}: ::! argument '{arg}' is not a named capture"
+                )
+        return name, args
+
+    def _builtin_arity(self, name: str) -> Optional[int]:
+        return {
+            "eq": 2,
+            "add": 2,
+            "sub": 2,
+            "mul": 2,
+            "div": 2,
+            "mod": 2,
+            "numeq": 2,
+            "lt": 2,
+            "le": 2,
+            "gt": 2,
+            "ge": 2,
+        }.get(name)
+
+    def _parse_number(self, value: str, builtin: str) -> Decimal:
+        try:
+            return Decimal(value)
+        except InvalidOperation:
+            raise RuntimeError(f"Builtin '{builtin}' expected numeric input, got '{value}'")
+
+    def _format_decimal(self, value: Decimal) -> str:
+        if value.is_nan() or value.is_infinite():
+            raise RuntimeError(f"Builtin numeric result is not finite: {value}")
+        text = format(value.normalize(), "f")
+        if "." in text:
+            text = text.rstrip("0").rstrip(".")
+        if text in ("", "-0"):
+            return "0"
+        return text
+
+    def _eval_builtin(self, name: str, values: list[str]) -> str:
+        if name == "eq":
+            return "1" if values[0] == values[1] else "0"
+
+        a = self._parse_number(values[0], name)
+        b = self._parse_number(values[1], name)
+        try:
+            with localcontext() as ctx:
+                ctx.prec = 50
+                if name == "add":
+                    return self._format_decimal(a + b)
+                if name == "sub":
+                    return self._format_decimal(a - b)
+                if name == "mul":
+                    return self._format_decimal(a * b)
+                if name == "div":
+                    if b == 0:
+                        raise RuntimeError("Builtin 'div' division by zero")
+                    return self._format_decimal(a / b)
+                if name == "mod":
+                    if b == 0:
+                        raise RuntimeError("Builtin 'mod' modulo by zero")
+                    if a != a.to_integral_value() or b != b.to_integral_value():
+                        raise RuntimeError("Builtin 'mod' expected integer inputs")
+                    if a < 0 or b < 0:
+                        raise RuntimeError("Builtin 'mod' expected non-negative integer inputs")
+                    return str(int(a) % int(b))
+        except DivisionByZero:
+            raise RuntimeError(f"Builtin '{name}' division by zero")
+
+        if name == "numeq":
+            return "1" if a == b else "0"
+        if name == "lt":
+            return "1" if a < b else "0"
+        if name == "le":
+            return "1" if a <= b else "0"
+        if name == "gt":
+            return "1" if a > b else "0"
+        if name == "ge":
+            return "1" if a >= b else "0"
+        raise RuntimeError(f"Unknown builtin '{name}'")
 
     def _find_operator(self, line: str, op: str) -> int:
         """Find operator position, avoiding matches inside regex constructs."""
@@ -475,8 +582,6 @@ class ThueppInterpreter:
                 match = rule.lhs_pattern.search(self.state)
                 if match:
                     groups = match.groupdict()
-                    if any(groups.get(synthetic) != groups.get(original) for synthetic, original in rule.backrefs.items()):
-                        continue
                     matched = True
 
                     if self.debug:
@@ -541,6 +646,17 @@ class ThueppInterpreter:
                         else:
                             write_error = self._write_string(binding, content)
                             replacement = write_error or ""
+                        self._replace_match(match, replacement)
+
+                    elif rule.operator == Operator.BUILTIN:
+                        values = []
+                        for arg in rule.builtin_args:
+                            if arg not in groups:
+                                raise RuntimeError(
+                                    f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
+                                )
+                            values.append(groups[arg])
+                        replacement = self._eval_builtin(rule.builtin_name, values)
                         self._replace_match(match, replacement)
 
                     elif rule.operator == Operator.EXIT:
