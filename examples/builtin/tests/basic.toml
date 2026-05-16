@@ -29,13 +29,57 @@ stderr = ""
 stdout_stripped = "20"
 
 [[case]]
-name = "div decimal"
+name = "div exact rational"
 input = "div:7,2"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "3.5"
+stdout_stripped = "7/2"
+
+[[case]]
+name = "decimal arithmetic canonicalizes to rational"
+input = "add:0.1,0.2"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3/10"
+
+[[case]]
+name = "fraction arithmetic reduces"
+input = "add:1/2,1/3"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5/6"
+
+[[case]]
+name = "mixed decimal and fraction arithmetic"
+input = "mul:1.5,2/3"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "fraction division reduces"
+input = "div:1,2"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1/2"
+
+[[case]]
+name = "division by zero fails loudly"
+input = "div:1,0"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'div' division by zero"]
 
 [[case]]
 name = "mod"
@@ -49,6 +93,14 @@ stdout_stripped = "2"
 [[case]]
 name = "mod rejects decimal inputs"
 input = "mod:5.5,2"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'mod' expected integer inputs"]
+
+[[case]]
+name = "mod rejects fraction inputs"
+input = "mod:5/2,2"
 
 [case.expect]
 exit_code = 1
@@ -72,6 +124,15 @@ stderr = ""
 stdout_stripped = "1"
 
 [[case]]
+name = "rational equality normalizes"
+input = "numeq:2/4,1/2"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
 name = "string equality is exact"
 input = "eq:1|1.0"
 
@@ -83,6 +144,15 @@ stdout_stripped = "0"
 [[case]]
 name = "lt"
 input = "lt:2,3"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "rational comparison"
+input = "lt:1/3,0.5"
 
 [case.expect]
 exit_code = 0
@@ -115,6 +185,89 @@ input = "ge:3,3"
 exit_code = 0
 stderr = ""
 stdout_stripped = "1"
+
+[[case]]
+name = "readable typed integer value"
+input = "num:123"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<num>123</num>"
+
+[[case]]
+name = "readable typed decimal value"
+input = "num:1.3"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<num>1.3</num>"
+
+[[case]]
+name = "readable typed fraction value"
+input = "num:2/3"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<num>2/3</num>"
+
+[[case]]
+name = "invalid zero denominator fraction fails loudly"
+input = "rawadd:2/0,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["fraction denominator must be non-zero"]
+
+[[case]]
+name = "invalid signed denominator fraction fails loudly"
+input = "rawadd:2/-3,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["expected numeric input"]
+
+[[case]]
+name = "invalid double-signed fraction fails loudly"
+input = "rawadd:-2/-3,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["expected numeric input"]
+
+[[case]]
+name = "invalid repeated slash number fails loudly"
+input = "rawadd:1/2/3,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["expected numeric input"]
+
+[[case]]
+name = "invalid repeated decimal number fails loudly"
+input = "rawadd:1.2.3,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["expected numeric input"]
+
+[[case]]
+name = "leading-dot decimal rejected"
+input = "rawadd:.5,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["expected numeric input"]
+
+[[case]]
+name = "trailing-dot decimal rejected"
+input = "rawadd:5.,1"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["expected numeric input"]
 
 [[case]]
 name = "base64url encodes empty string"

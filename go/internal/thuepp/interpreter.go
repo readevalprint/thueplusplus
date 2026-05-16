@@ -28,6 +28,11 @@ const (
 	Builtin    Operator = "::!"
 )
 
+var (
+	numericLiteralPattern  = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
+	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
+)
+
 type Rule struct {
 	LHS         string
 	Pattern     *regexp.Regexp
@@ -316,6 +321,12 @@ func b64urlDecode(value string) (string, error) {
 }
 
 func parseNumber(value, builtin string) (*big.Rat, error) {
+	if !numericLiteralPattern.MatchString(value) {
+		return nil, fmt.Errorf("Builtin '%s' expected numeric input, got '%s'", builtin, value)
+	}
+	if zeroDenominatorPattern.MatchString(value) {
+		return nil, fmt.Errorf("Builtin '%s' fraction denominator must be non-zero", builtin)
+	}
 	n := new(big.Rat)
 	if _, ok := n.SetString(value); !ok {
 		return nil, fmt.Errorf("Builtin '%s' expected numeric input, got '%s'", builtin, value)
@@ -327,13 +338,7 @@ func formatRat(n *big.Rat) string {
 	if n.IsInt() {
 		return n.Num().String()
 	}
-	text := n.FloatString(50)
-	text = strings.TrimRight(text, "0")
-	text = strings.TrimRight(text, ".")
-	if text == "" || text == "-0" {
-		return "0"
-	}
-	return text
+	return n.RatString()
 }
 
 func evalBuiltin(name string, values []string) (string, error) {

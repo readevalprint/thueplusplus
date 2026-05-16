@@ -1,10 +1,6 @@
 program = "../lisp.tpp"
 timeout = 5
 
-
-[requires]
-commands = ["bc"]
-
 [[case]]
 name = "add two"
 input = "(+ 1 2)"
@@ -75,4 +71,4 @@ input = "(/ 7 2)"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_startswith = "3.5"
+stdout_stripped = "7/2"
