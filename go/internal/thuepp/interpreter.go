@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +40,7 @@ type Rule struct {
 	Operator    Operator
 	RHS         string
 	LineNumber  int
+	SourcePath  string
 	BuiltinName string
 	BuiltinArgs []string
 }
@@ -56,19 +58,22 @@ type Binding struct {
 }
 
 type Interpreter struct {
-	Rules         []Rule
-	State         string
-	Bindings      map[string]*Binding
-	MaxEvals      *int
-	MaxStateBytes *int
-	EvalCount     int
-	Debug         bool
-	Stdout        io.Writer
-	Stderr        io.Writer
+	Rules              []Rule
+	State              string
+	Bindings           map[string]*Binding
+	MaxEvals           *int
+	MaxStateBytes      *int
+	EvalCount          int
+	Debug              bool
+	Stdout             io.Writer
+	Stderr             io.Writer
+	RuleCoveragePath   string
+	RuleCoverageCounts map[string]int
+	ProgramPath        string
 }
 
 func New() *Interpreter {
-	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr}
+	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr, RuleCoverageCounts: map[string]int{}}
 	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout"}
 	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr"}
 	return i
@@ -86,6 +91,7 @@ func (i *Interpreter) LoadProgram(programPath string) error {
 	if err != nil {
 		return err
 	}
+	i.ProgramPath = abs
 	content, err := i.loadWithIncludes(abs, map[string]bool{})
 	if err != nil {
 		return err
@@ -110,7 +116,9 @@ func (i *Interpreter) loadWithIncludes(filePath string, included map[string]bool
 	s := bufio.NewScanner(f)
 	// allow long example lines
 	s.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+	lineNumber := 0
 	for s.Scan() {
+		lineNumber++
 		line := s.Text() + "\n"
 		stripped := strings.TrimSpace(line)
 		if strings.HasPrefix(stripped, "@include ") {
@@ -124,6 +132,7 @@ func (i *Interpreter) loadWithIncludes(filePath string, included map[string]bool
 			}
 			b.WriteString(inc)
 		} else {
+			b.WriteString(fmt.Sprintf("# thuepp-source: %s:%d\n", filePath, lineNumber))
 			b.WriteString(line)
 		}
 	}
@@ -164,9 +173,23 @@ func (i *Interpreter) parseProgram(content string) error {
 	rulesSection := true
 	terminator := false
 	var initial []string
+	currentSource := i.ProgramPath
+	currentLine := 0
 	for n, line := range lines {
 		ln := n + 1
-		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
+		stripped := strings.TrimSpace(line)
+		if strings.HasPrefix(stripped, "# thuepp-source: ") {
+			sourceRef := strings.TrimPrefix(stripped, "# thuepp-source: ")
+			sep := strings.LastIndex(sourceRef, ":")
+			if sep >= 0 {
+				currentSource = sourceRef[:sep]
+				if parsedLine, err := strconv.Atoi(sourceRef[sep+1:]); err == nil {
+					currentLine = parsedLine
+				}
+			}
+			continue
+		}
+		if stripped == "" || strings.HasPrefix(stripped, "#") {
 			if !rulesSection {
 				initial = append(initial, line)
 			}
@@ -178,7 +201,10 @@ func (i *Interpreter) parseProgram(content string) error {
 				terminator = true
 				continue
 			}
-			r, err := parseRule(line, ln)
+			if currentLine != 0 {
+				ln = currentLine
+			}
+			r, err := parseRule(line, ln, currentSource)
 			if err != nil {
 				return err
 			}
@@ -196,7 +222,7 @@ func (i *Interpreter) parseProgram(content string) error {
 	return nil
 }
 
-func parseRule(line string, lineNumber int) (*Rule, error) {
+func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	ops := []struct {
 		op Operator
 		s  string
@@ -226,7 +252,7 @@ func parseRule(line string, lineNumber int) (*Rule, error) {
 					return nil, err
 				}
 			}
-			return &Rule{LHS: lhs, Pattern: re, Operator: oo.op, RHS: rhs, LineNumber: lineNumber, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
+			return &Rule{LHS: lhs, Pattern: re, Operator: oo.op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
 		}
 	}
 	if strings.TrimSpace(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "#") {
@@ -670,6 +696,45 @@ func (i *Interpreter) replaceMatch(m matchInfo, replacement string) error {
 	return i.setState(i.State[:m.start] + replacement + i.State[m.end:])
 }
 
+func (i *Interpreter) ruleID(rule Rule) string {
+	source := rule.SourcePath
+	if rel, err := filepath.Rel(".", source); err == nil && !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel) {
+		source = filepath.ToSlash(rel)
+	} else {
+		source = filepath.ToSlash(source)
+	}
+	return fmt.Sprintf("%s:%d", source, rule.LineNumber)
+}
+
+func (i *Interpreter) recordRuleCoverage(rule Rule) {
+	if i.RuleCoveragePath == "" {
+		return
+	}
+	if i.RuleCoverageCounts == nil {
+		i.RuleCoverageCounts = map[string]int{}
+	}
+	i.RuleCoverageCounts[i.ruleID(rule)]++
+}
+
+func (i *Interpreter) WriteRuleCoverage() error {
+	if i.RuleCoveragePath == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(i.RuleCoveragePath), 0755); err != nil {
+		return err
+	}
+	ids := make([]string, 0, len(i.RuleCoverageCounts))
+	for id := range i.RuleCoverageCounts {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	var b strings.Builder
+	for _, id := range ids {
+		fmt.Fprintf(&b, "%s\t%d\n", id, i.RuleCoverageCounts[id])
+	}
+	return os.WriteFile(i.RuleCoveragePath, []byte(b.String()), 0644)
+}
+
 func (i *Interpreter) Run() (int, error) {
 	for {
 		matched := false
@@ -692,6 +757,7 @@ func (i *Interpreter) Run() (int, error) {
 				if err := i.replaceMatch(m, i.expandTemplate(rule.RHS, groups, nil)); err != nil {
 					return 1, err
 				}
+				i.recordRuleCoverage(rule)
 			case Read:
 				parts := strings.Fields(strings.TrimSpace(rule.RHS))
 				resourceTemplate := strings.TrimSpace(rule.RHS)
@@ -718,6 +784,9 @@ func (i *Interpreter) Run() (int, error) {
 					if err := i.replaceMatch(m, repl); err != nil {
 						return 1, err
 					}
+					if er == "" {
+						i.recordRuleCoverage(rule)
+					}
 				}
 			case Write:
 				expanded := i.expandTemplate(rule.RHS, groups, nil)
@@ -731,6 +800,9 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				if err := i.replaceMatch(m, repl); err != nil {
 					return 1, err
+				}
+				if b != nil && repl == "" {
+					i.recordRuleCoverage(rule)
 				}
 			case Builtin:
 				values := make([]string, 0, len(rule.BuiltinArgs))
@@ -748,6 +820,7 @@ func (i *Interpreter) Run() (int, error) {
 				if err := i.replaceMatch(m, repl); err != nil {
 					return 1, err
 				}
+				i.recordRuleCoverage(rule)
 			case Exit:
 				codeStr := strings.TrimSpace(rule.RHS)
 				if strings.HasPrefix(codeStr, "{") && strings.HasSuffix(codeStr, "}") {
@@ -755,8 +828,10 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				code, err := strconv.Atoi(codeStr)
 				if err != nil {
+					i.recordRuleCoverage(rule)
 					return 1, nil
 				}
+				i.recordRuleCoverage(rule)
 				return code, nil
 			}
 			break

@@ -235,6 +235,44 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("::! arguments must be capture names", result.stderr)
 
+    def test_rule_coverage_counts_successful_rule_applications(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            program_path = Path(tmp) / "coverage.tpp"
+            coverage_path = Path(tmp) / "coverage.tsv"
+            program_path.write_text(
+                textwrap.dedent(
+                    r"""
+                    a ::= b
+                    b ::= c
+                    c ::- 7
+
+                    ::=
+                    a
+                    """
+                ).lstrip(),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(THUEPP_PY),
+                    str(program_path),
+                    "--rule-coverage",
+                    str(coverage_path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            self.assertEqual(result.returncode, 7, result.stderr)
+            self.assertEqual(result.stdout, "")
+            self.assertEqual(
+                coverage_path.read_text(encoding="utf-8"),
+                f"{program_path}:1\t1\n{program_path}:2\t1\n{program_path}:3\t1\n",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

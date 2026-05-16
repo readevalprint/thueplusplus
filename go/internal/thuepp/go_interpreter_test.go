@@ -87,6 +87,40 @@ func TestGoInterpreterRunsHelloExample(t *testing.T) {
 	}
 }
 
+func TestGoInterpreterRuleCoverageCountsSuccessfulApplications(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	tmp := t.TempDir()
+	programPath := filepath.Join(tmp, "coverage.tpp")
+	coveragePath := filepath.Join(tmp, "coverage.tsv")
+	program := "a ::= b\nb ::= c\nc ::- 7\n\n::=\na\n"
+	if err := os.WriteFile(programPath, []byte(program), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(buildGoInterpreter(t, repoRoot), programPath, "--rule-coverage", coveragePath)
+	cmd.Dir = repoRoot
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatalf("go interpreter exit = 0, want 7")
+	}
+	if ee, ok := err.(*exec.ExitError); !ok || ee.ExitCode() != 7 {
+		t.Fatalf("go interpreter exit = %v, want 7\nstderr=%q", err, stderr.String())
+	}
+	if got := stdout.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+	gotBytes, err := os.ReadFile(coveragePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("%s:1\t1\n%s:2\t1\n%s:3\t1\n", filepath.ToSlash(programPath), filepath.ToSlash(programPath), filepath.ToSlash(programPath))
+	if got := string(gotBytes); got != want {
+		t.Fatalf("coverage mismatch\n got: %q\nwant: %q", got, want)
+	}
+}
+
 func TestGoInterpreterSharedExamples(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	configs, err := filepath.Glob(filepath.Join(repoRoot, "examples", "*", "tests", "*.toml"))

@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""Check thue++ rule coverage counts for TOML example cases."""
+
+from __future__ import annotations
+
+import argparse
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11 in the project uv environment.
+    import tomli as tomllib
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PYTHON_INTERPRETER = ROOT / "python" / "thuepp.py"
+OPERATORS = ("::-", "::<", "::>", "::!", "::=")
+
+
+@dataclass(frozen=True)
+class RuleSource:
+    rule_id: str
+    text: str
+    ignored: bool
+    ignore_reason: str = ""
+
+
+def find_operator(line: str) -> int:
+    for operator in OPERATORS:
+        idx = line.find(operator)
+        if idx >= 0:
+            return idx
+    return -1
+
+
+def is_rule(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or stripped == "::=":
+        return False
+    if "<-" in line and "::=" not in line:
+        return False
+    return find_operator(line) >= 0
+
+
+def rel(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def enumerate_rules(program: Path, seen: set[Path] | None = None) -> list[RuleSource]:
+    seen = set() if seen is None else seen
+    program = program.resolve()
+    if program in seen:
+        raise RuntimeError(f"cyclic include detected: {program}")
+    seen.add(program)
+    rules: list[RuleSource] = []
+    pending_ignore: tuple[int, str] | None = None
+    for line_number, raw_line in enumerate(program.read_text(encoding="utf-8").splitlines(), 1):
+        stripped = raw_line.strip()
+        if stripped.startswith("@include "):
+            include_path = stripped[9:].strip()
+            if include_path.startswith('"') and include_path.endswith('"'):
+                include_path = include_path[1:-1]
+            rules.extend(enumerate_rules(program.parent / include_path, seen))
+            continue
+        if stripped.startswith("# coverage: ignore"):
+            reason = stripped.removeprefix("# coverage: ignore").strip()
+            if not reason:
+                raise RuntimeError(f"{rel(program)}:{line_number}: coverage ignore must include a reason")
+            if pending_ignore is not None:
+                prev_line, _ = pending_ignore
+                raise RuntimeError(f"{rel(program)}:{prev_line}: coverage ignore did not apply to a rule")
+            pending_ignore = (line_number, reason)
+            continue
+        if not stripped or stripped.startswith("#"):
+            continue
+        if is_rule(raw_line):
+            ignored = pending_ignore is not None
+            reason = pending_ignore[1] if pending_ignore is not None else ""
+            pending_ignore = None
+            rules.append(RuleSource(f"{rel(program)}:{line_number}", raw_line.strip(), ignored, reason))
+            continue
+        if pending_ignore is not None:
+            ignore_line, _ = pending_ignore
+            raise RuntimeError(f"{rel(program)}:{ignore_line}: coverage ignore before non-rule line {line_number}")
+    if pending_ignore is not None:
+        ignore_line, _ = pending_ignore
+        raise RuntimeError(f"{rel(program)}:{ignore_line}: coverage ignore reached end of file without a rule")
+    return rules
+
+
+def expand_cases(config: dict) -> list[dict]:
+    cases = config.get("case") or []
+    if not cases:
+        return [config]
+    expanded = []
+    for case in cases:
+        merged = dict(config)
+        merged.pop("case", None)
+        for key, value in case.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                nested = dict(merged[key])
+                nested.update(value)
+                merged[key] = nested
+            else:
+                merged[key] = value
+        expanded.append(merged)
+    return expanded
+
+
+def command_available(command: str) -> bool:
+    return shutil.which(command) is not None
+
+
+def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> str:
+    if isinstance(spec, str):
+        return str(tests_dir / spec)
+    fixture = tests_dir / spec["fixture"]
+    if spec.get("writable"):
+        target = tmp / f"{name}.fixture"
+        target.write_bytes(fixture.read_bytes())
+        return str(target)
+    return str(fixture)
+
+
+def assert_expect(config_path: Path, case_name: str, expect: dict, result: subprocess.CompletedProcess[str], tests_dir: Path, bound_files: dict[str, str]) -> None:
+    actual_code = result.returncode
+    if "exit_code" in expect and actual_code != expect["exit_code"]:
+        raise RuntimeError(f"{config_path} {case_name}: exit_code {actual_code}, want {expect['exit_code']}\nstderr={result.stderr!r}")
+    if "stdout" in expect and result.stdout != expect["stdout"]:
+        raise RuntimeError(f"{config_path} {case_name}: stdout {result.stdout!r}, want {expect['stdout']!r}")
+    if "stdout_stripped" in expect and result.stdout.strip() != expect["stdout_stripped"]:
+        raise RuntimeError(f"{config_path} {case_name}: stripped stdout {result.stdout.strip()!r}, want {expect['stdout_stripped']!r}")
+    if "stdout_startswith" in expect and not result.stdout.strip().startswith(expect["stdout_startswith"]):
+        raise RuntimeError(f"{config_path} {case_name}: stdout does not start with {expect['stdout_startswith']!r}")
+    for needle in expect.get("stdout_contains", []):
+        if needle not in result.stdout:
+            raise RuntimeError(f"{config_path} {case_name}: stdout missing {needle!r}")
+    if "stderr" in expect and result.stderr != expect["stderr"]:
+        raise RuntimeError(f"{config_path} {case_name}: stderr {result.stderr!r}, want {expect['stderr']!r}")
+    if "stderr_stripped" in expect and result.stderr.strip() != expect["stderr_stripped"]:
+        raise RuntimeError(f"{config_path} {case_name}: stripped stderr {result.stderr.strip()!r}, want {expect['stderr_stripped']!r}")
+    for needle in expect.get("stderr_contains", []):
+        if needle not in result.stderr:
+            raise RuntimeError(f"{config_path} {case_name}: stderr missing {needle!r}")
+    for binding, expected in expect.get("files", {}).items():
+        got = Path(bound_files[binding]).read_text(encoding="utf-8")
+        if got != expected:
+            raise RuntimeError(f"{config_path} {case_name}: file binding {binding} = {got!r}, want {expected!r}")
+
+
+def read_coverage(path: Path) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    if not path.exists():
+        raise RuntimeError(f"coverage file was not written: {path}")
+    row_re = re.compile(r"^(.+\.tpp:\d+)\t([1-9][0-9]*)$")
+    seen = set()
+    for row_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        match = row_re.match(line)
+        if not match:
+            raise RuntimeError(f"{path}:{row_number}: malformed coverage row: {line!r}")
+        rule_id, count_text = match.groups()
+        if rule_id in seen:
+            raise RuntimeError(f"{path}:{row_number}: duplicate coverage row for {rule_id}")
+        seen.add(rule_id)
+        counts[rule_id] += int(count_text)
+    return counts
+
+
+def run_case(config_path: Path, case: dict, tmp: Path) -> Counter[str]:
+    tests_dir = config_path.parent
+    for command in case.get("requires", {}).get("commands", []):
+        if not command_available(command):
+            print(f"skip {config_path} {case.get('name', '')}: missing {command}", file=sys.stderr)
+            return Counter()
+    program = (tests_dir / case["program"]).resolve()
+    coverage_path = tmp / (re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{config_path}:{case.get('name','case')}") + ".tsv")
+    args = [sys.executable, str(PYTHON_INTERPRETER), str(program), "--rule-coverage", str(coverage_path)]
+    bound_files: dict[str, str] = {}
+    for name, spec in case.get("bindings", {}).get("files", {}).items():
+        bound = normalize_file_binding(tests_dir, tmp, name, spec)
+        bound_files[name] = bound
+        args.extend([f"--file:{name}", bound])
+    for name, command in case.get("bindings", {}).get("procs", {}).items():
+        args.extend([f"--proc:{name}", command])
+    if "input" in case:
+        args.extend(["--input", case["input"]])
+    timeout = float(case.get("timeout", 10))
+    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+    assert_expect(config_path, case.get("name", "case"), case.get("expect", {}), result, tests_dir, bound_files)
+    return read_coverage(coverage_path)
+
+
+def check(program: Path, configs: list[Path]) -> int:
+    rules = enumerate_rules(program)
+    rule_by_id = {rule.rule_id: rule for rule in rules}
+    counts: Counter[str] = Counter()
+    with tempfile.TemporaryDirectory(prefix="thuepp-coverage-") as tmpdir:
+        tmp = Path(tmpdir)
+        for config_path in configs:
+            data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+            for case in expand_cases(data):
+                counts.update(run_case(config_path, case, tmp))
+    unknown = sorted(set(counts) - set(rule_by_id))
+    if unknown:
+        print("unknown coverage rule IDs:", file=sys.stderr)
+        for rule_id in unknown[:50]:
+            print(f"  {rule_id}", file=sys.stderr)
+        return 1
+    coverable = [rule for rule in rules if not rule.ignored]
+    uncovered = [rule for rule in coverable if counts[rule.rule_id] == 0]
+    print(rel(program))
+    print(f"  rules:      {len(rules)}")
+    print(f"  covered:    {sum(1 for rule in coverable if counts[rule.rule_id] > 0)}")
+    print(f"  ignored:    {sum(1 for rule in rules if rule.ignored)}")
+    print(f"  uncovered:  {len(uncovered)}")
+    if uncovered:
+        print("\nuncovered:")
+        for rule in uncovered:
+            print(f"  {rule.rule_id}  {rule.text}")
+    hottest = counts.most_common(10)
+    if hottest:
+        print("\nhottest:")
+        for rule_id, count in hottest:
+            print(f"  {rule_id}\t{count}")
+    return 1 if uncovered else 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Check .tpp rule coverage for TOML example cases")
+    parser.add_argument("program", type=Path)
+    parser.add_argument("configs", type=Path, nargs="+")
+    args = parser.parse_args()
+    return check(args.program, args.configs)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

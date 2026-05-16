@@ -35,6 +35,7 @@ class Rule:
     operator: Operator
     rhs: str
     line_number: int
+    source_path: str
     builtin_name: str = ""
     builtin_args: tuple[str, ...] = ()
 
@@ -60,6 +61,7 @@ class ThueppInterpreter:
         max_evals: Optional[int] = None,
         max_state_bytes: Optional[int] = None,
         debug: bool = False,
+        rule_coverage_path: Optional[str] = None,
     ):
         self.rules: list[Rule] = []
         self.state: str = ""
@@ -68,6 +70,9 @@ class ThueppInterpreter:
         self.max_state_bytes = max_state_bytes
         self.eval_count = 0
         self.debug = debug
+        self.rule_coverage_path = rule_coverage_path
+        self.rule_coverage_counts: dict[str, int] = {}
+        self.program_path = ""
 
         # Predefined bindings
         self.bindings["stdout"] = Binding("stdout", False, "stdout")
@@ -83,8 +88,9 @@ class ThueppInterpreter:
 
     def load_program(self, program_path: str) -> None:
         """Load and parse a thue++ program."""
-        program_path = Path(program_path).resolve()
-        content = self._load_with_includes(program_path, set())
+        resolved_program_path = Path(program_path).resolve()
+        self.program_path = str(resolved_program_path)
+        content = self._load_with_includes(resolved_program_path, set())
         self._parse_program(content)
 
     def _load_with_includes(self, file_path: Path, included: set) -> str:
@@ -98,7 +104,7 @@ class ThueppInterpreter:
 
         lines = []
         with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
+            for line_number, line in enumerate(f, 1):
                 stripped = line.strip()
                 if stripped.startswith("@include "):
                     include_path = stripped[9:].strip()
@@ -111,6 +117,7 @@ class ThueppInterpreter:
                         resolved, included)
                     lines.append(included_content)
                 else:
+                    lines.append(f"# thuepp-source: {file_path}:{line_number}\n")
                     lines.append(line)
 
         return "".join(lines)
@@ -166,9 +173,20 @@ class ThueppInterpreter:
         initial_state_lines = []
         terminator_found = False
 
+        current_source = self.program_path
+        current_line_number = 0
+
         for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if stripped.startswith("# thuepp-source: "):
+                source_ref = stripped.removeprefix("# thuepp-source: ")
+                source_path, _, source_line = source_ref.rpartition(":")
+                current_source = source_path
+                current_line_number = int(source_line) if source_line.isdecimal() else i
+                continue
+
             # Skip empty lines and comments
-            if not line.strip() or line.strip().startswith("#"):
+            if not stripped or stripped.startswith("#"):
                 if not rules_section:
                     initial_state_lines.append(line)
                 continue
@@ -181,7 +199,7 @@ class ThueppInterpreter:
                     continue
 
                 # Parse rule
-                rule = self._parse_rule(line, i)
+                rule = self._parse_rule(line, current_line_number or i, current_source)
                 if rule:
                     self.rules.append(rule)
             else:
@@ -203,7 +221,7 @@ class ThueppInterpreter:
         pattern_lhs = py_re.sub(r"\(\?<([^>]+)>", r"(?P<\1>", pattern_lhs)
         return pattern_lhs
 
-    def _parse_rule(self, line: str, line_number: int) -> Optional[Rule]:
+    def _parse_rule(self, line: str, line_number: int, source_path: str) -> Optional[Rule]:
         """Parse a single rule line."""
         # Find operator (longer operators first to match correctly)
         operators = [
@@ -241,7 +259,7 @@ class ThueppInterpreter:
                         rhs, line_number, set(pattern.groupindex.keys())
                     )
 
-                return Rule(lhs, pattern, op, rhs, line_number, builtin_name, builtin_args)
+                return Rule(lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args)
 
         # Line doesn't contain a valid rule - might be a comment or empty
         if line.strip() and not line.strip().startswith("#"):
@@ -596,6 +614,31 @@ class ThueppInterpreter:
         self._set_state(new_state)
         return new_state
 
+    def _rule_id(self, rule: Rule) -> str:
+        source = Path(rule.source_path)
+        try:
+            source_text = source.relative_to(Path.cwd()).as_posix()
+        except ValueError:
+            source_text = source.as_posix()
+        return f"{source_text}:{rule.line_number}"
+
+    def _record_rule_coverage(self, rule: Rule) -> None:
+        if not self.rule_coverage_path:
+            return
+        rule_id = self._rule_id(rule)
+        self.rule_coverage_counts[rule_id] = self.rule_coverage_counts.get(rule_id, 0) + 1
+
+    def write_rule_coverage(self) -> None:
+        if not self.rule_coverage_path:
+            return
+        path = Path(self.rule_coverage_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        lines = [
+            f"{rule_id}\t{self.rule_coverage_counts[rule_id]}"
+            for rule_id in sorted(self.rule_coverage_counts)
+        ]
+        path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
     def run(self) -> int:
         """Execute the program. Returns exit code."""
         while True:
@@ -625,6 +668,7 @@ class ThueppInterpreter:
                     if rule.operator == Operator.SUBSTITUTE:
                         replacement = self._expand_template(rule.rhs, groups)
                         new_state = self._replace_match(match, replacement)
+                        self._record_rule_coverage(rule)
                         if self.debug:
                             result_preview = new_state[:200].replace('\n', '\\n')
                             if len(new_state) > 200:
@@ -653,6 +697,8 @@ class ThueppInterpreter:
                             else:
                                 replacement = content
                             self._replace_match(match, replacement)
+                            if not error:
+                                self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.WRITE:
                         # RHS format: resource_name content
@@ -671,12 +717,15 @@ class ThueppInterpreter:
                             content = ""
 
                         binding = self.bindings.get(resource)
+                        write_error = None
                         if not binding:
                             replacement = f"ERR:resource:{resource}"
                         else:
                             write_error = self._write_string(binding, content)
                             replacement = write_error or ""
                         self._replace_match(match, replacement)
+                        if binding and not write_error:
+                            self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.BUILTIN:
                         values = []
@@ -688,6 +737,7 @@ class ThueppInterpreter:
                             values.append(groups[arg])
                         replacement = self._eval_builtin(rule.builtin_name, values)
                         self._replace_match(match, replacement)
+                        self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.EXIT:
                         # RHS format: {code} or just code
@@ -695,8 +745,10 @@ class ThueppInterpreter:
                         if code_str.startswith("{") and code_str.endswith("}"):
                             code_str = code_str[1:-1]
                         try:
+                            self._record_rule_coverage(rule)
                             return int(code_str)
                         except ValueError:
+                            self._record_rule_coverage(rule)
                             return 1
 
                     break  # Restart from top after any match
@@ -745,6 +797,11 @@ def main():
         action="store_true",
         help="Enable debug logging of rule evaluation",
     )
+    parser.add_argument(
+        "--rule-coverage",
+        type=str,
+        help="Write successful rule application counts as TSV to this path",
+    )
 
     # Parse known args first, then handle custom bindings
     args, remaining = parser.parse_known_args()
@@ -753,6 +810,7 @@ def main():
         max_evals=args.max_evals,
         max_state_bytes=args.max_state_bytes,
         debug=args.debug,
+        rule_coverage_path=args.rule_coverage,
     )
 
     # Parse binding arguments
@@ -795,7 +853,16 @@ def main():
         print("\nInterrupted", file=sys.stderr)
         exit_code = 130
     finally:
+        coverage_error = None
+        try:
+            interpreter.write_rule_coverage()
+        except OSError as e:
+            coverage_error = e
         interpreter.cleanup()
+
+    if coverage_error is not None:
+        print(f"Error: failed to write rule coverage: {coverage_error}", file=sys.stderr)
+        exit_code = 1
 
     sys.exit(exit_code)
 
