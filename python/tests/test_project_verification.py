@@ -19,8 +19,9 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
             "uv run python tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml",
             makefile,
         )
-        self.assertIn("test-js", makefile)
-        self.assertIn("JavaScript implementation is not present yet", makefile)
+        self.assertNotIn("test-js", makefile)
+        self.assertIn("JavaScript target", makefile)
+        self.assertIn("tools/run-example-manifests", makefile)
 
     def test_gitlab_ci_delegates_to_make_test(self):
         ci = (REPO_ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
@@ -45,7 +46,9 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
         self.assertIn("Go test suite", readme)
         self.assertIn("shared manifest parity runner", readme)
         self.assertIn("shared rule-coverage gate", readme)
-        self.assertIn("test-js", readme)
+        self.assertNotIn("test-js", readme)
+        self.assertIn("JavaScript is future work", readme)
+        self.assertIn("green no-op placeholder", readme)
 
 
 if __name__ == "__main__":

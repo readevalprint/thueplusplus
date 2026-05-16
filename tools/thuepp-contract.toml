@@ -1,6 +1,21 @@
 # Static thue++ executable-contract slices.
 # This file is test-enforced only; interpreters do not generate runtime code from it.
 
+[implementations.python]
+available = true
+command = "uv run python python/thuepp.py"
+notes = "Current Python implementation; invoked by shared manifests as an external command."
+
+[implementations.go]
+available = true
+command = "go build ./cmd/thuepp"
+notes = "Current Go implementation; built once and invoked by shared manifests as an external command."
+
+[implementations.javascript]
+available = false
+command = ""
+notes = "No JavaScript implementation exists yet; future JS work must join the shared manifest runner."
+
 [builtins.eq]
 arity = 2
 category = "string"

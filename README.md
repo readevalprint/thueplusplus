@@ -88,7 +88,7 @@ make test-shared
 make test-coverage
 ```
 
-A `test-js` slot is reserved for a future JavaScript implementation, but JavaScript is not required before that implementation exists.
+JavaScript is future work, not a currently available implementation. When it exists, it should join `make test` through the shared manifest runner instead of a separate harness or a green no-op placeholder.
 
 ## Numeric builtins
 
