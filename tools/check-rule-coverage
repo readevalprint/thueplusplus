@@ -5,20 +5,16 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
-import subprocess
 import sys
 import tempfile
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python < 3.11 in the project uv environment.
-    import tomli as tomllib
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+from example_runner import Interpreter, expand_cases, load_toml, run_case as run_manifest_case
+
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON_INTERPRETER = ROOT / "python" / "thuepp.py"
+PYTHON_IMPLEMENTATION = Interpreter("python", (sys.executable, str(ROOT / "python" / "thuepp.py")))
 OPERATORS = ("::-", "::<", "::>", "::!", "::=")
 
 
@@ -96,64 +92,16 @@ def enumerate_rules(program: Path, seen: set[Path] | None = None) -> list[RuleSo
     return rules
 
 
-def expand_cases(config: dict) -> list[dict]:
-    cases = config.get("case") or []
-    if not cases:
-        return [config]
-    expanded = []
-    for case in cases:
-        merged = dict(config)
-        merged.pop("case", None)
-        for key, value in case.items():
-            if isinstance(value, dict) and isinstance(merged.get(key), dict):
-                nested = dict(merged[key])
-                nested.update(value)
-                merged[key] = nested
-            else:
-                merged[key] = value
-        expanded.append(merged)
-    return expanded
-
-
-def command_available(command: str) -> bool:
-    return shutil.which(command) is not None
-
-
-def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> str:
-    if isinstance(spec, str):
-        return str(tests_dir / spec)
-    fixture = tests_dir / spec["fixture"]
-    if spec.get("writable"):
-        target = tmp / f"{name}.fixture"
-        target.write_bytes(fixture.read_bytes())
-        return str(target)
-    return str(fixture)
-
-
-def assert_expect(config_path: Path, case_name: str, expect: dict, result: subprocess.CompletedProcess[str], tests_dir: Path, bound_files: dict[str, str]) -> None:
-    actual_code = result.returncode
-    if "exit_code" in expect and actual_code != expect["exit_code"]:
-        raise RuntimeError(f"{config_path} {case_name}: exit_code {actual_code}, want {expect['exit_code']}\nstderr={result.stderr!r}")
-    if "stdout" in expect and result.stdout != expect["stdout"]:
-        raise RuntimeError(f"{config_path} {case_name}: stdout {result.stdout!r}, want {expect['stdout']!r}")
-    if "stdout_stripped" in expect and result.stdout.strip() != expect["stdout_stripped"]:
-        raise RuntimeError(f"{config_path} {case_name}: stripped stdout {result.stdout.strip()!r}, want {expect['stdout_stripped']!r}")
-    if "stdout_startswith" in expect and not result.stdout.strip().startswith(expect["stdout_startswith"]):
-        raise RuntimeError(f"{config_path} {case_name}: stdout does not start with {expect['stdout_startswith']!r}")
-    for needle in expect.get("stdout_contains", []):
-        if needle not in result.stdout:
-            raise RuntimeError(f"{config_path} {case_name}: stdout missing {needle!r}")
-    if "stderr" in expect and result.stderr != expect["stderr"]:
-        raise RuntimeError(f"{config_path} {case_name}: stderr {result.stderr!r}, want {expect['stderr']!r}")
-    if "stderr_stripped" in expect and result.stderr.strip() != expect["stderr_stripped"]:
-        raise RuntimeError(f"{config_path} {case_name}: stripped stderr {result.stderr.strip()!r}, want {expect['stderr_stripped']!r}")
-    for needle in expect.get("stderr_contains", []):
-        if needle not in result.stderr:
-            raise RuntimeError(f"{config_path} {case_name}: stderr missing {needle!r}")
-    for binding, expected in expect.get("files", {}).items():
-        got = Path(bound_files[binding]).read_text(encoding="utf-8")
-        if got != expected:
-            raise RuntimeError(f"{config_path} {case_name}: file binding {binding} = {got!r}, want {expected!r}")
+def run_case(config_path: Path, case: dict, tmp: Path) -> Counter[str]:
+    coverage_path = tmp / (re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{config_path}:{case.get('name','case')}") + ".tsv")
+    run_manifest_case(
+        PYTHON_IMPLEMENTATION,
+        config_path,
+        case,
+        tmp,
+        extra_args=["--rule-coverage", str(coverage_path)],
+    )
+    return read_coverage(coverage_path)
 
 
 def read_coverage(path: Path) -> Counter[str]:
@@ -174,30 +122,6 @@ def read_coverage(path: Path) -> Counter[str]:
     return counts
 
 
-def run_case(config_path: Path, case: dict, tmp: Path) -> Counter[str]:
-    tests_dir = config_path.parent
-    for command in case.get("requires", {}).get("commands", []):
-        if not command_available(command):
-            print(f"skip {config_path} {case.get('name', '')}: missing {command}", file=sys.stderr)
-            return Counter()
-    program = (tests_dir / case["program"]).resolve()
-    coverage_path = tmp / (re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{config_path}:{case.get('name','case')}") + ".tsv")
-    args = [sys.executable, str(PYTHON_INTERPRETER), str(program), "--rule-coverage", str(coverage_path)]
-    bound_files: dict[str, str] = {}
-    for name, spec in case.get("bindings", {}).get("files", {}).items():
-        bound = normalize_file_binding(tests_dir, tmp, name, spec)
-        bound_files[name] = bound
-        args.extend([f"--file:{name}", bound])
-    for name, command in case.get("bindings", {}).get("procs", {}).items():
-        args.extend([f"--proc:{name}", command])
-    if "input" in case:
-        args.extend(["--input", case["input"]])
-    timeout = float(case.get("timeout", 10))
-    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
-    assert_expect(config_path, case.get("name", "case"), case.get("expect", {}), result, tests_dir, bound_files)
-    return read_coverage(coverage_path)
-
-
 def check(program: Path, configs: list[Path]) -> int:
     rules = enumerate_rules(program)
     rule_by_id = {rule.rule_id: rule for rule in rules}
@@ -205,7 +129,7 @@ def check(program: Path, configs: list[Path]) -> int:
     with tempfile.TemporaryDirectory(prefix="thuepp-coverage-") as tmpdir:
         tmp = Path(tmpdir)
         for config_path in configs:
-            data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+            data = load_toml(config_path)
             for case in expand_cases(data):
                 counts.update(run_case(config_path, case, tmp))
     unknown = sorted(set(counts) - set(rule_by_id))
