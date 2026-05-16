@@ -65,7 +65,7 @@ stderr = ""
 stdout_stripped = "21"
 
 [[case]]
-name = "decimal result"
+name = "division emits canonical rational"
 input = "(/ 7 2)"
 
 [case.expect]
