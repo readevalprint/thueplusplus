@@ -140,6 +140,31 @@ class SharedExampleRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "timed out"):
                 runner.run_configs([sleep_interpreter], [timeout_config])
 
+    def test_requires_commands_metadata_is_rejected(self):
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory(prefix="thuepp-runner-requires-") as tmpdir:
+            tmp = Path(tmpdir)
+            fake = tmp / "fake.py"
+            fake.write_text("", encoding="utf-8")
+            program = tmp / "program.tpp"
+            program.write_text("::=\n", encoding="utf-8")
+            config = tmp / "requires.toml"
+            config.write_text(
+                textwrap.dedent(
+                    """
+                    program = "program.tpp"
+
+                    [requires]
+                    commands = ["definitely-not-a-supported-skip-path"]
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+            fake_interpreter = runner.Interpreter("fake", (sys.executable, str(fake)))
+            with self.assertRaisesRegex(RuntimeError, "requires.commands is not supported"):
+                runner.run_configs([fake_interpreter], [config])
+
     def test_cli_accepts_uniform_interpreter_command(self):
         completed = subprocess.run(
             [
