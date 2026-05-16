@@ -5,6 +5,8 @@ A Python implementation of the thue++ esoteric programming language.
 """
 
 import argparse
+import base64
+import binascii
 import re as py_re
 import re2 as re
 import select
@@ -292,7 +294,32 @@ class ThueppInterpreter:
             "le": 2,
             "gt": 2,
             "ge": 2,
+            "b64enc": 1,
+            "b64dec": 1,
         }.get(name)
+
+    def _b64url_encode(self, value: str) -> str:
+        return base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii").rstrip("=")
+
+    def _b64url_decode(self, value: str) -> str:
+        if "=" in value:
+            raise RuntimeError("Builtin 'b64dec' expected unpadded Base64url input")
+        if not py_re.fullmatch(r"[A-Za-z0-9_-]*", value):
+            raise RuntimeError("Builtin 'b64dec' expected Base64url input")
+        if len(value) % 4 == 1:
+            raise RuntimeError("Builtin 'b64dec' invalid Base64url length")
+        padded = value + "=" * ((4 - len(value) % 4) % 4)
+        try:
+            decoded = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
+        except binascii.Error as exc:
+            raise RuntimeError(f"Builtin 'b64dec' invalid Base64url input: {exc}")
+        try:
+            text = decoded.decode("utf-8")
+        except UnicodeDecodeError:
+            raise RuntimeError("Builtin 'b64dec' decoded bytes are not valid UTF-8")
+        if self._b64url_encode(text) != value:
+            raise RuntimeError("Builtin 'b64dec' expected canonical unpadded Base64url input")
+        return text
 
     def _parse_number(self, value: str, builtin: str) -> Decimal:
         try:
@@ -313,6 +340,10 @@ class ThueppInterpreter:
     def _eval_builtin(self, name: str, values: list[str]) -> str:
         if name == "eq":
             return "1" if values[0] == values[1] else "0"
+        if name == "b64enc":
+            return self._b64url_encode(values[0])
+        if name == "b64dec":
+            return self._b64url_decode(values[0])
 
         a = self._parse_number(values[0], name)
         b = self._parse_number(values[1], name)

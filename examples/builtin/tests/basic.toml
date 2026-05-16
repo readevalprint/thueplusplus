@@ -117,6 +117,146 @@ stderr = ""
 stdout_stripped = "1"
 
 [[case]]
+name = "base64url encodes empty string"
+input = "b64enc:"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = ""
+
+[[case]]
+name = "base64url decodes empty string"
+input = "b64dec:"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = ""
+
+[[case]]
+name = "base64url encodes ascii text"
+input = "b64enc:hello"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "aGVsbG8"
+
+[[case]]
+name = "base64url decodes ascii text"
+input = "b64dec:aGVsbG8"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "hello"
+
+[[case]]
+name = "base64url encodes spaces and punctuation"
+input = "b64enc:hello world!"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "aGVsbG8gd29ybGQh"
+
+[[case]]
+name = "base64url decodes spaces and punctuation"
+input = "b64dec:aGVsbG8gd29ybGQh"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "hello world!"
+
+[[case]]
+name = "base64url encodes delimiter-like text"
+input = "b64enc:<>{}()@ADD[1|2]@"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "PD57fSgpQEFERFsxfDJdQA"
+
+[[case]]
+name = "base64url decodes delimiter-like text"
+input = "b64dec:PD57fSgpQEFERFsxfDJdQA"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<>{}()@ADD[1|2]@"
+
+[[case]]
+name = "base64url encodes quotes"
+input = "b64enc:\"quotes\" and 'apos'"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "InF1b3RlcyIgYW5kICdhcG9zJw"
+
+[[case]]
+name = "base64url encodes unicode"
+input = "b64enc:こんにちは"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "44GT44KT44Gr44Gh44Gv"
+
+[[case]]
+name = "base64url decodes unicode"
+input = "b64dec:44GT44KT44Gr44Gh44Gv"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "こんにちは"
+
+[[case]]
+name = "safe internal string payload example"
+input = "str:<str>@ADD[1|2]@</str>"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<str>PHN0cj5AQUREWzF8Ml1APC9zdHI-</str>"
+
+[[case]]
+name = "base64url decode rejects padding"
+input = "b64dec:aGVsbG8="
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'b64dec' expected unpadded Base64url input"]
+
+[[case]]
+name = "base64url decode rejects invalid characters"
+input = "b64dec:aGVsbG8+"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'b64dec' expected Base64url input"]
+
+[[case]]
+name = "base64url decode rejects impossible length"
+input = "b64dec:A"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'b64dec' invalid Base64url length"]
+
+[[case]]
+name = "base64url decode rejects invalid utf8"
+input = "b64dec:_w"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'b64dec' decoded bytes are not valid UTF-8"]
+
+[[case]]
 name = "unknown builtin fails loudly"
 program = "../bad-unknown.tpp"
 
