@@ -38,6 +38,18 @@ class BuiltinContractTest(unittest.TestCase):
                 self.assertIn(spec["arity"], {1, 2})
                 self.assertGreaterEqual(len(spec["notes"].split()), 5)
 
+    def test_contract_declares_current_implementation_availability(self):
+        implementations = self._contract_implementations()
+
+        self.assertEqual(set(implementations), {"python", "go", "javascript"})
+        self.assertTrue(implementations["python"]["available"])
+        self.assertIn("python/thuepp.py", implementations["python"]["command"])
+        self.assertTrue(implementations["go"]["available"])
+        self.assertIn("go build", implementations["go"]["command"])
+        self.assertFalse(implementations["javascript"]["available"])
+        self.assertEqual(implementations["javascript"]["command"], "")
+        self.assertIn("shared manifest runner", implementations["javascript"]["notes"])
+
     def test_every_contract_builtin_has_shared_fixture_coverage(self):
         contract = self._contract_builtins()
         example_text = BUILTIN_EXAMPLE.read_text(encoding="utf-8")
@@ -53,6 +65,14 @@ class BuiltinContractTest(unittest.TestCase):
         builtins = data.get("builtins")
         self.assertIsInstance(builtins, dict)
         contract = cast(dict[str, dict[str, Any]], builtins)
+        self.assertGreater(len(contract), 0)
+        return contract
+
+    def _contract_implementations(self) -> dict[str, dict[str, Any]]:
+        data = tomllib.loads(CONTRACT.read_text(encoding="utf-8"))
+        implementations = data.get("implementations")
+        self.assertIsInstance(implementations, dict)
+        contract = cast(dict[str, dict[str, Any]], implementations)
         self.assertGreater(len(contract), 0)
         return contract
 
