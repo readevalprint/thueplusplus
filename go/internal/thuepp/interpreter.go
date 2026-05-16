@@ -3,6 +3,7 @@ package thuepp
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type Operator string
@@ -265,20 +267,52 @@ func parseBuiltinCall(rhs string, lineNumber int, captures map[string]bool) (str
 
 func builtinArity(name string) (int, bool) {
 	arities := map[string]int{
-		"eq":    2,
-		"add":   2,
-		"sub":   2,
-		"mul":   2,
-		"div":   2,
-		"mod":   2,
-		"numeq": 2,
-		"lt":    2,
-		"le":    2,
-		"gt":    2,
-		"ge":    2,
+		"eq":     2,
+		"add":    2,
+		"sub":    2,
+		"mul":    2,
+		"div":    2,
+		"mod":    2,
+		"numeq":  2,
+		"lt":     2,
+		"le":     2,
+		"gt":     2,
+		"ge":     2,
+		"b64enc": 1,
+		"b64dec": 1,
 	}
 	arity, ok := arities[name]
 	return arity, ok
+}
+
+func b64urlEncode(value string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(value))
+}
+
+func b64urlDecode(value string) (string, error) {
+	if strings.Contains(value, "=") {
+		return "", fmt.Errorf("Builtin 'b64dec' expected unpadded Base64url input")
+	}
+	for _, r := range value {
+		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+			return "", fmt.Errorf("Builtin 'b64dec' expected Base64url input")
+		}
+	}
+	if len(value)%4 == 1 {
+		return "", fmt.Errorf("Builtin 'b64dec' invalid Base64url length")
+	}
+	decoded, err := base64.RawURLEncoding.Strict().DecodeString(value)
+	if err != nil {
+		return "", fmt.Errorf("Builtin 'b64dec' invalid Base64url input: %w", err)
+	}
+	if !utf8.Valid(decoded) {
+		return "", fmt.Errorf("Builtin 'b64dec' decoded bytes are not valid UTF-8")
+	}
+	text := string(decoded)
+	if b64urlEncode(text) != value {
+		return "", fmt.Errorf("Builtin 'b64dec' expected canonical unpadded Base64url input")
+	}
+	return text, nil
 }
 
 func parseNumber(value, builtin string) (*big.Rat, error) {
@@ -308,6 +342,12 @@ func evalBuiltin(name string, values []string) (string, error) {
 			return "1", nil
 		}
 		return "0", nil
+	}
+	if name == "b64enc" {
+		return b64urlEncode(values[0]), nil
+	}
+	if name == "b64dec" {
+		return b64urlDecode(values[0])
 	}
 	a, err := parseNumber(values[0], name)
 	if err != nil {
