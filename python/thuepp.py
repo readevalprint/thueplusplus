@@ -13,8 +13,8 @@ import select
 import subprocess
 import sys
 from dataclasses import dataclass
-from decimal import Decimal, DivisionByZero, InvalidOperation, localcontext
 from enum import Enum
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, Optional
 
@@ -321,21 +321,22 @@ class ThueppInterpreter:
             raise RuntimeError("Builtin 'b64dec' expected canonical unpadded Base64url input")
         return text
 
-    def _parse_number(self, value: str, builtin: str) -> Decimal:
+    def _parse_number(self, value: str, builtin: str) -> Fraction:
+        if not py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value):
+            raise RuntimeError(f"Builtin '{builtin}' expected numeric input, got '{value}'")
+        if "/" in value:
+            denominator = int(value.rsplit("/", 1)[1])
+            if denominator == 0:
+                raise RuntimeError(f"Builtin '{builtin}' fraction denominator must be non-zero")
         try:
-            return Decimal(value)
-        except InvalidOperation:
+            return Fraction(value)
+        except (ValueError, ZeroDivisionError):
             raise RuntimeError(f"Builtin '{builtin}' expected numeric input, got '{value}'")
 
-    def _format_decimal(self, value: Decimal) -> str:
-        if value.is_nan() or value.is_infinite():
-            raise RuntimeError(f"Builtin numeric result is not finite: {value}")
-        text = format(value.normalize(), "f")
-        if "." in text:
-            text = text.rstrip("0").rstrip(".")
-        if text in ("", "-0"):
-            return "0"
-        return text
+    def _format_rational(self, value: Fraction) -> str:
+        if value.denominator == 1:
+            return str(value.numerator)
+        return f"{value.numerator}/{value.denominator}"
 
     def _eval_builtin(self, name: str, values: list[str]) -> str:
         if name == "eq":
@@ -347,29 +348,24 @@ class ThueppInterpreter:
 
         a = self._parse_number(values[0], name)
         b = self._parse_number(values[1], name)
-        try:
-            with localcontext() as ctx:
-                ctx.prec = 50
-                if name == "add":
-                    return self._format_decimal(a + b)
-                if name == "sub":
-                    return self._format_decimal(a - b)
-                if name == "mul":
-                    return self._format_decimal(a * b)
-                if name == "div":
-                    if b == 0:
-                        raise RuntimeError("Builtin 'div' division by zero")
-                    return self._format_decimal(a / b)
-                if name == "mod":
-                    if b == 0:
-                        raise RuntimeError("Builtin 'mod' modulo by zero")
-                    if a != a.to_integral_value() or b != b.to_integral_value():
-                        raise RuntimeError("Builtin 'mod' expected integer inputs")
-                    if a < 0 or b < 0:
-                        raise RuntimeError("Builtin 'mod' expected non-negative integer inputs")
-                    return str(int(a) % int(b))
-        except DivisionByZero:
-            raise RuntimeError(f"Builtin '{name}' division by zero")
+        if name == "add":
+            return self._format_rational(a + b)
+        if name == "sub":
+            return self._format_rational(a - b)
+        if name == "mul":
+            return self._format_rational(a * b)
+        if name == "div":
+            if b == 0:
+                raise RuntimeError("Builtin 'div' division by zero")
+            return self._format_rational(a / b)
+        if name == "mod":
+            if b == 0:
+                raise RuntimeError("Builtin 'mod' modulo by zero")
+            if a.denominator != 1 or b.denominator != 1:
+                raise RuntimeError("Builtin 'mod' expected integer inputs")
+            if a < 0 or b < 0:
+                raise RuntimeError("Builtin 'mod' expected non-negative integer inputs")
+            return str(a.numerator % b.numerator)
 
         if name == "numeq":
             return "1" if a == b else "0"

@@ -1,5 +1,6 @@
 # Builtin pure replacement operator smoke tests
-N <- -?[0-9]+(?:\.[0-9]+)?
+# Numeric builtins accept canonical integer, decimal, and fraction forms.
+N <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 
 ^add:(?<a><|N|>),(?<b><|N|>)$ ::! add a b
 ^sub:(?<a><|N|>),(?<b><|N|>)$ ::! sub a b
@@ -11,7 +12,9 @@ N <- -?[0-9]+(?:\.[0-9]+)?
 ^le:(?<a><|N|>),(?<b><|N|>)$ ::! le a b
 ^gt:(?<a><|N|>),(?<b><|N|>)$ ::! gt a b
 ^ge:(?<a><|N|>),(?<b><|N|>)$ ::! ge a b
+^rawadd:(?<a>[^,]+),(?<b>[^,]+)$ ::! add a b
 ^eq:(?<a>.*)\|(?<b>.*)$ ::! eq a b
+^num:(?<n><|N|>)$ ::= <num>{{n}}</num>
 ^b64enc:(?<s>.*)$ ::! b64enc s
 ^b64dec:(?<s>.*)$ ::! b64dec s
 ^str:(?<s>.*)$ ::= <str>@B64ENC[{{s}}]@</str>
