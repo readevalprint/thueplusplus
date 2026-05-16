@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import re
 import shlex
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -71,8 +70,9 @@ def case_name(config_path: Path, case: dict) -> str:
     return str(case.get("name") or config_path.stem)
 
 
-def command_available(command: str) -> bool:
-    return shutil.which(command) is not None
+def validate_case_metadata(config_path: Path, case: dict) -> None:
+    if case.get("requires"):
+        raise RuntimeError(f"{config_path} {case_name(config_path, case)}: requires.commands is not supported in shared manifests")
 
 
 def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> str:
@@ -113,9 +113,7 @@ def run_case(
     extra_args: list[str] | None = None,
     check_expect: bool = True,
 ) -> CaseResult:
-    for command in case.get("requires", {}).get("commands", []):
-        if not command_available(command):
-            raise RuntimeError(f"{config_path} {case_name(config_path, case)}: missing required command {command!r}")
+    validate_case_metadata(config_path, case)
     args, bound_files = build_case_args(config_path, case, tmp, extra_args=extra_args)
     timeout = float(case.get("timeout", 10))
     try:
