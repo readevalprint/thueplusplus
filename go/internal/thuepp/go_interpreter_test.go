@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/pelletier/go-toml/v2"
+	"thueplusplus/go/internal/thuepp"
 )
 
 type exampleConfig struct {
@@ -84,6 +85,48 @@ func TestGoInterpreterRunsHelloExample(t *testing.T) {
 	}
 	if got := stderr.String(); got != "" {
 		t.Fatalf("stderr = %q, want empty", got)
+	}
+}
+
+func TestGoInterpreterNumericLiteralLengthIsBounded(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	tmp := t.TempDir()
+	maxLen := strings.Repeat("1", thuepp.MaxNumericLiteralChars)
+	boundaryPath := filepath.Join(tmp, "numeric-boundary.tpp")
+	boundaryProgram := "^(?<a>[0-9]+),(?<b>[0-9]+)$ ::! add a b\n^" + maxLen + "$ ::- 7\n\n::=\n" + maxLen + ",0\n"
+	if err := os.WriteFile(boundaryPath, []byte(boundaryProgram), 0644); err != nil {
+		t.Fatal(err)
+	}
+	boundaryCmd := exec.Command(buildGoInterpreter(t, repoRoot), boundaryPath)
+	boundaryCmd.Dir = repoRoot
+	var boundaryStderr bytes.Buffer
+	boundaryCmd.Stderr = &boundaryStderr
+	if err := boundaryCmd.Run(); err == nil {
+		t.Fatal("go interpreter exit = 0, want 7")
+	} else if ee, ok := err.(*exec.ExitError); !ok || ee.ExitCode() != 7 {
+		t.Fatalf("go interpreter exit = %v, want 7\nstderr=%q", err, boundaryStderr.String())
+	}
+
+	programPath := filepath.Join(tmp, "numeric-limit.tpp")
+	program := "^(?<a>[0-9]+),(?<b>[0-9]+)$ ::! add a b\n\n::=\n" + strings.Repeat("1", thuepp.MaxNumericLiteralChars+1) + ",1\n"
+	if err := os.WriteFile(programPath, []byte(program), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(buildGoInterpreter(t, repoRoot), programPath)
+	cmd.Dir = repoRoot
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("go interpreter exit = 0, want numeric length error")
+	}
+	if got := stdout.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+	want := "Builtin 'add' numeric input exceeds maximum length (4096 characters)"
+	if !strings.Contains(stderr.String(), want) {
+		t.Fatalf("stderr = %q, want to contain %q", stderr.String(), want)
 	}
 }
 

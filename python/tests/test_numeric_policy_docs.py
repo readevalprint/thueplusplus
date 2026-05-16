@@ -19,6 +19,8 @@ class NumericPolicyDocsTest(unittest.TestCase):
             "canonical rational output",
             "Modulo requires numerically integral operands",
             "No decimal formatting primitive exists",
+            "capped at 4096 characters",
+            "numeric input exceeds maximum length (4096 characters)",
         ]
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):

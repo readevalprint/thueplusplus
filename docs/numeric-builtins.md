@@ -2,7 +2,7 @@
 
 This document is the source contract for numeric inputs and outputs used by the built-in numeric operations in thue++ examples and interpreters.
 
-Numeric builtins are deterministic exact-rational operations. They do not use binary floating point.
+Numeric builtins are deterministic exact-rational operations. They do not use binary floating point. Each accepted numeric literal is capped at 4096 characters before exact-rational parsing, so parser and arithmetic cost are not bounded only by the optional interpreter state-size limit.
 
 ## Accepted numeric input grammar
 
@@ -44,6 +44,7 @@ Numeric builtin errors are deterministic and intentionally distinguish syntax, n
 | Category | Representative inputs | Error fragment |
 |---|---|---|
 | Malformed numeric input | `1.2.3`, `.5`, `5.`, `1/2/3`, `2/-3`, `2/-0`, `1e3` | `Builtin '<name>' expected numeric input, got '<value>'` |
+| Numeric literal too long | any accepted numeric syntax longer than 4096 characters | `Builtin '<name>' numeric input exceeds maximum length (4096 characters)` |
 | Zero denominator fraction | `2/0`, `2/00` | `Builtin '<name>' fraction denominator must be non-zero` |
 | Division by zero | `div:1,0` | `Builtin 'div' division by zero` |
 | Modulo by zero | `mod:1,0` | `Builtin 'mod' modulo by zero` |
@@ -53,6 +54,12 @@ Numeric builtin errors are deterministic and intentionally distinguish syntax, n
 Signed denominators are malformed syntax, not a separate denominator-sign category. `2/-0` is therefore malformed even though its denominator text contains zero. Zero denominator detection applies only after a fraction has matched the accepted unsigned-denominator grammar.
 
 Target-language examples such as Lisp may reject malformed source literals before a builtin runs. They must still fail loudly and must not emit internal sentinels such as `@ADD[...]@` as successful output.
+
+## Numeric resource bounds
+
+`--max-state-bytes` bounds the size of the rewrite state after each replacement, but it is optional and it does not by itself define a cross-implementation numeric parsing policy. Numeric builtins therefore also enforce a fixed 4096-character limit on each captured numeric literal before exact-rational parsing.
+
+The length cap is intentionally per literal rather than per final value: it rejects pathological integer, decimal, and fraction inputs before Python `Fraction` or Go `big.Rat` normalization can spend unbounded time on a single token. Normal examples and target-language generated rational intermediates remain far below this bound; programs that need larger arithmetic should add an explicitly designed big-number policy instead of relying on accidental arbitrary precision.
 
 ## Canonical rational output
 
