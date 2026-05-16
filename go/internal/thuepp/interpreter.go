@@ -492,11 +492,6 @@ func (i *Interpreter) expandTemplate(template string, groups map[string]string, 
 	for k, v := range extra {
 		vars[k] = strings.ReplaceAll(v, `\`, `\\`)
 	}
-	if strings.Contains(template, `B:|{{n}}={{v}},{{b}}`) {
-		if b := vars["b"]; b != "" && !strings.HasPrefix(b, "|") {
-			vars["b"] = "|" + b
-		}
-	}
 	currentOpen, currentClose := "{{", "}}"
 	var out strings.Builder
 	pos := 0

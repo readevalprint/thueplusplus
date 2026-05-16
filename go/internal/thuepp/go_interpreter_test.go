@@ -130,6 +130,27 @@ func TestGoInterpreterNumericLiteralLengthIsBounded(t *testing.T) {
 	}
 }
 
+func TestGoInterpreterTemplateExpansionDoesNotSpecialCaseLispBindings(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	tmp := t.TempDir()
+	programPath := filepath.Join(tmp, "generic-template.tpp")
+	program := "^(?<n>x),(?<v>1),(?<b>old)$ ::= B:|{{n}}={{v}},{{b}}\n^B:(?<out>.*)$ ::> stdout {{out}}\\n\n::=\nx,1,old\n"
+	if err := os.WriteFile(programPath, []byte(program), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(buildGoInterpreter(t, repoRoot), programPath)
+	cmd.Dir = repoRoot
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("go interpreter failed: %v\nstderr:\n%s", err, stderr.String())
+	}
+	if got, want := stdout.String(), "|x=1,old\n"; got != want {
+		t.Fatalf("template output mismatch\n got: %q\nwant: %q\nstderr: %q", got, want, stderr.String())
+	}
+}
+
 func TestGoInterpreterRuleCoverageCountsSuccessfulApplications(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	tmp := t.TempDir()
