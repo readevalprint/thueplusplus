@@ -28,7 +28,7 @@ python/tests/    Python implementation tests
 
 Requirements:
 
-- Python 3.10+
+- Python 3.11+
 - Project Python dependencies are managed by `uv` from `pyproject.toml` / `uv.lock`; use `uv run` or the `make` targets for deterministic development and tests.
 - Repository verification also requires `make` and Go for the shared Go implementation tests.
 

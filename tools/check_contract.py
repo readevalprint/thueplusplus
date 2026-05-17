@@ -6,13 +6,9 @@ import argparse
 import ast
 import re
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
-    import tomli as tomllib
 
 
 README_MARKER_RE = re.compile(

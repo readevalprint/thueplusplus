@@ -12,13 +12,9 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python < 3.11 in the project uv environment.
-    import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 
