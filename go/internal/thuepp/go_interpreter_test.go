@@ -226,34 +226,6 @@ func TestGoInterpreterRuleCoverageCountsSuccessfulApplications(t *testing.T) {
 	}
 }
 
-func TestGoInterpreterSharedExamples(t *testing.T) {
-	repoRoot := findRepoRoot(t)
-	goBin := buildGoInterpreter(t, repoRoot)
-	configs, err := filepath.Glob(filepath.Join(repoRoot, "examples", "*", "tests", "*.toml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(configs) == 0 {
-		t.Fatal("expected shared example TOML configs")
-	}
-	args := []string{
-		"tools/run-example-manifests",
-		"--interpreter", "go=" + goBin,
-	}
-	args = append(args, configs...)
-	cmd := exec.Command("python3", args...)
-	cmd.Dir = repoRoot
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("shared example runner failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "run:") {
-		t.Fatalf("shared example runner stdout = %q, want run summary", stdout.String())
-	}
-}
-
 func findRepoRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()

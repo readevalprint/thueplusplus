@@ -197,19 +197,6 @@ def run_configs(interpreters: list[Interpreter], configs: list[Path], *, parity:
     return 0
 
 
-def parse_interpreter(spec: str) -> Interpreter:
-    if "=" not in spec:
-        raise argparse.ArgumentTypeError("interpreter must be NAME=COMMAND")
-    name, command = spec.split("=", 1)
-    name = name.strip()
-    if not name:
-        raise argparse.ArgumentTypeError("interpreter name must not be empty")
-    argv = tuple(shlex.split(command))
-    if not argv:
-        raise argparse.ArgumentTypeError("interpreter command must not be empty")
-    return Interpreter(name=name, argv=argv)
-
-
 def contract_interpreters(contract_path: Path, build_root: Path, only: set[str] | None = None) -> list[Interpreter]:
     data = load_toml(contract_path)
     implementations = data.get("implementations")
@@ -269,22 +256,13 @@ def contract_interpreters(contract_path: Path, build_root: Path, only: set[str] 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run shared thue++ example manifests")
     parser.add_argument("configs", type=Path, nargs="+", help="example TOML manifest(s)")
-    parser.add_argument("--interpreter", action="append", type=parse_interpreter, help="NAME=COMMAND; COMMAND receives program path and CLI args")
-    parser.add_argument("--contract", type=Path, help="Read available implementation commands from tools/thuepp-contract.toml-style contract")
+    parser.add_argument("--contract", type=Path, required=True, help="Read available implementation commands from tools/thuepp-contract.toml-style contract")
     parser.add_argument("--implementation", action="append", help="Implementation name to select from --contract; may be repeated")
     parser.add_argument("--parity", action="store_true", help="compare exit code, stdout, stderr, and writable file outputs across interpreters")
     args = parser.parse_args(argv)
-    if args.contract and args.interpreter:
-        parser.error("--contract and --interpreter are mutually exclusive")
-    if args.implementation and not args.contract:
-        parser.error("--implementation requires --contract")
-    if not args.contract and not args.interpreter:
-        parser.error("one of --contract or --interpreter is required")
-    if args.contract:
-        with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
-            interpreters = contract_interpreters(args.contract, Path(tmpdir), set(args.implementation) if args.implementation else None)
-            return run_configs(interpreters, args.configs, parity=args.parity)
-    return run_configs(args.interpreter, args.configs, parity=args.parity)
+    with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
+        interpreters = contract_interpreters(args.contract, Path(tmpdir), set(args.implementation) if args.implementation else None)
+        return run_configs(interpreters, args.configs, parity=args.parity)
 
 
 if __name__ == "__main__":

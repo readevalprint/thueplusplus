@@ -1,24 +1,18 @@
 """Validate shared example test configs from examples/<slug>/tests/*.toml."""
 
 import re
-import sys
 import unittest
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools"))
-from example_runner import Interpreter, run_configs  # noqa: E402
-
-THUEPP = REPO_ROOT / "python" / "thuepp.py"
 EXAMPLES_ROOT = REPO_ROOT / "examples"
 
 
 class TestExampleConfigs(unittest.TestCase):
-    def test_nested_example_configs(self):
+    def test_nested_example_configs_exist_for_makefile_shared_parity(self):
         config_paths = sorted(EXAMPLES_ROOT.glob("*/tests/*.toml"))
         self.assertTrue(config_paths, "expected at least one examples/*/tests/*.toml config")
-        run_configs([Interpreter("python", (sys.executable, str(THUEPP)))], config_paths)
 
     def test_public_builtin_example_does_not_expose_parser_test_hook(self):
         public_example = EXAMPLES_ROOT / "builtin" / "builtin.tpp"
