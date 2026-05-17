@@ -43,12 +43,10 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertIn("Rule probe limit (1) exceeded", result.stderr)
 
-    def test_failed_process_read_is_not_successful_empty_data(self):
+    def test_failed_process_read_fails_loudly(self):
         result = run_program(
             r"""
-            read ::< p X{{data}}Y
-            ^XY$ ::- 0
-            ^ERR:resource:.* ::- 2
+            read ::< -1 p
 
             ::=
             read
@@ -57,7 +55,8 @@ class TestThueppRegressions(unittest.TestCase):
             "definitely-not-a-command-xyz",
         )
 
-        self.assertEqual(result.returncode, 2)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ERR:resource:p", result.stderr)
 
     def test_empty_input_overrides_program_initial_state(self):
         result = run_program(
@@ -182,18 +181,18 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertEqual(result.returncode, 7, result.stderr)
         self.assertEqual(result.stdout, "A")
 
-    def test_read_missing_binding_replaces_only_matched_span(self):
+    def test_missing_read_binding_fails_loudly(self):
         result = run_program(
             r"""
-            read ::< missing
-            ^preERR:resource:missingpost$ ::- 7
+            read ::< -1 missing
 
             ::=
-            prereadpost
+            read
             """
         )
 
-        self.assertEqual(result.returncode, 7, result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unknown resource 'missing'", result.stderr)
 
     def test_file_binding_read_still_works(self):
         with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as f:
@@ -202,8 +201,11 @@ class TestThueppRegressions(unittest.TestCase):
         try:
             result = run_program(
                 r"""
-                read ::< input got:{{data}}
-                ^got:file-data$ ::- 7
+                PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
+                read ::= got:@IN@
+                @IN@ ::< -1 input
+                ^got:(?<data><|PCT|>)$ ::= out:{{data|pctdec}}
+                ^out:file-data$ ::- 7
 
                 ::=
                 read
@@ -219,8 +221,11 @@ class TestThueppRegressions(unittest.TestCase):
     def test_process_binding_read_still_works(self):
         result = run_program(
             r"""
-            read ::< p got:{{data}}
-            ^got:proc-data$ ::- 7
+            PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
+            read ::= got:@IN@
+            @IN@ ::< -1 p
+            ^got:(?<data><|PCT|>)$ ::= out:{{data|pctdec}}
+            ^out:proc-data$ ::- 7
 
             ::=
             read

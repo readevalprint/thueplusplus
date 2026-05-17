@@ -1,5 +1,7 @@
-# KV Store with bulk read (CSV: k,v per line)
+# KV Store with safe PCT read (CSV: k,v per line)
 # Usage: ./python/thuepp.py examples/kv/kv.tpp --file:db "examples/kv/kv-db.state" --input "CMD KEY [VALUE]"
+
+PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 # INIT - parse command first, then bulk read
 ^set (?<k>[a-zA-Z0-9_-]+) (?<v>[^,\n]+)$ ::= SET,{{k}},{{v}}|@LOAD@
@@ -12,11 +14,10 @@
 ^@BAD@ ::> stdout ERR:invalid_input\n
 ^EXIT$ ::- 1
 
-# Bulk read DB (only @LOAD@ is replaced on error)
-@LOAD@$ ::< db {{data}}@D@
-
-# Handle missing/empty DB
-ERR:resource:db$ ::= @D@
+# Bulk read DB as inert PCT, then decode into the legacy CSV scanner boundary.
+@LOAD@$ ::= @IN@
+@IN@ ::< -1 db
+^(?<pre>(?:SET|GET|DEL|LIST)[\s\S]*\|)(?<db><|PCT|>)$ ::= {{pre}}{{db|pctdec}}@D@
 
 # SET - append k,v
 ^SET,(?<k>[^,]+),(?<v>[^|]+)\|(?<db>[^@]*)@D@$ ::= @W[{{db}}{{k}},{{v}}\n]@@O[ok]@

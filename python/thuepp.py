@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 
 MAX_NUMERIC_LITERAL_CHARS = 4096
-RULE_RE = py_re.compile(r"^(?P<lhs>.*?)[ \t]+::(?P<op>[=<>!-])(?:[ \t]+(?P<rhs>.*)|[ \t]*)$")
+RULE_RE = py_re.compile(r"^(?P<lhs>.*?)[ \t]+::(?P<op>[=<>!%-])(?:[ \t]+(?P<rhs>.*)|[ \t]*)$")
 
 
 class Operator(Enum):
@@ -29,6 +29,7 @@ class Operator(Enum):
     WRITE = "::>"
     EXIT = "::-"
     BUILTIN = "::!"
+    DATA = "::%"
 
 
 @dataclass
@@ -243,6 +244,7 @@ class ThueppInterpreter:
             ">": Operator.WRITE,
             "-": Operator.EXIT,
             "!": Operator.BUILTIN,
+            "%": Operator.DATA,
         }[match.group("op")]
 
         if not lhs:
@@ -310,6 +312,8 @@ class ThueppInterpreter:
             "num": 1,
             "b64enc": 1,
             "b64dec": 1,
+            "pctenc": 1,
+            "pctdec": 1,
         }.get(name)
 
     def _b64url_encode(self, value: str) -> str:
@@ -334,6 +338,40 @@ class ThueppInterpreter:
         if self._b64url_encode(text) != value:
             raise RuntimeError("Builtin 'b64dec' expected canonical unpadded Base64url input")
         return text
+
+
+    def _pct_encode(self, value: str) -> str:
+        safe = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"
+        out = []
+        for byte in value.encode("utf-8"):
+            if byte in safe:
+                out.append(chr(byte))
+            else:
+                out.append(f"%{byte:02X}")
+        return "".join(out)
+
+    def _pct_decode(self, value: str) -> str:
+        data = bytearray()
+        i = 0
+        while i < len(value):
+            ch = value[i]
+            if ch == "%":
+                if i + 2 >= len(value):
+                    raise RuntimeError("PCT payload has incomplete percent escape")
+                hx = value[i + 1:i + 3]
+                if not py_re.fullmatch(r"[0-9A-F]{2}", hx):
+                    raise RuntimeError("PCT payload has malformed or non-canonical percent escape")
+                data.append(int(hx, 16))
+                i += 3
+            else:
+                if not py_re.fullmatch(r"[A-Za-z0-9_.-]", ch):
+                    raise RuntimeError("PCT payload contains unencoded unsafe byte")
+                data.append(ord(ch))
+                i += 1
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise RuntimeError(f"PCT payload decoded bytes are not valid UTF-8: {exc}")
 
     def _parse_number(self, value: str, builtin: str) -> Fraction:
         if not py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value):
@@ -364,6 +402,10 @@ class ThueppInterpreter:
             return self._b64url_encode(values[0])
         if name == "b64dec":
             return self._b64url_decode(values[0])
+        if name == "pctenc":
+            return self._pct_encode(values[0])
+        if name == "pctdec":
+            return self._pct_decode(values[0])
         if name == "num":
             return f"<num>{self._format_rational(self._parse_number(values[0], name))}</num>"
 
@@ -402,36 +444,67 @@ class ThueppInterpreter:
 
 
     def _expand_template(self, template: str, groups: dict, extra: dict = None) -> str:
-        """Expand a template string with captured groups and extra data."""
+        """Expand a template string with captured groups, extras, and strict PCT filters."""
         if extra is None:
             extra = {}
+        raw_vars = {**groups, **extra}
+        escaped_vars = {
+            k: v.replace("\\", "\\\\") if isinstance(v, str) else v
+            for k, v in raw_vars.items()
+        }
 
-        # Escape backslashes in captured groups to prevent escape processing
-        # from affecting captured content (e.g., captured "\n" should stay as "\n")
-        escaped_groups = {k: v.replace("\\", "\\\\") if isinstance(v, str) else v
-                         for k, v in groups.items()}
-        escaped_extra = {k: v.replace("\\", "\\\\") if isinstance(v, str) else v
-                        for k, v in extra.items()} if extra else {}
-        all_vars = {**escaped_groups, **escaped_extra}
+        pieces = []
+        pos = 0
+        for match in py_re.finditer(r"{{([^}]*)}}", template):
+            pieces.append(self._decode_replacement_escapes(template[pos:match.start()]))
+            inner = match.group(1)
+            if "|" in inner:
+                name, filt = inner.split("|", 1)
+                if not py_re.fullmatch(r"[A-Za-z_]\w*", name) or not py_re.fullmatch(r"[A-Za-z_]\w*", filt):
+                    raise RuntimeError(f"Malformed template filter '{{{{{inner}}}}}'")
+                if name not in raw_vars:
+                    raise RuntimeError(f"Missing template capture '{name}'")
+                value = str(raw_vars[name])
+                if filt == "pctenc":
+                    pieces.append(self._pct_encode(value))
+                elif filt == "pctdec":
+                    pieces.append(self._pct_decode(value))
+                else:
+                    raise RuntimeError(f"Unknown template filter '{filt}'")
+            elif py_re.fullmatch(r"\w+", inner):
+                value = escaped_vars.get(inner, "")
+                pieces.append(str(value) if value else "")
+            else:
+                pieces.append(match.group(0))
+            pos = match.end()
+        pieces.append(self._decode_replacement_escapes(template[pos:]))
+        return "".join(pieces)
+    def _expand_data_template(self, template: str, groups: dict) -> str:
+        raw_vars = {**groups}
+        pieces = []
+        pos = 0
+        for match in py_re.finditer(r"{{([A-Za-z_]\w*)}}", template):
+            literal = template[pos:match.start()]
+            pieces.append(self._decode_replacement_escapes(literal))
+            name = match.group(1)
+            if name not in raw_vars:
+                raise RuntimeError(f"Missing template capture '{name}'")
+            pieces.append(self._pct_decode(str(raw_vars[name])))
+            pos = match.end()
+        tail = template[pos:]
+        if py_re.search(r"{{[^}]*[|][^}]*}}", template):
+            raise RuntimeError("Filters are not supported inside ::% templates")
+        pieces.append(self._decode_replacement_escapes(tail))
+        return self._pct_encode("".join(pieces))
 
-        def replace_var(match):
-            value = all_vars.get(match.group(1), "")
-            return str(value) if value else ""
-
-        result = re.sub(r"{{(\w+)}}", replace_var, template)
-
-        # Apply escape sequences in correct order:
-        # 1. First convert \\\\ to a placeholder (to protect literal backslashes)
-        # 2. Then convert \\n, \\t, \\r to actual chars
-        # 3. Finally convert placeholder back to single backslash
+    def _decode_replacement_escapes(self, text: str) -> str:
         placeholder = "\x00BACKSLASH\x00"
-        result = result.replace("\\\\", placeholder)
-        result = result.replace("\\n", "\n")
-        result = result.replace("\\t", "\t")
-        result = result.replace("\\r", "\r")
-        result = result.replace(placeholder, "\\")
-
-        return result
+        text = text.replace("\\\\", placeholder)
+        text = text.replace("\\n", "\n")
+        text = text.replace("\\t", "\t")
+        text = text.replace("\\r", "\r")
+        text = text.replace(placeholder, "\\")
+        return text
 
     def _ensure_process(self, binding: Binding) -> None:
         """Ensure a process binding has a running process."""
@@ -598,29 +671,28 @@ class ThueppInterpreter:
                             print(f"[{self.eval_count}] RESULT: {result_preview}", file=sys.stderr)
                             print(file=sys.stderr)
 
-                    elif rule.operator == Operator.READ:
-                        # Bulk read: resource_name [template]
-                        rhs_stripped = rule.rhs.strip()
-                        parts = rhs_stripped.split(None, 1)
-                        resource_template = parts[0] if parts else rhs_stripped
-                        resource = self._expand_template(resource_template, groups)
+                    elif rule.operator == Operator.DATA:
+                        replacement = self._expand_data_template(rule.rhs, groups)
+                        self._replace_match(match, replacement)
+                        self._record_rule_coverage(rule)
 
+                    elif rule.operator == Operator.READ:
+                        parts = rule.rhs.strip().split()
+                        if len(parts) != 2:
+                            raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
+                        read_spec, resource = parts
+                        if read_spec != "-1":
+                            raise RuntimeError(f"Line {rule.line_number}: unsupported read spec '{read_spec}'")
+                        if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
+                            raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
                         binding = self.bindings.get(resource)
                         if not binding:
-                            self._replace_match(match, f"ERR:resource:{resource}")
-                        else:
-                            content, error = self._read_all(binding)
-                            if error:
-                                replacement = error
-                            elif len(parts) > 1:
-                                replacement = self._expand_template(
-                                    parts[1], groups, {"data": content}
-                                )
-                            else:
-                                replacement = content
-                            self._replace_match(match, replacement)
-                            if not error:
-                                self._record_rule_coverage(rule)
+                            raise RuntimeError(f"Unknown resource '{resource}'")
+                        content, error = self._read_all(binding)
+                        if error:
+                            raise RuntimeError(error)
+                        self._replace_match(match, self._pct_encode(content))
+                        self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.WRITE:
                         # RHS format: resource_name content
