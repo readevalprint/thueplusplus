@@ -110,15 +110,6 @@ stdout = ""
 stderr_contains = ["parse error: curly-brace syntax is not supported"]
 
 [[case]]
-name = "unsupported variable form rejected"
-input = "(def x 1)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]
-
-[[case]]
 name = "unsupported string rejected"
 input = '"hello"'
 
@@ -267,6 +258,178 @@ stderr_contains = ["parse error: unsupported or malformed Lisp input"]
 [[case]]
 name = "raw internal-looking E state rejected"
 input = "E:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+
+[[case]]
+name = "def creates binding"
+input = "(begin (def x 40) (+ x 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "set updates existing binding"
+input = "(begin (def x 1) (set x (+ x 2)) x)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "set missing binding rejected"
+input = "(set missing 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "while updates accumulator"
+input = "(begin (def i 0) (def acc 0) (while (< i 5) (set acc (+ acc i)) (set i (+ i 1))) acc)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "10"
+
+[[case]]
+name = "while returns nil"
+input = "(begin (def i 0) (while (< i 0) (set i 1)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "anonymous fn call"
+input = "((fn (x) (+ x 2)) 40)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "defn named function call"
+input = "(begin (defn add2 (x) (+ x 2)) (add2 40))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "function argument shadows global in dynamic environment"
+input = "(begin (def x 1) (defn f (x) (+ x 1)) (f 10))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "11"
+
+[[case]]
+name = "sum-to with local loop"
+input = "(begin (defn sum-to (n) (begin (def i 0) (def acc 0) (while (<= i n) (set acc (+ acc i)) (set i (+ i 1))) acc)) (sum-to 5))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "15"
+
+[[case]]
+name = "while equality condition"
+input = "(begin (def i 0) (while (= i 0) (set i 1)) i)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "while greater than condition"
+input = "(begin (def i 3) (while (> i 0) (set i (- i 1))) i)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
+
+[[case]]
+name = "while greater than or equal condition"
+input = "(begin (def i 2) (while (>= i 0) (set i (- i 1))) i)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "-1"
+
+[[case]]
+name = "while missing condition binding rejected"
+input = "(begin (def x 0) (while (< missing 1) (set x 1)))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "set missing binding after env rejected"
+input = "(begin (def x 1) (set missing 2))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "operator lookup right operand"
+input = "(begin (def x 2) (+ 1 x))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "top-level-style final lookup"
+input = "(begin (def x 7) x)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "lookup missing binding after env rejected"
+input = "(begin (def x 1) missing)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "raw internal-looking B state rejected"
+input = "B:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "raw internal-looking O state rejected"
+input = "O:foo"
 
 [case.expect]
 exit_code = 2
