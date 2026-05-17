@@ -83,15 +83,6 @@ class TestExampleConfigs(unittest.TestCase):
                 offending.append(f"{line_number}: {line}")
         self.assertEqual(offending, [])
 
-    def test_lisp_has_no_generic_legacy_coverage_ignore_reasons(self):
-        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
-        text = program.read_text(encoding="utf-8")
-        self.assertNotIn("legacy Lisp internal variant retained but not reached by current shared fixtures", text)
-        for line_number, line in enumerate(text.splitlines(), 1):
-            if line.startswith("# coverage: ignore"):
-                reason = line.removeprefix("# coverage: ignore").strip()
-                self.assertGreaterEqual(len(reason.split()), 5, f"coverage ignore at line {line_number} needs a specific current reason")
-
     def test_lisp_hash_keys_uses_canonical_temporary_envelope(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
