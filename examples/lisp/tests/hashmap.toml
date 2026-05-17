@@ -128,3 +128,66 @@ input = "(hash-get (hash :name \"Alice\") :name)"
 exit_code = 0
 stderr = ""
 stdout_stripped = "Alice"
+
+[[case]]
+name = "hash get skips first nonmatching pair"
+input = "(hash-get (hash :first 1 :target 9 :last 3) :target)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "hash get distinguishes prefix key from longer key"
+input = "(hash-get (hash :aa 11 :a 7) :a)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "hash get distinguishes longer key from prefix key"
+input = "(hash-get (hash :a 7 :aa 11) :aa)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "11"
+
+[[case]]
+name = "hash get preserves keyword case distinction"
+input = "(hash-get (hash :Key 1 :key 2) :key)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "hash has skips first nonmatching pair"
+input = "(hash-has? (hash :first 1 :target 9 :last 3) :target)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "hash has distinguishes prefix collision false"
+input = "(hash-has? (hash :aa 11) :a)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "hash has preserves keyword case distinction false"
+input = "(hash-has? (hash :Key 1) :key)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
