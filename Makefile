@@ -1,10 +1,14 @@
 SHELL := /bin/sh
 
-.PHONY: test test-python test-go test-shared test-coverage
+.PHONY: test test-contract test-python test-go test-shared test-coverage
 
 # Add a JavaScript target to `test` only after a JavaScript implementation exists
 # and is wired through tools/run-example-manifests.
-test: test-python test-go test-shared test-coverage
+test: test-contract test-python test-go test-shared test-coverage
+
+test-contract:
+	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository conformance checks" >&2; exit 127; }
+	uv run python tools/check-contract
 
 test-python:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run Python tests" >&2; exit 127; }

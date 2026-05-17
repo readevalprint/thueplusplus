@@ -9,7 +9,8 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
     def test_make_test_is_the_full_project_truth_engine(self):
         makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-        self.assertIn("test: test-python test-go test-shared test-coverage", makefile)
+        self.assertIn("test: test-contract test-python test-go test-shared test-coverage", makefile)
+        self.assertIn("uv run python tools/check-contract", makefile)
         self.assertIn("uv run python -m unittest discover -s python/tests -v", makefile)
         self.assertIn("cd go && go test -count=1 ./...", makefile)
         self.assertIn("tools/run-example-manifests --contract tools/thuepp-contract.toml --parity", makefile)
