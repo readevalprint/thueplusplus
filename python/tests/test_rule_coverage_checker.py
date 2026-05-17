@@ -28,11 +28,32 @@ def load_checker_module():
 
 
 class RuleCoverageCheckerTest(unittest.TestCase):
-    def test_operator_detection_ignores_regex_constructs(self):
+    def test_rule_enumeration_uses_interpreter_parser_for_regex_constructs(self):
         checker = load_checker_module()
-        self.assertEqual(checker.find_operator(r"(?<op> ::= )"), -1)
-        self.assertEqual(checker.find_operator(r"[ : := ::! ]"), -1)
-        self.assertGreaterEqual(checker.find_operator(r"(?<op> ::= | ::! ) ::= {{op}}"), 0)
+        self.assertFalse(hasattr(checker, "find_operator"))
+        self.assertFalse(hasattr(checker, "find_rule_operator"))
+        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+            program = Path(tmp) / "program.tpp"
+            program.write_text(
+                textwrap.dedent(
+                    r"""
+                    (?<op> ::= ) ::= {{op}}
+                    [ : := ::! ] ::= ok
+                    (?<op> ::= | ::! ) ::= {{op}}
+
+                    ::=
+                    """
+                ).lstrip(),
+                encoding="utf-8",
+            )
+
+            rules = checker.enumerate_rules(program)
+
+        self.assertEqual([rule.text for rule in rules], [
+            r"(?<op> ::= ) ::= {{op}}",
+            r"[ : := ::! ] ::= ok",
+            r"(?<op> ::= | ::! ) ::= {{op}}",
+        ])
 
     def test_coverage_ignore_comment_fails_loudly(self):
         checker = load_checker_module()
