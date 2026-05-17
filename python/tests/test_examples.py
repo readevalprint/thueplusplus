@@ -64,17 +64,12 @@ class TestExampleConfigs(unittest.TestCase):
         self.assertNotIn("Temporary work markers are @...@ or #...«...»", text)
         self.assertNotIn("Parser-protection sentinels use §...§", text)
 
-    def test_lisp_removes_noncanonical_b_only_state_variants(self):
+    def test_lisp_uses_single_canonical_work_binding_output_state(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
-        offending = []
-        for line_number, line in enumerate(program.read_text(encoding="utf-8").splitlines(), 1):
-            if line.startswith("#"):
-                continue
-            if "\\nB:" not in line:
-                continue
-            if "\\nF:" not in line and "\\nE:" not in line:
-                offending.append(f"{line_number}: {line}")
-        self.assertEqual(offending, [])
+        text = program.read_text(encoding="utf-8")
+        self.assertIn("W:{{input}}\\nB:\\nO:", text)
+        self.assertNotIn("\\nE:", text)
+        self.assertNotIn("\\nF:", text)
 
     def test_lisp_hash_keys_are_deleted_from_skeleton(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"

@@ -1,93 +1,146 @@
-# Minimal parenthesized Lisp skeleton
-# Child #92 of the deletion-first rewrite.
+# Minimal parenthesized Lisp skeleton.
+# Greenfield parenthesized Lisp rewrite.
+# Child #93 hard cutoff: no legacy curly syntax, no alternate form delimiters,
+# no backwards compatibility shims. Source and internal forms stay parenthesized.
 #
 # Supported in this slice:
 #   numbers, true, false, nil
 #   (+ a b), (- a b), (* a b), (/ a b)
 #   (= a b), (< a b), (<= a b), (> a b), (>= a b)
-#   (if cond then else), (begin expr ...)
+#   literal-condition (if true|false|nil then else), (begin expr ...)
+#   (def name expr), (set name expr)
+#   (fn (arg) body), (defn name (arg) body), one-argument calls
 #
-# Unsupported syntax fails loudly. User-facing curly-brace syntax is rejected.
+# Scope model for this child: one mutable dynamic environment. Function calls
+# prepend the argument binding and do not restore prior bindings after return.
+# Recursion and lexical frames are deferred rather than partially supported.
 
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
-VAL <- (?:N:[^;]+;|B:[01];|Z;)
-BRANCH <- (?:N:[^;]+;|B:[01];|Z;|⟦[^⟦⟧\n]+⟧)
+NAME <- [a-z_][a-z0-9_-]*
+VAL <- (?:N:[^;]+;|B:[01];|Z;|F\[[^|\]]+\|[^\]]+\])
+ATOM <- (?:<|NAME|>|<|NUM|>|true|false|nil|<|VAL|>)
+FORM1 <- \([^()]*\)
 
-# Reject legacy/user-facing curly forms before any internal state is created.
+# Hard cutoff: curly syntax and raw evaluator states are not user syntax.
+# Unsupported syntax fails loudly.
 ^(?<bad>.*[{}].*)$ ::= !PC!EXIT2
-# Raw text that looks like internal state is still unsupported user input.
 ^W:[^\n]*$ ::= !P!EXIT2
-^E:[^\n]*$ ::= !P!EXIT2
+^B:[^\n]*$ ::= !P!EXIT2
+^O:[^\n]*$ ::= !P!EXIT2
 
-# Initialize canonical skeleton state.
-^(?<i>[^!WE\n][^\n]*|W[^:\n][^\n]*)$ ::= W:{{i}}\nO:
+^EXIT2$ ::- 2
 
-# Normalize parenthesized source forms to explicit internal envelopes.
-^W:(?<p>[^\n]*)\((?<q>[^\n]*)\nO:$ ::= W:{{p}}⟦{{q}}\nO:
-^W:(?<p>[^\n]*)\)(?<q>[^\n]*)\nO:$ ::= W:{{p}}⟧{{q}}\nO:
+# Canonical evaluator state.
+^(?<input>[^!WBO\n][^\n]*|W[^:\n][^\n]*|B[^:\n][^\n]*|O[^:\n][^\n]*)$ ::= W:{{input}}\nB:\nO:
 
-# Scalar literals. The numeric grammar intentionally matches the shared builtin grammar.
-^W:(?<n><|NUM|>)\nO:$ ::= W:N:{{n}};\nO:
-^W:(?<p>[^\n]*(?:⟦| ))(?<n><|NUM|>)(?<q>(?: |⟧)[^\n]*)\nO:$ ::= W:{{p}}N:{{n}};{{q}}\nO:
-^W:true\nO:$ ::= W:B:1;\nO:
-^W:false\nO:$ ::= W:B:0;\nO:
-^W:nil\nO:$ ::= W:Z;\nO:
-^W:(?<p>[^\n]*(?:⟦| ))true(?<q>(?: |⟧)[^\n]*)\nO:$ ::= W:{{p}}B:1;{{q}}\nO:
-^W:(?<p>[^\n]*(?:⟦| ))false(?<q>(?: |⟧)[^\n]*)\nO:$ ::= W:{{p}}B:0;{{q}}\nO:
-^W:(?<p>[^\n]*(?:⟦| ))nil(?<q>(?: |⟧)[^\n]*)\nO:$ ::= W:{{p}}Z;{{q}}\nO:
+# ---------------------------------------------------------------------------
+# Literals and variable lookup. These rules rewrite tokens in place without
+# changing parentheses into a second delimiter language.
+# ---------------------------------------------------------------------------
+# Early lazy conditionals keep untaken branches inert.
+^W:(?<pre>[^@\n]*)\(if true (?<then><|VAL|>|<|FORM1|>) (?<else><|VAL|>|<|FORM1|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}{{then}}{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^@\n]*)\(if false (?<then><|VAL|>|<|FORM1|>) (?<else><|VAL|>|<|FORM1|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}{{else}}{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^@\n]*)\(if nil (?<then><|VAL|>|<|FORM1|>) (?<else><|VAL|>|<|FORM1|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}{{else}}{{post}}\nB:{{env}}\nO:
 
-# Conditional branch selection fires as soon as the condition and branch boundaries are known.
-# This prevents unchosen branch expressions from being evaluated.
-^W:(?<p>[^\n]*)⟦if B:1; (?<then><|BRANCH|>) <|BRANCH|>⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}{{then}}{{q}}\nO:
-^W:(?<p>[^\n]*)⟦if B:0; <|BRANCH|> (?<else><|BRANCH|>)⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}{{else}}{{q}}\nO:
-^W:(?<p>[^\n]*)⟦if Z; <|BRANCH|> (?<else><|BRANCH|>)⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}{{else}}{{q}}\nO:
+# While with a variable-vs-value scalar condition. The original condition text is
+# preserved in the marker so each iteration re-checks the current environment.
+^W:(?<pre>[^@\n)]*)\(while \((?<op>=|<=|<|>=|>) (?<name><|NAME|>) (?<rhs>N:[^;]+;|B:[01];|Z;)\) (?<body>\([^()]*(?:\([^()]*\)[^()]*)*\)(?: \([^()]*(?:\([^()]*\)[^()]*)*\))*)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*=[^\n]*)\nO:$ ::= W:@WH~{{pre}}~~{{post}}~~{{op}}~~{{name}}~~{{rhs}}~~{{body}}~~{{env}}~\nB:{{env}}\nO:
+^W:@WH~(?<pre>[^~]*)~~(?<post>[^~]*)~~(?<op>[^~]+)~~(?<name><|NAME|>)~~(?<rhs>[^~]+)~~(?<body>[^~]+)~~(?<candidate><|NAME|>)=(?<value>[^,]+),(?<rest>.*)~\nB:(?<env>[^\n]*)\nO:$ ::= W:@WHR~{{pre}}~~{{post}}~~{{op}}~~{{name}}~~{{rhs}}~~{{body}}~~{{candidate}}~~{{value}}~~{{rest}}~~@EQ[{{name}}|{{candidate}}]~\nB:{{env}}\nO:
+^W:@WHR~(?<pre>[^~]*)~~(?<post>[^~]*)~~(?<op>[^~]+)~~(?<name><|NAME|>)~~(?<rhs>[^~]+)~~(?<body>[^~]+)~~(?<candidate><|NAME|>)~~(?<value>[^~]+)~~(?<rest>[^~]*)~~0~\nB:(?<env>[^\n]*)\nO:$ ::= W:@WH~{{pre}}~~{{post}}~~{{op}}~~{{name}}~~{{rhs}}~~{{body}}~~{{rest}}~\nB:{{env}}\nO:
+^W:@WHR~(?<pre>[^~]*)~~(?<post>[^~]*)~~=~~(?<name><|NAME|>)~~N:(?<rhs>[^;]+);~~(?<body>[^~]+)~~(?<candidate><|NAME|>)~~N:(?<lhs>[^;]+);~~(?<rest>[^~]*)~~1~\nB:(?<env>[^\n]*)\nO:$ ::= W:@WHB~{{pre}}~~{{post}}~~=~~{{name}}~~N:{{rhs}};~~{{body}}~~@NUMEQ[{{lhs}}|{{rhs}}]~\nB:{{env}}\nO:
+^W:@WHR~(?<pre>[^~]*)~~(?<post>[^~]*)~~<~~(?<name><|NAME|>)~~N:(?<rhs>[^;]+);~~(?<body>[^~]+)~~(?<candidate><|NAME|>)~~N:(?<lhs>[^;]+);~~(?<rest>[^~]*)~~1~\nB:(?<env>[^\n]*)\nO:$ ::= W:@WHB~{{pre}}~~{{post}}~~<~~{{name}}~~N:{{rhs}};~~{{body}}~~@LT[{{lhs}}|{{rhs}}]~\nB:{{env}}\nO:
+^W:@WHR~(?<pre>[^~]*)~~(?<post>[^~]*)~~<=~~(?<name><|NAME|>)~~N:(?<rhs>[^;]+);~~(?<body>[^~]+)~~(?<candidate><|NAME|>)~~N:(?<lhs>[^;]+);~~(?<rest>[^~]*)~~1~\nB:(?<env>[^\n]*)\nO:$ ::= W:@WHB~{{pre}}~~{{post}}~~<=~~{{name}}~~N:{{rhs}};~~{{body}}~~@LE[{{lhs}}|{{rhs}}]~\nB:{{env}}\nO:
+^W:@WHR~(?<pre>[^~]*)~~(?<post>[^~]*)~~>~~(?<name><|NAME|>)~~N:(?<rhs>[^;]+);~~(?<body>[^~]+)~~(?<candidate><|NAME|>)~~N:(?<lhs>[^;]+);~~(?<rest>[^~]*)~~1~\nB:(?<env>[^\n]*)\nO:$ ::= W:@WHB~{{pre}}~~{{post}}~~>~~{{name}}~~N:{{rhs}};~~{{body}}~~@GT[{{lhs}}|{{rhs}}]~\nB:{{env}}\nO:
+^W:@WHR~(?<pre>[^~]*)~~(?<post>[^~]*)~~>=~~(?<name><|NAME|>)~~N:(?<rhs>[^;]+);~~(?<body>[^~]+)~~(?<candidate><|NAME|>)~~N:(?<lhs>[^;]+);~~(?<rest>[^~]*)~~1~\nB:(?<env>[^\n]*)\nO:$ ::= W:@WHB~{{pre}}~~{{post}}~~>=~~{{name}}~~N:{{rhs}};~~{{body}}~~@GE[{{lhs}}|{{rhs}}]~\nB:{{env}}\nO:
+^W:@WHB~(?<pre>[^~]*)~~(?<post>[^~]*)~~(?<op>[^~]+)~~(?<name><|NAME|>)~~(?<rhs>[^~]+)~~(?<body>[^~]+)~~1~\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}(begin {{body}} @LOOP~{{op}}~{{name}}~{{rhs}}~{{body}}~){{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(begin @LOOP~(?<op>[^~]+)~(?<name><|NAME|>)~(?<rhs>[^~]+)~(?<body>[^~]+)~\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}(while ({{op}} {{name}} {{rhs}}) {{body}}){{post}}\nB:{{env}}\nO:
+^W:@WHB~(?<pre>[^~]*)~~(?<post>[^~]*)~~(?<op>[^~]+)~~(?<name><|NAME|>)~~(?<rhs>[^~]+)~~(?<body>[^~]+)~~0~\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}Z;{{post}}\nB:{{env}}\nO:
+^W:@WH~[^~]*~~[^~]*~~[^~]+~~<|NAME|>~~[^~]+~~[^~]+~~~\nB:[^\n]*\nO:$ ::= !P!EXIT2
 
-# Arithmetic over two ready numeric values.
-^W:(?<p>[^\n]*)⟦\+ N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}N:@ADD[{{a}}|{{b}}]@;{{q}}\nO:
-^W:(?<p>[^\n]*)⟦\- N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}N:@SUB[{{a}}|{{b}}]@;{{q}}\nO:
-^W:(?<p>[^\n]*)⟦\* N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}N:@MUL[{{a}}|{{b}}]@;{{q}}\nO:
-^W:(?<p>[^\n]*)⟦/ N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}N:@DIV[{{a}}|{{b}}]@;{{q}}\nO:
+^W:(?<n><|NUM|>)\nB:(?<env>[^\n]*)\nO:$ ::= W:N:{{n}};\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*(?:\(| ))(?<n><|NUM|>)(?<post>(?: |\))[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}N:{{n}};{{post}}\nB:{{env}}\nO:
+^W:true\nB:(?<env>[^\n]*)\nO:$ ::= W:B:1;\nB:{{env}}\nO:
+^W:false\nB:(?<env>[^\n]*)\nO:$ ::= W:B:0;\nB:{{env}}\nO:
+^W:nil\nB:(?<env>[^\n]*)\nO:$ ::= W:Z;\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*(?:\(| ))true(?<post>(?: |\))[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:1;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*(?:\(| ))false(?<post>(?: |\))[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:0;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*(?:\(| ))nil(?<post>(?: |\))[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}Z;{{post}}\nB:{{env}}\nO:
+
+# ---------------------------------------------------------------------------
+# Functions are captured before their bodies are reduced. Body support is
+# intentionally one form/value in this child; later cards can grow it.
+# ---------------------------------------------------------------------------
+^W:(?<pre>[^\n]*)\(fn \((?<arg><|NAME|>)\) (?<body><|FORM1|>|<|VAL|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}F[{{arg}}|{{body}}]{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^@\n]*)\(defn (?<name><|NAME|>) \((?<arg><|NAME|>)\) (?<body>\(begin .+\))\)(?<post> \([^()]*\)\))\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}Z;{{post}}\nB:{{name}}=F[{{arg}}|{{body}}],{{env}}\nO:
+^W:(?<pre>[^\n]*)\(defn (?<name><|NAME|>) \((?<arg><|NAME|>)\) (?<body><|FORM1|>|<|VAL|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}Z;{{post}}\nB:{{name}}=F[{{arg}}|{{body}}],{{env}}\nO:
+^W:(?<pre>[^\n]*)\(F\[(?<arg><|NAME|>)\|(?<body>[^\]]+)\] (?<value><|VAL|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}{{body}}{{post}}\nB:{{arg}}={{value}},{{env}}\nO:
+
+# Early sequence discard keeps lazy forms from evaluating bodies before their
+# special-form rule sees the enclosing begin.
+^W:(?<pre>[^\n]*)\(begin (?<value><|VAL|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}{{value}}{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(begin <|VAL|> (?<rest>.+)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}(begin {{rest}}){{post}}\nB:{{env}}\nO:
+
+# ---------------------------------------------------------------------------
+# Definitions and assignment.
+# ---------------------------------------------------------------------------
+^W:(?<pre>[^@\n)]*)\(def (?<name><|NAME|>) (?<value><|VAL|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}Z;{{post}}\nB:{{name}}={{value}},{{env}}\nO:
+^W:(?<pre>[^@\n)]*)\(set (?<name><|NAME|>) (?<value><|VAL|>)\)(?<post>[^\n]*)\nB:(?<env>[^\n]*=[^\n]*)\nO:$ ::= W:@SET pre={{pre}} post={{post}} name={{name}} value={{value}} done= rest={{env}}\nB:{{env}}\nO:
+^W:@SET pre=(?<pre>.*?) post=(?<post>.*?) name=(?<name><|NAME|>) value=(?<value><|VAL|>) done=(?<done>.*?) rest=(?<candidate><|NAME|>)=(?<old>[^,]+),(?<rest>.*)\nB:(?<env>[^\n]*)\nO:$ ::= W:@SETR pre={{pre}} post={{post}} name={{name}} value={{value}} done={{done}} candidate={{candidate}} old={{old}} rest={{rest}} eq=@EQ[{{name}}|{{candidate}}]\nB:{{env}}\nO:
+^W:@SETR pre=(?<pre>.*?) post=(?<post>.*?) name=(?<name><|NAME|>) value=(?<value><|VAL|>) done=(?<done>.*?) candidate=(?<candidate><|NAME|>) old=(?<old>[^ ]+) rest=(?<rest>.*?) eq=1\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}{{value}}{{post}}\nB:{{done}}{{candidate}}={{value}},{{rest}}\nO:
+^W:@SETR pre=(?<pre>.*?) post=(?<post>.*?) name=(?<name><|NAME|>) value=(?<value><|VAL|>) done=(?<done>.*?) candidate=(?<candidate><|NAME|>) old=(?<old>[^ ]+) rest=(?<rest>.*?) eq=0\nB:(?<env>[^\n]*)\nO:$ ::= W:@SET pre={{pre}} post={{post}} name={{name}} value={{value}} done={{done}}{{candidate}}={{old}}, rest={{rest}}\nB:{{env}}\nO:
+^W:@SET [^\n]* rest=\nB:[^\n]*\nO:$ ::= !P!EXIT2
+
+# ---------------------------------------------------------------------------
+# Strict ready-argument scalar operations.
+# ---------------------------------------------------------------------------
+^W:(?<pre>[^\n]*)\(\+ N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}N:@ADD[{{a}}|{{bnum}}]@;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(- N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}N:@SUB[{{a}}|{{bnum}}]@;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(\* N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}N:@MUL[{{a}}|{{bnum}}]@;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(/ N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}N:@DIV[{{a}}|{{bnum}}]@;{{post}}\nB:{{env}}\nO:
 @ADD\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! add a b
 @SUB\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! sub a b
 @MUL\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! mul a b
 @DIV\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! div a b
 
-# Numeric comparisons. Boolean comparisons are deliberately narrower and explicit.
-^W:(?<p>[^\n]*)⟦= N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}@BOOL[@NUMEQ[{{a}}|{{b}}]@]{{q}}\nO:
-^W:(?<p>[^\n]*)⟦< N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}@BOOL[@LT[{{a}}|{{b}}]@]{{q}}\nO:
-^W:(?<p>[^\n]*)⟦<= N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}@BOOL[@LE[{{a}}|{{b}}]@]{{q}}\nO:
-^W:(?<p>[^\n]*)⟦> N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}@BOOL[@GT[{{a}}|{{b}}]@]{{q}}\nO:
-^W:(?<p>[^\n]*)⟦>= N:(?<a>[^;]+); N:(?<b>[^;]+);⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}@BOOL[@GE[{{a}}|{{b}}]@]{{q}}\nO:
-@NUMEQ\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! numeq a b
-@LT\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! lt a b
-@LE\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! le a b
-@GT\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! gt a b
-@GE\[(?<a><|NUM|>)\|(?<b><|NUM|>)\]@ ::! ge a b
-^W:(?<p>[^\n]*)@BOOL\[1\](?<q>[^\n]*)\nO:$ ::= W:{{p}}B:1;{{q}}\nO:
-^W:(?<p>[^\n]*)@BOOL\[0\](?<q>[^\n]*)\nO:$ ::= W:{{p}}B:0;{{q}}\nO:
+^W:(?<pre>[^\n]*)\(= N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}@BOOL[@NUMEQ[{{a}}|{{bnum}}]]{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(< N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}@BOOL[@LT[{{a}}|{{bnum}}]]{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(<= N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}@BOOL[@LE[{{a}}|{{bnum}}]]{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(> N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}@BOOL[@GT[{{a}}|{{bnum}}]]{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(>= N:(?<a>[^;]+); N:(?<bnum>[^;]+);\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}@BOOL[@GE[{{a}}|{{bnum}}]]{{post}}\nB:{{env}}\nO:
+@NUMEQ\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! numeq a b
+@LT\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! lt a b
+@LE\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! le a b
+@GT\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! gt a b
+@GE\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! ge a b
+^W:(?<pre>[^\n]*)@BOOL\[1\](?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:1;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)@BOOL\[0\](?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:0;{{post}}\nB:{{env}}\nO:
+@EQ\[(?<a>[^|\]]+)\|(?<b>[^\]]+)\] ::! eq a b
 
-# Equality for booleans and nil.
-^W:(?<p>[^\n]*)⟦= B:1; B:1;⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}B:1;{{q}}\nO:
-^W:(?<p>[^\n]*)⟦= B:0; B:0;⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}B:1;{{q}}\nO:
-^W:(?<p>[^\n]*)⟦= B:[01]; B:[01];⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}B:0;{{q}}\nO:
-^W:(?<p>[^\n]*)⟦= Z; Z;⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}B:1;{{q}}\nO:
+# Boolean/nil equality.
+^W:(?<pre>[^\n]*)\(= B:1; B:1;\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:1;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(= B:0; B:0;\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:1;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(= B:[01]; B:[01];\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:0;{{post}}\nB:{{env}}\nO:
+^W:(?<pre>[^\n]*)\(= Z; Z;\)(?<post>[^\n]*)\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}B:1;{{post}}\nB:{{env}}\nO:
 
-# Control forms.
-^W:(?<p>[^\n]*)⟦begin (?<v><|VAL|>)⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}{{v}}{{q}}\nO:
-^W:(?<p>[^\n]*)⟦begin <|VAL|> (?<rest><|VAL|>(?: <|VAL|>)*)⟧(?<q>[^\n]*)\nO:$ ::= W:{{p}}⟦begin {{rest}}⟧{{q}}\nO:
+# Variable/function lookup. Keep this after every special form so special-form names
+# are never interpreted as variables. Operator-local lookup prevents later begin
+# expressions from being evaluated before the current expression is complete.
+^W:(?<pre>[^@\n)]*\((?:\+|-|\*|/|=|<|<=|>|>=) )(?<name><|NAME|>)(?<post> <|VAL|>\)[^\n]*)\nB:(?<env>[^\n]*=[^\n]*)\nO:$ ::= W:@LOOK#{{pre}}##{{post}}##{{name}}##{{env}}#\nB:{{env}}\nO:
+^W:(?<pre>[^@\n)]*\((?:\+|-|\*|/|=|<|<=|>|>=) <|VAL|> )(?<name><|NAME|>)(?<post>\)[^\n]*)\nB:(?<env>[^\n]*=[^\n]*)\nO:$ ::= W:@LOOK#{{pre}}##{{post}}##{{name}}##{{env}}#\nB:{{env}}\nO:
+^W:(?<pre>[^@\n)]*(?:\(| ))(?<name><|NAME|>)(?<post>(?: |\))[^\n]*)\nB:(?<env>[^\n]*=[^\n]*)\nO:$ ::= W:@LOOK#{{pre}}##{{post}}##{{name}}##{{env}}#\nB:{{env}}\nO:
+^W:@LOOK#(?<pre>[^#]*)##(?<post>[^#]*)##(?<name><|NAME|>)##(?<candidate><|NAME|>)=(?<value>[^,]+),(?<rest>.*)#\nB:(?<env>[^\n]*)\nO:$ ::= W:@LOOKR#{{pre}}##{{post}}##{{name}}##{{candidate}}##{{value}}##{{rest}}##@EQ[{{name}}|{{candidate}}]#\nB:{{env}}\nO:
+^W:@LOOKR#(?<pre>[^#]*)##(?<post>[^#]*)##(?<name><|NAME|>)##(?<candidate><|NAME|>)##(?<value>[^#]+)##(?<rest>[^#]*)##1#\nB:(?<env>[^\n]*)\nO:$ ::= W:{{pre}}{{value}}{{post}}\nB:{{env}}\nO:
+^W:@LOOKR#(?<pre>[^#]*)##(?<post>[^#]*)##(?<name><|NAME|>)##(?<candidate><|NAME|>)##(?<value>[^#]+)##(?<rest>[^#]*)##0#\nB:(?<env>[^\n]*)\nO:$ ::= W:@LOOK#{{pre}}##{{post}}##{{name}}##{{rest}}#\nB:{{env}}\nO:
+^W:@LOOK#[^#]*##[^#]*##<|NAME|>###\nB:[^\n]*\nO:$ ::= !P!EXIT2
 
 # Output boundary.
-^W:N:(?<n>[^;]+);\nO:$ ::= W:\nO:{{n}}
-^W:B:1;\nO:$ ::= W:\nO:true
-^W:B:0;\nO:$ ::= W:\nO:false
-^W:Z;\nO:$ ::= W:\nO:nil
+^W:N:(?<n>[^;]+);\nB:[^\n]*\nO:$ ::= W:\nO:{{n}}
+^W:B:1;\nB:[^\n]*\nO:$ ::= W:\nO:true
+^W:B:0;\nB:[^\n]*\nO:$ ::= W:\nO:false
+^W:Z;\nB:[^\n]*\nO:$ ::= W:\nO:nil
 ^W:\nO:(?<out>[^\n]*)$ ::> stdout {{out}}\n
-
-# Fail-loud parser/runtime exits.
-^W:[^\n]+\nO:$ ::= !P!EXIT2
+# Fail loud.
+^W:[^\n]+\nB:[^\n]*\nO:$ ::= !P!EXIT2
 ^!PC! ::> stderr parse error: curly-brace syntax is not supported\n
 ^!P! ::> stderr parse error: unsupported or malformed Lisp input\n
-^EXIT2$ ::- 2
-
 ::=
-(+ 1 2)
