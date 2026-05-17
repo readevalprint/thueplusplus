@@ -22,8 +22,6 @@ RULE_OPERATORS = ("::-", "::<", "::>", "::!", "::=")
 class RuleSource:
     rule_id: str
     text: str
-    ignored: bool
-    ignore_reason: str = ""
 
 
 def find_rule_operator(line: str, operator: str) -> int:
@@ -85,7 +83,6 @@ def enumerate_rules(program: Path, seen: set[Path] | None = None) -> list[RuleSo
         raise RuntimeError(f"cyclic include detected: {program}")
     seen.add(program)
     rules: list[RuleSource] = []
-    pending_ignore: tuple[int, str] | None = None
     for line_number, raw_line in enumerate(program.read_text(encoding="utf-8").splitlines(), 1):
         stripped = raw_line.strip()
         if stripped.startswith("@include "):
@@ -95,28 +92,12 @@ def enumerate_rules(program: Path, seen: set[Path] | None = None) -> list[RuleSo
             rules.extend(enumerate_rules(program.parent / include_path, seen))
             continue
         if stripped.startswith("# coverage: ignore"):
-            reason = stripped.removeprefix("# coverage: ignore").strip()
-            if not reason:
-                raise RuntimeError(f"{rel(program)}:{line_number}: coverage ignore must include a reason")
-            if pending_ignore is not None:
-                prev_line, _ = pending_ignore
-                raise RuntimeError(f"{rel(program)}:{prev_line}: coverage ignore did not apply to a rule")
-            pending_ignore = (line_number, reason)
-            continue
+            raise RuntimeError(f"{rel(program)}:{line_number}: coverage ignore comments are unsupported; add fixtures or delete the rule")
         if not stripped or stripped.startswith("#"):
             continue
         if is_rule(raw_line):
-            ignored = pending_ignore is not None
-            reason = pending_ignore[1] if pending_ignore is not None else ""
-            pending_ignore = None
-            rules.append(RuleSource(f"{rel(program)}:{line_number}", raw_line.strip(), ignored, reason))
+            rules.append(RuleSource(f"{rel(program)}:{line_number}", raw_line.strip()))
             continue
-        if pending_ignore is not None:
-            ignore_line, _ = pending_ignore
-            raise RuntimeError(f"{rel(program)}:{ignore_line}: coverage ignore before non-rule line {line_number}")
-    if pending_ignore is not None:
-        ignore_line, _ = pending_ignore
-        raise RuntimeError(f"{rel(program)}:{ignore_line}: coverage ignore reached end of file without a rule")
     return rules
 
 
@@ -166,12 +147,10 @@ def check(program: Path, configs: list[Path]) -> int:
         for rule_id in unknown[:50]:
             print(f"  {rule_id}", file=sys.stderr)
         return 1
-    coverable = [rule for rule in rules if not rule.ignored]
-    uncovered = [rule for rule in coverable if counts[rule.rule_id] == 0]
+    uncovered = [rule for rule in rules if counts[rule.rule_id] == 0]
     print(rel(program))
     print(f"  rules:      {len(rules)}")
-    print(f"  covered:    {sum(1 for rule in coverable if counts[rule.rule_id] > 0)}")
-    print(f"  ignored:    {sum(1 for rule in rules if rule.ignored)}")
+    print(f"  covered:    {sum(1 for rule in rules if counts[rule.rule_id] > 0)}")
     print(f"  uncovered:  {len(uncovered)}")
     if uncovered:
         print("\nuncovered:")

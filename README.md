@@ -110,20 +110,13 @@ examples/lisp/lisp.tpp:97	1
 examples/lisp/lisp.tpp:156	1
 ```
 
-Rules are counted only after a rule successfully applies. Failed probes, failed builtins, missing resources, and failed writes do not count. The shared checker merges counts across TOML cases and fails on any non-ignored rule with zero coverage:
+Rules are counted only after a rule successfully applies. Failed probes, failed builtins, missing resources, and failed writes do not count. The shared checker merges counts across TOML cases and fails on any rule with zero coverage:
 
 ```bash
 uv run python tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml
 ```
 
-Source-local ignores are allowed for the next rule only and must include a reason:
-
-```tpp
-# coverage: ignore defensive guard for corrupt internal marker
-^@BAD_INTERNAL_STATE@ ::= runtime-error
-```
-
-The Lisp example is wired into this contract; every surviving Lisp rule is either covered by shared fixtures or has a source-local coverage ignore explaining why it remains.
+Coverage ignores are intentionally unsupported. Every surviving Lisp rule must be covered by shared fixtures; otherwise add a fixture or delete the rule.
 
 ## Python features
 

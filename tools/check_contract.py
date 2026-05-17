@@ -268,7 +268,7 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     text = read(path)
     failures: list[Failure] = []
     if "coverage: ignore" in text:
-        failures.append(Failure(path, "Lisp source must not contain coverage: ignore comments without explicit approval"))
+        failures.append(Failure(path, "coverage ignore comments are unsupported; add fixtures or delete the rule"))
     makefile = read(root / "Makefile")
     if "tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml" not in makefile:
         failures.append(Failure(root / "Makefile", "make test must include Lisp rule coverage gate"))
