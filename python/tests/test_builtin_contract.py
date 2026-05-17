@@ -2,14 +2,10 @@
 
 import ast
 import re
+import tomllib
 import unittest
 from pathlib import Path
 from typing import Any, cast
-
-try:
-    import tomllib  # type: ignore[import-not-found]
-except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 compatibility
-    import tomli as tomllib  # type: ignore[import-not-found]
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
