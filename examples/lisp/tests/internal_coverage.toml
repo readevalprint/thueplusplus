@@ -97,7 +97,7 @@ stdout = "[lambda x]\n"
 
 [[case]]
 name = "raw nested let under continuation fails loud after rewrite"
-input = "W:@LET{let {[y <N>2</N>]} $y}@\nE:@RET@\nF:\nB:\nS:\nO:"
+input = "W:@LET⟦let ⟦[y <N>2</N>]⟧ $y⟧@\nE:@RET@\nF:\nB:\nS:\nO:"
 
 [case.expect]
 exit_code = 2
@@ -106,7 +106,7 @@ stderr = "parse error: unsupported or malformed Lisp input\n"
 
 [[case]]
 name = "raw multi-parameter fallback fails loud after rewrite"
-input = "W:{<L><P>a b c d e f</P><BODY>$f</BODY></L> <N>1</N> <N>2</N> <N>3</N> <N>4</N> <N>5</N> <N>6</N>}\nF:\nB:\nS:\nO:"
+input = "W:⟦<L><P>a b c d e f</P><BODY>$f</BODY></L> <N>1</N> <N>2</N> <N>3</N> <N>4</N> <N>5</N> <N>6</N>⟧\nF:\nB:\nS:\nO:"
 
 [case.expect]
 exit_code = 2

@@ -1,4 +1,4 @@
-# Lisp with XML internal representation
+# Lisp with explicit internal representation
 # Nested operations evaluate inside-out automatically
 #
 # Usage: ./python/thuepp.py examples/lisp/lisp.tpp
@@ -75,8 +75,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # parse errors; only braces between quotes are treated as string data.
 ^(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\{(?<q>[^"]*"[^\n]*)$ ::= {{p}}§LB§{{q}}
 ^(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\}(?<q>[^"]*"[^\n]*)$ ::= {{p}}§RB§{{q}}
-# User-facing curly-brace syntax is a hard parse error. Curly braces are only
-# an internal representation after parenthesized input has been accepted.
+# User-facing curly-brace syntax is a hard parse error. Internal evaluator
+# grouping uses explicit ⟦...⟧ envelopes after parenthesized input is accepted.
 ^(?<bad>[^!WE\n][^\n]*[{}][^\n]*|W[^:\n][^\n]*[{}][^\n]*|E[^X\n][^\n]*[{}][^\n]*|EX[^I\n][^\n]*[{}][^\n]*|EXI[^T\n][^\n]*[{}][^\n]*)$ ::= !PC!EXIT2
 
 ^(?<i>[^!WE\n][^\n]*|W[^:\n][^\n]*|E|E[^X\n][^\n]*|EX|EX[^I\n][^\n]*|EXI|EXI[^T\n][^\n]*)$ ::= W:{{i}}\nF:\nB:\nS:\nO:
@@ -86,17 +86,17 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\((?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}§LP§{{q}}\n{{r}}
 ^W:(?<p>(?:[^"\n]*"[^"]*")*[^"\n]*"[^"]*)\)(?<q>[^"]*"[^\n]*)\n<|R|> ::= W:{{p}}§RP§{{q}}\n{{r}}
 
-# Normalize user-facing parentheses to the existing internal brace form.
-# This keeps the evaluator rules stable while examples use Lisp-style parentheses.
-^W:(?<p>[^\n]*)\((?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{{q}}\n{{r}}
-^W:(?<p>[^\n]*)\)(?<q>[^\n]*)\n<|R|> ::= W:{{p}}}{{q}}\n{{r}}
+# Normalize user-facing parentheses to the explicit internal envelope form.
+# This keeps the evaluator rules independent from deprecated curly syntax.
+^W:(?<p>[^\n]*)\((?<q>[^\n]*)\n<|R|> ::= W:{{p}}⟦{{q}}\n{{r}}
+^W:(?<p>[^\n]*)\)(?<q>[^\n]*)\n<|R|> ::= W:{{p}}⟧{{q}}\n{{r}}
 
 # ============================================================
 # PARSE: Convert literals to XML types (run everywhere)
 # ============================================================
 # Quote: (quote expr) -> @Qexpr@ (prevent evaluation)
 # Quote is captured before literal parsing/evaluation so visible data identity is preserved.
-^W:(?<p>[^\n]*)\{quote (?<e>.*)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Q{{e}}@{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦quote (?<e>.*)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Q{{e}}@{{q}}\n{{r}}
 ^W:(?<v>@Q[^\n]+@)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 ^W:(?<v>@Q[^\n]+@)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 
@@ -105,17 +105,17 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # Numbers: integers, decimals with required fractional digits, or fractions.
 # Keep this grammar aligned with builtin numeric grammar; trailing-dot decimals such as 5. are unsupported.
-^W:(?<p>[^\n]*[{\[ ])(?<n>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))(?<q>[ }<\]][^\n]*)\n<|R|> ::= W:{{p}}<N>{{n}}</N>{{q}}\n{{r}}
+^W:(?<p>[^\n]*[⟦\[ ])(?<n>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))(?<q>[ ⟧<\]][^\n]*)\n<|R|> ::= W:{{p}}<N>{{n}}</N>{{q}}\n{{r}}
 
 # Booleans: true/false -> <T/> / <F/>
 ^W:true\n<|R|> ::= W:<T/>\n{{r}}
 ^W:false\n<|R|> ::= W:<F/>\n{{r}}
-^W:(?<p>[^\n]*[{ ])true(?<q>[ }\]][^\n]*)\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
-^W:(?<p>[^\n]*[{ ])false(?<q>[ }\]][^\n]*)\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
+^W:(?<p>[^\n]*[⟦ ])true(?<q>[ ⟧\]][^\n]*)\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
+^W:(?<p>[^\n]*[⟦ ])false(?<q>[ ⟧\]][^\n]*)\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
 # Nil: nil -> <X/>
 ^W:nil\n<|R|> ::= W:<X/>\n{{r}}
-^W:(?<p>[^\n]*[{ ])nil(?<q>[ }][^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
+^W:(?<p>[^\n]*[⟦ ])nil(?<q>[ ⟧][^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # Symbols: 'name -> <Y>name</Y> (quoted identifier)
 ^W:(?<p>[^\n]*)'(?<s>[a-zA-Z_][a-zA-Z0-9_-]*)(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<Y>{{s}}</Y>{{q}}\n{{r}}
@@ -135,18 +135,18 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # Vectors: #[a b c] -> <V>a b c</V> (indexed array)
 # Use #[...] syntax to avoid conflict with let bindings [name val]
-^W:(?<p>[^\n]*)#\[(?<items>[^\[\]]*)\](?<q>[^\n]*)\n<|R|> ::= W:{{p}}{vec {{items}}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)#\[(?<items>[^\[\]]*)\](?<q>[^\n]*)\n<|R|> ::= W:{{p}}⟦vec {{items}}⟧{{q}}\n{{r}}
 # (vec items...) with all values -> <V>values</V>
-^W:(?<p>[^\n]*)\{vec (?<items><[^{}]+>(\s+<[^{}]+>)*)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<V>{{items}}</V>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦vec (?<items><[^⟦⟧]+>(\s+<[^⟦⟧]+>)*)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<V>{{items}}</V>{{q}}\n{{r}}
 # Empty vector
-^W:(?<p>[^\n]*)\{vec \}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<V/>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦vec ⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<V/>{{q}}\n{{r}}
 
 # HashMap: (hash :k1 v1 :k2 v2 ...) -> <H>k1 v1 k2 v2 ...</H>
 # Keys must be keywords, values can be any XML
 # (hash key val key val...) with all values ready -> <H>...</H>
-^W:<|P|>\{hash (?<pairs>(<K>[^<]+</K> <[A-Z](?:/>|>[^<]*</[A-Z]>)\s*)+)\}<|Q|>\n<|R|> ::= W:{{p}}<H>{{pairs}}</H>{{q}}\n{{r}}
+^W:<|P|>⟦hash (?<pairs>(<K>[^<]+</K> <[A-Z](?:/>|>[^<]*</[A-Z]>)\s*)+)⟧<|Q|>\n<|R|> ::= W:{{p}}<H>{{pairs}}</H>{{q}}\n{{r}}
 # Empty hash
-^W:<|P|>\{hash\}<|Q|>\n<|R|> ::= W:{{p}}<H/>{{q}}\n{{r}}
+^W:<|P|>⟦hash⟧<|Q|>\n<|R|> ::= W:{{p}}<H/>{{q}}\n{{r}}
 
 # ============================================================
 # EVAL: Operations with ready arguments (all args are XML)
@@ -160,11 +160,11 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:\nS:\nO:.*@EQ«[^\n]*$ ::= !P!EXIT2
 ^W:\nS:\nO:.*@B:[^\n]*$ ::= !P!EXIT2
 
-# Arithmetic: {op <N>a</N> <N>b</N>} -> compute with pure builtins.
-^W:<|P|>\{\+ <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}<N>@ADD[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
-^W:<|P|>\{\- <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}<N>@SUB[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
-^W:<|P|>\{\* <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}<N>@MUL[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
-^W:<|P|>\{/ <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}<N>@DIV[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
+# Arithmetic: ⟦op <N>a</N> <N>b</N>⟧ -> compute with pure builtins.
+^W:<|P|>⟦\+ <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}<N>@ADD[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
+^W:<|P|>⟦\- <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}<N>@SUB[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
+^W:<|P|>⟦\* <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}<N>@MUL[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
+^W:<|P|>⟦/ <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}<N>@DIV[{{a}}|{{b}}]@</N>{{q}}\n{{r}}
 @ADD\[(?<a>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\|(?<b>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\]@ ::! add a b
 @SUB\[(?<a>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\|(?<b>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\]@ ::! sub a b
 @MUL\[(?<a>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\|(?<b>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\]@ ::! mul a b
@@ -174,19 +174,19 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # CONDITIONALS
 # ============================================================
 # if: (if <T/> then else) -> then
-^W:(?<p>[^\n]*)\{if <T/> (?<then><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<else><[A-Z][^}]*(?:</[A-Z]>|/>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{then}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦if <T/> (?<then><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<else><[A-Z][^⟧]*(?:</[A-Z]>|/>))⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{then}}{{q}}\n{{r}}
 # if: (if <F/> then else) -> else
-^W:(?<p>[^\n]*)\{if <F/> (?<then><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<else><[A-Z][^}]*(?:</[A-Z]>|/>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{else}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦if <F/> (?<then><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<else><[A-Z][^⟧]*(?:</[A-Z]>|/>))⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{else}}{{q}}\n{{r}}
 
 # ============================================================
 # COMPARISONS (numbers)
 # ============================================================
 # Numeric comparisons use pure builtins and wrap 1/0 in boolean XML.
-^W:<|P|>\{eq <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@NUMEQ[{{a}}|{{b}}]@@{{q}}\n{{r}}
-^W:<|P|>\{lt <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@LT[{{a}}|{{b}}]@@{{q}}\n{{r}}
-^W:<|P|>\{gt <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@GT[{{a}}|{{b}}]@@{{q}}\n{{r}}
-^W:<|P|>\{le <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@LE[{{a}}|{{b}}]@@{{q}}\n{{r}}
-^W:<|P|>\{ge <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@GE[{{a}}|{{b}}]@@{{q}}\n{{r}}
+^W:<|P|>⟦eq <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@NUMEQ[{{a}}|{{b}}]@@{{q}}\n{{r}}
+^W:<|P|>⟦lt <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@LT[{{a}}|{{b}}]@@{{q}}\n{{r}}
+^W:<|P|>⟦gt <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@GT[{{a}}|{{b}}]@@{{q}}\n{{r}}
+^W:<|P|>⟦le <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@LE[{{a}}|{{b}}]@@{{q}}\n{{r}}
+^W:<|P|>⟦ge <N>(?<a>[^<]+)</N> <N>(?<b>[^<]+)</N>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@GE[{{a}}|{{b}}]@@{{q}}\n{{r}}
 @NUMEQ\[(?<a>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\|(?<b>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\]@ ::! numeq a b
 @LT\[(?<a>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\|(?<b>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\]@ ::! lt a b
 @GT\[(?<a>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\|(?<b>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))\]@ ::! gt a b
@@ -196,27 +196,27 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@B:0@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
 # eq for strings/symbols/keywords: exact byte equality via pure builtin.
-^W:<|P|>\{eq <S>(?<a>[^<]*)</S> <S>(?<b>[^<]*)</S>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@EQ«{{a}}»«{{b}}»@@{{q}}\n{{r}}
-^W:<|P|>\{eq <Y>(?<a>[^<]+)</Y> <Y>(?<b>[^<]+)</Y>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@EQ«{{a}}»«{{b}}»@@{{q}}\n{{r}}
-^W:<|P|>\{eq <K>(?<a>[^<]+)</K> <K>(?<b>[^<]+)</K>\}<|Q|>\n<|R|> ::= W:{{p}}@B:@EQ«{{a}}»«{{b}}»@@{{q}}\n{{r}}
+^W:<|P|>⟦eq <S>(?<a>[^<]*)</S> <S>(?<b>[^<]*)</S>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@EQ«{{a}}»«{{b}}»@@{{q}}\n{{r}}
+^W:<|P|>⟦eq <Y>(?<a>[^<]+)</Y> <Y>(?<b>[^<]+)</Y>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@EQ«{{a}}»«{{b}}»@@{{q}}\n{{r}}
+^W:<|P|>⟦eq <K>(?<a>[^<]+)</K> <K>(?<b>[^<]+)</K>⟧<|Q|>\n<|R|> ::= W:{{p}}@B:@EQ«{{a}}»«{{b}}»@@{{q}}\n{{r}}
 @EQ«(?<a>[^»]*)»«(?<b>[^»]*)»@ ::! eq a b
 # eq for nil: (eq <X/> <X/>) -> true
-^W:<|P|>\{eq <X/> <X/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
+^W:<|P|>⟦eq <X/> <X/>⟧<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 
 # ============================================================
 # BOOLEAN OPERATIONS
 # ============================================================
 # not: (not <T/>) -> <F/>, (not <F/>) -> <T/>
-^W:<|P|>\{not <T/>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
-^W:<|P|>\{not <F/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
+^W:<|P|>⟦not <T/>⟧<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
+^W:<|P|>⟦not <F/>⟧<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 
 # and: (and <T/> <T/>) -> <T/>, else <F/>
-^W:<|P|>\{and <T/> <T/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
-^W:<|P|>\{and <[TF]/> <[TF]/>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
+^W:<|P|>⟦and <T/> <T/>⟧<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
+^W:<|P|>⟦and <[TF]/> <[TF]/>⟧<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 
 # or: (or <F/> <F/>) -> <F/>, else <T/>
-^W:<|P|>\{or <F/> <F/>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
-^W:<|P|>\{or <[TF]/> <[TF]/>\}<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
+^W:<|P|>⟦or <F/> <F/>⟧<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
+^W:<|P|>⟦or <[TF]/> <[TF]/>⟧<|Q|>\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 
 # ============================================================
 # LET BINDING - (let ([x val]...) body)
@@ -234,30 +234,30 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # Enter let: push new frame marker
 # Canonical state keeps F: before B: and E: before F: when present; noncanonical line order falls through to fail-loud parsing.
-^W:(?<p>[^@\n]*?)\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}(?<q>[^}\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{bindings}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^@\n]*?)\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}(?<q>[^}\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{bindings}}}{{body}}@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{b}}\n{{r}}
+^W:(?<p>[^@\n]*?)⟦let ⟦(?<bindings>\[[^\]]+\][^⟧]*)⟧ (?<body>.+)⟧(?<q>[^⟧\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET⟦{{bindings}}⟧{{body}}@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
+^W:(?<p>[^@\n]*?)⟦let ⟦(?<bindings>\[[^\]]+\][^⟧]*)⟧ (?<body>.+)⟧(?<q>[^⟧\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET⟦{{bindings}}⟧{{body}}@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{b}}\n{{r}}
 
 # Process binding: [x val] -> add x=val to current frame
 # If value is a lambda, parse it first AND encode $ as @ in body to protect from lookup
 # (lambda (p) b) -> <L><P>p</P><BODY>b_with_$_as_@</BODY></L>
-# Lambda binding: use .+ with backtracking to find }]
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) \{lambda \{(?<lp>[^}]+)\} (?<lb>.+)\}\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}#LB«{{n}}»{{lp}}»{{lb}}»@LET{{{rest}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
+# Lambda binding: use greedy .+ so the final ⟧] closes the stored lambda value.
+^W:(?<p>[^\n]*)@LET⟦ *\[(?<n>[a-z_][a-z0-9_]*) ⟦lambda ⟦(?<lp>[^⟧]+)⟧ (?<lb>.+)⟧\](?<rest>[^⟧]*)⟧(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}#LB«{{n}}»{{lp}}»{{lb}}»@LET⟦{{rest}}⟧{{body}}@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
 # #LB processing: encode $var as #var in the lambda body, then store
 ^W:(?<pre>[^\n]*)#LB«(?<n>[^»]+)»(?<lp>[^»]+)»(?<b1>[^\n]*)\$(?<var>[a-z_][a-z0-9_]*)(?<b2>[^»]*)»(?<rest>[^\n]*)\n<|R|> ::= W:{{pre}}#LB«{{n}}»{{lp}}»{{b1}}#{{var}}{{b2}}»{{rest}}\n{{r}}
 # #LB done (no more $): store in bindings  
 ^W:(?<pre>[^\n]*)#LB«(?<n>[^»]+)»(?<lp>[^»]+)»(?<lb>[^$»]*)»@LET(?<rest>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{pre}}@LET{{rest}}\nF:{{f}}\nB:|{{n}}=<L><P>{{lp}}</P><BODY>{{lb}}</BODY></L>,{{b}}\n{{r}}
 # Regular binding (non-lambda values) - value must be XML (already evaluated)
 # Simple XML values like <N>5</N>, <S>text</S>, <T/>, <F/>, <X/>, <K>key</K>, <Y>sym</Y>
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
+^W:(?<p>[^\n]*)@LET⟦ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^⟧]*)⟧(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET⟦{{rest}}⟧{{body}}@{{q}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
+^W:(?<p>[^\n]*)@LET⟦ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><[A-Z](?:/>|>[^<]*</[A-Z]>))\](?<rest>[^⟧]*)⟧(?<body>.+?)@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET⟦{{rest}}⟧{{body}}@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
 # Cons cell values like <C>...</C> (can contain nested XML)
-^W:(?<p>[^\n]*)@LET\{ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><C>[^<]*(?:<[^/][^<]*</[^>]+>[^<]*)*</C>)\](?<rest>[^}]*)\}(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{{rest}}}{{body}}@{{q}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
+^W:(?<p>[^\n]*)@LET⟦ *\[(?<n>[a-z_][a-z0-9_]*) (?<v><C>[^<]*(?:<[^/][^<]*</[^>]+>[^<]*)*</C>)\](?<rest>[^⟧]*)⟧(?<body>.+?)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET⟦{{rest}}⟧{{body}}@{{q}}\nF:{{f}}\nB:|{{n}}={{v}},{{b}}\n{{r}}
 
-# All bindings processed (empty {}): evaluate body
-^W:(?<p>[^\n]*)@LET\{\}(?<body>.+?)@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{body}}@{{q}}\n{{r}}
+# All bindings processed (empty ⟦⟧): evaluate body
+^W:(?<p>[^\n]*)@LET⟦⟧(?<body>.+?)@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{body}}@{{q}}\n{{r}}
 # Enter a nested let inside an already-active @LET body while preserving the outer frame.
-^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{b}}\n{{r}}
+^W:(?<p>[^\n]*)@LET⟦let ⟦(?<bindings>\[[^\]]+\][^⟧]*)⟧ (?<body>.+)⟧@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET⟦{{bindings}}⟧{{body}}@@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
+^W:(?<p>[^\n]*)@LET⟦let ⟦(?<bindings>\[[^\]]+\][^⟧]*)⟧ (?<body>.+)⟧@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET⟦{{bindings}}⟧{{body}}@@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{b}}\n{{r}}
 
 # Variable lookup: $name (or protected #name in stored lambda bodies) -> scan B: frames with builtin equality.
 ^W:(?<p>[^\n$«]*)\$(?<n>[a-z_][a-z0-9_]*)(?<q>[^\n]*)\n(?<mid>(?:E:[^\n]*\n)?(?:F:[^\n]*\n)?)B:(?<b>[^\n]*=[^\n]*)\n<|R|> ::= W:@LK«{{p}}»«{{q}}»«{{n}}»«{{b}}»\n{{mid}}B:{{b}}\n{{r}}
@@ -278,17 +278,17 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@LET(?<v><L><P>[^<]+</P><BODY>.+</BODY></L>)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nF:{{f}}\nB:{{b}}\n{{r}}
 
 # ============================================================
-# LAMBDA (anonymous functions) - BRACE COUNTING APPROACH
+# LAMBDA (anonymous functions) - ENVELOPE COUNTING APPROACH
 # ============================================================
 # Lambda body should NOT be evaluated at definition time.
-# Use brace counter to find matching internal }:
-# 1. (lambda (params) body) → @L|params|0«body» (0 = brace depth)
-# 2. @L|p|N«...(... → @L|p|N+1«...(... (increment on (internal {)
-# 3. @L|p|N«...)... → @L|p|N-1«...)... (decrement on internal }) 
+# Use envelope counter to find matching internal ⟧:
+# 1. (lambda (params) body) → @L|params|0«body» (0 = envelope depth)
+# 2. @L|p|N«...(... → @L|p|N+1«...(... (increment on (internal ⟦)
+# 3. @L|p|N«...)... → @L|p|N-1«...)... (decrement on internal ⟧)
 # 4. @L|p|0«body» → <L><P>p</P><BODY>body</BODY></L> (depth 0 = done)
 
 # Start: convert (lambda (params) to marker, initial depth 0
-^W:(?<p>[^\n]*)\{lambda \{(?<params>[^}]+)\} (?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|0«{{rest}}\n{{r}}
+^W:(?<p>[^\n]*)⟦lambda ⟦(?<params>[^⟧]+)⟧ (?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|0«{{rest}}\n{{r}}
 
 # Process body character by character using markers
 # @L|params|depth«processed·unprocessed»
@@ -297,8 +297,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Start processing: add separator
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|0«(?<body>[^·»]+)\n<|R|> ::= W:{{p}}@L|{{params}}|0«·{{body}}\n{{r}}
 
-# Hit { : increment depth, move { to processed
-^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|(?<d>[0-9])«(?<done>[^·]*)·\{(?<rest>[^»]*)\n<|R|> ::= W:{{p}}@L|{{params}}|{{d}}I«{{done}}{·{{rest}}\n{{r}}
+# Hit ⟦ : increment depth, move ⟦ to processed
+^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|(?<d>[0-9])«(?<done>[^·]*)·⟦(?<rest>[^»]*)\n<|R|> ::= W:{{p}}@L|{{params}}|{{d}}I«{{done}}⟦·{{rest}}\n{{r}}
 # Increment 0->1, 1->2, etc
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|0I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|1«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|1I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|2«{{rest}}\n{{r}}
@@ -306,8 +306,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|3I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|4«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|4I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|5«{{rest}}\n{{r}}
 
-# Hit } at depth > 0: decrement depth, move } to processed
-^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|(?<d>[1-9])«(?<done>[^·]*)·\}(?<rest>[^»]*)\n<|R|> ::= W:{{p}}@L|{{params}}|{{d}}D«{{done}}}·{{rest}}\n{{r}}
+# Hit ⟧ at depth > 0: decrement depth, move ⟧ to processed
+^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|(?<d>[1-9])«(?<done>[^·]*)·⟧(?<rest>[^»]*)\n<|R|> ::= W:{{p}}@L|{{params}}|{{d}}D«{{done}}⟧·{{rest}}\n{{r}}
 # Decrement
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|1D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|0«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|2D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|1«{{rest}}\n{{r}}
@@ -315,24 +315,24 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|4D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|3«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|5D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|4«{{rest}}\n{{r}}
 
-# Move non-brace characters to processed part
-^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|(?<d>[0-9])«(?<done>[^·]*)·(?<c>[^{}])(?<rest>[^»]*)\n<|R|> ::= W:{{p}}@L|{{params}}|{{d}}«{{done}}{{c}}·{{rest}}\n{{r}}
+# Move non-envelope characters to processed part
+^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|(?<d>[0-9])«(?<done>[^·]*)·(?<c>[^⟦⟧])(?<rest>[^»]*)\n<|R|> ::= W:{{p}}@L|{{params}}|{{d}}«{{done}}{{c}}·{{rest}}\n{{r}}
 
-# Close lambda when depth is 0 and unprocessed part starts with }
-^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|0«(?<body>[^·]*)·\}(?<q>[^»]*)\n<|R|> ::= W:{{p}}<L><P>{{params}}</P><BODY>{{body}}</BODY></L>{{q}}\n{{r}}
+# Close lambda when depth is 0 and unprocessed part starts with ⟧
+^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|0«(?<body>[^·]*)·⟧(?<q>[^»]*)\n<|R|> ::= W:{{p}}<L><P>{{params}}</P><BODY>{{body}}</BODY></L>{{q}}\n{{r}}
 
 # APPLICATION: Call lambda with argument
 # Bind complete fixed-arity applications in a single let so later parameters are
 # not looked up while partially applying earlier parameters.
-^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>) (?<p3><|VAR|>) (?<p4><|VAR|>) (?<p5><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>) (?<a3><|XMLVAL|>) (?<a4><|XMLVAL|>) (?<a5><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}] [{{p2}} {{a2}}] [{{p3}} {{a3}}] [{{p4}} {{a4}}] [{{p5}} {{a5}}]} {{body}}}{{q}}\n{{r}}
-^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>) (?<p3><|VAR|>) (?<p4><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>) (?<a3><|XMLVAL|>) (?<a4><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}] [{{p2}} {{a2}}] [{{p3}} {{a3}}] [{{p4}} {{a4}}]} {{body}}}{{q}}\n{{r}}
-^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>) (?<p3><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>) (?<a3><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}] [{{p2}} {{a2}}] [{{p3}} {{a3}}]} {{body}}}{{q}}\n{{r}}
-^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}] [{{p2}} {{a2}}]} {{body}}}{{q}}\n{{r}}
+^W:<|P|>⟦<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>) (?<p3><|VAR|>) (?<p4><|VAR|>) (?<p5><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>) (?<a3><|XMLVAL|>) (?<a4><|XMLVAL|>) (?<a5><|XMLVAL|>)⟧<|Q|>\n<|R|> ::= W:{{p}}⟦let ⟦[{{p1}} {{a1}}] [{{p2}} {{a2}}] [{{p3}} {{a3}}] [{{p4}} {{a4}}] [{{p5}} {{a5}}]⟧ {{body}}⟧{{q}}\n{{r}}
+^W:<|P|>⟦<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>) (?<p3><|VAR|>) (?<p4><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>) (?<a3><|XMLVAL|>) (?<a4><|XMLVAL|>)⟧<|Q|>\n<|R|> ::= W:{{p}}⟦let ⟦[{{p1}} {{a1}}] [{{p2}} {{a2}}] [{{p3}} {{a3}}] [{{p4}} {{a4}}]⟧ {{body}}⟧{{q}}\n{{r}}
+^W:<|P|>⟦<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>) (?<p3><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>) (?<a3><|XMLVAL|>)⟧<|Q|>\n<|R|> ::= W:{{p}}⟦let ⟦[{{p1}} {{a1}}] [{{p2}} {{a2}}] [{{p3}} {{a3}}]⟧ {{body}}⟧{{q}}\n{{r}}
+^W:<|P|>⟦<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>)⟧<|Q|>\n<|R|> ::= W:{{p}}⟦let ⟦[{{p1}} {{a1}}] [{{p2}} {{a2}}]⟧ {{body}}⟧{{q}}\n{{r}}
 # Multi-param fallback: curry - bind first param, keep rest
-^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<rest>[^<]+)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<args>.+)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}]} {<L><P>{{rest}}</P><BODY>{{body}}</BODY></L> {{args}}}}{{q}}\n{{r}}
+^W:<|P|>⟦<L><P>(?<p1><|VAR|>) (?<rest>[^<]+)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<args>.+)⟧<|Q|>\n<|R|> ::= W:{{p}}⟦let ⟦[{{p1}} {{a1}}]⟧ ⟦<L><P>{{rest}}</P><BODY>{{body}}</BODY></L> {{args}}⟧⟧{{q}}\n{{r}}
 
 # Single param: evaluate body under a one-binding let frame instead of host-side substitution
-^W:(?<p>[^\n]*)\{<L><P>(?<param>[a-z_][a-z0-9_]*)</P><BODY>(?<body>.+)</BODY></L> (?<arg><[A-Z](?:/>|>[^<]*</[A-Z]>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@RET@{{q}}\nE:{let {[{{param}} {{arg}}]} {{body}}}\n{{r}}
+^W:(?<p>[^\n]*)⟦<L><P>(?<param>[a-z_][a-z0-9_]*)</P><BODY>(?<body>.+)</BODY></L> (?<arg><[A-Z](?:/>|>[^<]*</[A-Z]>))⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@RET@{{q}}\nE:⟦let ⟦[{{param}} {{arg}}]⟧ {{body}}⟧\n{{r}}
 
 # E: line processing - swap E: to W: so rules evaluate it
 ^W:(?<w>[^\n]*@RET@[^\n]*)\nE:(?<e>[^\n]+)\n<|R|> ::= W:{{e}}\nE:{{w}}\n{{r}}
@@ -348,14 +348,14 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # Values are space-separated, so [^< ]* prevents matching across values
 # (begin val) -> val (single value, done)
-^W:(?<p>[^\n]*)\{begin (?<v><[A-Z](?:/>|>[^< ]*</[A-Z]>))\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦begin (?<v><[A-Z](?:/>|>[^< ]*</[A-Z]>))⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\n{{r}}
 
 # (begin val rest...) -> (begin rest...) (drop first value, continue)
-^W:(?<p>[^\n]*)\{begin (?<v><[A-Z](?:/>|>[^< ]*</[A-Z]>)) (?<rest>.+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{begin {{rest}}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦begin (?<v><[A-Z](?:/>|>[^< ]*</[A-Z]>)) (?<rest>.+)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}⟦begin {{rest}}⟧{{q}}\n{{r}}
 
 # Handle cons cells in begin (they contain spaces internally)
-^W:(?<p>[^\n]*)\{begin (?<v><C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\n{{r}}
-^W:(?<p>[^\n]*)\{begin (?<v><C>.*?</C>) (?<rest>.+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{begin {{rest}}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦begin (?<v><C>.*</C>)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦begin (?<v><C>.*?</C>) (?<rest>.+)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}⟦begin {{rest}}⟧{{q}}\n{{r}}
 
 # ============================================================
 # LAMBDA WITH DEFAULT PARAMS
@@ -363,13 +363,13 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # (lambda ((x default)) body) -> <L><P>x=default</P><BODY>body</BODY></L>
 
 # Parsing: single param with default
-^W:<|P|>\{lambda \{\{(?<param><|VAR|>) (?<default><|XMLVAL|>)\}\} (?<body>\$<|VAR|>|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})\}<|Q|>\n<|R|> ::= W:{{p}}<L><P>{{param}}={{default}}</P><BODY>{{body}}</BODY></L>{{q}}\n{{r}}
+^W:<|P|>⟦lambda ⟦⟦(?<param><|VAR|>) (?<default><|XMLVAL|>)⟧⟧ (?<body>\$<|VAR|>|⟦(?:[^⟦⟧]|⟦(?:[^⟦⟧]|⟦[^⟦⟧]*⟧)*⟧)*⟧)⟧<|Q|>\n<|R|> ::= W:{{p}}<L><P>{{param}}={{default}}</P><BODY>{{body}}</BODY></L>{{q}}\n{{r}}
 
 # Application: no args provided, use default
-^W:<|P|>\{<L><P>(?<param><|VAR|>)=(?<default><|XMLVAL|>)</P><BODY>(?<body>.+)</BODY></L>\}<|Q|>\n<|R|> ::= W:{{p}}@RET@{{q}}\nE:{let {[{{param}} {{default}}]} {{body}}}\n{{r}}
+^W:<|P|>⟦<L><P>(?<param><|VAR|>)=(?<default><|XMLVAL|>)</P><BODY>(?<body>.+)</BODY></L>⟧<|Q|>\n<|R|> ::= W:{{p}}@RET@{{q}}\nE:⟦let ⟦[{{param}} {{default}}]⟧ {{body}}⟧\n{{r}}
 
 # Application: arg provided, override default
-^W:<|P|>\{<L><P>(?<param><|VAR|>)=<|XMLVAL|></P><BODY>(?<body>.+)</BODY></L> (?<arg><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}@RET@{{q}}\nE:{let {[{{param}} {{arg}}]} {{body}}}\n{{r}}
+^W:<|P|>⟦<L><P>(?<param><|VAR|>)=<|XMLVAL|></P><BODY>(?<body>.+)</BODY></L> (?<arg><|XMLVAL|>)⟧<|Q|>\n<|R|> ::= W:{{p}}@RET@{{q}}\nE:⟦let ⟦[{{param}} {{arg}}]⟧ {{body}}⟧\n{{r}}
 
 # ============================================================
 # LIST OPERATIONS
@@ -377,29 +377,29 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # cons: (cons <X> <Y>) -> <C><X> <Y></C>
 # Simple values: <N>, <S>, <T/>, <F/>, <X/>, <Y>, <K>, <R>, <Q>, <V>, <L>
 # Cons cells: <C>...</C> - match greedily to last </C>
-^W:(?<p>[^\n]*)\{cons (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>) (?<b><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} {{b}}</C>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦cons (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>) (?<b><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} {{b}}</C>{{q}}\n{{r}}
 
 # list: (list) -> <X/>
-^W:(?<p>[^\n]*)\{list\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦list⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 # list: (list <X>) -> <C><X> <X/></C>
-^W:(?<p>[^\n]*)\{list (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} <X/></C>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦list (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} <X/></C>{{q}}\n{{r}}
 # list: (list <X> ...) -> <C><X> (list ...)</C>
-^W:(?<p>[^\n]*)\{list (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>) (?<rest>[^}]+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} {list {{rest}}}</C>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦list (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>) (?<rest>[^⟧]+)⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} ⟦list {{rest}}⟧</C>{{q}}\n{{r}}
 
 # car: (car <C>...first... ...rest...</C>) -> first
-^W:(?<p>[^\n]*)\{car <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b>[^}]+)</C>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{a}}{{q}}\n{{r}}
-^W:(?<p>[^\n]*)\{car <X/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦car <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b>[^⟧]+)</C>⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{a}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦car <X/>⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # cdr: (cdr <C>...first... ...rest...</C>) -> rest  
-^W:(?<p>[^\n]*)\{cdr <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b><[A-Z].*(?:</[A-Z]>|/>))</C>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{b}}{{q}}\n{{r}}
-^W:(?<p>[^\n]*)\{cdr <X/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦cdr <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b><[A-Z].*(?:</[A-Z]>|/>))</C>⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{b}}{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦cdr <X/>⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # ============================================================
 # VECTOR OPERATIONS
 # ============================================================
 # vec-ref: (vec-ref <V>items</V> <N>index</N>) -> item at index
 # Uses @Vi~index~items~@ marker for iteration (~ delimiter to avoid conflict with [])
-^W:(?<p>[^\n]*)\{vec-ref <V>(?<items>.+)</V> <N>(?<idx>[0-9]+)</N>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vi~{{idx}}~{{items}}~@{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦vec-ref <V>(?<items>.+)</V> <N>(?<idx>[0-9]+)</N>⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vi~{{idx}}~{{items}}~@{{q}}\n{{r}}
 
 # @Vi~0~item rest~@ -> item (found at index 0)
 ^W:(?<p>[^\n]*)@Vi~0~(?<item><[A-Z](?:/>|>[^< ]*</[A-Z]>)) (?<rest>.+)~@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{item}}{{q}}\n{{r}}
@@ -410,8 +410,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 @DEC\[(?<n>[0-9]+)\|(?<one>1)\]@ ::! sub n one
 
 # vec-len: (vec-len <V>items</V>) -> count of items
-^W:(?<p>[^\n]*)\{vec-len <V/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<N>0</N>{{q}}\n{{r}}
-^W:(?<p>[^\n]*)\{vec-len <V>(?<items>.+)</V>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vl~0~{{items}}~@{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦vec-len <V/>⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<N>0</N>{{q}}\n{{r}}
+^W:(?<p>[^\n]*)⟦vec-len <V>(?<items>.+)</V>⟧(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vl~0~{{items}}~@{{q}}\n{{r}}
 # Count items: @Vl~n~item rest~@ -> increment count and continue with rest
 ^W:(?<p>[^\n]*)@Vl~(?<n>[0-9]+)~(?<item><[A-Z](?:/>|>[^< ]*</[A-Z]>)) (?<rest>.+)~@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Vl~@INC[{{n}}|1]@~{{rest}}~@{{q}}\n{{r}}
 @INC\[(?<n>[0-9]+)\|(?<one>1)\]@ ::! add n one
@@ -425,9 +425,9 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # ============================================================
 # hash-get: (hash-get <H>...</H> <K>key</K>) -> value for key
 # Uses @Hg~key~pairs~@ marker for lookup
-^W:<|P|>\{hash-get <H>(?<pairs>.+)</H> <K>(?<key>[^<]+)</K>\}<|Q|>\n<|R|> ::= W:{{p}}@Hg~{{key}}~{{pairs}}~@{{q}}\n{{r}}
+^W:<|P|>⟦hash-get <H>(?<pairs>.+)</H> <K>(?<key>[^<]+)</K>⟧<|Q|>\n<|R|> ::= W:{{p}}@Hg~{{key}}~{{pairs}}~@{{q}}\n{{r}}
 # Empty hash returns nil
-^W:<|P|>\{hash-get <H/> <K>[^<]+</K>\}<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
+^W:<|P|>⟦hash-get <H/> <K>[^<]+</K>⟧<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # @Hg~key~<K>candidate</K> val rest~@ -> compare key/candidate with the shared eq builtin
 ^W:<|P|>@Hg~(?<key>[^~]+)~<K>(?<cand>[^<]+)</K> (?<val><[A-Z](?:/>|>[^<]*</[A-Z]>)) (?<rest>.+)~@<|Q|>\n<|R|> ::= W:{{p}}@HGC«{{key}}»«{{val}}»«{{rest}}»«@EQ«{{key}}»«{{cand}}»@»{{q}}\n{{r}}
@@ -437,8 +437,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:<|P|>@Hg~(?<key>[^~]+)~~@<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # hash-has?: (hash-has? <H>...</H> <K>key</K>) -> true/false
-^W:<|P|>\{hash-has\? <H>(?<pairs>.+)</H> <K>(?<key>[^<]+)</K>\}<|Q|>\n<|R|> ::= W:{{p}}@Hh~{{key}}~{{pairs}}~@{{q}}\n{{r}}
-^W:<|P|>\{hash-has\? <H/> <K>[^<]+</K>\}<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
+^W:<|P|>⟦hash-has\? <H>(?<pairs>.+)</H> <K>(?<key>[^<]+)</K>⟧<|Q|>\n<|R|> ::= W:{{p}}@Hh~{{key}}~{{pairs}}~@{{q}}\n{{r}}
+^W:<|P|>⟦hash-has\? <H/> <K>[^<]+</K>⟧<|Q|>\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
 # @Hh~key~<K>candidate</K> val...~@ -> compare key/candidate with the shared eq builtin
 ^W:<|P|>@Hh~(?<key>[^~]+)~<K>(?<cand>[^<]+)</K> (?<val><[A-Z](?:/>|>[^<]*</[A-Z]>))(?<rest>.*)~@<|Q|>\n<|R|> ::= W:{{p}}@HHC«{{key}}»«{{val}}»«{{rest}}»«@EQ«{{key}}»«{{cand}}»@»{{q}}\n{{r}}
 # Trim leading spaces while scanning hash-has pairs
@@ -453,12 +453,12 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@HHC«(?<orig>[^»]+)»«(?<val>[^»]+)»«(?<rest>[^»]*)»«0»(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Hh~{{orig}}~{{rest}}~@{{q}}\n{{r}}
 # hash-set: (hash-set <H>...</H> <K>key</K> val) -> new hash with key updated/added
 # For simplicity, always prepend the new key-value (shadowing old)
-^W:<|P|>\{hash-set <H>(?<pairs>.+)</H> (?<key><K>[^<]+</K>) (?<val><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}<H>{{key}} {{val}} {{pairs}}</H>{{q}}\n{{r}}
-^W:<|P|>\{hash-set <H/> (?<key><K>[^<]+</K>) (?<val><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}<H>{{key}} {{val}}</H>{{q}}\n{{r}}
+^W:<|P|>⟦hash-set <H>(?<pairs>.+)</H> (?<key><K>[^<]+</K>) (?<val><|XMLVAL|>)⟧<|Q|>\n<|R|> ::= W:{{p}}<H>{{key}} {{val}} {{pairs}}</H>{{q}}\n{{r}}
+^W:<|P|>⟦hash-set <H/> (?<key><K>[^<]+</K>) (?<val><|XMLVAL|>)⟧<|Q|>\n<|R|> ::= W:{{p}}<H>{{key}} {{val}}</H>{{q}}\n{{r}}
 
 # hash-keys: (hash-keys <H>...</H>) -> list of keys
-^W:<|P|>\{hash-keys <H/>\}<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
-^W:<|P|>\{hash-keys <H>(?<pairs>.+)</H>\}<|Q|>\n<|R|> ::= W:{{p}}@Hk«{{pairs}}»{{q}}\n{{r}}
+^W:<|P|>⟦hash-keys <H/>⟧<|Q|>\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
+^W:<|P|>⟦hash-keys <H>(?<pairs>.+)</H>⟧<|Q|>\n<|R|> ::= W:{{p}}@Hk«{{pairs}}»{{q}}\n{{r}}
 # @Hk«<K>k</K> val rest» -> (cons <K>k</K> (hash-keys rest))
 ^W:<|P|>@Hk«(?<key><K>[^<]+</K>) <[A-Z](?:/>|>[^<]*</[A-Z]>) (?<rest>.+)»<|Q|>\n<|R|> ::= W:{{p}}<C>{{key}} @Hk«{{rest}}»</C>{{q}}\n{{r}}
 # @Hk«<K>k</K> val» -> (cons <K>k</K> nil)
@@ -503,8 +503,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:\nS:\nO:(?<p>.*)§RP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
 
 # Decode quoted raw forms before dotted-pair formatting; quoted syntax is data.
-^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\{(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}({{qbody}}@{{q}}
-^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\}(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}){{qbody}}@{{q}}
+^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)⟦(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}({{qbody}}@{{q}}
+^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)⟧(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}){{qbody}}@{{q}}
 ^W:\nS:\nO:@Q\((?<out>[^@\n]+)\)@$ ::> stdout '({{out}})\n
 ^W:\nS:\nO:@Q(?<out>[^@\n]+)@$ ::> stdout '({{out}})\n
 
@@ -522,8 +522,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:\nS:\nO:\(\( \(\) (?<rest>\(.+\))\)\)$ ::= W:\nS:\nO:(( . () . {{rest}}))
 
 # Fail loud for stuck or unsupported forms.
-^W:\{car <N>[^<]+</N>\}\n[\s\S]*$ ::= !R!EXIT3
-^W:\{cdr <N>[^<]+</N>\}\n[\s\S]*$ ::= !R!EXIT3
+^W:⟦car <N>[^<]+</N>⟧\n[\s\S]*$ ::= !R!EXIT3
+^W:⟦cdr <N>[^<]+</N>⟧\n[\s\S]*$ ::= !R!EXIT3
 ^W:[^\n]+\n[\s\S]*$ ::= !P!EXIT2
 
 # Print and exit
