@@ -770,7 +770,9 @@ func (i *Interpreter) Run() (int, error) {
 				resource := i.expandTemplate(resourceTemplate, groups, nil)
 				b := i.Bindings[resource]
 				if b == nil {
-					_ = i.replaceMatch(m, "ERR:resource:"+resource)
+					if err := i.replaceMatch(m, "ERR:resource:"+resource); err != nil {
+						return 1, err
+					}
 				} else {
 					content, er := i.readAll(b)
 					repl := er

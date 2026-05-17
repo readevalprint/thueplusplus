@@ -94,6 +94,32 @@ func TestGoInterpreterTemplateExpansionDoesNotSpecialCaseLispBindings(t *testing
 	}
 }
 
+func TestGoInterpreterMissingReadBindingPropagatesStateLimitError(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	tmp := t.TempDir()
+	programPath := filepath.Join(tmp, "missing-read-binding.tpp")
+	program := "^read$ ::< missing\n\n::=\nread\n"
+	if err := os.WriteFile(programPath, []byte(program), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(buildGoInterpreter(t, repoRoot), programPath, "--max-state-bytes", "5")
+	cmd.Dir = repoRoot
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("go interpreter exit = 0, want state-size failure")
+	}
+	if got := stdout.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+	want := "State size (20 bytes) exceeds maximum (5 bytes)"
+	if !strings.Contains(stderr.String(), want) {
+		t.Fatalf("stderr = %q, want to contain %q", stderr.String(), want)
+	}
+}
+
 func TestGoCLIInputOverrideParsing(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	goBin := buildGoInterpreter(t, repoRoot)
