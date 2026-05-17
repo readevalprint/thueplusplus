@@ -1,0 +1,8 @@
+name = "kv missing db reads as empty database"
+program = "../kv.tpp"
+input = "list"
+
+[expect]
+stdout = "\n"
+stderr = ""
+exit_code = 0

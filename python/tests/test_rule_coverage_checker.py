@@ -160,6 +160,66 @@ class RuleCoverageCheckerTest(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("coverage ignore comments are unsupported", result.stderr)
+    def test_all_example_discovery_fails_on_uncovered_root_program(self):
+        checker = load_checker_module()
+        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+            examples = Path(tmp) / "examples"
+            example = examples / "ambiguous"
+            tests = example / "tests"
+            tests.mkdir(parents=True)
+            (example / "covered.tpp").write_text("a ::- 0\n\n::=\na\n", encoding="utf-8")
+            (example / "skipped.tpp").write_text("b ::- 0\n\n::=\nb\n", encoding="utf-8")
+            (tests / "basic.toml").write_text(
+                textwrap.dedent(
+                    """
+                    program = "../covered.tpp"
+
+                    [expect]
+                    exit_code = 0
+                    """
+                ).lstrip(),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "have no shared coverage manifests"):
+                checker.discover_targets(examples)
+
+    def test_all_example_discovery_groups_cases_by_program(self):
+        checker = load_checker_module()
+        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+            examples = Path(tmp) / "examples"
+            example = examples / "multi"
+            tests = example / "tests"
+            tests.mkdir(parents=True)
+            first = example / "first.tpp"
+            second = example / "second.tpp"
+            first.write_text("a ::- 0\n\n::=\na\n", encoding="utf-8")
+            second.write_text("b ::- 0\n\n::=\nb\n", encoding="utf-8")
+            (tests / "basic.toml").write_text(
+                textwrap.dedent(
+                    """
+                    [[case]]
+                    name = "first"
+                    program = "../first.tpp"
+
+                    [case.expect]
+                    exit_code = 0
+
+                    [[case]]
+                    name = "second"
+                    program = "../second.tpp"
+
+                    [case.expect]
+                    exit_code = 0
+                    """
+                ).lstrip(),
+                encoding="utf-8",
+            )
+
+            targets = checker.discover_targets(examples)
+
+        self.assertEqual([target.program.name for target in targets], ["first.tpp", "second.tpp"])
+        self.assertEqual([len(target.cases) for target in targets], [1, 1])
 
 
 if __name__ == "__main__":

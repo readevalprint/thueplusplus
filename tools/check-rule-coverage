@@ -25,6 +25,18 @@ class RuleSource:
     text: str
 
 
+@dataclass(frozen=True)
+class CoverageCase:
+    config_path: Path
+    case: dict
+
+
+@dataclass(frozen=True)
+class CoverageTarget:
+    program: Path
+    cases: tuple[CoverageCase, ...]
+
+
 def rel(path: Path) -> str:
     try:
         return path.resolve().relative_to(ROOT).as_posix()
@@ -110,16 +122,14 @@ def read_coverage(path: Path) -> Counter[str]:
     return counts
 
 
-def check(program: Path, configs: list[Path]) -> int:
+def check_cases(program: Path, cases: list[CoverageCase]) -> int:
     rules = enumerate_rules(program)
     rule_by_id = {rule.rule_id: rule for rule in rules}
     counts: Counter[str] = Counter()
     with tempfile.TemporaryDirectory(prefix="thuepp-coverage-") as tmpdir:
         tmp = Path(tmpdir)
-        for config_path in configs:
-            data = load_toml(config_path)
-            for case in expand_cases(data):
-                counts.update(run_case(config_path, case, tmp))
+        for coverage_case in cases:
+            counts.update(run_case(coverage_case.config_path, coverage_case.case, tmp))
     unknown = sorted(set(counts) - set(rule_by_id))
     if unknown:
         print("unknown coverage rule IDs:", file=sys.stderr)
@@ -143,11 +153,76 @@ def check(program: Path, configs: list[Path]) -> int:
     return 1 if uncovered else 0
 
 
+def manifest_program(config_path: Path, case: dict) -> Path:
+    program = case.get("program")
+    if not isinstance(program, str) or not program.strip():
+        raise RuntimeError(f"{rel(config_path)} {case.get('name', config_path.stem)!r}: missing program coverage path")
+    resolved = (config_path.parent / program).resolve()
+    if resolved.suffix != ".tpp":
+        raise RuntimeError(f"{rel(config_path)} {case.get('name', config_path.stem)!r}: coverage program must be a .tpp file: {program}")
+    if not resolved.exists():
+        raise RuntimeError(f"{rel(config_path)} {case.get('name', config_path.stem)!r}: coverage program does not exist: {program}")
+    return resolved
+
+
+def discover_targets(examples_root: Path) -> list[CoverageTarget]:
+    targets: dict[Path, list[CoverageCase]] = {}
+    examples_root = examples_root.resolve()
+    for tests_dir in sorted(examples_root.glob("*/tests")):
+        manifests = sorted(tests_dir.glob("*.toml"))
+        if not manifests:
+            continue
+        example_dir = tests_dir.parent.resolve()
+        referenced: set[Path] = set()
+        for config_path in manifests:
+            data = load_toml(config_path)
+            for case in expand_cases(data):
+                program = manifest_program(config_path, case)
+                try:
+                    program.relative_to(example_dir)
+                except ValueError as exc:
+                    raise RuntimeError(f"{rel(config_path)} {case.get('name', config_path.stem)!r}: coverage program escapes example directory: {rel(program)}") from exc
+                if program.parent == example_dir:
+                    referenced.add(program)
+                    targets.setdefault(program, []).append(CoverageCase(config_path, case))
+        root_programs = {path.resolve() for path in example_dir.glob("*.tpp")}
+        skipped = sorted(root_programs - referenced)
+        if skipped:
+            skipped_list = ", ".join(rel(path) for path in skipped)
+            raise RuntimeError(f"{rel(example_dir)}: example program(s) have no shared coverage manifests: {skipped_list}")
+    return [CoverageTarget(program, tuple(cases)) for program, cases in sorted(targets.items())]
+
+
+def check(program: Path, configs: list[Path]) -> int:
+    cases: list[CoverageCase] = []
+    for config_path in configs:
+        data = load_toml(config_path)
+        for case in expand_cases(data):
+            cases.append(CoverageCase(config_path, case))
+    return check_cases(program, cases)
+
+
+def check_all(examples_root: Path) -> int:
+    failures = 0
+    for target in discover_targets(examples_root):
+        if check_cases(target.program, list(target.cases)) != 0:
+            failures += 1
+        print()
+    return 1 if failures else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check .tpp rule coverage for TOML example cases")
-    parser.add_argument("program", type=Path)
-    parser.add_argument("configs", type=Path, nargs="+")
+    parser.add_argument("--all", action="store_true", help="discover and check every shared example under examples/")
+    parser.add_argument("program", type=Path, nargs="?")
+    parser.add_argument("configs", type=Path, nargs="*")
     args = parser.parse_args()
+    if args.all:
+        if args.program or args.configs:
+            parser.error("--all does not accept explicit program/config arguments")
+        return check_all(ROOT / "examples")
+    if args.program is None or not args.configs:
+        parser.error("program and at least one config are required unless --all is set")
     return check(args.program, args.configs)
 
 

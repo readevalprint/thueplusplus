@@ -102,7 +102,7 @@ def check_makefile(root: Path) -> list[Failure]:
         "uv run python -m unittest discover -s python/tests -v",
         "cd go && go test -count=1 ./...",
         "tools/run-example-manifests --contract tools/thuepp-contract.toml --parity",
-        "uv run python tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml",
+        "uv run python tools/check-rule-coverage --all",
     ]
     for snippet in required:
         if snippet not in text:
@@ -266,8 +266,8 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     if "coverage: ignore" in text:
         failures.append(Failure(path, "coverage ignore comments are unsupported; add fixtures or delete the rule"))
     makefile = read(root / "Makefile")
-    if "tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml" not in makefile:
-        failures.append(Failure(root / "Makefile", "make test must include Lisp rule coverage gate"))
+    if "tools/check-rule-coverage --all" not in makefile:
+        failures.append(Failure(root / "Makefile", "make test must include all-example rule coverage gate"))
     return failures
 
 

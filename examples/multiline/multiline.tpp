@@ -9,11 +9,6 @@
 
 # After trimming, output the result ((?s) makes . match newlines)
 (?s)result:(?<text>.*) ::> stdout Trimmed:\n{{text}}\n
-result: ::= done
-
-# Exit
-done ::- 0
-
 ::=
 result:
   hello world  

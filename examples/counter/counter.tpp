@@ -20,7 +20,5 @@ c5 ::= done
 
 # Finish
 done ::> stdout Done!\n
-done ::- 0
-
 ::=
 >0c0

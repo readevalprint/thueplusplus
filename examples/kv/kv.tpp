@@ -8,30 +8,31 @@
 ^list$ ::= LIST|@LOAD@
 
 # Invalid input
-^(set|get|del) .*$ ::> stdout ERR:invalid_input\n
-^(set|get|del) .*$ ::- 1
+^(set|get|del) .*$ ::= @BAD@EXIT
+^@BAD@ ::> stdout ERR:invalid_input\n
+^EXIT$ ::- 1
 
 # Bulk read DB (only @LOAD@ is replaced on error)
 @LOAD@$ ::< db {{data}}@D@
 
 # Handle missing/empty DB
-ERR:resource:notfound:db$ ::= @D@
+ERR:resource:db$ ::= @D@
 
 # SET - append k,v
 ^SET,(?<k>[^,]+),(?<v>[^|]+)\|(?<db>[^@]*)@D@$ ::= @W[{{db}}{{k}},{{v}}\n]@@O[ok]@
 
 # GET - scan lines and compare keys with the pure eq builtin.
-^GET,(?<k>[^|]+)\|(?<linek>[^,\n@]+),(?<v>[^\n@]+)\n(?<rest>[^@]*)@D@$ ::= GET,{{k}}|@K[{{linek}}|{{k}}]@{{v}}\n{{rest}}@D@
 @K\[(?<linek>[^|\]]+)\|(?<k>[^\]]+)\]@ ::! eq linek k
 ^GET,[^|]+\|1(?<v>[^\n@]+)\n[^@]*@D@$ ::= @O[{{v}}]@
 ^GET,(?<k>[^|]+)\|0[^\n@]*\n(?<rest>[^@]*)@D@$ ::= GET,{{k}}|{{rest}}@D@
+^GET,(?<k>[^|]+)\|(?<linek>[^,\n@]+),(?<v>[^\n@]+)\n(?<rest>[^@]*)@D@$ ::= GET,{{k}}|@K[{{linek}}|{{k}}]@{{v}}\n{{rest}}@D@
 ^GET,[^|]+\|[^@]*@D@$ ::= @O[nil]@
 
 # DEL - scan lines, carrying non-matching lines in @P[...].
 ^DEL,(?<k>[^|]+)\|(?<db>[^@]*)@D@$ ::= DEL,{{k}}|@P[]@{{db}}@D@
-^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@(?<linek>[^,\n@]+),(?<v>[^\n@]*)\n(?<rest>[^@]*)@D@$ ::= DEL,{{k}}|@P[{{pre}}]@@K[{{linek}}|{{k}}]@{{linek}},{{v}}\n{{rest}}@D@
 ^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@1[^\n@]*\n(?<rest>[^@]*)@D@$ ::= @W[{{pre}}{{rest}}]@@O[ok]@
 ^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@0(?<line>[^\n@]*\n)(?<rest>[^@]*)@D@$ ::= DEL,{{k}}|@P[{{pre}}{{line}}]@{{rest}}@D@
+^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@(?<linek>[^,\n@]+),(?<v>[^\n@]*)\n(?<rest>[^@]*)@D@$ ::= DEL,{{k}}|@P[{{pre}}]@@K[{{linek}}|{{k}}]@{{linek}},{{v}}\n{{rest}}@D@
 ^DEL,(?<k>[^|]+)\|@P\[(?<pre>[^\]]*)\]@@D@$ ::= @W[{{pre}}]@@O[ok]@
 
 # LIST
@@ -39,12 +40,7 @@ ERR:resource:notfound:db$ ::= @D@
 
 # Write DB
 @W\[(?<db>[^\]]*)\]@ ::> db {{db}}
-@W\[[^\]]*\]@ ::= @S@
 
 # Output
-^@S@@O\[(?<r>[^\]]*)\]@$ ::> stdout {{r}}\n
 ^@O\[(?<r>[^\]]*)\]@$ ::> stdout {{r}}\n
-^@S@@O\[.*\]@$ ::- 0
-^@O\[.*\]@$ ::- 0
-
 ::=

@@ -1,4 +1,13 @@
 [[case]]
+name = "non-empty replacement is covered without zero limit"
+program = "../max-state-zero-nonempty.tpp"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
 name = "zero limit rejects non-empty replacement"
 program = "../max-state-zero-nonempty.tpp"
 args = ["--max-state-bytes", "0"]

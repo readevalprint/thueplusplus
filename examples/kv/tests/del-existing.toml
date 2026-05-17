@@ -1,0 +1,14 @@
+name = "kv deletes existing key after scanning prior row"
+program = "../kv.tpp"
+input = "del b"
+
+[bindings.files]
+db = { fixture = "fixtures/kv-db-after-set.state", writable = true }
+
+[expect]
+stdout = "ok\n"
+stderr = ""
+exit_code = 0
+
+[expect.files]
+db = "fixtures/kv-db.state"

@@ -1,8 +1,6 @@
 # Simplest possible thue++ program
-# Just prints and exits
+# Just prints; no-match termination exits successfully.
 
 msg ::> stdout This is thue++!\n
-msg ::- 0
-
 ::=
 msg

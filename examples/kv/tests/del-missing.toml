@@ -1,0 +1,14 @@
+name = "kv deleting missing key preserves database"
+program = "../kv.tpp"
+input = "del z"
+
+[bindings.files]
+db = { fixture = "fixtures/kv-db-after-set.state", writable = true }
+
+[expect]
+stdout = "ok\n"
+stderr = ""
+exit_code = 0
+
+[expect.files]
+db = "fixtures/kv-db-after-set.state"

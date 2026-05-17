@@ -1,0 +1,7 @@
+name = "echo missing input binding fails loudly"
+program = "../echo.tpp"
+
+[expect]
+stdout = ""
+stderr = ""
+exit_code = 1
