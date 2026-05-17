@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import sys
 from dataclasses import dataclass
@@ -168,9 +169,31 @@ def check_contract(root: Path) -> list[Failure]:
     js = impls.get("javascript", {})
     if js.get("available") is not False or js.get("command", "") != "":
         failures.append(Failure(path, "javascript must remain an unavailable future slot with an empty command until implemented"))
-    runner_text = read(root / "tools" / "example_runner.py")
+    wrapper_path = root / "tools" / "run-example-manifests"
+    wrapper_text = read(wrapper_path)
+    if not wrapper_text.startswith("#!/usr/bin/env python3\n"):
+        failures.append(Failure(wrapper_path, "shared example manifest runner wrapper must be Python"))
+    if "from example_runner import main" not in wrapper_text:
+        failures.append(Failure(wrapper_path, "shared example manifest runner wrapper must delegate to tools/example_runner.py"))
+    runner_path = root / "tools" / "example_runner.py"
+    runner_text = read(runner_path)
+    try:
+        runner_tree = ast.parse(runner_text)
+    except SyntaxError as exc:
+        failures.append(Failure(runner_path, f"shared runner is not parseable Python: {exc}"))
+        runner_tree = ast.Module(body=[], type_ignores=[])
+    forbidden_modules = {"thuepp", "python.thuepp"}
+    for node in ast.walk(runner_tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in forbidden_modules:
+                    failures.append(Failure(runner_path, f"shared runner must not import Python implementation module {alias.name}"))
+        elif isinstance(node, ast.ImportFrom) and node.module in forbidden_modules:
+            failures.append(Failure(runner_path, f"shared runner must not import Python implementation module {node.module}"))
     if "requires.commands" not in runner_text or "requires.commands is not supported" not in runner_text:
-        failures.append(Failure(root / "tools" / "example_runner.py", "shared runner must fail loudly on requires.commands metadata"))
+        failures.append(Failure(runner_path, "shared runner must fail loudly on requires.commands metadata"))
+    if "subprocess.run" not in runner_text:
+        failures.append(Failure(runner_path, "shared runner must invoke implementations as external processes"))
     makefile = read(root / "Makefile")
     if "--contract tools/thuepp-contract.toml --parity" not in makefile:
         failures.append(Failure(root / "Makefile", "shared manifest target must use tools/thuepp-contract.toml"))

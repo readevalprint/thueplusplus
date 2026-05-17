@@ -59,6 +59,15 @@ class RepositoryConformanceCheckerTest(unittest.TestCase):
 
         self.assertIn("test-js target must not be a green placeholder before JavaScript exists", self._messages(failures, root))
 
+    def test_shared_runner_must_not_import_python_implementation(self):
+        with self._minimal_repo() as root:
+            runner = root / "tools" / "example_runner.py"
+            runner.write_text("import thuepp\n" + runner.read_text(encoding="utf-8"), encoding="utf-8")
+
+            failures = check_contract.check_contract(root)
+
+        self.assertIn("shared runner must not import Python implementation module thuepp", self._messages(failures, root))
+
     def test_numeric_grammar_drift_fails(self):
         with self._minimal_repo() as root:
             doc = root / "docs" / "numeric-builtins.md"
@@ -91,6 +100,7 @@ class RepositoryConformanceCheckerTest(unittest.TestCase):
             "examples/lisp/lisp.tpp",
             "examples/hello/hello.tpp",
             "examples/hello/tests/basic.toml",
+            "tools/run-example-manifests",
             "tools/thuepp-contract.toml",
             "tools/example_runner.py",
             "tools/check-contract",
