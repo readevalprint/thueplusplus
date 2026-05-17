@@ -135,7 +135,7 @@ def check_readme(root: Path) -> list[Failure]:
     text = read(path)
     try:
         if updated_readme(root) != text:
-            failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/update-readme-example.py"))
+            failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/check-contract --update-readme"))
     except ValueError as exc:
         failures.append(Failure(path, str(exc)))
     required = ["## Verification", "make test", "uv run", "pyproject.toml", "uv.lock", "python/thuepp.py"]
@@ -310,8 +310,16 @@ def check_all(root: Path) -> list[Failure]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check thue++ repository conformance policy.")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1], help="repository root")
+    parser.add_argument(
+        "--update-readme",
+        action="store_true",
+        help="regenerate the README quickstart example block, then run conformance checks",
+    )
     args = parser.parse_args(argv)
     root = args.root.resolve()
+    if args.update_readme:
+        readme = root / "README.md"
+        readme.write_text(updated_readme(root), encoding="utf-8")
     failures = check_all(root)
     if failures:
         print("repository conformance check failed:", file=sys.stderr)

@@ -33,6 +33,26 @@ class RepositoryConformanceCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("README.md", result.stderr)
         self.assertIn("generated quickstart example is out of date", result.stderr)
+        self.assertIn("uv run python tools/check-contract --update-readme", result.stderr)
+
+    def test_cli_update_readme_regenerates_quickstart_block(self):
+        with self._minimal_repo() as root:
+            readme = root / "README.md"
+            readme.write_text(readme.read_text(encoding="utf-8").replace("Hello, World!\n```", "HELLO, DRIFT!\n```", 1), encoding="utf-8")
+
+            result = subprocess.run(
+                ["uv", "run", "python", "tools/check-contract", "--root", str(root), "--update-readme"],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            updated = readme.read_text(encoding="utf-8")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("repository conformance check passed", result.stdout)
+        self.assertIn("Hello, World!\n```", updated)
+        self.assertNotIn("HELLO, DRIFT!", updated)
 
     def test_missing_available_implementation_command_fails(self):
         with self._minimal_repo() as root:
