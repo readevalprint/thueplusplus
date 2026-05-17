@@ -37,11 +37,12 @@ class TestExampleConfigs(unittest.TestCase):
         matches = [match.group(0) for match in stale_form.finditer(text)]
         self.assertEqual(matches, [])
 
-    def test_lisp_lambda_arity_comment_matches_five_param_support(self):
+    def test_lisp_skeleton_deletes_legacy_lambda_surface(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertNotIn("1-3 params", text)
-        self.assertIn("1-5 fixed params", text)
+        self.assertIn("Minimal parenthesized Lisp skeleton", text)
+        self.assertNotIn("1-5 fixed params", text)
+        self.assertNotIn("$x", text)
 
     def test_lisp_uses_re2_common_regex_subset(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
@@ -54,16 +55,14 @@ class TestExampleConfigs(unittest.TestCase):
                 matches.append(f"{line_number}: {line}")
         self.assertEqual(matches, [])
 
-    def test_lisp_documents_canonical_internal_state_contract(self):
+    def test_lisp_documents_minimal_skeleton_state(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertIn("# INTERNAL STATE CONTRACT:", text)
-        self.assertIn("#     W:<work>", text)
-        self.assertIn("#     E:<deferred return work>", text)
-        self.assertIn("#     F:<frame metadata>", text)
-        self.assertIn("#     B:<bindings>", text)
-        self.assertIn("Temporary work markers are @...@ or #...«...»", text)
-        self.assertIn("Parser-protection sentinels use §...§", text)
+        self.assertIn("# Supported in this slice:", text)
+        self.assertIn("# Unsupported syntax fails loudly", text)
+        self.assertNotIn("# INTERNAL STATE CONTRACT:", text)
+        self.assertNotIn("Temporary work markers are @...@ or #...«...»", text)
+        self.assertNotIn("Parser-protection sentinels use §...§", text)
 
     def test_lisp_removes_noncanonical_b_only_state_variants(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
@@ -77,17 +76,17 @@ class TestExampleConfigs(unittest.TestCase):
                 offending.append(f"{line_number}: {line}")
         self.assertEqual(offending, [])
 
-    def test_lisp_hash_keys_uses_canonical_temporary_envelope(self):
+    def test_lisp_hash_keys_are_deleted_from_skeleton(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertIn("@Hk«", text)
-        self.assertNotIn("@Hk~", text)
+        self.assertNotIn("@Hk«", text)
+        self.assertNotIn("hash-keys", text)
 
     def test_lisp_hash_lookup_does_not_reintroduce_manual_character_matrix(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertIn("Hash key compare dispatch", text)
-        self.assertIn("@EQ«{{key}}»«{{cand}}»@", text)
+        self.assertNotIn("Hash key compare dispatch", text)
+        self.assertNotIn("@EQ«{{key}}»«{{cand}}»@", text)
         self.assertNotIn("hash key character scanner matrix", text)
         manual_rows = re.findall(r"@HH?[GC]«[^\n]*»«[A-Za-z0-9_-]\(\?<key>", text)
         self.assertEqual(manual_rows, [])

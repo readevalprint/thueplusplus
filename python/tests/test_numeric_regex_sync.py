@@ -29,13 +29,13 @@ class NumericRegexSyncTest(unittest.TestCase):
         self.assertIn(f"N <- {grammar}", builtin_text)
         self.assertEqual(builtin_text.count(grammar), 1)
 
-        # One literal parser rule plus two numeric captures in each pure-builtin
-        # sentinel rule: 4 arithmetic operators and 5 comparisons => 1 + (9 * 2).
+        # The deletion-first Lisp skeleton centralizes the shared numeric grammar in
+        # one pattern definition and references it from literal and builtin rules.
         lisp_occurrences = lisp_text.count(grammar)
         self.assertEqual(
             lisp_occurrences,
-            19,
-            "Lisp literal and pure-builtin numeric placeholders must use the shared grammar exactly 19 times",
+            1,
+            "Lisp must define the shared numeric grammar once and reference that pattern",
         )
 
         stale_lisp_patterns = [

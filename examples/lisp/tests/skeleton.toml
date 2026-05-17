@@ -1,0 +1,274 @@
+program = "../lisp.tpp"
+timeout = 5
+
+[[case]]
+name = "add two"
+input = "(+ 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "nested multiply add"
+input = "(* (+ 1 2) 4)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "12"
+
+[[case]]
+name = "begin returns last"
+input = "(begin 1 2 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "if true chooses then"
+input = "(if true 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "if false chooses else"
+input = "(if false 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "if false does not evaluate failing then branch"
+input = "(if false (/ 1 0) 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "if true does not evaluate failing else branch"
+input = "(if true 2 (/ 1 0))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "nil is false in if"
+input = "(if nil 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "less than or equal equal operands"
+input = "(<= 2 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "numeric equality canonical rational"
+input = "(= (/ 2 4) 1/2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "division emits canonical rational"
+input = "(/ 7 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7/2"
+
+[[case]]
+name = "curly syntax rejected"
+input = "{+ 1 2}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: curly-brace syntax is not supported"]
+
+[[case]]
+name = "unsupported variable form rejected"
+input = "(def x 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "unsupported string rejected"
+input = '"hello"'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "malformed decimal literal fails loudly"
+input = "(+ 1.2.3 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "division by zero reaches builtin error"
+input = "(/ 1 0)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'div' division by zero"]
+
+
+[[case]]
+name = "top level number"
+input = "42"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "top level true"
+input = "true"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "top level false"
+input = "false"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "top level nil"
+input = "nil"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "subtract"
+input = "(- 10 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "less than true"
+input = "(< 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "greater than true"
+input = "(> 3 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "greater than or equal false"
+input = "(>= 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "boolean equality true"
+input = "(= true true)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "boolean equality false false"
+input = "(= false false)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "boolean equality mixed"
+input = "(= true false)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "nil equality"
+input = "(= nil nil)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+
+[[case]]
+name = "raw internal-looking W state rejected"
+input = "W:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "raw internal-looking E state rejected"
+input = "E:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
