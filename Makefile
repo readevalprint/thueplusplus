@@ -26,7 +26,7 @@ test-shared:
 
 test-coverage:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run rule coverage checks" >&2; exit 127; }
-	uv run python tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml
+	uv run python tools/check-rule-coverage --all
 
 test-code-coverage:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run host-code coverage checks" >&2; exit 127; }

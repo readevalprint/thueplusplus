@@ -498,7 +498,7 @@ stderr_contains = ["Builtin 'b64dec' decoded bytes are not valid UTF-8"]
 
 [[case]]
 name = "unknown builtin fails loudly"
-program = "../bad-unknown.tpp"
+program = "fixtures/bad-unknown.tpp"
 
 [case.expect]
 exit_code = 1
@@ -506,7 +506,7 @@ stderr_contains = ["Unknown builtin 'nope'"]
 
 [[case]]
 name = "wrong arity fails loudly"
-program = "../bad-arity.tpp"
+program = "fixtures/bad-arity.tpp"
 
 [case.expect]
 exit_code = 1
@@ -514,7 +514,7 @@ stderr_contains = ["Builtin 'add' expects 2 args, got 1"]
 
 [[case]]
 name = "template arg spelling rejected"
-program = "../bad-template-arg.tpp"
+program = "fixtures/bad-template-arg.tpp"
 
 [case.expect]
 exit_code = 1
@@ -522,7 +522,7 @@ stderr_contains = ["::! arguments must be capture names"]
 
 [[case]]
 name = "missing capture rejected"
-program = "../bad-missing-capture.tpp"
+program = "fixtures/bad-missing-capture.tpp"
 
 [case.expect]
 exit_code = 1
