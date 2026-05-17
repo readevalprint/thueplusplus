@@ -79,7 +79,7 @@ Use the repository-root truth-engine command before sending changes for review:
 make test
 ```
 
-`make test` runs the Python unittest suite, the Go test suite, the shared manifest parity runner, and the shared rule-coverage gate for the Lisp target-language example. The shared manifest runner is Python tooling, but it treats every implementation uniformly as an external command rather than importing interpreter internals. Optional helper targets are available for focused checks:
+`make test` runs the Python unittest suite, the Go test suite, the shared manifest parity runner, and the shared rule-coverage gate for the Lisp target-language example. The shared manifest runner is Python tooling, but it reads available implementations from `tools/thuepp-contract.toml` and treats every implementation uniformly as an external command rather than importing interpreter internals. Optional helper targets are available for focused checks:
 
 ```bash
 make test-python

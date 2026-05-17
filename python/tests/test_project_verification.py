@@ -12,9 +12,7 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
         self.assertIn("test: test-python test-go test-shared test-coverage", makefile)
         self.assertIn("uv run python -m unittest discover -s python/tests -v", makefile)
         self.assertIn("cd go && go test -count=1 ./...", makefile)
-        self.assertIn("tools/run-example-manifests --parity", makefile)
-        self.assertIn("--interpreter \"python=uv run python python/thuepp.py\"", makefile)
-        self.assertIn("--interpreter \"go=$$tmp/thuepp-go\"", makefile)
+        self.assertIn("tools/run-example-manifests --contract tools/thuepp-contract.toml --parity", makefile)
         self.assertIn(
             "uv run python tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml",
             makefile,

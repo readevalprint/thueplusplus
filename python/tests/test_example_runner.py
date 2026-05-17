@@ -165,6 +165,72 @@ class SharedExampleRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "requires.commands is not supported"):
                 runner.run_configs([fake_interpreter], [config])
 
+    def test_contract_interpreters_build_and_filter_available_implementations(self):
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory(prefix="thuepp-runner-contract-impl-") as tmpdir:
+            tmp = Path(tmpdir)
+            fake = tmp / "fake.py"
+            fake.write_text("import sys\nprint('fake ' + sys.argv[-1])\n", encoding="utf-8")
+            build = tmp / "build.py"
+            build.write_text(
+                "import pathlib, sys\npathlib.Path(sys.argv[1]).write_text('artifact', encoding='utf-8')\n",
+                encoding="utf-8",
+            )
+            contract = tmp / "contract.toml"
+            contract.write_text(
+                textwrap.dedent(
+                    f"""
+                    [implementations.fake]
+                    available = true
+                    command = {f'{sys.executable} {fake}'!r}
+
+                    [implementations.built]
+                    available = true
+                    build = {f'{sys.executable} {build} {{artifact}}'!r}
+                    command = {sys.executable!r}
+
+                    [implementations.javascript]
+                    available = false
+                    command = ""
+                    """
+                ).replace("'", '"'),
+                encoding="utf-8",
+            )
+            interpreters = runner.contract_interpreters(contract, tmp / "artifacts", {"fake"})
+            self.assertEqual([interpreter.name for interpreter in interpreters], ["fake"])
+            self.assertEqual(interpreters[0].argv, (sys.executable, str(fake)))
+
+            built = runner.contract_interpreters(contract, tmp / "artifacts", {"built"})
+            self.assertEqual([interpreter.name for interpreter in built], ["built"])
+            self.assertTrue((tmp / "artifacts" / "built-thuepp").exists())
+
+    def test_contract_interpreters_fail_loudly_for_unavailable_or_broken_available_impls(self):
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory(prefix="thuepp-runner-contract-fail-") as tmpdir:
+            tmp = Path(tmpdir)
+            fail = tmp / "fail.py"
+            fail.write_text("import sys\nsys.exit(7)\n", encoding="utf-8")
+            contract = tmp / "contract.toml"
+            contract.write_text(
+                textwrap.dedent(
+                    f"""
+                    [implementations.javascript]
+                    available = false
+                    command = ""
+
+                    [implementations.broken]
+                    available = true
+                    build = {f'{sys.executable} {fail}'!r}
+                    command = "{{artifact}}"
+                    """
+                ).replace("'", '"'),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(RuntimeError, "javascript.*not available"):
+                runner.contract_interpreters(contract, tmp / "artifacts", {"javascript"})
+            with self.assertRaisesRegex(RuntimeError, "broken.*build failed"):
+                runner.contract_interpreters(contract, tmp / "artifacts", {"broken"})
+
     def test_cli_accepts_uniform_interpreter_command(self):
         completed = subprocess.run(
             [
@@ -172,6 +238,25 @@ class SharedExampleRunnerTest(unittest.TestCase):
                 str(REPO_ROOT / "tools" / "run-example-manifests"),
                 "--interpreter",
                 f"python={sys.executable} {REPO_ROOT / 'python' / 'thuepp.py'}",
+                str(REPO_ROOT / "examples" / "hello" / "tests" / "basic.toml"),
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("run: 1 cases passed for python", completed.stdout)
+
+    def test_cli_accepts_contract_mode(self):
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "tools" / "run-example-manifests"),
+                "--contract",
+                str(REPO_ROOT / "tools" / "thuepp-contract.toml"),
+                "--implementation",
+                "python",
                 str(REPO_ROOT / "examples" / "hello" / "tests" / "basic.toml"),
             ],
             cwd=REPO_ROOT,

@@ -1,5 +1,6 @@
-# Static thue++ executable-contract slices.
-# This file is test-enforced only; interpreters do not generate runtime code from it.
+# thue++ executable-contract slices.
+# Shared tooling reads implementation entries from this file; interpreters do not
+# generate runtime code from it.
 
 [implementations.python]
 available = true
@@ -8,8 +9,10 @@ notes = "Current Python implementation; invoked by shared manifests as an extern
 
 [implementations.go]
 available = true
-command = "go build ./cmd/thuepp"
-notes = "Current Go implementation; built once and invoked by shared manifests as an external command."
+build = "go build -o {artifact} ./cmd/thuepp"
+build_workdir = "go"
+command = "{artifact}"
+notes = "Current Go implementation; built once from go/ and invoked by shared manifests as an external command."
 
 [implementations.javascript]
 available = false

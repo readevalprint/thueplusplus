@@ -210,12 +210,80 @@ def parse_interpreter(spec: str) -> Interpreter:
     return Interpreter(name=name, argv=argv)
 
 
+def contract_interpreters(contract_path: Path, build_root: Path, only: set[str] | None = None) -> list[Interpreter]:
+    data = load_toml(contract_path)
+    implementations = data.get("implementations")
+    if not isinstance(implementations, dict):
+        raise RuntimeError(f"{contract_path}: missing [implementations] table")
+
+    selected = set() if only is None else set(only)
+    interpreters: list[Interpreter] = []
+    for name, spec in implementations.items():
+        if only is not None and name not in selected:
+            continue
+        if not isinstance(spec, dict):
+            raise RuntimeError(f"{contract_path}: implementation {name!r} must be a table")
+        if not bool(spec.get("available", False)):
+            if only is not None and name in selected:
+                raise RuntimeError(f"{contract_path}: implementation {name!r} is not available")
+            continue
+
+        command_template = spec.get("command")
+        if not isinstance(command_template, str) or not command_template.strip():
+            raise RuntimeError(f"{contract_path}: available implementation {name!r} must declare command")
+
+        artifact = build_root / f"{name}-thuepp"
+        build_root.mkdir(parents=True, exist_ok=True)
+        substitutions = {"artifact": str(artifact)}
+        build_template = spec.get("build")
+        if build_template is not None:
+            if not isinstance(build_template, str) or not build_template.strip():
+                raise RuntimeError(f"{contract_path}: implementation {name!r} build must be a non-empty string")
+            build_workdir = ROOT / str(spec.get("build_workdir", "."))
+            completed = subprocess.run(
+                shlex.split(build_template.format(**substitutions)),
+                cwd=build_workdir,
+                capture_output=True,
+                text=True,
+            )
+            if completed.returncode != 0:
+                raise RuntimeError(
+                    f"{contract_path}: implementation {name!r} build failed with exit {completed.returncode}\n"
+                    f"stdout={completed.stdout!r}\nstderr={completed.stderr!r}"
+                )
+
+        argv = tuple(shlex.split(command_template.format(**substitutions)))
+        if not argv:
+            raise RuntimeError(f"{contract_path}: available implementation {name!r} command resolved empty")
+        interpreters.append(Interpreter(name=name, argv=argv))
+
+    if only is not None:
+        missing = selected - set(implementations)
+        if missing:
+            raise RuntimeError(f"{contract_path}: unknown implementation(s): {', '.join(sorted(missing))}")
+    if not interpreters:
+        raise RuntimeError(f"{contract_path}: no available implementations selected")
+    return interpreters
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run shared thue++ example manifests")
     parser.add_argument("configs", type=Path, nargs="+", help="example TOML manifest(s)")
-    parser.add_argument("--interpreter", action="append", type=parse_interpreter, required=True, help="NAME=COMMAND; COMMAND receives program path and CLI args")
+    parser.add_argument("--interpreter", action="append", type=parse_interpreter, help="NAME=COMMAND; COMMAND receives program path and CLI args")
+    parser.add_argument("--contract", type=Path, help="Read available implementation commands from tools/thuepp-contract.toml-style contract")
+    parser.add_argument("--implementation", action="append", help="Implementation name to select from --contract; may be repeated")
     parser.add_argument("--parity", action="store_true", help="compare exit code, stdout, stderr, and writable file outputs across interpreters")
     args = parser.parse_args(argv)
+    if args.contract and args.interpreter:
+        parser.error("--contract and --interpreter are mutually exclusive")
+    if args.implementation and not args.contract:
+        parser.error("--implementation requires --contract")
+    if not args.contract and not args.interpreter:
+        parser.error("one of --contract or --interpreter is required")
+    if args.contract:
+        with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
+            interpreters = contract_interpreters(args.contract, Path(tmpdir), set(args.implementation) if args.implementation else None)
+            return run_configs(interpreters, args.configs, parity=args.parity)
     return run_configs(args.interpreter, args.configs, parity=args.parity)
 
 
