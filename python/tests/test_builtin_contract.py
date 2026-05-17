@@ -41,15 +41,12 @@ class BuiltinContractTest(unittest.TestCase):
     def test_contract_declares_current_implementation_availability(self):
         implementations = self._contract_implementations()
 
-        self.assertEqual(set(implementations), {"python", "go", "javascript"})
+        self.assertEqual(set(implementations), {"python", "go"})
         self.assertTrue(implementations["python"]["available"])
         self.assertIn("python/thuepp.py", implementations["python"]["command"])
         self.assertTrue(implementations["go"]["available"])
         self.assertIn("go build", implementations["go"]["build"])
         self.assertIn("{artifact}", implementations["go"]["command"])
-        self.assertFalse(implementations["javascript"]["available"])
-        self.assertEqual(implementations["javascript"]["command"], "")
-        self.assertIn("shared manifest runner", implementations["javascript"]["notes"])
 
     def test_every_contract_builtin_has_shared_fixture_coverage(self):
         contract = self._contract_builtins()

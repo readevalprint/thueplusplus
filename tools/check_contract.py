@@ -168,9 +168,6 @@ def check_contract(root: Path) -> list[Failure]:
     go = impls.get("go", {})
     if "{artifact}" not in go.get("build", "") or go.get("command") != "{artifact}":
         failures.append(Failure(path, "go implementation must build and invoke a {artifact} binary through the shared runner"))
-    js = impls.get("javascript", {})
-    if js.get("available") is not False or js.get("command", "") != "":
-        failures.append(Failure(path, "javascript must remain an unavailable future slot with an empty command until implemented"))
     wrapper_path = root / "tools" / "run-example-manifests"
     wrapper_text = read(wrapper_path)
     if not wrapper_text.startswith("#!/usr/bin/env python3\n"):

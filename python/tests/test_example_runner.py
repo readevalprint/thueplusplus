@@ -215,9 +215,6 @@ class SharedExampleRunnerTest(unittest.TestCase):
                     build = {f'{sys.executable} {build} {{artifact}}'!r}
                     command = {sys.executable!r}
 
-                    [implementations.javascript]
-                    available = false
-                    command = ""
                     """
                 ).replace("'", '"'),
                 encoding="utf-8",
@@ -240,10 +237,6 @@ class SharedExampleRunnerTest(unittest.TestCase):
             contract.write_text(
                 textwrap.dedent(
                     f"""
-                    [implementations.javascript]
-                    available = false
-                    command = ""
-
                     [implementations.broken]
                     available = true
                     build = {f'{sys.executable} {fail}'!r}
@@ -252,7 +245,7 @@ class SharedExampleRunnerTest(unittest.TestCase):
                 ).replace("'", '"'),
                 encoding="utf-8",
             )
-            with self.assertRaisesRegex(RuntimeError, "javascript.*not available"):
+            with self.assertRaisesRegex(RuntimeError, "unknown implementation\(s\): javascript"):
                 runner.contract_interpreters(contract, tmp / "artifacts", {"javascript"})
             with self.assertRaisesRegex(RuntimeError, "broken.*build failed"):
                 runner.contract_interpreters(contract, tmp / "artifacts", {"broken"})
