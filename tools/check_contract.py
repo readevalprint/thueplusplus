@@ -194,9 +194,30 @@ def check_contract(root: Path) -> list[Failure]:
         failures.append(Failure(runner_path, "shared runner must fail loudly on requires.commands metadata"))
     if "subprocess.run" not in runner_text:
         failures.append(Failure(runner_path, "shared runner must invoke implementations as external processes"))
+    forbidden_interpreter_paths = [
+        runner_path,
+        root / "python" / "tests" / "test_example_runner.py",
+        root / "python" / "tests" / "test_examples.py",
+        root / "go" / "internal" / "thuepp" / "go_interpreter_test.go",
+        root / "Makefile",
+        root / "README.md",
+    ]
+    for forbidden_path in forbidden_interpreter_paths:
+        if forbidden_path.exists() and "--interpreter" in read(forbidden_path):
+            failures.append(Failure(forbidden_path, "shared runner --interpreter compatibility path must not be referenced"))
     makefile = read(root / "Makefile")
     if "--contract tools/thuepp-contract.toml --parity" not in makefile:
         failures.append(Failure(root / "Makefile", "shared manifest target must use tools/thuepp-contract.toml"))
+    duplicate_full_manifest_checks = [
+        (root / "python" / "tests" / "test_examples.py", ["run_configs", "*/tests/*.toml"]),
+        (root / "go" / "internal" / "thuepp" / "go_interpreter_test.go", ["run-example-manifests", "examples", "tests", "*.toml"]),
+    ]
+    for duplicate_path, snippets in duplicate_full_manifest_checks:
+        if not duplicate_path.exists():
+            continue
+        duplicate_text = read(duplicate_path)
+        if all(snippet in duplicate_text for snippet in snippets):
+            failures.append(Failure(duplicate_path, "full shared manifest execution belongs only to Makefile test-shared"))
     return failures
 
 

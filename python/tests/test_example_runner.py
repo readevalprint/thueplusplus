@@ -98,6 +98,21 @@ class SharedExampleRunnerTest(unittest.TestCase):
             )
             sleep_fake = tmp / "sleep_interpreter.py"
             sleep_fake.write_text("import time\ntime.sleep(1)\n", encoding="utf-8")
+            contract = tmp / "implementations.toml"
+            contract.write_text(
+                textwrap.dedent(
+                    f"""
+                    [implementations.fake]
+                    available = true
+                    command = {f'{sys.executable} {fake}'!r}
+
+                    [implementations.sleep]
+                    available = true
+                    command = {f'{sys.executable} {sleep_fake}'!r}
+                    """
+                ).replace("'", '"'),
+                encoding="utf-8",
+            )
             program = tmp / "program.tpp"
             program.write_text("::=\n", encoding="utf-8")
             fixture_dir = tmp / "fixtures"
@@ -130,15 +145,15 @@ class SharedExampleRunnerTest(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
-            fake_interpreter = runner.Interpreter("fake", (sys.executable, str(fake)))
+            fake_interpreters = runner.contract_interpreters(contract, tmp / "artifacts", {"fake"})
             with contextlib.redirect_stdout(io.StringIO()):
-                runner.run_configs([fake_interpreter], [config])
+                runner.run_configs(fake_interpreters, [config])
 
             timeout_config = tmp / "timeout.toml"
             timeout_config.write_text('program = "program.tpp"\ntimeout = 0.1\n', encoding="utf-8")
-            sleep_interpreter = runner.Interpreter("sleep", (sys.executable, str(sleep_fake)))
+            sleep_interpreters = runner.contract_interpreters(contract, tmp / "artifacts", {"sleep"})
             with self.assertRaisesRegex(RuntimeError, "timed out"):
-                runner.run_configs([sleep_interpreter], [timeout_config])
+                runner.run_configs(sleep_interpreters, [timeout_config])
 
     def test_requires_commands_metadata_is_rejected(self):
         runner = load_runner_module()
@@ -161,9 +176,20 @@ class SharedExampleRunnerTest(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
-            fake_interpreter = runner.Interpreter("fake", (sys.executable, str(fake)))
+            contract = tmp / "implementations.toml"
+            contract.write_text(
+                textwrap.dedent(
+                    f"""
+                    [implementations.fake]
+                    available = true
+                    command = {f'{sys.executable} {fake}'!r}
+                    """
+                ).replace("'", '"'),
+                encoding="utf-8",
+            )
+            interpreters = runner.contract_interpreters(contract, tmp / "artifacts", {"fake"})
             with self.assertRaisesRegex(RuntimeError, "requires.commands is not supported"):
-                runner.run_configs([fake_interpreter], [config])
+                runner.run_configs(interpreters, [config])
 
     def test_contract_interpreters_build_and_filter_available_implementations(self):
         runner = load_runner_module()
@@ -231,12 +257,14 @@ class SharedExampleRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "broken.*build failed"):
                 runner.contract_interpreters(contract, tmp / "artifacts", {"broken"})
 
-    def test_cli_accepts_uniform_interpreter_command(self):
+    def test_cli_rejects_interpreter_compatibility_mode(self):
         completed = subprocess.run(
             [
                 sys.executable,
                 str(REPO_ROOT / "tools" / "run-example-manifests"),
-                "--interpreter",
+                "--contract",
+                str(REPO_ROOT / "tools" / "thuepp-contract.toml"),
+                "--" + "interpreter",
                 f"python={sys.executable} {REPO_ROOT / 'python' / 'thuepp.py'}",
                 str(REPO_ROOT / "examples" / "hello" / "tests" / "basic.toml"),
             ],
@@ -245,8 +273,25 @@ class SharedExampleRunnerTest(unittest.TestCase):
             text=True,
             timeout=10,
         )
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("run: 1 cases passed for python", completed.stdout)
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertNotIn("run: 1 cases passed", completed.stdout)
+        self.assertIn("unrecognized arguments", completed.stderr)
+
+    def test_cli_requires_contract(self):
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "tools" / "run-example-manifests"),
+                str(REPO_ROOT / "examples" / "hello" / "tests" / "basic.toml"),
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("required", completed.stderr)
+        self.assertIn("--contract", completed.stderr)
 
     def test_cli_accepts_contract_mode(self):
         completed = subprocess.run(

@@ -68,6 +68,28 @@ class RepositoryConformanceCheckerTest(unittest.TestCase):
 
         self.assertIn("shared runner must not import Python implementation module thuepp", self._messages(failures, root))
 
+    def test_shared_runner_interpreter_compatibility_reference_fails(self):
+        with self._minimal_repo() as root:
+            runner = root / "tools" / "example_runner.py"
+            runner.write_text(runner.read_text(encoding="utf-8") + "\n# stale --interpreter compatibility path\n", encoding="utf-8")
+
+            failures = check_contract.check_contract(root)
+
+        self.assertIn("shared runner --interpreter compatibility path must not be referenced", self._messages(failures, root))
+
+    def test_duplicate_full_manifest_execution_fails(self):
+        with self._minimal_repo() as root:
+            go_test = root / "go" / "internal" / "thuepp" / "go_interpreter_test.go"
+            go_test.write_text(
+                go_test.read_text(encoding="utf-8")
+                + '\n// stale duplicate: tools/run-example-manifests examples tests *.toml\n',
+                encoding="utf-8",
+            )
+
+            failures = check_contract.check_contract(root)
+
+        self.assertIn("full shared manifest execution belongs only to Makefile test-shared", self._messages(failures, root))
+
     def test_numeric_grammar_drift_fails(self):
         with self._minimal_repo() as root:
             doc = root / "docs" / "numeric-builtins.md"
@@ -95,7 +117,10 @@ class RepositoryConformanceCheckerTest(unittest.TestCase):
             "README.md",
             "docs/numeric-builtins.md",
             "python/thuepp.py",
+            "python/tests/test_example_runner.py",
+            "python/tests/test_examples.py",
             "go/internal/thuepp/interpreter.go",
+            "go/internal/thuepp/go_interpreter_test.go",
             "examples/builtin/builtin.tpp",
             "examples/lisp/lisp.tpp",
             "examples/hello/hello.tpp",
