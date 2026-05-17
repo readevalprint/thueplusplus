@@ -34,23 +34,23 @@ class RuleCoverageCheckerTest(unittest.TestCase):
         self.assertEqual(checker.find_operator(r"[ : := ::! ]"), -1)
         self.assertGreaterEqual(checker.find_operator(r"(?<op> ::= | ::! ) ::= {{op}}"), 0)
 
-    def test_coverage_ignore_before_operator_like_regex_text_still_fails_as_non_rule(self):
+    def test_coverage_ignore_comment_fails_loudly(self):
         checker = load_checker_module()
         with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
             program = Path(tmp) / "program.tpp"
             program.write_text(
                 textwrap.dedent(
                     r"""
-                    # coverage: ignore should not apply to operator text inside regex constructs
-                    (?<op> ::= | ::! )
+                    # coverage: ignore unsupported escape hatch
+                    never ::= used
                     """
                 ).lstrip(),
                 encoding="utf-8",
             )
-            with self.assertRaisesRegex(RuntimeError, "coverage ignore before non-rule"):
+            with self.assertRaisesRegex(RuntimeError, "coverage ignore comments are unsupported"):
                 checker.enumerate_rules(program)
 
-    def test_checker_fails_on_uncovered_non_ignored_rule(self):
+    def test_checker_fails_on_uncovered_rule(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
             base = Path(tmp)
             program = base / "program.tpp"
@@ -95,7 +95,7 @@ class RuleCoverageCheckerTest(unittest.TestCase):
             self.assertIn("uncovered:", result.stdout)
             self.assertIn("never ::= used", result.stdout)
 
-    def test_checker_allows_source_local_ignore_with_reason(self):
+    def test_checker_does_not_allow_source_local_ignore(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
             base = Path(tmp)
             program = base / "program.tpp"
@@ -137,9 +137,8 @@ class RuleCoverageCheckerTest(unittest.TestCase):
                 timeout=20,
             )
 
-            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-            self.assertIn("uncovered:  0", result.stdout)
-            self.assertIn("ignored:    1", result.stdout)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("coverage ignore comments are unsupported", result.stderr)
 
 
 if __name__ == "__main__":
