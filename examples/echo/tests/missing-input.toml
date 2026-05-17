@@ -3,5 +3,5 @@ program = "../echo.tpp"
 
 [expect]
 stdout = ""
-stderr = ""
+stderr_contains = ["Unknown resource 'input'"]
 exit_code = 1

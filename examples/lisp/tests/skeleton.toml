@@ -110,15 +110,6 @@ stdout = ""
 stderr_contains = ["parse error: curly-brace syntax is not supported"]
 
 [[case]]
-name = "unsupported string rejected"
-input = '"hello"'
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]
-
-[[case]]
 name = "malformed decimal literal fails loudly"
 input = "(+ 1.2.3 1)"
 
@@ -311,8 +302,8 @@ stderr = ""
 stdout_stripped = "nil"
 
 [[case]]
-name = "anonymous fn call"
-input = "((fn (x) (+ x 2)) 40)"
+name = "anonymous lambda call"
+input = "((lambda (x) (+ x 2)) 40)"
 
 [case.expect]
 exit_code = 0
@@ -320,8 +311,8 @@ stderr = ""
 stdout_stripped = "42"
 
 [[case]]
-name = "defn named function call"
-input = "(begin (defn add2 (x) (+ x 2)) (add2 40))"
+name = "def binds named lambda call"
+input = "(begin (def add2 (lambda (x) (+ x 2))) (add2 40))"
 
 [case.expect]
 exit_code = 0
@@ -330,7 +321,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "function argument shadows global in dynamic environment"
-input = "(begin (def x 1) (defn f (x) (+ x 1)) (f 10))"
+input = "(begin (def x 1) (def f (lambda (x) (+ x 1))) (f 10))"
 
 [case.expect]
 exit_code = 0
@@ -339,7 +330,7 @@ stdout_stripped = "11"
 
 [[case]]
 name = "sum-to with local loop"
-input = "(begin (defn sum-to (n) (begin (def i 0) (def acc 0) (while (<= i n) (set acc (+ acc i)) (set i (+ i 1))) acc)) (sum-to 5))"
+input = "(begin (def sum-to (lambda (n) (begin (def i 0) (def acc 0) (while (<= i n) (set acc (+ acc i)) (set i (+ i 1))) acc))) (sum-to 5))"
 
 [case.expect]
 exit_code = 0
@@ -430,6 +421,332 @@ stderr_contains = ["parse error: unsupported or malformed Lisp input"]
 [[case]]
 name = "raw internal-looking O state rejected"
 input = "O:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "raw internal-looking K state rejected"
+input = "K:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "def binds zero arg lambda"
+input = "(begin (def forty-two (lambda () 42)) (forty-two))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "def binds two arg lambda"
+input = "(begin (def add (lambda (x y) (+ x y))) (add 20 22))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "anonymous two arg lambda call"
+input = "((lambda (x y) (+ x y)) 20 22)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "if variable true chooses then"
+input = "(begin (def c true) (if c 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "if variable false chooses else"
+input = "(begin (def c false) (if c 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "if variable nil chooses else"
+input = "(begin (def c nil) (if c 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "lookup skips call frame for outer one arg function"
+input = "(begin (def add2 (lambda (x) (+ x 2))) (def call-add2 (lambda (y) (add2 y))) (call-add2 40))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "raw lambda value is not printable"
+input = "(lambda (x) (+ x 1))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "unknown one arg call rejected"
+input = "(missing 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "zero arg call skips newer binding"
+input = "(begin (def forty-two (lambda () 42)) (def noise 0) (forty-two))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "unknown zero arg call with env rejected"
+input = "(begin (def noise 0) (missing))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "unknown one arg call with env rejected"
+input = "(begin (def noise 0) (missing 1))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "two arg call skips newer binding"
+input = "(begin (def add (lambda (x y) (+ x y))) (def noise 0) (add 20 22))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "unknown two arg call with env rejected"
+input = "(begin (def noise 0) (missing 1 2))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "while rhs variable skips local frame"
+input = "(begin (def limit 3) (def count-to-limit (lambda () (begin (def i 0) (while (< i limit) (set i (+ i 1))) i))) (count-to-limit))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "while missing rhs variable rejected"
+input = "(begin (def i 0) (def noise 1) (while (< i missing) (set i 1)))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "zero arg call skips call frame"
+input = "(begin (def forty-two (lambda () 42)) (def call-forty-two (lambda () (forty-two))) (call-forty-two))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "two arg call skips call frame"
+input = "(begin (def add (lambda (x y) (+ x y))) (def call-add (lambda () (add 20 22))) (call-add))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "string literal outputs text"
+input = '"hello"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "hello"
+
+[[case]]
+name = "string newline escape outputs newline"
+input = '"hello\nworld"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "hello\nworld\n"
+
+[[case]]
+name = "string escaped backslash n is literal"
+input = '"hello\\nworld"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = 'hello\nworld'
+
+
+[[case]]
+name = "string escaped quote outputs quote"
+input = '"hello\"world"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = 'hello"world'
+
+[[case]]
+name = "string delimiter payload is inert"
+input = '"();@RULE@;{{x}}"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "();@RULE@;{{x}}"
+
+[[case]]
+name = "string equality true"
+input = '(= "abc" "abc")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "string equality false"
+input = '(= "abc" "abd")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "string concatenation"
+input = '(str-cat "hello" "world")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "helloworld"
+
+[[case]]
+name = "string concatenation keeps delimiter payload inert"
+input = '(str-cat "()" "{{x}}")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(){{x}}"
+
+
+[[case]]
+name = "function body returns string"
+input = '(begin (def f (lambda () "hello")) (f))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "hello"
+
+[[case]]
+name = "if branch returns raw string"
+input = '(if true "then" "else")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "then"
+
+[[case]]
+name = "string supports repeated newline escapes"
+input = '"a\nb\nc"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "a\nb\nc\n"
+
+[[case]]
+name = "string supports mixed escapes"
+input = '"a\"b\\c"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = 'a"b\c'
+
+[[case]]
+name = "curly before string rejected"
+input = '{bad} "ok"'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: curly-brace syntax is not supported"]
+
+[[case]]
+name = "curly after string rejected"
+input = '"ok" {bad}'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: curly-brace syntax is not supported"]
+
+[[case]]
+name = "unknown string escape rejected"
+input = '"bad\q"'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "dangling string backslash rejected"
+input = '"bad\"'
 
 [case.expect]
 exit_code = 2

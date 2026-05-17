@@ -40,7 +40,9 @@ class TestExampleConfigs(unittest.TestCase):
     def test_lisp_skeleton_deletes_legacy_lambda_surface(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertIn("Minimal parenthesized Lisp skeleton", text)
+        self.assertIn("Greenfield parenthesized Lisp rewrite", text)
+        self.assertIn("Lisp functions remain raw lambda values", text)
+        self.assertNotIn("defun", text)
         self.assertNotIn("1-5 fixed params", text)
         self.assertNotIn("$x", text)
 
@@ -59,16 +61,16 @@ class TestExampleConfigs(unittest.TestCase):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
         self.assertIn("# Supported in this slice:", text)
-        self.assertIn("# Unsupported syntax fails loudly", text)
+        self.assertIn("# Hard cutoff: curly syntax and raw evaluator states are not user syntax.", text)
         self.assertNotIn("# INTERNAL STATE CONTRACT:", text)
         self.assertNotIn("Temporary work markers are @...@ or #...«...»", text)
         self.assertNotIn("Parser-protection sentinels use §...§", text)
 
-    def test_lisp_uses_single_canonical_work_binding_output_state(self):
+    def test_lisp_uses_canonical_work_binding_continuation_output_state(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertIn("W:{{input}}\\nB:\\nO:", text)
-        self.assertNotIn("\\nE:", text)
+        self.assertIn("W:{{input}}\\nB:\\nK:\\nO:", text)
+        self.assertIn("#   K: call continuations, innermost first", text)
         self.assertNotIn("\\nF:", text)
 
     def test_lisp_hash_keys_are_deleted_from_skeleton(self):

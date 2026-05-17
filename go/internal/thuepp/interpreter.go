@@ -27,11 +27,12 @@ const (
 	Write      Operator = "::>"
 	Exit       Operator = "::-"
 	Builtin    Operator = "::!"
+	Data       Operator = "::%"
 )
 
 var (
 	numericLiteralPattern  = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
-	rulePattern            = regexp.MustCompile(`^(.*?)[ \t]+::([=<>!-])(?:[ \t]+(.*)|[ \t]*)$`)
+	rulePattern            = regexp.MustCompile(`^(.*?)[ \t]+::([=<>!%-])(?:[ \t]+(.*)|[ \t]*)$`)
 	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
 )
 
@@ -253,6 +254,8 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 		op = Exit
 	case "!":
 		op = Builtin
+	case "%":
+		op = Data
 	default:
 		return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 	}
@@ -326,6 +329,8 @@ func builtinArity(name string) (int, bool) {
 		"num":    1,
 		"b64enc": 1,
 		"b64dec": 1,
+		"pctenc": 1,
+		"pctdec": 1,
 	}
 	arity, ok := arities[name]
 	return arity, ok
@@ -359,6 +364,52 @@ func b64urlDecode(value string) (string, error) {
 		return "", fmt.Errorf("Builtin 'b64dec' expected canonical unpadded Base64url input")
 	}
 	return text, nil
+}
+
+func pctEncode(value string) string {
+	var out strings.Builder
+	for _, b := range []byte(value) {
+		if b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '_' || b == '.' || b == '-' {
+			out.WriteByte(b)
+		} else {
+			out.WriteString(fmt.Sprintf("%%%02X", b))
+		}
+	}
+	return out.String()
+}
+
+func pctDecode(value string) (string, error) {
+	data := make([]byte, 0, len(value))
+	for pos := 0; pos < len(value); {
+		ch := value[pos]
+		if ch == '%' {
+			if pos+2 >= len(value) {
+				return "", fmt.Errorf("PCT payload has incomplete percent escape")
+			}
+			hx := value[pos+1 : pos+3]
+			for _, c := range []byte(hx) {
+				if !(c >= '0' && c <= '9' || c >= 'A' && c <= 'F') {
+					return "", fmt.Errorf("PCT payload has malformed or non-canonical percent escape")
+				}
+			}
+			v, err := strconv.ParseUint(hx, 16, 8)
+			if err != nil {
+				return "", fmt.Errorf("PCT payload has malformed percent escape: %w", err)
+			}
+			data = append(data, byte(v))
+			pos += 3
+		} else {
+			if !(ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' || ch == '_' || ch == '.' || ch == '-') {
+				return "", fmt.Errorf("PCT payload contains unencoded unsafe byte")
+			}
+			data = append(data, ch)
+			pos++
+		}
+	}
+	if !utf8.Valid(data) {
+		return "", fmt.Errorf("PCT payload decoded bytes are not valid UTF-8")
+	}
+	return string(data), nil
 }
 
 func parseNumber(value, builtin string) (*big.Rat, error) {
@@ -397,6 +448,12 @@ func evalBuiltin(name string, values []string) (string, error) {
 	}
 	if name == "b64dec" {
 		return b64urlDecode(values[0])
+	}
+	if name == "pctenc" {
+		return pctEncode(values[0]), nil
+	}
+	if name == "pctdec" {
+		return pctDecode(values[0])
 	}
 	if name == "num" {
 		n, err := parseNumber(values[0], name)
@@ -465,7 +522,14 @@ func evalBuiltin(name string, values []string) (string, error) {
 	return "", fmt.Errorf("Unknown builtin '%s'", name)
 }
 
-func (i *Interpreter) expandTemplate(template string, groups map[string]string, extra map[string]string) string {
+func (i *Interpreter) expandTemplate(template string, groups map[string]string, extra map[string]string) (string, error) {
+	raw := map[string]string{}
+	for k, v := range groups {
+		raw[k] = v
+	}
+	for k, v := range extra {
+		raw[k] = v
+	}
 	vars := map[string]string{}
 	for k, v := range groups {
 		vars[k] = strings.ReplaceAll(v, `\`, `\\`)
@@ -479,25 +543,50 @@ func (i *Interpreter) expandTemplate(template string, groups map[string]string, 
 		if strings.HasPrefix(template[pos:], "{{") {
 			end := strings.Index(template[pos+2:], "}}")
 			if end >= 0 {
-				name := template[pos+2 : pos+2+end]
-				if isWord(name) {
-					out.WriteString(vars[name])
+				inside := template[pos+2 : pos+2+end]
+				if strings.Contains(inside, "|") {
+					parts := strings.Split(inside, "|")
+					if len(parts) != 2 || !isWord(parts[0]) || parts[0][0] >= '0' && parts[0][0] <= '9' || !isWord(parts[1]) || parts[1][0] >= '0' && parts[1][0] <= '9' {
+						return "", fmt.Errorf("Malformed template filter '{{%s}}'", inside)
+					}
+					value, ok := raw[parts[0]]
+					if !ok {
+						return "", fmt.Errorf("Missing template capture '%s'", parts[0])
+					}
+					switch parts[1] {
+					case "pctenc":
+						out.WriteString(pctEncode(value))
+					case "pctdec":
+						decoded, err := pctDecode(value)
+						if err != nil {
+							return "", err
+						}
+						out.WriteString(decoded)
+					default:
+						return "", fmt.Errorf("Unknown template filter '%s'", parts[1])
+					}
+					pos += 2 + end + 2
+					continue
+				}
+				if isWord(inside) {
+					out.WriteString(vars[inside])
 					pos += 2 + end + 2
 					continue
 				}
 			}
 		}
-		out.WriteByte(template[pos])
-		pos++
+		if strings.HasPrefix(template[pos:], "{{") {
+			out.WriteByte(template[pos])
+			pos++
+			continue
+		}
+		literalStart := pos
+		for pos < len(template) && !strings.HasPrefix(template[pos:], "{{") {
+			pos++
+		}
+		out.WriteString(decodeReplacementEscapes(template[literalStart:pos]))
 	}
-	res := out.String()
-	ph := "\x00BACKSLASH\x00"
-	res = strings.ReplaceAll(res, `\\`, ph)
-	res = strings.ReplaceAll(res, `\n`, "\n")
-	res = strings.ReplaceAll(res, `\t`, "\t")
-	res = strings.ReplaceAll(res, `\r`, "\r")
-	res = strings.ReplaceAll(res, ph, `\`)
-	return res
+	return out.String(), nil
 }
 
 func isWord(s string) bool {
@@ -510,6 +599,56 @@ func isWord(s string) bool {
 		}
 	}
 	return true
+}
+
+func decodeReplacementEscapes(text string) string {
+	ph := "\x00BACKSLASH\x00"
+	text = strings.ReplaceAll(text, `\\`, ph)
+	text = strings.ReplaceAll(text, `\n`, "\n")
+	text = strings.ReplaceAll(text, `\t`, "\t")
+	text = strings.ReplaceAll(text, `\r`, "\r")
+	text = strings.ReplaceAll(text, ph, `\`)
+	return text
+}
+
+func (i *Interpreter) expandDataTemplate(template string, groups map[string]string) (string, error) {
+	var out strings.Builder
+	pos := 0
+	for pos < len(template) {
+		if strings.HasPrefix(template[pos:], "{{") {
+			end := strings.Index(template[pos+2:], "}}")
+			if end >= 0 {
+				inside := template[pos+2 : pos+2+end]
+				if strings.Contains(inside, "|") {
+					return "", fmt.Errorf("Filters are not supported inside ::%% templates")
+				}
+				if isWord(inside) && !(inside[0] >= '0' && inside[0] <= '9') {
+					value, ok := groups[inside]
+					if !ok {
+						return "", fmt.Errorf("Missing template capture '%s'", inside)
+					}
+					decoded, err := pctDecode(value)
+					if err != nil {
+						return "", err
+					}
+					out.WriteString(decoded)
+					pos += 2 + end + 2
+					continue
+				}
+			}
+		}
+		if strings.HasPrefix(template[pos:], "{{") {
+			out.WriteByte(template[pos])
+			pos++
+			continue
+		}
+		literalStart := pos
+		for pos < len(template) && !strings.HasPrefix(template[pos:], "{{") {
+			pos++
+		}
+		out.WriteString(decodeReplacementEscapes(template[literalStart:pos]))
+	}
+	return pctEncode(out.String()), nil
 }
 
 func (i *Interpreter) ensureProcess(b *Binding) error {
@@ -722,44 +861,52 @@ func (i *Interpreter) Run() (int, error) {
 			groups := m.groups
 			switch rule.Operator {
 			case Substitute:
-				if err := i.replaceMatch(m, i.expandTemplate(rule.RHS, groups, nil)); err != nil {
+				replacement, err := i.expandTemplate(rule.RHS, groups, nil)
+				if err != nil {
+					return 1, err
+				}
+				if err := i.replaceMatch(m, replacement); err != nil {
+					return 1, err
+				}
+				i.recordRuleCoverage(rule)
+			case Data:
+				replacement, err := i.expandDataTemplate(rule.RHS, groups)
+				if err != nil {
+					return 1, err
+				}
+				if err := i.replaceMatch(m, replacement); err != nil {
 					return 1, err
 				}
 				i.recordRuleCoverage(rule)
 			case Read:
 				parts := strings.Fields(strings.TrimSpace(rule.RHS))
-				resourceTemplate := strings.TrimSpace(rule.RHS)
-				rest := ""
-				if len(parts) > 0 {
-					resourceTemplate = parts[0]
-					idx := strings.Index(strings.TrimSpace(rule.RHS), parts[0])
-					rest = strings.TrimLeft(strings.TrimSpace(rule.RHS)[idx+len(parts[0]):], " \t")
+				if len(parts) != 2 {
+					return 1, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
 				}
-				resource := i.expandTemplate(resourceTemplate, groups, nil)
+				readSpec, resource := parts[0], parts[1]
+				if readSpec != "-1" {
+					return 1, fmt.Errorf("Line %d: unsupported read spec '%s'", rule.LineNumber, readSpec)
+				}
+				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
+					return 1, fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
+				}
 				b := i.Bindings[resource]
 				if b == nil {
-					if err := i.replaceMatch(m, "ERR:resource:"+resource); err != nil {
-						return 1, err
-					}
-				} else {
-					content, er := i.readAll(b)
-					repl := er
-					if repl == "" {
-						if rest != "" {
-							repl = i.expandTemplate(rest, groups, map[string]string{"data": content})
-						} else {
-							repl = content
-						}
-					}
-					if err := i.replaceMatch(m, repl); err != nil {
-						return 1, err
-					}
-					if er == "" {
-						i.recordRuleCoverage(rule)
-					}
+					return 1, fmt.Errorf("Unknown resource '%s'", resource)
 				}
+				content, er := i.readAll(b)
+				if er != "" {
+					return 1, errors.New(er)
+				}
+				if err := i.replaceMatch(m, pctEncode(content)); err != nil {
+					return 1, err
+				}
+				i.recordRuleCoverage(rule)
 			case Write:
-				expanded := i.expandTemplate(rule.RHS, groups, nil)
+				expanded, err := i.expandTemplate(rule.RHS, groups, nil)
+				if err != nil {
+					return 1, err
+				}
 				resource, content := splitResource(expanded)
 				b := i.Bindings[resource]
 				repl := ""
