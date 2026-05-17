@@ -226,6 +226,111 @@ func TestGoInterpreterRuleCoverageCountsSuccessfulApplications(t *testing.T) {
 	}
 }
 
+func TestGoInterpreterRuleOperatorParserContract(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	goBin := buildGoInterpreter(t, repoRoot)
+	tests := []struct {
+		name       string
+		program    string
+		wantCode   int
+		wantStderr string
+	}{
+		{
+			name: "literal operator text can match when not standalone",
+			program: strings.Join([]string{
+				`foo::=bar ::= ok`,
+				`ok ::- 7`,
+				``,
+				`::=`,
+				`foo::=bar`,
+				``,
+			}, "\n"),
+			wantCode: 7,
+		},
+		{
+			name: "empty rhs substitution remains valid",
+			program: strings.Join([]string{
+				`x ::=`,
+				`^$ ::- 7`,
+				``,
+				`::=`,
+				`x`,
+				``,
+			}, "\n"),
+			wantCode: 7,
+		},
+		{
+			name: "standalone operator token inside lhs is hard cutoff",
+			program: strings.Join([]string{
+				`foo( ::= )bar ::= ok`,
+				`ok ::- 7`,
+				``,
+				`::=`,
+				`foo ::= bar`,
+				``,
+			}, "\n"),
+			wantCode:   -1,
+			wantStderr: `Invalid regex 'foo('`,
+		},
+		{
+			name: "operator requires whitespace",
+			program: strings.Join([]string{
+				`lhs::=rhs`,
+				``,
+				`::=`,
+				`lhs`,
+				``,
+			}, "\n"),
+			wantCode:   -1,
+			wantStderr: `Invalid rule syntax: lhs::=rhs`,
+		},
+		{
+			name: "unsupported operator fails loudly",
+			program: strings.Join([]string{
+				`lhs ::@ rhs`,
+				``,
+				`::=`,
+				`lhs`,
+				``,
+			}, "\n"),
+			wantCode:   -1,
+			wantStderr: `Invalid rule syntax: lhs ::@ rhs`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			programPath := filepath.Join(t.TempDir(), "operator-contract.tpp")
+			if err := os.WriteFile(programPath, []byte(tt.program), 0644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(goBin, programPath)
+			cmd.Dir = repoRoot
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
+			if tt.wantCode == 0 {
+				if err != nil {
+					t.Fatalf("go interpreter failed: %v\nstderr=%q", err, stderr.String())
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("go interpreter exit = 0, want %d", tt.wantCode)
+				}
+				if tt.wantCode > 0 {
+					if ee, ok := err.(*exec.ExitError); !ok || ee.ExitCode() != tt.wantCode {
+						t.Fatalf("go interpreter exit = %v, want %d\nstderr=%q", err, tt.wantCode, stderr.String())
+					}
+				}
+			}
+			if tt.wantStderr != "" && !strings.Contains(stderr.String(), tt.wantStderr) {
+				t.Fatalf("stderr = %q, want to contain %q", stderr.String(), tt.wantStderr)
+			}
+		})
+	}
+}
+
 func findRepoRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()

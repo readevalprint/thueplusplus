@@ -31,6 +31,7 @@ const (
 
 var (
 	numericLiteralPattern  = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
+	rulePattern            = regexp.MustCompile(`^(.*?)[ \t]+::([=<>!-])(?:[ \t]+(.*)|[ \t]*)$`)
 	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
 )
 
@@ -230,42 +231,48 @@ func (i *Interpreter) parseProgram(content string) error {
 }
 
 func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
-	ops := []struct {
-		op Operator
-		s  string
-	}{{Exit, "::-"}, {Read, "::<"}, {Write, "::>"}, {Builtin, "::!"}, {Substitute, "::="}}
-	for _, oo := range ops {
-		idx := findOperator(line, oo.s)
-		if idx != -1 {
-			lhs := strings.TrimRight(line[:idx], " \t")
-			rhs := strings.TrimLeft(line[idx+len(oo.s):], " \t")
-			if lhs == "" && oo.op != Exit {
-				return nil, fmt.Errorf("Line %d: Rule must have a non-empty LHS (except for exit rules)", lineNumber)
-			}
-			pat := lhs
-			if pat == "" {
-				pat = "^"
-			}
-			re, err := regexp.Compile(pat)
-			if err != nil {
-				return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
-			}
-			builtinName := ""
-			var builtinArgs []string
-			if oo.op == Builtin {
-				var err error
-				builtinName, builtinArgs, err = parseBuiltinCall(rhs, lineNumber, captureNames(re))
-				if err != nil {
-					return nil, err
-				}
-			}
-			return &Rule{LHS: lhs, Pattern: re, Operator: oo.op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
-		}
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+		return nil, nil
 	}
-	if strings.TrimSpace(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "#") {
+	matches := rulePattern.FindStringSubmatch(line)
+	if matches == nil {
 		return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 	}
-	return nil, nil
+	lhs := strings.TrimRight(matches[1], " \t")
+	rhs := matches[3]
+	var op Operator
+	switch matches[2] {
+	case "=":
+		op = Substitute
+	case "<":
+		op = Read
+	case ">":
+		op = Write
+	case "-":
+		op = Exit
+	case "!":
+		op = Builtin
+	default:
+		return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
+	}
+	if lhs == "" {
+		return nil, fmt.Errorf("Line %d: Rule must have a non-empty LHS", lineNumber)
+	}
+	re, err := regexp.Compile(lhs)
+	if err != nil {
+		return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
+	}
+	builtinName := ""
+	var builtinArgs []string
+	if op == Builtin {
+		var err error
+		builtinName, builtinArgs, err = parseBuiltinCall(rhs, lineNumber, captureNames(re))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
 }
 
 func captureNames(re *regexp.Regexp) map[string]bool {
@@ -456,37 +463,6 @@ func evalBuiltin(name string, values []string) (string, error) {
 		return "0", nil
 	}
 	return "", fmt.Errorf("Unknown builtin '%s'", name)
-}
-
-func findOperator(line, op string) int {
-	depth := 0
-	charClass := false
-	for idx := 0; idx < len(line); {
-		c := line[idx]
-		if c == '\\' && idx+1 < len(line) {
-			idx += 2
-			continue
-		}
-		if c == '[' && !charClass {
-			charClass = true
-		} else if c == ']' && charClass {
-			charClass = false
-		} else if c == '(' && !charClass {
-			depth++
-		} else if c == ')' && !charClass && depth > 0 {
-			depth--
-		}
-		if !charClass && depth == 0 && strings.HasPrefix(line[idx:], op) {
-			beforeOK := idx == 0 || line[idx-1] == ' ' || line[idx-1] == '\t'
-			after := idx + len(op)
-			afterOK := after >= len(line) || line[after] == ' ' || line[after] == '\t'
-			if beforeOK && afterOK {
-				return idx
-			}
-		}
-		idx++
-	}
-	return -1
 }
 
 func (i *Interpreter) expandTemplate(template string, groups map[string]string, extra map[string]string) string {
