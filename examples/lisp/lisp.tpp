@@ -98,7 +98,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Quote is captured before literal parsing/evaluation so visible data identity is preserved.
 ^W:(?<p>[^\n]*)\{quote (?<e>.*)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@Q{{e}}@{{q}}\n{{r}}
 ^W:(?<v>@Q[^\n]+@)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:\nS:\nO:{{v}}
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
 ^W:(?<v>@Q[^\n]+@)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 
 # Strings: "..." -> <S>...</S>
@@ -109,9 +108,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*[{\[ ])(?<n>-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+))(?<q>[ }<\]][^\n]*)\n<|R|> ::= W:{{p}}<N>{{n}}</N>{{q}}\n{{r}}
 
 # Booleans: true/false -> <T/> / <F/>
-# coverage: ignore root boolean true normalization for direct whole-program value input
 ^W:true\n<|R|> ::= W:<T/>\n{{r}}
-# coverage: ignore root boolean false normalization for direct whole-program value input
 ^W:false\n<|R|> ::= W:<F/>\n{{r}}
 ^W:(?<p>[^\n]*[{ ])true(?<q>[ }\]][^\n]*)\n<|R|> ::= W:{{p}}<T/>{{q}}\n{{r}}
 ^W:(?<p>[^\n]*[{ ])false(?<q>[ }\]][^\n]*)\n<|R|> ::= W:{{p}}<F/>{{q}}\n{{r}}
@@ -123,12 +120,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Symbols: 'name -> <Y>name</Y> (quoted identifier)
 ^W:(?<p>[^\n]*)'(?<s>[a-zA-Z_][a-zA-Z0-9_-]*)(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<Y>{{s}}</Y>{{q}}\n{{r}}
 
-# Quote: (quote expr) -> <Q>expr</Q> (prevent evaluation)
-# Quote preserves the expression as data
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:(?<p>[^\n]*)\{quote \{(?<e>.+)\}\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<Q>{{e}}</Q>{{q}}\n{{r}}
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:(?<p>[^\n]*)\{quote (?<e>[^{}]+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<Q>{{e}}</Q>{{q}}\n{{r}}
 
 # Keywords: :name -> <K>name</K> (self-evaluating)
 ^W:(?<p>[^\n]*):(?<k>[a-zA-Z_][a-zA-Z0-9_-]*)(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<K>{{k}}</K>{{q}}\n{{r}}
@@ -166,9 +157,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Place these guards before builtin sentinel rules so output data is validated
 # before any implementation marker can be accidentally executed from O:.
 ^W:\nS:\nO:.*@(ADD|SUB|MUL|DIV|NUMEQ|LT|GT|LE|GE)\[[^\n]*$ ::= !P!EXIT2
-# coverage: ignore defensive error path retained for fail-loud malformed internal state/resource failures
 ^W:\nS:\nO:.*@EQ«[^\n]*$ ::= !P!EXIT2
-# coverage: ignore defensive error path retained for fail-loud malformed internal state/resource failures
 ^W:\nS:\nO:.*@B:[^\n]*$ ::= !P!EXIT2
 
 # Arithmetic: {op <N>a</N> <N>b</N>} -> compute with pure builtins.
@@ -268,7 +257,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@LET\{\}(?<body>.+?)@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}@LET{{body}}@{{q}}\n{{r}}
 # Enter a nested let inside an already-active @LET body while preserving the outer frame.
 ^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nF:{{f}}\nB:|{{b}}\n{{r}}
-# coverage: ignore nested let while an E: continuation is active; canonical continuation ordering must be preserved
 ^W:(?<p>[^\n]*)@LET\{let \{(?<bindings>\[[^\]]+\][^}]*)\} (?<body>.+)\}@(?<q>[^\n]*)\nE:(?<e>[^\n]*)\nF:(?<f>[^\n]*)\nB:(?<b>[^\n]*)\n<|R|> ::= W:{{p}}@LET@LET{{{bindings}}}{{body}}@@{{q}}\nE:{{e}}\nF:{{f}}\nB:|{{b}}\n{{r}}
 
 # Variable lookup: $name (or protected #name in stored lambda bodies) -> scan B: frames with builtin equality.
@@ -287,7 +275,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Cons cell values (contain nested XML)
 ^W:(?<p>[^\n]*)@LET(?<v><C>[^@]+</C>)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nF:{{f}}\nB:{{b}}\n{{r}}
 # Lambda values (contain nested XML)
-# coverage: ignore lambda value returned from let frame; kept for first-class lambda value propagation
 ^W:(?<p>[^\n]*)@LET(?<v><L><P>[^<]+</P><BODY>.+</BODY></L>)@(?<q>[^\n]*)\nF:(?<f>[^\n]*)\nB:\|(?<frame>[^|]*)(?<b>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\nF:{{f}}\nB:{{b}}\n{{r}}
 
 # ============================================================
@@ -317,7 +304,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|1I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|2«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|2I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|3«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|3I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|4«{{rest}}\n{{r}}
-# coverage: ignore lambda body brace-depth guard for five-level nested lambda/list bodies
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|4I«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|5«{{rest}}\n{{r}}
 
 # Hit } at depth > 0: decrement depth, move } to processed
@@ -327,7 +313,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|2D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|1«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|3D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|2«{{rest}}\n{{r}}
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|4D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|3«{{rest}}\n{{r}}
-# coverage: ignore lambda body brace-depth unwind for five-level nested lambda/list bodies
 ^W:(?<p>[^\n]*)@L\|(?<params>[^|]+)\|5D«(?<rest>[^\n]*)\n<|R|> ::= W:{{p}}@L|{{params}}|4«{{rest}}\n{{r}}
 
 # Move non-brace characters to processed part
@@ -344,7 +329,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>) (?<p3><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>) (?<a3><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}] [{{p2}} {{a2}}] [{{p3}} {{a3}}]} {{body}}}{{q}}\n{{r}}
 ^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<p2><|VAR|>)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<a2><|XMLVAL|>)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}] [{{p2}} {{a2}}]} {{body}}}{{q}}\n{{r}}
 # Multi-param fallback: curry - bind first param, keep rest
-# coverage: ignore multi-parameter currying fallback retained for applications beyond fixed-arity fast paths
 ^W:<|P|>\{<L><P>(?<p1><|VAR|>) (?<rest>[^<]+)</P><BODY>(?<body>.+)</BODY></L> (?<a1><|XMLVAL|>) (?<args>.+)\}<|Q|>\n<|R|> ::= W:{{p}}{let {[{{p1}} {{a1}}]} {<L><P>{{rest}}</P><BODY>{{body}}</BODY></L> {{args}}}}{{q}}\n{{r}}
 
 # Single param: evaluate body under a one-binding let frame instead of host-side substitution
@@ -355,10 +339,8 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # When E: has @RET@ and W: is a value, return to caller
 ^W:(?<val><[A-Z](?:/>|>[^<]*</[A-Z]>))\nE:(?<p>[^\n]*)@RET@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{val}}{{q}}\n{{r}}
-# coverage: ignore cons-cell return through E: continuation; protects nested list-producing lambda bodies
 ^W:(?<val><C>.*</C>)\nE:(?<p>[^\n]*)@RET@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{val}}{{q}}\n{{r}}
 # Lambda value (nested structure)
-# coverage: ignore lambda return through E: continuation; protects higher-order lambda-producing bodies
 ^W:(?<val><L><P>[^<]+</P><BODY>.+</BODY></L>)\nE:(?<p>[^\n]*)@RET@(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{val}}{{q}}\n{{r}}
 
 # ============================================================
@@ -372,9 +354,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)\{begin (?<v><[A-Z](?:/>|>[^< ]*</[A-Z]>)) (?<rest>.+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{begin {{rest}}}{{q}}\n{{r}}
 
 # Handle cons cells in begin (they contain spaces internally)
-# coverage: ignore begin returning a single cons-cell value; protects list-valued sequence results
 ^W:(?<p>[^\n]*)\{begin (?<v><C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{v}}{{q}}\n{{r}}
-# coverage: ignore begin dropping a cons-cell value before later expressions; protects list-valued sequence steps
 ^W:(?<p>[^\n]*)\{begin (?<v><C>.*?</C>) (?<rest>.+)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{begin {{rest}}}{{q}}\n{{r}}
 
 # ============================================================
@@ -400,7 +380,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:(?<p>[^\n]*)\{cons (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>) (?<b><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} {{b}}</C>{{q}}\n{{r}}
 
 # list: (list) -> <X/>
-# coverage: ignore empty list form normalization to nil; kept as public Lisp list contract
 ^W:(?<p>[^\n]*)\{list\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 # list: (list <X>) -> <C><X> <X/></C>
 ^W:(?<p>[^\n]*)\{list (?<a><[NSTFXYKRQVL](?:/>|>[^<]*</[NSTFXYKRQVL]>)|<C>.*</C>)\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<C>{{a}} <X/></C>{{q}}\n{{r}}
@@ -409,12 +388,10 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 
 # car: (car <C>...first... ...rest...</C>) -> first
 ^W:(?<p>[^\n]*)\{car <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b>[^}]+)</C>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{a}}{{q}}\n{{r}}
-# coverage: ignore car nil guard returns nil for empty-list compatibility
 ^W:(?<p>[^\n]*)\{car <X/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # cdr: (cdr <C>...first... ...rest...</C>) -> rest  
 ^W:(?<p>[^\n]*)\{cdr <C>(?<a><[A-Z][^<]*(?:</[A-Z]>|/>)) (?<b><[A-Z].*(?:</[A-Z]>|/>))</C>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}{{b}}{{q}}\n{{r}}
-# coverage: ignore cdr nil guard returns nil for empty-list compatibility
 ^W:(?<p>[^\n]*)\{cdr <X/>\}(?<q>[^\n]*)\n<|R|> ::= W:{{p}}<X/>{{q}}\n{{r}}
 
 # ============================================================
@@ -491,10 +468,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # OUTPUT: When work is a single value, format and print
 # ============================================================
 # First remove F: and B: lines if present
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:(?<v>@Q[^\n]+@)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:(?<v>@Q[^\n]+@)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 ^W:(?<v><[^\n]+)\nF:[^\n]*\nB:[^\n]*\nS:\nO:$ ::= W:{{v}}\nS:\nO:
 ^W:(?<v><[^\n]+)\nS:\nO:$ ::= W:\nS:\nO:{{v}}
 
@@ -511,13 +484,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:\nS:\nO:(?<p>.*)<R>(?<c>.)</R>(?<q>.*)$ ::= W:\nS:\nO:{{p}}#\\{{c}}{{q}}
 # Lambda: <L><P>params</P><BODY>body</BODY></L> -> [lambda params]
 ^W:\nS:\nO:(?<p>.*)<L><P>(?<params>[^<]+)</P><BODY>(?<body>.+)</BODY></L>(?<q>.*)$ ::= W:\nS:\nO:{{p}}[lambda {{params}}]{{q}}
-# Quote: <Q>expr</Q> -> '(expr)
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:(?<p>.*)<Q>(?<e>[^<]*)\{(?<qbody>[^<]*)</Q>(?<q>.*)$ ::= W:\nS:\nO:{{p}}<Q>{{e}}({{qbody}}</Q>{{q}}
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:(?<p>.*)<Q>(?<e>[^<]*)\}(?<qbody>[^<]*)</Q>(?<q>.*)$ ::= W:\nS:\nO:{{p}}<Q>{{e}}){{qbody}}</Q>{{q}}
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:(?<p>.*)<Q>(?<e>[^<]+)</Q>(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}@{{q}}
 ^W:\nS:\nO:(?<p>.*)<X/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}nil{{q}}
 ^W:\nS:\nO:(?<p>.*)<T/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}true{{q}}
 ^W:\nS:\nO:(?<p>.*)<F/>(?<q>.*)$ ::= W:\nS:\nO:{{p}}false{{q}}
@@ -530,9 +496,13 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # Cons cell: find innermost (one without nested <C>) 
 ^W:\nS:\nO:(?<p>.*)<C>(?<inner>[^<]+)</C>(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{inner}}){{q}}
 
-# Decode quoted raw forms before dotted-pair formatting; quoted syntax is data.
+# Decode protected string delimiters before quoted-output printing.
+^W:\nS:\nO:(?<p>.*)§LB§(?<q>.*)$ ::= W:\nS:\nO:{{p}}{{{q}}
+^W:\nS:\nO:(?<p>.*)§RB§(?<q>.*)$ ::= W:\nS:\nO:{{p}}}{{q}}
 ^W:\nS:\nO:(?<p>.*)§LP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{q}}
 ^W:\nS:\nO:(?<p>.*)§RP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
+
+# Decode quoted raw forms before dotted-pair formatting; quoted syntax is data.
 ^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\{(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}({{qbody}}@{{q}}
 ^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\}(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}){{qbody}}@{{q}}
 ^W:\nS:\nO:@Q\((?<out>[^@\n]+)\)@$ ::> stdout '({{out}})\n
@@ -546,23 +516,10 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 # a is nested, b is simple: ((...) b)
 ^W:\nS:\nO:(?<p>.*)\((?<a>\([^)]*\)) (?<b>[^.()\n]+)\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 # Both nested: ((...) (...))
-# coverage: ignore dotted-pair formatting for two nested output lists
 ^W:\nS:\nO:(?<p>.*)\((?<a>\([^)]*\)) (?<b>\([^)]*\))\)(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{a}} . {{b}}){{q}}
 
 # Compatibility formatting for lists containing literal parenthesis strings.
 ^W:\nS:\nO:\(\( \(\) (?<rest>\(.+\))\)\)$ ::= W:\nS:\nO:(( . () . {{rest}}))
-
-# Decode internal delimiter sentinels used to protect string data.
-^W:\nS:\nO:(?<p>.*)§LB§(?<q>.*)$ ::= W:\nS:\nO:{{p}}{{{q}}
-^W:\nS:\nO:(?<p>.*)§RB§(?<q>.*)$ ::= W:\nS:\nO:{{p}}}{{q}}
-# coverage: ignore protected left-parenthesis sentinel decode for output string data
-^W:\nS:\nO:(?<p>.*)§LP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}({{q}}
-# coverage: ignore protected right-parenthesis sentinel decode for output string data
-^W:\nS:\nO:(?<p>.*)§RP§(?<q>.*)$ ::= W:\nS:\nO:{{p}}){{q}}
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\{(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}({{qbody}}@{{q}}
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:(?<p>.*)@Q(?<e>[^@]*)\}(?<qbody>[^@]*)@(?<q>.*)$ ::= W:\nS:\nO:{{p}}@Q{{e}}){{qbody}}@{{q}}
 
 # Fail loud for stuck or unsupported forms.
 ^W:\{car <N>[^<]+</N>\}\n[\s\S]*$ ::= !R!EXIT3
@@ -570,15 +527,7 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^W:[^\n]+\n[\s\S]*$ ::= !P!EXIT2
 
 # Print and exit
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:@Q\((?<out>[^@\n]+)\)@$ ::> stdout '({{out}})\n
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:@Q(?<out>[^@\n]+)@$ ::> stdout '({{out}})\n
-# coverage: ignore quote normalization/output variant not reached by current shared fixtures
-^W:\nS:\nO:@Q[^@\n]+@$ ::- 0
 ^W:\nS:\nO:(?<out>[^<>\n]+)$ ::> stdout {{out}}\n
-# coverage: ignore paired exit after plaintext output write; stdout rule performs the observable output
-^W:\nS:\nO:[^<>\n]+$ ::- 0
 
 ^!PC! ::> stderr parse error: curly-brace syntax is not supported\n
 ^!P! ::> stderr parse error: unsupported or malformed Lisp input\n
@@ -586,10 +535,6 @@ XMLVAL <- <[A-Z](?:/>|>[^<]*</[A-Z]>)
 ^EXIT2$ ::- 2
 ^EXIT3$ ::- 3
 
-# coverage: ignore defensive error path retained for fail-loud malformed internal state/resource failures
-^ERR:resource:(?<e>.*)$ ::> stderr Error: {{e}}\n
-# coverage: ignore defensive error path retained for fail-loud malformed internal state/resource failures
-^ERR:resource:.*$ ::- 1
 
 ::=
 (+ (car (list 10 20 30)) (* (cdr (cons 3 4)) 5))

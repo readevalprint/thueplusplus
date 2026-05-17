@@ -56,3 +56,12 @@ input = "(lambda (x) $x)"
 exit_code = 0
 stderr = ""
 stdout_contains = ["[lambda x]"]
+
+[[case]]
+name = "lambda body five nested lists"
+input = "(lambda (x) (list (list (list (list (list $x))))))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_contains = ["[lambda x]"]

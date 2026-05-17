@@ -38,3 +38,21 @@ input = "(begin (+ 1 1) (+ 2 2) (+ 3 3))"
 exit_code = 0
 stderr = ""
 stdout_stripped = "6"
+
+[[case]]
+name = "begin single list value"
+input = "(begin (list 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 . (2 . nil))"
+
+[[case]]
+name = "begin drops list value before later expression"
+input = "(begin (list 1 2) 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"

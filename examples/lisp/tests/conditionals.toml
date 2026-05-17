@@ -1,6 +1,23 @@
 program = "../lisp.tpp"
 timeout = 5
 
+[[case]]
+name = "root true literal"
+input = "true"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "root false literal"
+input = "false"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
 
 
 [[case]]
