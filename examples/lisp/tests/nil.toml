@@ -13,6 +13,33 @@ stderr = ""
 stdout_stripped = "nil"
 
 [[case]]
+name = "empty list form"
+input = "(list)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "car nil guard"
+input = "(car nil)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "cdr nil guard"
+input = "(cdr nil)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
 name = "nil in cons"
 input = "(cons 1 nil)"
 
