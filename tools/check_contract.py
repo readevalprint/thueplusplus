@@ -240,7 +240,7 @@ def check_numeric_regex(root: Path) -> list[Failure]:
         (root / "python" / "thuepp.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
         (root / "go" / "internal" / "thuepp" / "interpreter.go", 1, f"numericLiteralPattern  = regexp.MustCompile(`^{grammar}$`)"),
         (root / "examples" / "builtin" / "builtin.tpp", 1, f"N <- {grammar}"),
-        (root / "examples" / "lisp" / "lisp.tpp", 19, None),
+        (root / "examples" / "lisp" / "lisp.tpp", 1, None),
     ]
     for path, expected_count, required_snippet in checks:
         text = read(path)
