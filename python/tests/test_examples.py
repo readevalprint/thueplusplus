@@ -98,6 +98,15 @@ class TestExampleConfigs(unittest.TestCase):
         self.assertIn("@Hk«", text)
         self.assertNotIn("@Hk~", text)
 
+    def test_lisp_hash_lookup_does_not_reintroduce_manual_character_matrix(self):
+        program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
+        text = program.read_text(encoding="utf-8")
+        self.assertIn("Hash key compare dispatch", text)
+        self.assertIn("@EQ«{{key}}»«{{cand}}»@", text)
+        self.assertNotIn("hash key character scanner matrix", text)
+        manual_rows = re.findall(r"@HH?[GC]«[^\n]*»«[A-Za-z0-9_-]\(\?<key>", text)
+        self.assertEqual(manual_rows, [])
+
 
 if __name__ == "__main__":
     unittest.main()
