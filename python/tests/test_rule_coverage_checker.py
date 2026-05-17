@@ -28,7 +28,7 @@ def load_checker_module():
 
 
 class RuleCoverageCheckerTest(unittest.TestCase):
-    def test_rule_enumeration_uses_interpreter_parser_for_regex_constructs(self):
+    def test_rule_enumeration_uses_interpreter_parser_for_standalone_operator_tokens(self):
         checker = load_checker_module()
         self.assertFalse(hasattr(checker, "find_operator"))
         self.assertFalse(hasattr(checker, "find_rule_operator"))
@@ -37,9 +37,9 @@ class RuleCoverageCheckerTest(unittest.TestCase):
             program.write_text(
                 textwrap.dedent(
                     r"""
-                    (?<op> ::= ) ::= {{op}}
-                    [ : := ::! ] ::= ok
-                    (?<op> ::= | ::! ) ::= {{op}}
+                    foo::=bar ::= ok
+                    [x:=!] ::= ok
+                    (?<op>::=|::!) ::= {{op}}
 
                     ::=
                     """
@@ -50,9 +50,9 @@ class RuleCoverageCheckerTest(unittest.TestCase):
             rules = checker.enumerate_rules(program)
 
         self.assertEqual([rule.text for rule in rules], [
-            r"(?<op> ::= ) ::= {{op}}",
-            r"[ : := ::! ] ::= ok",
-            r"(?<op> ::= | ::! ) ::= {{op}}",
+            r"foo::=bar ::= ok",
+            r"[x:=!] ::= ok",
+            r"(?<op>::=|::!) ::= {{op}}",
         ])
 
     def test_coverage_ignore_comment_fails_loudly(self):

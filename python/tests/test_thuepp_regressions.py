@@ -105,7 +105,7 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Unknown argument: --emit-cache", result.stderr)
 
-    def test_operator_like_token_inside_regex_group_does_not_split_rule(self):
+    def test_standalone_operator_token_inside_lhs_is_hard_cutoff(self):
         result = run_program(
             r"""
             foo( ::= )bar ::= ok
@@ -113,6 +113,43 @@ class TestThueppRegressions(unittest.TestCase):
 
             ::=
             foo ::= bar
+            """
+        )
+
+        self.assertNotEqual(result.returncode, 7)
+        self.assertIn("Invalid regex 'foo('", result.stderr)
+
+    def test_literal_operator_text_can_match_when_not_standalone_token(self):
+        result = run_program(
+            r"""
+            foo::=bar ::= ok
+            ok ::- 7
+
+            ::=
+            foo::=bar
+            """
+        )
+
+        self.assertEqual(result.returncode, 7, result.stderr)
+
+    def test_rule_operator_requires_standalone_supported_token(self):
+        for source, want in [
+            ("lhs::=rhs\n\n::=\nlhs\n", "Invalid rule syntax: lhs::=rhs"),
+            ("lhs ::@ rhs\n\n::=\nlhs\n", "Invalid rule syntax: lhs ::@ rhs"),
+        ]:
+            with self.subTest(source=source):
+                result = run_program(source)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(want, result.stderr)
+
+    def test_empty_rhs_substitution_still_parses(self):
+        result = run_program(
+            r"""
+            x ::=
+            ^$ ::- 7
+
+            ::=
+            x
             """
         )
 

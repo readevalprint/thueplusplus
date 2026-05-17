@@ -20,6 +20,7 @@ from typing import Any, Optional
 
 
 MAX_NUMERIC_LITERAL_CHARS = 4096
+RULE_RE = py_re.compile(r"^(?P<lhs>.*?)[ \t]+::(?P<op>[=<>!-])(?:[ \t]+(?P<rhs>.*)|[ \t]*)$")
 
 
 class Operator(Enum):
@@ -226,50 +227,41 @@ class ThueppInterpreter:
 
     def _parse_rule(self, line: str, line_number: int, source_path: str) -> Optional[Rule]:
         """Parse a single rule line."""
-        # Find operator (longer operators first to match correctly)
-        operators = [
-            (Operator.EXIT, "::-"),
-            (Operator.READ, "::<"),
-            (Operator.WRITE, "::>"),
-            (Operator.BUILTIN, "::!"),
-            (Operator.SUBSTITUTE, "::="),
-        ]
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            return None
 
-        for op, op_str in operators:
-            # Find the operator (not inside a regex character class or group)
-            idx = self._find_operator(line, op_str)
-            if idx != -1:
-                lhs = line[:idx].rstrip()
-                rhs = line[idx + len(op_str):].lstrip()
+        match = RULE_RE.match(line)
+        if not match:
+            raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
 
-                if not lhs and op != Operator.EXIT:
-                    raise RuntimeError(
-                        f"Line {line_number}: Rule must have a non-empty LHS (except for exit rules)"
-                    )
+        lhs = match.group("lhs").rstrip()
+        rhs = match.group("rhs") or ""
+        op = {
+            "=": Operator.SUBSTITUTE,
+            "<": Operator.READ,
+            ">": Operator.WRITE,
+            "-": Operator.EXIT,
+            "!": Operator.BUILTIN,
+        }[match.group("op")]
 
-                try:
-                    pattern_lhs = self._translate_lhs(lhs)
-                    pattern = re.compile(pattern_lhs) if pattern_lhs else re.compile("^")
-                except re.error as e:
-                    raise RuntimeError(
-                        f"Line {line_number}: Invalid regex '{lhs}': {e}"
-                    )
+        if not lhs:
+            raise RuntimeError(f"Line {line_number}: Rule must have a non-empty LHS")
 
-                builtin_name = ""
-                builtin_args: tuple[str, ...] = ()
-                if op == Operator.BUILTIN:
-                    builtin_name, builtin_args = self._parse_builtin_call(
-                        rhs, line_number, set(pattern.groupindex.keys())
-                    )
+        try:
+            pattern_lhs = self._translate_lhs(lhs)
+            pattern = re.compile(pattern_lhs)
+        except re.error as e:
+            raise RuntimeError(f"Line {line_number}: Invalid regex '{lhs}': {e}")
 
-                return Rule(lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args)
+        builtin_name = ""
+        builtin_args: tuple[str, ...] = ()
+        if op == Operator.BUILTIN:
+            builtin_name, builtin_args = self._parse_builtin_call(
+                rhs, line_number, set(pattern.groupindex.keys())
+            )
 
-        # Line doesn't contain a valid rule - might be a comment or empty
-        if line.strip() and not line.strip().startswith("#"):
-            raise RuntimeError(
-                f"Line {line_number}: Invalid rule syntax: {line}")
-
-        return None
+        return Rule(lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args)
 
     def _parse_builtin_call(
         self,
@@ -408,45 +400,6 @@ class ThueppInterpreter:
             return "1" if a >= b else "0"
         raise RuntimeError(f"Unknown builtin '{name}'")
 
-    def _find_operator(self, line: str, op: str) -> int:
-        """Find operator position, avoiding matches inside regex constructs."""
-        # Simple approach: find the operator, but be aware it could be in a regex
-        # We look for the operator pattern outside of brackets
-        depth = 0
-        char_class = False
-        i = 0
-        while i < len(line):
-            c = line[i]
-
-            # Handle escape sequences
-            if c == "\\" and i + 1 < len(line):
-                i += 2
-                continue
-
-            # Track character class
-            if c == "[" and not char_class:
-                char_class = True
-            elif c == "]" and char_class:
-                char_class = False
-            # Track parentheses (outside character class)
-            elif c == "(" and not char_class:
-                depth += 1
-            elif c == ")" and not char_class:
-                depth = max(0, depth - 1)
-
-            # Check for operator at current position (outside constructs)
-            if not char_class and depth == 0 and line[i:i + len(op)] == op:
-                # Require whitespace before operator (or start of line)
-                before_ok = (i == 0) or line[i - 1] in " \t"
-                # Require whitespace after operator (or end of line)
-                after = i + len(op)
-                after_ok = (after >= len(line)) or line[after] in " \t"
-                if before_ok and after_ok:
-                    return i
-
-            i += 1
-
-        return -1
 
     def _expand_template(self, template: str, groups: dict, extra: dict = None) -> str:
         """Expand a template string with captured groups and extra data."""
