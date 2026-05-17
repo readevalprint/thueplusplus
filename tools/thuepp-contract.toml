@@ -14,11 +14,6 @@ build_workdir = "go"
 command = "{artifact}"
 notes = "Current Go implementation; built once from go/ and invoked by shared manifests as an external command."
 
-[implementations.javascript]
-available = false
-command = ""
-notes = "No JavaScript implementation exists yet; future JS work must join the shared manifest runner."
-
 [builtins.eq]
 arity = 2
 category = "string"
