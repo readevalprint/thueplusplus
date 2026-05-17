@@ -568,7 +568,7 @@ class ThueppInterpreter:
 
     def _set_state(self, new_state: str) -> None:
         """Set the state, checking size limits."""
-        if self.max_state_bytes:
+        if self.max_state_bytes is not None:
             n_bytes = len(new_state.encode("utf-8"))
             if n_bytes > self.max_state_bytes:
                 raise RuntimeError(
