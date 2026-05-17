@@ -59,6 +59,22 @@ class RepositoryConformanceCheckerTest(unittest.TestCase):
 
         self.assertIn("test-js target must not be a green placeholder before JavaScript exists", self._messages(failures, root))
 
+    def test_missing_host_code_coverage_target_fails(self):
+        with self._minimal_repo() as root:
+            makefile = root / "Makefile"
+            makefile.write_text(
+                makefile.read_text(encoding="utf-8").replace(
+                    "test-code-coverage:\n\t@command -v uv >/dev/null 2>&1 || { echo \"Error: uv is required to run host-code coverage checks\" >&2; exit 127; }\n\t@command -v go >/dev/null 2>&1 || { echo \"Error: go is required to run host-code coverage checks\" >&2; exit 127; }\n\tuv run python tools/check-code-coverage\n",
+                    "",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            failures = check_contract.check_makefile(root)
+
+        self.assertIn("missing required verification wiring: test-code-coverage:", self._messages(failures, root))
+
     def test_shared_runner_must_not_import_python_implementation(self):
         with self._minimal_repo() as root:
             runner = root / "tools" / "example_runner.py"

@@ -100,6 +100,8 @@ def check_makefile(root: Path) -> list[Failure]:
     required = [
         "test: test-contract test-python test-go test-shared test-coverage",
         "test-contract:",
+        "test-code-coverage:",
+        "uv run python tools/check-code-coverage",
         "uv run python tools/check-contract",
         "uv run python -m unittest discover -s python/tests -v",
         "cd go && go test -count=1 ./...",
