@@ -155,6 +155,88 @@ class SharedExampleRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "timed out"):
                 runner.run_configs(sleep_interpreters, [timeout_config])
 
+    def test_non_writable_file_bindings_are_isolated_from_mutation(self):
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory(prefix="thuepp-runner-isolation-") as tmpdir:
+            tmp = Path(tmpdir)
+            mutator = tmp / "mutator.py"
+            mutator.write_text(
+                textwrap.dedent(
+                    """
+                    import pathlib
+                    import sys
+                    for index, arg in enumerate(sys.argv):
+                        if arg == "--file:db":
+                            pathlib.Path(sys.argv[index + 1]).write_text("mutated", encoding="utf-8")
+                    print("ok")
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+            reader = tmp / "reader.py"
+            reader.write_text(
+                textwrap.dedent(
+                    """
+                    import pathlib
+                    import sys
+                    for index, arg in enumerate(sys.argv):
+                        if arg == "--file:db":
+                            content = pathlib.Path(sys.argv[index + 1]).read_text(encoding="utf-8")
+                            if content != "initial":
+                                print(f"contaminated fixture: {content}", file=sys.stderr)
+                                sys.exit(9)
+                    print("ok")
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+            contract = tmp / "implementations.toml"
+            contract.write_text(
+                textwrap.dedent(
+                    f"""
+                    [implementations.mutator]
+                    available = true
+                    command = {f'{sys.executable} {mutator}'!r}
+
+                    [implementations.reader]
+                    available = true
+                    command = {f'{sys.executable} {reader}'!r}
+                    """
+                ).replace("'", '"'),
+                encoding="utf-8",
+            )
+            program = tmp / "program.tpp"
+            program.write_text("::=\n", encoding="utf-8")
+            fixture_dir = tmp / "fixtures"
+            fixture_dir.mkdir()
+            fixture = fixture_dir / "db.state"
+            fixture.write_text("initial", encoding="utf-8")
+            config = tmp / "contract.toml"
+            config.write_text(
+                textwrap.dedent(
+                    """
+                    program = "program.tpp"
+
+                    [bindings.files]
+                    db = "fixtures/db.state"
+
+                    [expect]
+                    exit_code = 0
+                    stdout = "ok\\n"
+                    stderr = ""
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+            interpreters = runner.contract_interpreters(contract, tmp / "artifacts")
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.run_configs(interpreters, [config], parity=True)
+
+            self.assertEqual(fixture.read_text(encoding="utf-8"), "initial")
+
     def test_requires_commands_metadata_is_rejected(self):
         runner = load_runner_module()
         with tempfile.TemporaryDirectory(prefix="thuepp-runner-requires-") as tmpdir:

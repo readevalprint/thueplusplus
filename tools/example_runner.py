@@ -75,15 +75,16 @@ def validate_case_metadata(config_path: Path, case: dict) -> None:
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: args must be a list of strings")
 
 
-def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> str:
+def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> tuple[str, bool]:
     if isinstance(spec, str):
-        return str((tests_dir / spec).resolve())
-    fixture = tests_dir / spec["fixture"]
-    if spec.get("writable"):
-        target = tmp / f"{name}.fixture"
-        target.write_bytes(fixture.read_bytes())
-        return str(target)
-    return str(fixture.resolve())
+        fixture = tests_dir / spec
+        writable = False
+    else:
+        fixture = tests_dir / spec["fixture"]
+        writable = bool(spec.get("writable"))
+    target = tmp / f"{name}.fixture"
+    target.write_bytes(fixture.read_bytes())
+    return str(target), writable
 
 
 def build_case_args(config_path: Path, case: dict, tmp: Path, extra_args: list[str] | None = None) -> tuple[list[str], dict[str, str]]:
@@ -95,8 +96,9 @@ def build_case_args(config_path: Path, case: dict, tmp: Path, extra_args: list[s
         args.extend(extra_args)
     bound_files: dict[str, str] = {}
     for name, spec in case.get("bindings", {}).get("files", {}).items():
-        bound = normalize_file_binding(tests_dir, tmp, name, spec)
-        bound_files[name] = bound
+        bound, writable = normalize_file_binding(tests_dir, tmp, name, spec)
+        if writable:
+            bound_files[name] = bound
         args.extend([f"--file:{name}", bound])
     for name, command in case.get("bindings", {}).get("procs", {}).items():
         args.extend([f"--proc:{name}", command])
