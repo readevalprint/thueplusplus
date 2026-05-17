@@ -453,8 +453,6 @@ class ThueppInterpreter:
         if extra is None:
             extra = {}
 
-        result = template
-
         # Escape backslashes in captured groups to prevent escape processing
         # from affecting captured content (e.g., captured "\n" should stay as "\n")
         escaped_groups = {k: v.replace("\\", "\\\\") if isinstance(v, str) else v
@@ -463,48 +461,11 @@ class ThueppInterpreter:
                         for k, v in extra.items()} if extra else {}
         all_vars = {**escaped_groups, **escaped_extra}
 
-        # Mustache delimiter changes: {{=<% %>=}} switches to <% %>, {{={{ }}=}} restores
-        def process_delimiters(text):
-            """Process delimiter changes and variable substitutions."""
-            current_open = "{{"
-            current_close = "}}"
-            output = []
-            pos = 0
+        def replace_var(match):
+            value = all_vars.get(match.group(1), "")
+            return str(value) if value else ""
 
-            while pos < len(text):
-                # Check for delimiter change
-                delim_match = re.match(
-                    re.escape(current_open) + r"=(.+?) (.+?)=" +
-                    re.escape(current_close),
-                    text[pos:]
-                )
-                if delim_match:
-                    current_open = delim_match.group(1)
-                    current_close = delim_match.group(2)
-                    pos += delim_match.end()
-                    continue
-
-                # Check for variable
-                var_pattern = re.escape(current_open) + \
-                    r"(\w+)" + re.escape(current_close)
-                var_match = re.match(var_pattern, text[pos:])
-                if var_match:
-                    var_name = var_match.group(1)
-                    if var_name in all_vars:
-                        output.append(
-                            str(all_vars[var_name]) if all_vars[var_name] else "")
-                    else:
-                        # Keep unmatched variables as-is (or empty)
-                        output.append("")
-                    pos += var_match.end()
-                    continue
-
-                output.append(text[pos])
-                pos += 1
-
-            return "".join(output)
-
-        result = process_delimiters(result)
+        result = re.sub(r"{{(\w+)}}", replace_var, template)
 
         # Apply escape sequences in correct order:
         # 1. First convert \\\\ to a placeholder (to protect literal backslashes)

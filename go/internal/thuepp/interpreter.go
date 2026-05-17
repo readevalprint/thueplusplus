@@ -492,29 +492,16 @@ func (i *Interpreter) expandTemplate(template string, groups map[string]string, 
 	for k, v := range extra {
 		vars[k] = strings.ReplaceAll(v, `\`, `\\`)
 	}
-	currentOpen, currentClose := "{{", "}}"
 	var out strings.Builder
 	pos := 0
 	for pos < len(template) {
-		if strings.HasPrefix(template[pos:], currentOpen+"=") {
-			end := strings.Index(template[pos+len(currentOpen)+1:], "="+currentClose)
+		if strings.HasPrefix(template[pos:], "{{") {
+			end := strings.Index(template[pos+2:], "}}")
 			if end >= 0 {
-				inside := template[pos+len(currentOpen)+1 : pos+len(currentOpen)+1+end]
-				parts := strings.SplitN(inside, " ", 2)
-				if len(parts) == 2 {
-					currentOpen, currentClose = parts[0], parts[1]
-					pos += len(currentOpen) + 1 + end + 1 + len(currentClose)
-					continue
-				}
-			}
-		}
-		if strings.HasPrefix(template[pos:], currentOpen) {
-			end := strings.Index(template[pos+len(currentOpen):], currentClose)
-			if end >= 0 {
-				name := template[pos+len(currentOpen) : pos+len(currentOpen)+end]
+				name := template[pos+2 : pos+2+end]
 				if isWord(name) {
 					out.WriteString(vars[name])
-					pos += len(currentOpen) + end + len(currentClose)
+					pos += 2 + end + 2
 					continue
 				}
 			}

@@ -1,0 +1,6 @@
+program = "../template-delimiters.tpp"
+
+[expect]
+stdout = "before=hello switch={{=<% %>=}}<%text%>"
+stderr = ""
+exit_code = 0
