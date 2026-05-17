@@ -1,0 +1,19 @@
+[[case]]
+name = "zero limit rejects non-empty replacement"
+program = "../max-state-zero-nonempty.tpp"
+args = ["--max-state-bytes", "0"]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["State size (1 bytes) exceeds maximum (0 bytes)"]
+
+[[case]]
+name = "zero limit allows empty state"
+program = "../max-state-zero-empty.tpp"
+args = ["--max-state-bytes", "0"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""

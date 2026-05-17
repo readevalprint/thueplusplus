@@ -209,6 +209,34 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("State size (3 bytes) exceeds maximum (2 bytes)", result.stderr)
 
+    def test_max_state_bytes_zero_rejects_non_empty_replacement(self):
+        result = run_program(
+            r"""
+            a ::= b
+
+            ::=
+            a
+            """,
+            "--max-state-bytes",
+            "0",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("State size (1 bytes) exceeds maximum (0 bytes)", result.stderr)
+
+    def test_max_state_bytes_zero_allows_empty_state(self):
+        result = run_program(
+            r"""
+            ^$ ::- 0
+
+            ::=
+            """,
+            "--max-state-bytes",
+            "0",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_builtin_replaces_only_matched_span(self):
         result = run_program(
             r"""

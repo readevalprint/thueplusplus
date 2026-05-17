@@ -69,6 +69,10 @@ def case_name(config_path: Path, case: dict) -> str:
 def validate_case_metadata(config_path: Path, case: dict) -> None:
     if case.get("requires"):
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: requires.commands is not supported in shared manifests")
+    if "args" in case and not (
+        isinstance(case["args"], list) and all(isinstance(arg, str) for arg in case["args"])
+    ):
+        raise RuntimeError(f"{config_path} {case_name(config_path, case)}: args must be a list of strings")
 
 
 def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> str:
@@ -86,6 +90,7 @@ def build_case_args(config_path: Path, case: dict, tmp: Path, extra_args: list[s
     tests_dir = config_path.parent
     program = (tests_dir / case["program"]).resolve()
     args = [str(program)]
+    args.extend(case.get("args", []))
     if extra_args:
         args.extend(extra_args)
     bound_files: dict[str, str] = {}
