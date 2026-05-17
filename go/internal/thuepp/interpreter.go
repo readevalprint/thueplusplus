@@ -143,6 +143,7 @@ func (i *Interpreter) loadWithIncludes(filePath string, included map[string]bool
 
 func expandPatterns(content string) string {
 	patterns := map[string]string{}
+	var patternOrder []string
 	var out []string
 	for _, line := range strings.Split(content, "\n") {
 		stripped := strings.TrimSpace(line)
@@ -155,13 +156,17 @@ func expandPatterns(content string) string {
 			name := strings.TrimSpace(parts[0])
 			pat := strings.TrimSpace(parts[1])
 			if name != "" {
+				if _, exists := patterns[name]; !exists {
+					patternOrder = append(patternOrder, name)
+				}
 				patterns[name] = pat
 				out = append(out, "# [pattern] "+name+" <- "+pat)
 				continue
 			}
 		}
 		expanded := line
-		for name, pat := range patterns {
+		for _, name := range patternOrder {
+			pat := patterns[name]
 			expanded = strings.ReplaceAll(expanded, "<|"+name+"|>", pat)
 		}
 		out = append(out, expanded)

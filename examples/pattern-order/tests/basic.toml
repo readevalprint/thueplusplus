@@ -1,0 +1,7 @@
+program = "../pattern-order.tpp"
+timeout = 5
+
+[expect]
+exit_code = 0
+stderr = ""
+stdout = "deterministic\n"
