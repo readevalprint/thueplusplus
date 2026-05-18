@@ -339,6 +339,13 @@ func builtinArity(name string) (int, bool) {
 		"lisp_empty":      1,
 		"lisp_push":       2,
 		"lisp_show":       1,
+		"lisp_map":        1,
+		"lisp_has":        2,
+		"lisp_mget":       2,
+		"lisp_put":        3,
+		"lisp_del":        2,
+		"lisp_keys":       1,
+		"lisp_mshow":      1,
 		"lisp_quote_expr": 1,
 		"lisp_quote1":     1,
 		"lisp_quote2":     2,
@@ -432,7 +439,7 @@ func isLispValue(item string) bool {
 	if item == "B:0;" || item == "B:1;" || item == "Z;" {
 		return true
 	}
-	if len(item) >= 3 && item[1] == ':' && strings.HasSuffix(item, ";") && (item[0] == 'S' || item[0] == 'Q' || item[0] == 'L') {
+	if len(item) >= 3 && item[1] == ':' && strings.HasSuffix(item, ";") && (item[0] == 'S' || item[0] == 'Q' || item[0] == 'L' || item[0] == 'M') {
 		return pctPayloadPattern.MatchString(item[2 : len(item)-1])
 	}
 	return false
@@ -457,6 +464,78 @@ func lispListItems(payload string) ([]string, error) {
 
 func lispEncodeItems(items []string) string {
 	return pctEncode(strings.Join(items, "\n"))
+}
+
+func lispKey(value string) (string, error) {
+	if len(value) >= 3 && (strings.HasPrefix(value, "S:") || strings.HasPrefix(value, "Q:")) && strings.HasSuffix(value, ";") && pctPayloadPattern.MatchString(value[2:len(value)-1]) {
+		return value, nil
+	}
+	return "", fmt.Errorf("Builtin 'lisp_map' expected string or symbol key")
+}
+
+func lispMapItems(payload string) (map[string]string, error) {
+	text, err := pctDecode(payload)
+	if err != nil {
+		return nil, err
+	}
+	items := map[string]string{}
+	if text == "" {
+		return items, nil
+	}
+	for _, line := range strings.Split(text, "\n") {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("Lisp map payload contains malformed item")
+		}
+		key, err := lispKey(parts[0])
+		if err != nil {
+			return nil, err
+		}
+		if !isLispValue(parts[1]) {
+			return nil, fmt.Errorf("Lisp map payload contains malformed value")
+		}
+		items[key] = parts[1]
+	}
+	return items, nil
+}
+
+func lispEncodeMap(items map[string]string) string {
+	keys := make([]string, 0, len(items))
+	for key := range items {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		lines = append(lines, key+"\t"+items[key])
+	}
+	return pctEncode(strings.Join(lines, "\n"))
+}
+
+func lispMakeMap(values []string) (string, error) {
+	if len(values)%2 != 0 {
+		return "", fmt.Errorf("Builtin 'lisp_map' expected even key/value arguments")
+	}
+	items := map[string]string{}
+	for i := 0; i < len(values); i += 2 {
+		key, err := lispKey(values[i])
+		if err != nil {
+			return "", err
+		}
+		if !isLispValue(values[i+1]) {
+			return "", fmt.Errorf("Builtin 'lisp_map' expected Lisp value")
+		}
+		items[key] = values[i+1]
+	}
+	return lispEncodeMap(items), nil
+}
+
+func lispMapKey(value string, builtin string) (string, error) {
+	key, err := lispKey(value)
+	if err != nil {
+		return "", errors.New(strings.ReplaceAll(err.Error(), "lisp_map", builtin))
+	}
+	return key, nil
 }
 
 func lispListIndex(value string) (int, error) {
@@ -663,6 +742,33 @@ func lispShowValue(value string) (string, error) {
 		}
 		return "(" + strings.Join(parts, " ") + ")", nil
 	}
+	if strings.HasPrefix(value, "M:") && strings.HasSuffix(value, ";") {
+		items, err := lispMapItems(strings.TrimSuffix(strings.TrimPrefix(value, "M:"), ";"))
+		if err != nil {
+			return "", err
+		}
+		keys := make([]string, 0, len(items))
+		for key := range items {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		parts := make([]string, 0, len(keys)*2)
+		for _, key := range keys {
+			shownKey, err := lispShowValue(key)
+			if err != nil {
+				return "", err
+			}
+			shownValue, err := lispShowValue(items[key])
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, shownKey, shownValue)
+		}
+		if len(parts) == 0 {
+			return "(map)", nil
+		}
+		return "(map " + strings.Join(parts, " ") + ")", nil
+	}
 	return "", fmt.Errorf("Lisp value is malformed")
 }
 
@@ -785,6 +891,83 @@ func evalBuiltin(name string, values []string) (string, error) {
 			parts = append(parts, shown)
 		}
 		return "(" + strings.Join(parts, " ") + ")", nil
+	}
+	if name == "lisp_map" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		return lispMakeMap(items)
+	}
+	if name == "lisp_has" {
+		items, err := lispMapItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		key, err := lispMapKey(values[1], "lisp_has")
+		if err != nil {
+			return "", err
+		}
+		if _, ok := items[key]; ok {
+			return "1", nil
+		}
+		return "0", nil
+	}
+	if name == "lisp_mget" {
+		items, err := lispMapItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		key, err := lispMapKey(values[1], "lisp_get")
+		if err != nil {
+			return "", err
+		}
+		if value, ok := items[key]; ok {
+			return value, nil
+		}
+		return "Z;", nil
+	}
+	if name == "lisp_put" {
+		items, err := lispMapItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		key, err := lispMapKey(values[1], "lisp_put")
+		if err != nil {
+			return "", err
+		}
+		if !isLispValue(values[2]) {
+			return "", fmt.Errorf("Builtin 'lisp_put' expected Lisp value")
+		}
+		items[key] = values[2]
+		return lispEncodeMap(items), nil
+	}
+	if name == "lisp_del" {
+		items, err := lispMapItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		key, err := lispMapKey(values[1], "lisp_del")
+		if err != nil {
+			return "", err
+		}
+		delete(items, key)
+		return lispEncodeMap(items), nil
+	}
+	if name == "lisp_keys" {
+		items, err := lispMapItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		keys := make([]string, 0, len(items))
+		for key := range items {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		return lispEncodeItems(keys), nil
+	}
+	if name == "lisp_mshow" {
+		return lispShowValue("M:" + values[0] + ";")
 	}
 	if name == "lisp_quote_expr" {
 		return lispQuoteExpr(values[0])

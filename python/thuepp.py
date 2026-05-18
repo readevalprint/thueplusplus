@@ -321,6 +321,13 @@ class ThueppInterpreter:
             "lisp_empty": 1,
             "lisp_push": 2,
             "lisp_show": 1,
+            "lisp_map": 1,
+            "lisp_has": 2,
+            "lisp_mget": 2,
+            "lisp_put": 3,
+            "lisp_del": 2,
+            "lisp_keys": 1,
+            "lisp_mshow": 1,
             "lisp_quote_expr": 1,
             "lisp_quote1": 1,
             "lisp_quote2": 2,
@@ -397,7 +404,7 @@ class ThueppInterpreter:
             return self._is_valid_numeric_literal(item[2:-1])
         if item in {"B:0;", "B:1;", "Z;"}:
             return True
-        if len(item) >= 3 and item[1] == ":" and item.endswith(";") and item[0] in {"S", "Q", "L"}:
+        if len(item) >= 3 and item[1] == ":" and item.endswith(";") and item[0] in {"S", "Q", "L", "M"}:
             return self._is_pct_payload(item[2:-1])
         return False
 
@@ -413,6 +420,48 @@ class ThueppInterpreter:
 
     def _lisp_encode_items(self, items: list[str]) -> str:
         return self._pct_encode("\n".join(items))
+
+    def _lisp_key(self, value: str) -> str:
+        if value.startswith(("S:", "Q:")) and value.endswith(";") and self._is_pct_payload(value[2:-1]):
+            return value
+        raise RuntimeError("Builtin 'lisp_map' expected string or symbol key")
+
+    def _lisp_map_items(self, payload: str) -> dict[str, str]:
+        text = self._pct_decode(payload)
+        if text == "":
+            return {}
+        items: dict[str, str] = {}
+        for line in text.split("\n"):
+            parts = line.split("\t", 1)
+            if len(parts) != 2:
+                raise RuntimeError("Lisp map payload contains malformed item")
+            key, value = parts
+            self._lisp_key(key)
+            if not self._is_lisp_value(value):
+                raise RuntimeError("Lisp map payload contains malformed value")
+            items[key] = value
+        return items
+
+    def _lisp_encode_map(self, items: dict[str, str]) -> str:
+        lines = [f"{key}\t{items[key]}" for key in sorted(items)]
+        return self._pct_encode("\n".join(lines))
+
+    def _lisp_make_map(self, values: list[str]) -> str:
+        if len(values) % 2 != 0:
+            raise RuntimeError("Builtin 'lisp_map' expected even key/value arguments")
+        items: dict[str, str] = {}
+        for i in range(0, len(values), 2):
+            key = self._lisp_key(values[i])
+            if not self._is_lisp_value(values[i + 1]):
+                raise RuntimeError("Builtin 'lisp_map' expected Lisp value")
+            items[key] = values[i + 1]
+        return self._lisp_encode_map(items)
+
+    def _lisp_map_key(self, value: str, builtin: str) -> str:
+        try:
+            return self._lisp_key(value)
+        except RuntimeError as exc:
+            raise RuntimeError(str(exc).replace("lisp_map", builtin))
 
     def _lisp_list_index(self, value: str) -> int:
         n = self._parse_number(value, "lisp_get")
@@ -537,6 +586,13 @@ class ThueppInterpreter:
             return self._pct_decode(value[2:-1])
         if value.startswith("L:") and value.endswith(";"):
             return "(" + " ".join(self._lisp_show_value(item) for item in self._lisp_list_items(value[2:-1])) + ")"
+        if value.startswith("M:") and value.endswith(";"):
+            items = self._lisp_map_items(value[2:-1])
+            parts = []
+            for key in sorted(items):
+                parts.append(self._lisp_show_value(key))
+                parts.append(self._lisp_show_value(items[key]))
+            return "(map" + (" " + " ".join(parts) if parts else "") + ")"
         raise RuntimeError("Lisp value is malformed")
 
     def _parse_number(self, value: str, builtin: str) -> Fraction:
@@ -600,6 +656,33 @@ class ThueppInterpreter:
             return self._lisp_encode_items(items)
         if name == "lisp_show":
             return "(" + " ".join(self._lisp_show_value(item) for item in self._lisp_list_items(values[0])) + ")"
+        if name == "lisp_map":
+            return self._lisp_make_map(self._lisp_list_items(values[0]))
+        if name == "lisp_has":
+            items = self._lisp_map_items(values[0])
+            key = self._lisp_map_key(values[1], "lisp_has")
+            return "1" if key in items else "0"
+        if name == "lisp_mget":
+            items = self._lisp_map_items(values[0])
+            key = self._lisp_map_key(values[1], "lisp_get")
+            return items.get(key, "Z;")
+        if name == "lisp_put":
+            items = self._lisp_map_items(values[0])
+            key = self._lisp_map_key(values[1], "lisp_put")
+            if not self._is_lisp_value(values[2]):
+                raise RuntimeError("Builtin 'lisp_put' expected Lisp value")
+            items[key] = values[2]
+            return self._lisp_encode_map(items)
+        if name == "lisp_del":
+            items = self._lisp_map_items(values[0])
+            key = self._lisp_map_key(values[1], "lisp_del")
+            items.pop(key, None)
+            return self._lisp_encode_map(items)
+        if name == "lisp_keys":
+            items = self._lisp_map_items(values[0])
+            return self._lisp_encode_items(sorted(items))
+        if name == "lisp_mshow":
+            return self._lisp_show_value(f"M:{values[0]};")
         if name == "lisp_quote_expr":
             return self._lisp_quote_expr(values[0])
         if name in {"lisp_quote1", "lisp_quote2", "lisp_quote3", "lisp_quote4"}:

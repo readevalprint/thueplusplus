@@ -1094,3 +1094,138 @@ input = "(quote (1/0))"
 exit_code = 1
 stdout = ""
 stderr_contains = ["Builtin 'lisp_quote' fraction denominator must be non-zero"]
+
+[[case]]
+name = "empty map prints deterministically"
+input = "(map)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(map)"
+
+[[case]]
+name = "map get string key"
+input = '(get (map "a" 1 "b" 2) "b")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "map missing get returns nil"
+input = '(get (map "a" 1) "missing")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "map has string key"
+input = '(has (map "a" nil) "a")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "map has missing key false"
+input = '(has (map "a" 1) "z")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "map put returns persistent new map"
+input = '(begin (def m (map "x" 1)) (def n (put m "x" 2)) (get m "x"))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "map put updates returned map"
+input = '(get (put (map) "x" 42) "x")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "map del removes key"
+input = '(has (del (map "x" 1 "y" 2) "x") "x")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "map del keeps other key"
+input = '(get (del (map "x" 1 "y" 2) "x") "y")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "map keys deterministic order"
+input = '(keys (map "b" 2 "a" 1))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '("a" "b")'
+
+[[case]]
+name = "map accepts quoted symbol key"
+input = "(get (map (quote a) 7) (quote a))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "map rejects numeric key"
+input = "(map 1 2)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'lisp_map' expected string or symbol key"]
+
+[[case]]
+name = "map structural equality works"
+input = '(= (map "a" 1) (map "a" 1))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "map supports three pairs"
+input = '(get (map "a" 1 "b" 2 "c" 3) "c")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "map supports four pairs"
+input = '(get (map "a" 1 "b" 2 "c" 3 "d" 4) "d")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
