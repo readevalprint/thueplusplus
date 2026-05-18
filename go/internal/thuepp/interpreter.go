@@ -32,6 +32,7 @@ const (
 
 var (
 	numericLiteralPattern  = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
+	pctPayloadPattern      = regexp.MustCompile(`^(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*$`)
 	rulePattern            = regexp.MustCompile(`^(.*?)[ \t]+::([=<>!%-])(?:[ \t]+(.*)|[ \t]*)$`)
 	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
 )
@@ -315,22 +316,34 @@ func parseBuiltinCall(rhs string, lineNumber int, captures map[string]bool) (str
 
 func builtinArity(name string) (int, bool) {
 	arities := map[string]int{
-		"eq":     2,
-		"add":    2,
-		"sub":    2,
-		"mul":    2,
-		"div":    2,
-		"mod":    2,
-		"numeq":  2,
-		"lt":     2,
-		"le":     2,
-		"gt":     2,
-		"ge":     2,
-		"num":    1,
-		"b64enc": 1,
-		"b64dec": 1,
-		"pctenc": 1,
-		"pctdec": 1,
+		"eq":              2,
+		"add":             2,
+		"sub":             2,
+		"mul":             2,
+		"div":             2,
+		"mod":             2,
+		"numeq":           2,
+		"lt":              2,
+		"le":              2,
+		"gt":              2,
+		"ge":              2,
+		"num":             1,
+		"b64enc":          1,
+		"b64dec":          1,
+		"pctenc":          1,
+		"pctdec":          1,
+		"lisp_len":        1,
+		"lisp_get":        2,
+		"lisp_head":       1,
+		"lisp_tail":       1,
+		"lisp_empty":      1,
+		"lisp_push":       2,
+		"lisp_show":       1,
+		"lisp_quote_expr": 1,
+		"lisp_quote1":     1,
+		"lisp_quote2":     2,
+		"lisp_quote3":     3,
+		"lisp_quote4":     4,
 	}
 	arity, ok := arities[name]
 	return arity, ok
@@ -412,6 +425,247 @@ func pctDecode(value string) (string, error) {
 	return string(data), nil
 }
 
+func isLispValue(item string) bool {
+	if strings.HasPrefix(item, "N:") && strings.HasSuffix(item, ";") {
+		return isValidNumericLiteral(strings.TrimSuffix(strings.TrimPrefix(item, "N:"), ";"))
+	}
+	if item == "B:0;" || item == "B:1;" || item == "Z;" {
+		return true
+	}
+	if len(item) >= 3 && item[1] == ':' && strings.HasSuffix(item, ";") && (item[0] == 'S' || item[0] == 'Q' || item[0] == 'L') {
+		return pctPayloadPattern.MatchString(item[2 : len(item)-1])
+	}
+	return false
+}
+
+func lispListItems(payload string) ([]string, error) {
+	text, err := pctDecode(payload)
+	if err != nil {
+		return nil, err
+	}
+	if text == "" {
+		return []string{}, nil
+	}
+	items := strings.Split(text, "\n")
+	for _, item := range items {
+		if !isLispValue(item) {
+			return nil, fmt.Errorf("Lisp list payload contains malformed item")
+		}
+	}
+	return items, nil
+}
+
+func lispEncodeItems(items []string) string {
+	return pctEncode(strings.Join(items, "\n"))
+}
+
+func lispListIndex(value string) (int, error) {
+	n, err := parseNumber(value, "lisp_get")
+	if err != nil {
+		return 0, err
+	}
+	if !n.IsInt() {
+		return 0, fmt.Errorf("Builtin 'lisp_get' expected integer index")
+	}
+	if n.Sign() < 0 {
+		return 0, fmt.Errorf("Builtin 'lisp_get' expected non-negative index")
+	}
+	if !n.Num().IsInt64() {
+		return 0, fmt.Errorf("Builtin 'lisp_get' index out of range")
+	}
+	idx64 := n.Num().Int64()
+	maxInt := int64(^uint(0) >> 1)
+	if idx64 > maxInt {
+		return 0, fmt.Errorf("Builtin 'lisp_get' index out of range")
+	}
+	return int(idx64), nil
+}
+
+func isValidNumericLiteral(value string) bool {
+	if !numericLiteralPattern.MatchString(value) {
+		return false
+	}
+	_, err := parseNumber(value, "lisp value")
+	return err == nil
+}
+
+func decodeLispStringLiteral(value string) (string, error) {
+	if len(value) < 2 || !strings.HasPrefix(value, "\"") || !strings.HasSuffix(value, "\"") {
+		return "", fmt.Errorf("Malformed Lisp string literal")
+	}
+	inner := value[1 : len(value)-1]
+	var out strings.Builder
+	for pos := 0; pos < len(inner); {
+		ch := inner[pos]
+		if ch != '\\' {
+			out.WriteByte(ch)
+			pos++
+			continue
+		}
+		if pos+1 >= len(inner) {
+			return "", fmt.Errorf("Malformed Lisp string escape")
+		}
+		switch inner[pos+1] {
+		case 'n':
+			out.WriteByte('\n')
+		case '"':
+			out.WriteByte('"')
+		case '\\':
+			out.WriteByte('\\')
+		default:
+			return "", fmt.Errorf("Malformed Lisp string escape")
+		}
+		pos += 2
+	}
+	return out.String(), nil
+}
+
+func lispQuoteAtom(value string) (string, error) {
+	if numericLiteralPattern.MatchString(value) {
+		if _, err := parseNumber(value, "lisp_quote"); err != nil {
+			return "", err
+		}
+		return "N:" + value + ";", nil
+	}
+	if value == "true" {
+		return "B:1;", nil
+	}
+	if value == "false" {
+		return "B:0;", nil
+	}
+	if value == "nil" {
+		return "Z;", nil
+	}
+	if strings.HasPrefix(value, "\"") {
+		decoded, err := decodeLispStringLiteral(value)
+		if err != nil {
+			return "", err
+		}
+		return "S:" + pctEncode(decoded) + ";", nil
+	}
+	return "Q:" + pctEncode(value) + ";", nil
+}
+
+func lispQuoteExpr(expr string) (string, error) {
+	text, err := pctDecode(expr)
+	if err != nil {
+		return "", err
+	}
+	var parseValue func(int) (string, int, error)
+	parseValue = func(pos int) (string, int, error) {
+		for pos < len(text) && (text[pos] == ' ' || text[pos] == '\t' || text[pos] == '\n' || text[pos] == '\r') {
+			pos++
+		}
+		if pos >= len(text) {
+			return "", pos, fmt.Errorf("Empty quoted Lisp expression")
+		}
+		if text[pos] == '(' {
+			pos++
+			items := []string{}
+			for {
+				for pos < len(text) && (text[pos] == ' ' || text[pos] == '\t' || text[pos] == '\n' || text[pos] == '\r') {
+					pos++
+				}
+				if pos >= len(text) {
+					return "", pos, fmt.Errorf("Unclosed quoted Lisp list")
+				}
+				if text[pos] == ')' {
+					return "L:" + lispEncodeItems(items) + ";", pos + 1, nil
+				}
+				item, next, err := parseValue(pos)
+				if err != nil {
+					return "", pos, err
+				}
+				items = append(items, item)
+				pos = next
+			}
+		}
+		if text[pos] == '"' {
+			start := pos
+			pos++
+			for pos < len(text) {
+				if text[pos] == '\\' {
+					pos += 2
+					continue
+				}
+				if text[pos] == '"' {
+					atom, err := lispQuoteAtom(text[start : pos+1])
+					return atom, pos + 1, err
+				}
+				if text[pos] == '\n' {
+					return "", pos, fmt.Errorf("Malformed Lisp string literal")
+				}
+				pos++
+			}
+			return "", pos, fmt.Errorf("Unclosed Lisp string literal")
+		}
+		start := pos
+		for pos < len(text) && text[pos] != ' ' && text[pos] != '\t' && text[pos] != '\n' && text[pos] != '\r' && text[pos] != '(' && text[pos] != ')' {
+			pos++
+		}
+		if start == pos {
+			return "", pos, fmt.Errorf("Malformed quoted Lisp expression")
+		}
+		atom, err := lispQuoteAtom(text[start:pos])
+		return atom, pos, err
+	}
+	value, pos, err := parseValue(0)
+	if err != nil {
+		return "", err
+	}
+	for pos < len(text) && (text[pos] == ' ' || text[pos] == '\t' || text[pos] == '\n' || text[pos] == '\r') {
+		pos++
+	}
+	if pos != len(text) {
+		return "", fmt.Errorf("Malformed quoted Lisp expression")
+	}
+	return value, nil
+}
+
+func lispShowValue(value string) (string, error) {
+	if strings.HasPrefix(value, "N:") && strings.HasSuffix(value, ";") {
+		return strings.TrimSuffix(strings.TrimPrefix(value, "N:"), ";"), nil
+	}
+	if value == "B:1;" {
+		return "true", nil
+	}
+	if value == "B:0;" {
+		return "false", nil
+	}
+	if value == "Z;" {
+		return "nil", nil
+	}
+	if strings.HasPrefix(value, "S:") && strings.HasSuffix(value, ";") {
+		inner, err := pctDecode(strings.TrimSuffix(strings.TrimPrefix(value, "S:"), ";"))
+		if err != nil {
+			return "", err
+		}
+		inner = strings.ReplaceAll(inner, `\`, `\\`)
+		inner = strings.ReplaceAll(inner, `"`, `\"`)
+		inner = strings.ReplaceAll(inner, "\n", `\n`)
+		return `"` + inner + `"`, nil
+	}
+	if strings.HasPrefix(value, "Q:") && strings.HasSuffix(value, ";") {
+		return pctDecode(strings.TrimSuffix(strings.TrimPrefix(value, "Q:"), ";"))
+	}
+	if strings.HasPrefix(value, "L:") && strings.HasSuffix(value, ";") {
+		items, err := lispListItems(strings.TrimSuffix(strings.TrimPrefix(value, "L:"), ";"))
+		if err != nil {
+			return "", err
+		}
+		parts := make([]string, 0, len(items))
+		for _, item := range items {
+			shown, err := lispShowValue(item)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, shown)
+		}
+		return "(" + strings.Join(parts, " ") + ")", nil
+	}
+	return "", fmt.Errorf("Lisp value is malformed")
+}
+
 func parseNumber(value, builtin string) (*big.Rat, error) {
 	if !numericLiteralPattern.MatchString(value) {
 		return nil, fmt.Errorf("Builtin '%s' expected numeric input, got '%s'", builtin, value)
@@ -454,6 +708,97 @@ func evalBuiltin(name string, values []string) (string, error) {
 	}
 	if name == "pctdec" {
 		return pctDecode(values[0])
+	}
+	if name == "lisp_len" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		return strconv.Itoa(len(items)), nil
+	}
+	if name == "lisp_get" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		idx, err := lispListIndex(values[1])
+		if err != nil {
+			return "", err
+		}
+		if idx >= len(items) {
+			return "", fmt.Errorf("Builtin 'lisp_get' index out of range")
+		}
+		return items[idx], nil
+	}
+	if name == "lisp_head" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		if len(items) == 0 {
+			return "", fmt.Errorf("Builtin 'lisp_head' expected non-empty list")
+		}
+		return items[0], nil
+	}
+	if name == "lisp_tail" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		if len(items) == 0 {
+			return "", fmt.Errorf("Builtin 'lisp_tail' expected non-empty list")
+		}
+		return lispEncodeItems(items[1:]), nil
+	}
+	if name == "lisp_empty" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		if len(items) == 0 {
+			return "1", nil
+		}
+		return "0", nil
+	}
+	if name == "lisp_push" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		if !isLispValue(values[1]) {
+			return "", fmt.Errorf("Builtin 'lisp_push' expected Lisp value")
+		}
+		items = append(items, values[1])
+		return lispEncodeItems(items), nil
+	}
+	if name == "lisp_show" {
+		items, err := lispListItems(values[0])
+		if err != nil {
+			return "", err
+		}
+		parts := make([]string, 0, len(items))
+		for _, item := range items {
+			shown, err := lispShowValue(item)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, shown)
+		}
+		return "(" + strings.Join(parts, " ") + ")", nil
+	}
+	if name == "lisp_quote_expr" {
+		return lispQuoteExpr(values[0])
+	}
+	if name == "lisp_quote1" || name == "lisp_quote2" || name == "lisp_quote3" || name == "lisp_quote4" {
+		items := make([]string, 0, len(values))
+		for _, value := range values {
+			item, err := lispQuoteAtom(value)
+			if err != nil {
+				return "", err
+			}
+			items = append(items, item)
+		}
+		return lispEncodeItems(items), nil
 	}
 	if name == "num" {
 		n, err := parseNumber(values[0], name)
@@ -842,6 +1187,21 @@ func (i *Interpreter) WriteRuleCoverage() error {
 	return os.WriteFile(i.RuleCoveragePath, []byte(b.String()), 0644)
 }
 
+func formatDebugGroups(groups map[string]string) string {
+	keys := make([]string, 0, len(groups))
+	for key := range groups {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		value := strings.ReplaceAll(groups[key], "\n", `\n`)
+		value = strings.ReplaceAll(value, "\r", `\r`)
+		parts = append(parts, key+":"+value)
+	}
+	return "map[" + strings.Join(parts, " ") + "]"
+}
+
 func (i *Interpreter) Run() (int, error) {
 	for {
 		matched := false
@@ -855,10 +1215,12 @@ func (i *Interpreter) Run() (int, error) {
 				continue
 			}
 			matched = true
-			if i.Debug {
-				fmt.Fprintf(i.Stderr, "match line=%d state=%q\n", rule.LineNumber, i.State)
-			}
 			groups := m.groups
+			if i.Debug {
+				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
+				fmt.Fprintf(i.Stderr, "[%d] MATCH: %s\n", i.EvalCount, rule.LHS)
+				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
+			}
 			switch rule.Operator {
 			case Substitute:
 				replacement, err := i.expandTemplate(rule.RHS, groups, nil)
@@ -950,6 +1312,9 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				i.recordRuleCoverage(rule)
 				return code, nil
+			}
+			if i.Debug {
+				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
 			}
 			break
 		}

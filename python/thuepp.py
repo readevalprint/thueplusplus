@@ -314,6 +314,18 @@ class ThueppInterpreter:
             "b64dec": 1,
             "pctenc": 1,
             "pctdec": 1,
+            "lisp_len": 1,
+            "lisp_get": 2,
+            "lisp_head": 1,
+            "lisp_tail": 1,
+            "lisp_empty": 1,
+            "lisp_push": 2,
+            "lisp_show": 1,
+            "lisp_quote_expr": 1,
+            "lisp_quote1": 1,
+            "lisp_quote2": 2,
+            "lisp_quote3": 3,
+            "lisp_quote4": 4,
         }.get(name)
 
     def _b64url_encode(self, value: str) -> str:
@@ -373,8 +385,162 @@ class ThueppInterpreter:
         except UnicodeDecodeError as exc:
             raise RuntimeError(f"PCT payload decoded bytes are not valid UTF-8: {exc}")
 
+
+    def _is_numeric_literal(self, value: str) -> bool:
+        return py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value) is not None
+
+    def _is_pct_payload(self, value: str) -> bool:
+        return py_re.fullmatch(r"(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*", value) is not None
+
+    def _is_lisp_value(self, item: str) -> bool:
+        if item.startswith("N:") and item.endswith(";"):
+            return self._is_valid_numeric_literal(item[2:-1])
+        if item in {"B:0;", "B:1;", "Z;"}:
+            return True
+        if len(item) >= 3 and item[1] == ":" and item.endswith(";") and item[0] in {"S", "Q", "L"}:
+            return self._is_pct_payload(item[2:-1])
+        return False
+
+    def _lisp_list_items(self, payload: str) -> list[str]:
+        text = self._pct_decode(payload)
+        if text == "":
+            return []
+        items = text.split("\n")
+        for item in items:
+            if not self._is_lisp_value(item):
+                raise RuntimeError("Lisp list payload contains malformed item")
+        return items
+
+    def _lisp_encode_items(self, items: list[str]) -> str:
+        return self._pct_encode("\n".join(items))
+
+    def _lisp_list_index(self, value: str) -> int:
+        n = self._parse_number(value, "lisp_get")
+        if n.denominator != 1:
+            raise RuntimeError("Builtin 'lisp_get' expected integer index")
+        idx = n.numerator
+        if idx < 0:
+            raise RuntimeError("Builtin 'lisp_get' expected non-negative index")
+        return idx
+
+
+    def _is_valid_numeric_literal(self, value: str) -> bool:
+        if not self._is_numeric_literal(value):
+            return False
+        try:
+            self._parse_number(value, "lisp value")
+        except RuntimeError:
+            return False
+        return True
+
+    def _decode_lisp_string_literal(self, value: str) -> str:
+        if len(value) < 2 or not value.startswith('"') or not value.endswith('"'):
+            raise RuntimeError("Malformed Lisp string literal")
+        inner = value[1:-1]
+        out = []
+        i = 0
+        while i < len(inner):
+            ch = inner[i]
+            if ch != "\\":
+                out.append(ch)
+                i += 1
+                continue
+            if i + 1 >= len(inner):
+                raise RuntimeError("Malformed Lisp string escape")
+            esc = inner[i + 1]
+            if esc == "n":
+                out.append("\n")
+            elif esc == '"':
+                out.append('"')
+            elif esc == "\\":
+                out.append("\\")
+            else:
+                raise RuntimeError("Malformed Lisp string escape")
+            i += 2
+        return "".join(out)
+
+    def _lisp_quote_atom(self, value: str) -> str:
+        if self._is_numeric_literal(value):
+            self._parse_number(value, "lisp_quote")
+            return f"N:{value};"
+        if value == "true":
+            return "B:1;"
+        if value == "false":
+            return "B:0;"
+        if value == "nil":
+            return "Z;"
+        if value.startswith('"'):
+            return f"S:{self._pct_encode(self._decode_lisp_string_literal(value))};"
+        return f"Q:{self._pct_encode(value)};"
+
+    def _lisp_quote_expr(self, expr: str) -> str:
+        text = self._pct_decode(expr)
+
+        def parse_value(pos: int) -> tuple[str, int]:
+            while pos < len(text) and text[pos].isspace():
+                pos += 1
+            if pos >= len(text):
+                raise RuntimeError("Empty quoted Lisp expression")
+            if text[pos] == "(":
+                pos += 1
+                items = []
+                while True:
+                    while pos < len(text) and text[pos].isspace():
+                        pos += 1
+                    if pos >= len(text):
+                        raise RuntimeError("Unclosed quoted Lisp list")
+                    if text[pos] == ")":
+                        return f"L:{self._lisp_encode_items(items)};", pos + 1
+                    item, pos = parse_value(pos)
+                    items.append(item)
+            if text[pos] == '"':
+                start = pos
+                pos += 1
+                while pos < len(text):
+                    if text[pos] == "\\":
+                        pos += 2
+                        continue
+                    if text[pos] == '"':
+                        return self._lisp_quote_atom(text[start:pos + 1]), pos + 1
+                    if text[pos] == "\n":
+                        raise RuntimeError("Malformed Lisp string literal")
+                    pos += 1
+                raise RuntimeError("Unclosed Lisp string literal")
+            start = pos
+            while pos < len(text) and not text[pos].isspace() and text[pos] not in "()":
+                pos += 1
+            if start == pos:
+                raise RuntimeError("Malformed quoted Lisp expression")
+            return self._lisp_quote_atom(text[start:pos]), pos
+
+        value, pos = parse_value(0)
+        while pos < len(text) and text[pos].isspace():
+            pos += 1
+        if pos != len(text):
+            raise RuntimeError("Malformed quoted Lisp expression")
+        return value
+
+    def _lisp_show_value(self, value: str) -> str:
+        if value.startswith("N:") and value.endswith(";"):
+            return value[2:-1]
+        if value == "B:1;":
+            return "true"
+        if value == "B:0;":
+            return "false"
+        if value == "Z;":
+            return "nil"
+        if value.startswith("S:") and value.endswith(";"):
+            inner = self._pct_decode(value[2:-1])
+            escaped = inner.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+            return f'"{escaped}"'
+        if value.startswith("Q:") and value.endswith(";"):
+            return self._pct_decode(value[2:-1])
+        if value.startswith("L:") and value.endswith(";"):
+            return "(" + " ".join(self._lisp_show_value(item) for item in self._lisp_list_items(value[2:-1])) + ")"
+        raise RuntimeError("Lisp value is malformed")
+
     def _parse_number(self, value: str, builtin: str) -> Fraction:
-        if not py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value):
+        if not self._is_numeric_literal(value):
             raise RuntimeError(f"Builtin '{builtin}' expected numeric input, got '{value}'")
         if len(value) > MAX_NUMERIC_LITERAL_CHARS:
             raise RuntimeError(
@@ -406,6 +572,38 @@ class ThueppInterpreter:
             return self._pct_encode(values[0])
         if name == "pctdec":
             return self._pct_decode(values[0])
+        if name == "lisp_len":
+            return str(len(self._lisp_list_items(values[0])))
+        if name == "lisp_get":
+            items = self._lisp_list_items(values[0])
+            idx = self._lisp_list_index(values[1])
+            if idx >= len(items):
+                raise RuntimeError("Builtin 'lisp_get' index out of range")
+            return items[idx]
+        if name == "lisp_head":
+            items = self._lisp_list_items(values[0])
+            if not items:
+                raise RuntimeError("Builtin 'lisp_head' expected non-empty list")
+            return items[0]
+        if name == "lisp_tail":
+            items = self._lisp_list_items(values[0])
+            if not items:
+                raise RuntimeError("Builtin 'lisp_tail' expected non-empty list")
+            return self._lisp_encode_items(items[1:])
+        if name == "lisp_empty":
+            return "1" if not self._lisp_list_items(values[0]) else "0"
+        if name == "lisp_push":
+            items = self._lisp_list_items(values[0])
+            if not self._is_lisp_value(values[1]):
+                raise RuntimeError("Builtin 'lisp_push' expected Lisp value")
+            items.append(values[1])
+            return self._lisp_encode_items(items)
+        if name == "lisp_show":
+            return "(" + " ".join(self._lisp_show_value(item) for item in self._lisp_list_items(values[0])) + ")"
+        if name == "lisp_quote_expr":
+            return self._lisp_quote_expr(values[0])
+        if name in {"lisp_quote1", "lisp_quote2", "lisp_quote3", "lisp_quote4"}:
+            return self._lisp_encode_items([self._lisp_quote_atom(value) for value in values])
         if name == "num":
             return f"<num>{self._format_rational(self._parse_number(values[0], name))}</num>"
 
@@ -653,23 +851,15 @@ class ThueppInterpreter:
                     matched = True
 
                     if self.debug:
-                        state_preview = self.state[:200].replace('\n', '\\n')
-                        if len(self.state) > 200:
-                            state_preview += '...'
-                        print(f"[{self.eval_count}] STATE: {state_preview}", file=sys.stderr)
-                        print(f"[{self.eval_count}] MATCH: {rule.lhs[:80]}...", file=sys.stderr)
+                        escaped_state = self.state.replace("\n", "\\n")
+                        print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
+                        print(f"[{self.eval_count}] MATCH: {rule.lhs}", file=sys.stderr)
                         print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
 
                     if rule.operator == Operator.SUBSTITUTE:
                         replacement = self._expand_template(rule.rhs, groups)
-                        new_state = self._replace_match(match, replacement)
+                        self._replace_match(match, replacement)
                         self._record_rule_coverage(rule)
-                        if self.debug:
-                            result_preview = new_state[:200].replace('\n', '\\n')
-                            if len(new_state) > 200:
-                                result_preview += '...'
-                            print(f"[{self.eval_count}] RESULT: {result_preview}", file=sys.stderr)
-                            print(file=sys.stderr)
 
                     elif rule.operator == Operator.DATA:
                         replacement = self._expand_data_template(rule.rhs, groups)
@@ -744,6 +934,11 @@ class ThueppInterpreter:
                         except ValueError:
                             self._record_rule_coverage(rule)
                             return 1
+
+                    if self.debug:
+                        escaped_result = self.state.replace("\n", "\\n")
+                        print(f"[{self.eval_count}] RESULT: {escaped_result}", file=sys.stderr)
+                        print(file=sys.stderr)
 
                     break  # Restart from top after any match
 

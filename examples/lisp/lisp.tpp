@@ -18,6 +18,7 @@
 #   (= a b), (< a b), (<= a b), (> a b), (>= a b)
 #   (if cond then else), (begin expr ...), bounded scalar while
 #   (def name expr), (set name expr)
+#   lists, quote
 #
 # Scope rules:
 #   first visible binding wins
@@ -29,9 +30,8 @@ NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 NAME <- [a-z_][a-z0-9_-]*
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 STR <- "(?:[^"\\\n]|\\\\n|\\\\"|\\\\\\\\)*"
-SCALAR <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;)
-FORM1 <- \([^()]*\)
-BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|\\\\n|\\\\"|\\\\\\\\)*"|\([^()]*\)|\(begin .+\))
+SCALAR <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|L:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;)
+BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|L:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|\\\\n|\\\\"|\\\\\\\\)*"|\(quote [^()]+\)|\(quote \([^()]*\)\)|\([^()]*\)|\(begin .+\))
 
 # Hard cutoff: curly syntax and raw evaluator states are not user syntax.
 # Quoted Lisp source can contain delimiter-looking bytes; encode strings before
@@ -71,15 +71,22 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 (?s)^W:(?<pre>[^\n]*)\(if false (?<then><|BODY|>) (?<else><|BODY|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}{{else}}{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(if nil (?<then><|BODY|>) (?<else><|BODY|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}{{else}}{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
+# Apply explicit lambda calls before inspecting inside lambda bodies.
+(?s)^W:(?<pre>[^\n]*)\(\(lambda \(\) (?<body><|BODY|>)\)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{body}}\nB:\n--;\n{{env}}K:\npre={{pre}}\npost={{post}}\n--;\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(\(lambda \((?<a><|NAME|>)\) (?<body><|BODY|>)\) (?<v><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\))\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{body}}\nB:\n{{a}}={{v}}\n--;\n{{env}}K:\npre={{pre}}\npost={{post}}\n--;\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(\(lambda \((?<a><|NAME|>) (?<b><|NAME|>)\) (?<body><|BODY|>)\) (?<v1><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\)) (?<v2><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\))\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{body}}\nB:\n{{a}}={{v1}}\n{{b}}={{v2}}\n--;\n{{env}}K:\npre={{pre}}\npost={{post}}\n--;\n{{kont}}O:
+
 # A single-form begin still isolates that form so special forms own their bodies
 # before generic lookup/literal rules can inspect inside them.
+(?s)^W:(?<pre>[^\n]*)\(begin (?<first>\(while .+\)\)) (?<rest><|NAME|>|<|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{first}}\nB:\n{{env}}K:\nBEGIN pre={{pre}} post={{post}} rest={{rest}}\n--;\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(begin (?<first>\(while .+\)\))\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{first}}\nB:\n{{env}}K:\nBEGIN1 pre={{pre}} post={{post}}\n--;\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(begin (?<first>\([^()]*(?:\([^()]*\)[^()]*)*\))\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{first}}\nB:\n{{env}}K:\nBEGIN1 pre={{pre}} post={{post}}\n--;\n{{kont}}O:
 (?s)^W:(?<value><|SCALAR|>)\nB:\n(?<env>.*?)K:\nBEGIN1 pre=(?<pre>.*?) post=(?<post>.*?)\n--;\n(?<kont>.*?)O:$ ::= W:{{pre}}{{value}}{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 # Begin evaluates exactly one leading form before exposing the rest. This keeps
 # later body expressions from being reduced before earlier effects complete.
 (?s)^W:(?<pre>[^\n]*)\(begin (?<first>\([^()]*(?:\([^()]*\)[^()]*)*\)) (?<rest>.+)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{first}}\nB:\n{{env}}K:\nBEGIN pre={{pre}} post={{post}} rest={{rest}}\n--;\n{{kont}}O:
-(?s)^W:(?:N:[^;]+;|B:[01];|Z;)\nB:\n(?<env>.*?)K:\nBEGIN pre=(?<pre>.*?) post=(?<post>.*?) rest=(?<rest>.*?)\n--;\n(?<kont>.*?)O:$ ::= W:{{pre}}(begin {{rest}}){{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:<|SCALAR|>\nB:\n(?<env>.*?)K:\nBEGIN pre=(?<pre>.*?) post=(?<post>.*?) rest=(?<rest>.*?)\n--;\n(?<kont>.*?)O:$ ::= W:{{pre}}(begin {{rest}}){{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 # Early begin discard keeps sequencing explicit.
 (?s)^W:(?<pre>[^\n]*)\(begin (?<value><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}{{value}}{{post}}\nB:\n{{env}}K:\n{{kont}}O:
@@ -88,10 +95,6 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 # ---------------------------------------------------------------------------
 # Function calls. Supported arities are 0, 1, and 2 required arguments.
 # ---------------------------------------------------------------------------
-(?s)^W:(?<pre>[^\n]*)\(\(lambda \(\) (?<body><|BODY|>)\)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{body}}\nB:\n--;\n{{env}}K:\npre={{pre}}\npost={{post}}\n--;\n{{kont}}O:
-(?s)^W:(?<pre>[^\n]*)\(\(lambda \((?<a><|NAME|>)\) (?<body><|BODY|>)\) (?<v><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\))\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{body}}\nB:\n{{a}}={{v}}\n--;\n{{env}}K:\npre={{pre}}\npost={{post}}\n--;\n{{kont}}O:
-(?s)^W:(?<pre>[^\n]*)\(\(lambda \((?<a><|NAME|>) (?<b><|NAME|>)\) (?<body><|BODY|>)\) (?<v1><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\)) (?<v2><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\))\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{body}}\nB:\n{{a}}={{v1}}\n{{b}}={{v2}}\n--;\n{{env}}K:\npre={{pre}}\npost={{post}}\n--;\n{{kont}}O:
-
 # Return a collapsed function body to its caller.
 (?s)^W:(?<value><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\))\nB:\n(?<frame>.*?)--;\n(?<env>.*?)K:\npre=(?<pre>[^\n]*)\npost=(?<post>[^\n]*)\n--;\n(?<kont>.*?)O:$ ::= W:{{pre}}{{value}}{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
@@ -104,7 +107,6 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 (?s)^W:(?<pre>[^\n]*)\(def (?<name><|NAME|>) (?<value><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}Z;{{post}}\nB:\n{{name}}={{value}}\n{{env}}K:\n{{kont}}O:
 
 (?s)^W:(?<pre>[^\n]*)\(set (?<name><|NAME|>) (?<value><|SCALAR|>|\(lambda \([^()]*\) <|BODY|>\))\)(?<post>[^\n]*)\nB:\n(?<env>.+?)K:\n(?<kont>.*?)O:$ ::= W:SET name={{name}} value={{value}} pre={{pre}} post={{post}}\nD:\nR:\n{{env}}K:\n{{kont}}O:
-(?s)^W:SET name=(?<name><|NAME|>) value=(?<value>[^\n]+) pre=(?<pre>.*?) post=(?<post>.*?)\nD:\n(?<done>.*?)R:\n--;\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:SET name={{name}} value={{value}} pre={{pre}} post={{post}}\nD:\n{{done}}--;\nR:\n{{rest}}K:\n{{kont}}O:
 (?s)^W:SET name=(?<name><|NAME|>) value=(?<value>[^\n]+) pre=(?<pre>.*?) post=(?<post>.*?)\nD:\n(?<done>.*?)R:\n(?<candidate><|NAME|>)=(?<old>[^\n]+)\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:SETR name={{name}} value={{value}} pre={{pre}} post={{post}} candidate={{candidate}} old={{old}}\nD:\n{{done}}R:\n{{rest}}EQ:@EQ[{{name}}|{{candidate}}]\nK:\n{{kont}}O:
 (?s)^W:SETR name=(?<name><|NAME|>) value=(?<value>[^\n]+) pre=(?<pre>.*?) post=(?<post>.*?) candidate=(?<candidate><|NAME|>) old=(?<old>[^\n]+)\nD:\n(?<done>.*?)R:\n(?<rest>.*?)EQ:1\nK:\n(?<kont>.*?)O:$ ::= W:{{pre}}{{value}}{{post}}\nB:\n{{done}}{{candidate}}={{value}}\n{{rest}}K:\n{{kont}}O:
 (?s)^W:SETR name=(?<name><|NAME|>) value=(?<value>[^\n]+) pre=(?<pre>.*?) post=(?<post>.*?) candidate=(?<candidate><|NAME|>) old=(?<old>[^\n]+)\nD:\n(?<done>.*?)R:\n(?<rest>.*?)EQ:0\nK:\n(?<kont>.*?)O:$ ::= W:SET name={{name}} value={{value}} pre={{pre}} post={{post}}\nD:\n{{done}}{{candidate}}={{old}}\nR:\n{{rest}}K:\n{{kont}}O:
@@ -113,6 +115,18 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 # ---------------------------------------------------------------------------
 # Marker predicates must resolve before generic literal/lookup rules can inspect
 # raw body payloads stored inside markers.
+@LLEN\[\]@ ::= 0
+@LEMPTY\[\]@ ::= 1
+@LSHOW\[\]@ ::= ()
+@LLEN\[(?<xs><|PCT|>)\]@ ::! lisp_len xs
+@LGET\[(?<xs><|PCT|>)\|(?<idx><|NUM|>)\]@ ::! lisp_get xs idx
+@LHEAD\[(?<xs><|PCT|>)\]@ ::! lisp_head xs
+@LTAIL\[(?<xs><|PCT|>)\]@ ::! lisp_tail xs
+@LEMPTY\[(?<xs><|PCT|>)\]@ ::! lisp_empty xs
+@LPUSH\[(?<xs><|PCT|>)\|(?<v><|SCALAR|>)\]@ ::! lisp_push xs v
+@LSHOW\[(?<xs><|PCT|>)\]@ ::! lisp_show xs
+@QEXPR\[(?<expr><|PCT|>)\]@ ::! lisp_quote_expr expr
+
 @NUMEQ\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! numeq a b
 @LT\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! lt a b
 @LE\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! le a b
@@ -144,7 +158,7 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 (?s)^W:LOOK2 name=<|NAME|> arg1=.* arg2=[^\n]+ pre=.* post=.*\nE:\n.*R:\nK:\n.*O:$ ::= !P!EXIT2
 
 # Resolve a variable RHS in a while condition before body isolation.
-(?s)^W:(?<pre>[^\n)]*)\(while \((?<op>=|<=|<|>=|>) (?<name><|NAME|>) (?<rhsname><|NAME|>)\) (?<body>\([^()]*(?:\([^()]*\)[^()]*)*\)(?: \([^()]*(?:\([^()]*\)[^()]*)*\))*)\)(?<post>[^\n]*)\nB:\n(?<env>.+?)K:\n(?<kont>.*?)O:$ ::= W:WHV op={{op}} name={{name}} rhsname={{rhsname}} pre={{pre}} post={{post}} body={{body}}\nE:\n{{env}}R:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n)]*)\(while \((?<op>=|<=|<|>=|>) (?<name><|NAME|>) (?<rhsname><|NAME|>)\) (?<body>.+)\)(?<post>[^\n]*)\nB:\n(?<env>.+?)K:\n(?<kont>.*?)O:$ ::= W:WHV op={{op}} name={{name}} rhsname={{rhsname}} pre={{pre}} post={{post}} body={{body}}\nE:\n{{env}}R:\n{{env}}K:\n{{kont}}O:
 (?s)^W:WHV op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhsname=(?<rhsname><|NAME|>) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?)\nE:\n(?<env>.*?)R:\n--;\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:WHV op={{op}} name={{name}} rhsname={{rhsname}} pre={{pre}} post={{post}} body={{body}}\nE:\n{{env}}R:\n{{rest}}K:\n{{kont}}O:
 (?s)^W:WHV op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhsname=(?<rhsname><|NAME|>) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?)\nE:\n(?<env>.*?)R:\n(?<candidate><|NAME|>)=(?<value><|SCALAR|>)\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:WHVR op={{op}} name={{name}} rhsname={{rhsname}} value={{value}} pre={{pre}} post={{post}} body={{body}} env={{env}} rest={{rest}} eq=@EQ[{{rhsname}}|{{candidate}}]\nK:\n{{kont}}O:
 (?s)^W:WHVR op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhsname=<|NAME|> value=(?<value><|SCALAR|>) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?) env=(?<env>.*?) rest=.* eq=1\nK:\n(?<kont>.*?)O:$ ::= W:{{pre}}(while ({{op}} {{name}} {{value}}) {{body}}){{post}}\nB:\n{{env}}K:\n{{kont}}O:
@@ -153,13 +167,12 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 
 # Normalize only the while condition RHS literal before body isolation; leave the
 # loop body raw until an iteration deliberately evaluates it.
-(?s)^W:(?<pre>[^\n)]*)\(while \((?<op>=|<=|<|>=|>) (?<name><|NAME|>) (?<rhs><|NUM|>)\) (?<body>\([^()]*(?:\([^()]*\)[^()]*)*\)(?: \([^()]*(?:\([^()]*\)[^()]*)*\))*)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}(while ({{op}} {{name}} N:{{rhs}};) {{body}}){{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n)]*)\(while \((?<op>=|<=|<|>=|>) (?<name><|NAME|>) (?<rhs><|NUM|>)\) (?<body>.+)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}(while ({{op}} {{name}} N:{{rhs}};) {{body}}){{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 # While. Current slice keeps the bounded scalar loop but scans line bindings.
 # Raw loop bodies are preserved in K while one body iteration is evaluated.
 # ---------------------------------------------------------------------------
-(?s)^W:(?<pre>[^\n)]*)\(while \((?<op>=|<=|<|>=|>) (?<name><|NAME|>) (?<rhs><|SCALAR|>)\) (?<body>\([^()]*(?:\([^()]*\)[^()]*)*\)(?: \([^()]*(?:\([^()]*\)[^()]*)*\))*)\)(?<post>[^\n]*)\nB:\n(?<env>.+?)K:\n(?<kont>.*?)O:$ ::= W:WH op={{op}} name={{name}} rhs={{rhs}} pre={{pre}} post={{post}} body={{body}}\nE:\n{{env}}R:\n{{env}}K:\n{{kont}}O:
-(?s)^W:WH op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhs=(?<rhs>[^ ]+) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?)\nE:\n(?<env>.*?)R:\n--;\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:WH op={{op}} name={{name}} rhs={{rhs}} pre={{pre}} post={{post}} body={{body}}\nE:\n{{env}}R:\n{{rest}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n)]*)\(while \((?<op>=|<=|<|>=|>) (?<name><|NAME|>) (?<rhs><|SCALAR|>)\) (?<body>.+)\)(?<post>[^\n]*)\nB:\n(?<env>.+?)K:\n(?<kont>.*?)O:$ ::= W:WH op={{op}} name={{name}} rhs={{rhs}} pre={{pre}} post={{post}} body={{body}}\nE:\n{{env}}R:\n{{env}}K:\n{{kont}}O:
 (?s)^W:WH op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhs=(?<rhs>[^ ]+) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?)\nE:\n(?<env>.*?)R:\n(?<candidate><|NAME|>)=(?<value>[^\n]+)\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:WHR op={{op}} name={{name}} rhs={{rhs}} pre={{pre}} post={{post}} body={{body}} value={{value}} env={{env}} rest={{rest}} eq=@EQ[{{name}}|{{candidate}}]\nK:\n{{kont}}O:
 (?s)^W:WHR op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhs=(?<rhs>[^ ]+) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?) value=(?<value>[^\n]+) env=(?<env>.*?) rest=(?<rest>.*?) eq=0\nK:\n(?<kont>.*?)O:$ ::= W:WH op={{op}} name={{name}} rhs={{rhs}} pre={{pre}} post={{post}} body={{body}}\nE:\n{{env}}R:\n{{rest}}K:\n{{kont}}O:
 (?s)^W:WHR op== name=(?<name><|NAME|>) rhs=N:(?<rhs>[^;]+); pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?) value=N:(?<lhs>[^;]+); env=(?<env>.*?) rest=.* eq=1\nK:\n(?<kont>.*?)O:$ ::= W:WHB op== name={{name}} rhs=N:{{rhs}}; pre={{pre}} post={{post}} body={{body}} pred=@NUMEQ[{{lhs}}|{{rhs}}]\nB:\n{{env}}K:\n{{kont}}O:
@@ -168,10 +181,17 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 (?s)^W:WHR op=> name=(?<name><|NAME|>) rhs=N:(?<rhs>[^;]+); pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?) value=N:(?<lhs>[^;]+); env=(?<env>.*?) rest=.* eq=1\nK:\n(?<kont>.*?)O:$ ::= W:WHB op=> name={{name}} rhs=N:{{rhs}}; pre={{pre}} post={{post}} body={{body}} pred=@GT[{{lhs}}|{{rhs}}]\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:WHR op=>= name=(?<name><|NAME|>) rhs=N:(?<rhs>[^;]+); pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?) value=N:(?<lhs>[^;]+); env=(?<env>.*?) rest=.* eq=1\nK:\n(?<kont>.*?)O:$ ::= W:WHB op=>= name={{name}} rhs=N:{{rhs}}; pre={{pre}} post={{post}} body={{body}} pred=@GE[{{lhs}}|{{rhs}}]\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:WHB op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhs=(?<rhs>[^ ]+) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?) pred=1\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:(begin {{body}})\nB:\n{{env}}K:\nLOOP op={{op}} name={{name}} rhs={{rhs}} pre={{pre}} post={{post}} body={{body}}\n--;\n{{kont}}O:
-(?s)^W:(?:N:[^;]+;|B:[01];|Z;)\nB:\n(?<env>.*?)K:\nLOOP op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhs=(?<rhs>[^ ]+) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?)\n--;\n(?<kont>.*?)O:$ ::= W:{{pre}}(while ({{op}} {{name}} {{rhs}}) {{body}}){{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:<|SCALAR|>\nB:\n(?<env>.*?)K:\nLOOP op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhs=(?<rhs>[^ ]+) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?)\n--;\n(?<kont>.*?)O:$ ::= W:{{pre}}(while ({{op}} {{name}} {{rhs}}) {{body}}){{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:WHB op=(?<op>[^ ]+) name=(?<name><|NAME|>) rhs=(?<rhs>[^ ]+) pre=(?<pre>.*?) post=(?<post>.*?) body=(?<body>.*?) pred=0\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}Z;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:WH .*\nE:\n.*R:\nK:\n.*O:$ ::= !P!EXIT2
 
+
+# ---------------------------------------------------------------------------
+# Quote raw-form ownership. These must run before generic literal
+# and operator reduction so quoted forms remain inert data.
+# ---------------------------------------------------------------------------
+(?s)^W:\(quote (?<expr>.+)\)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:@QEXPR[{{expr|pctenc}}]@\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(quote (?<name><|NAME|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}Q:{{name|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 # ---------------------------------------------------------------------------
 # String literals. Lisp owns escapes; internal string values are S:<PCT>;.
@@ -222,9 +242,28 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 (?s)^W:(?<pre>[^\n]*)\(= Z; Z;\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}B:1;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 
-# String equality and concatenation stay PCT-native.
+# String, symbol/list equality and concatenation stay PCT-native.
 (?s)^W:(?<pre>[^\n]*)\(= S:(?<a><|PCT|>); S:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@EQ[{{a}}|{{b}}]]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(= Q:(?<a><|PCT|>); Q:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@EQ[{{a}}|{{b}}]]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(= L:(?<a><|PCT|>); L:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@EQ[{{a}}|{{b}}]]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(str-cat S:(?<a><|PCT|>); S:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}S:{{a}}{{b}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+
+# ---------------------------------------------------------------------------
+# Lists. List payloads are PCT-encoded newline-separated internal value tokens.
+# ---------------------------------------------------------------------------
+
+(?s)^W:(?<pre>[^\n]*)\(list\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(list (?<a><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:{{a|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(list (?<a><|SCALAR|>) (?<b><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:{{a|pctenc}}%0A{{b|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(list (?<a><|SCALAR|>) (?<b><|SCALAR|>) (?<c><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:{{a|pctenc}}%0A{{b|pctenc}}%0A{{c|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(list (?<a><|SCALAR|>) (?<b><|SCALAR|>) (?<c><|SCALAR|>) (?<d><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:{{a|pctenc}}%0A{{b|pctenc}}%0A{{c|pctenc}}%0A{{d|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+
+(?s)^W:(?<pre>[^\n]*)\(len L:(?<xs><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}N:@LLEN[{{xs}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(get L:(?<xs><|PCT|>); N:(?<idx>[^;]+);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@LGET[{{xs}}|{{idx}}]@{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(head L:(?<xs><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@LHEAD[{{xs}}]@{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(tail L:(?<xs><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:@LTAIL[{{xs}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(empty\? L:(?<xs><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@LEMPTY[{{xs}}]@]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(push L:(?<xs><|PCT|>); (?<v><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:@LPUSH[{{xs}}|{{v}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 # ---------------------------------------------------------------------------
 # Lookup. Specific ready-call/operator positions come before general values.
@@ -236,7 +275,6 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 (?s)^W:(?<pre>[^\n]*\((?:\+|-|\*|/|=|<|<=|>|>=) <|SCALAR|> )(?<name><|NAME|>)(?<post>\)[^\n]*)\nB:\n(?<env>.+?)K:\n(?<kont>.*?)O:$ ::= W:LOOK name={{name}} pre={{pre}} post={{post}}\nE:\n{{env}}R:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*(?:\(| ))(?<name><|NAME|>)(?<post>(?: |\))[^\n]*)\nB:\n(?<env>.+?)K:\n(?<kont>.*?)O:$ ::= W:LOOK name={{name}} pre={{pre}} post={{post}}\nE:\n{{env}}R:\n{{env}}K:\n{{kont}}O:
 
-(?s)^W:LOOK name=(?<name><|NAME|>) pre=(?<pre>.*?) post=(?<post>.*?)(?<args> arg1=.*)?\nE:\n(?<env>.*?)R:\n--;\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:LOOK name={{name}} pre={{pre}} post={{post}}{{args}}\nE:\n{{env}}R:\n{{rest}}K:\n{{kont}}O:
 (?s)^W:LOOK name=(?<name><|NAME|>) pre=(?<pre>.*?) post=(?<post>.*?)(?<args> arg1=.*)?\nE:\n(?<env>.*?)R:\n(?<candidate><|NAME|>)=(?<value>[^\n]+)\n(?<rest>.*?)K:\n(?<kont>.*?)O:$ ::= W:LOOKR name={{name}} value={{value}} pre={{pre}} post={{post}}{{args}} env={{env}} rest={{rest}} eq=@EQ[{{name}}|{{candidate}}]\nK:\n{{kont}}O:
 (?s)^W:LOOKR name=<|NAME|> value=(?<value>[^\n]+) pre=(?<pre>.*?) post=(?<post>.*?) env=(?<env>.*?) rest=.* eq=1\nK:\n(?<kont>.*?)O:$ ::= W:{{pre}}{{value}}{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:LOOKR name=(?<name><|NAME|>) value=(?<value>[^\n]+) pre=(?<pre>.*?) post=(?<post>.*?)(?<args> arg1=.*)? env=(?<env>.*?) rest=(?<rest>.*?) eq=0\nK:\n(?<kont>.*?)O:$ ::= W:LOOK name={{name}} pre={{pre}} post={{post}}{{args}}\nE:\n{{env}}R:\n{{rest}}K:\n{{kont}}O:
@@ -248,6 +286,8 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|
 (?s)^W:B:0;\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO:false
 (?s)^W:Z;\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO:nil
 (?s)^W:S:(?<s><|PCT|>);\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO%:{{s}}
+(?s)^W:Q:(?<q><|PCT|>);\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO%:{{q}}
+(?s)^W:L:(?<xs><|PCT|>);\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO:@LSHOW[{{xs}}]@
 (?s)^W:\nO%:(?<out><|PCT|>)$ ::> stdout {{out|pctdec}}\n
 (?s)^W:\nO:(?<out>.*?)$ ::> stdout {{out}}\n
 # Fail loud.

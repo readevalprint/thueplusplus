@@ -752,3 +752,345 @@ input = '"bad\"'
 exit_code = 2
 stdout = ""
 stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "list constructor prints canonical list"
+input = "(list 1 2 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 2 3)"
+
+[[case]]
+name = "list len counts elements"
+input = "(len (list 1 2 3))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "list get uses zero based index"
+input = "(get (list 10 20 30) 1)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "20"
+
+[[case]]
+name = "list head returns first element"
+input = "(head (list 10 20))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "10"
+
+[[case]]
+name = "list tail is observable"
+input = "(get (tail (list 10 20)) 0)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "20"
+
+[[case]]
+name = "empty list is empty"
+input = "(empty? (list))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "nonempty list is not empty"
+input = "(empty? (list 1))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "push appends persistent list value"
+input = "(get (push (list 1 2) 3) 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "quote symbol does not resolve binding"
+input = "(begin (def x 42) (quote x))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "x"
+
+[[case]]
+name = "quote form does not evaluate"
+input = "(quote (+ 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(+ 1 2)"
+
+[[case]]
+name = "empty list prints canonical empty list"
+input = "(list)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
+
+[[case]]
+name = "empty list len is zero"
+input = "(len (list))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
+
+[[case]]
+name = "four element list prints canonical list"
+input = "(list 1 2 3 4)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 2 3 4)"
+
+[[case]]
+name = "begin discards list first value"
+input = "(begin (list 1 2) 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "quote empty list returns empty list data"
+input = "(quote ())"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
+
+[[case]]
+name = "quote numeric list returns data"
+input = "(quote (1 2 3))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 2 3)"
+
+[[case]]
+name = "quote symbol list returns data"
+input = "(quote (foo x 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(foo x 2)"
+
+[[case]]
+name = "list passed into lambda remains first class"
+input = "(begin (def count (lambda (xs) (len xs))) (count (list 1 2 3 4)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "push does not mutate original list"
+input = "(begin (def xs (list 1 2)) (def ys (push xs 3)) (len xs))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "list can contain strings booleans and nil"
+input = '(list "x" true nil)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '("x" true nil)'
+
+[[case]]
+name = "get negative index fails loud"
+input = "(get (list 1 2) -1)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'lisp_get' expected non-negative index"]
+
+[[case]]
+name = "get fractional index fails loud"
+input = "(get (list 1 2) 1/2)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'lisp_get' expected integer index"]
+
+[[case]]
+name = "get out of range fails loud"
+input = "(get (list 1 2) 2)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'lisp_get' index out of range"]
+
+[[case]]
+name = "head empty list fails loud"
+input = "(head (list))"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'lisp_head' expected non-empty list"]
+
+[[case]]
+name = "tail empty list fails loud"
+input = "(tail (list))"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'lisp_tail' expected non-empty list"]
+
+[[case]]
+name = "list get participates in arithmetic"
+input = "(+ (get (list 1 2 3) 0) (get (list 1 2 3) 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "quote one item list"
+input = "(quote (x))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(x)"
+
+[[case]]
+name = "quote two item list"
+input = "(quote (x y))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(x y)"
+
+[[case]]
+name = "quote four item list"
+input = "(quote (a b c d))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(a b c d)"
+
+[[case]]
+name = "lambda body can read outer binding"
+input = "(begin (def x 7) ((lambda () x)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "quote numeric atom returns numeric data"
+input = "(quote 1)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "quote string atom returns string data"
+input = '(quote "x")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "x"
+
+[[case]]
+name = "quote nested list remains inert data"
+input = "(quote ((1 2) 3))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "((1 2) 3)"
+
+[[case]]
+name = "lambda body quoted list stays raw until call"
+input = "(begin (def f (lambda () (quote (1 2)))) (f))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 2)"
+
+[[case]]
+name = "quoted symbol equality works"
+input = "(= (quote x) (quote x))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "quoted symbol inequality works"
+input = "(= (quote x) (quote y))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "list structural equality works"
+input = "(= (list 1 2) (list 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "invalid quoted numeric fails loud"
+input = "(quote (1/0))"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'lisp_quote' fraction denominator must be non-zero"]
