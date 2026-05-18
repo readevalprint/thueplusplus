@@ -51,18 +51,17 @@ class TestRuntimeRowSemantics(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "y\n")
 
-    def test_static_lower_rule_rows_are_skipped_as_rules_not_data(self):
+    def test_lower_rule_rows_are_state_and_can_be_rewritten(self):
         result = run_program(
             r"""
-            x ::= y
-            ^y$ ::> stdout y\n
-            x ::= z
+            ^OLD.*$ ::= ^x$ ::> stdout changed\n
+            OLD ::= NEW
             x
             """
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "y\n")
+        self.assertEqual(result.stdout, "changed")
 
     def test_lower_comment_rows_are_always_skipped_not_state(self):
         result = run_program(

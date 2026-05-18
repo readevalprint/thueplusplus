@@ -1432,13 +1432,6 @@ func (i *Interpreter) Run() (int, error) {
 				if strings.HasPrefix(trimmed, "#") || (trimmed == "" && probe.start != len(i.State)) {
 					continue
 				}
-				probeRule, err := i.parseRuleCached(probe.row, probe.lineNumber, i.ProgramPath)
-				if err != nil {
-					return 1, err
-				}
-				if probeRule != nil {
-					continue
-				}
 				m, ok := findMatch(*rule, probe.row)
 				if !ok {
 					continue

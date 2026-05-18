@@ -976,9 +976,6 @@ class ThueppInterpreter:
                     stripped = probe_row.strip()
                     if stripped.startswith("#") or (stripped == "" and probe_start != len(self.state)):
                         continue
-                    probe_rule = self._parse_rule_cached(probe_row, probe_source_line, probe_source_path)
-                    if probe_rule is not None:
-                        continue
                     match = rule.lhs_pattern.search(probe_row)
                     if match:
                         target_row = (probe_line, probe_row, probe_start, probe_end)

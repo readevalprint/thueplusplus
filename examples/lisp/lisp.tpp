@@ -9,8 +9,9 @@
 #   O: final output buffer
 #
 # Runtime rule model:
-#   rules operate line-by-line, not on multiline suffixes. An active rule scans
-#   subsequent rows until the first matching row, replaces that row, and the
+#   rules operate line-by-line, not on multiline suffixes. Comments are always
+#   skipped. Rule rows are still state rows: an active rule scans subsequent
+#   non-comment rows until the first match, replaces that row, and the
 #   interpreter restarts from the top.
 #
 # Supported in this slice:
@@ -24,16 +25,11 @@
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 
 # Hard cutoff: curly syntax and raw evaluator states are not user syntax.
-(?-m:^(?<bad>.*[{}].*)$) ::= !PC!EXIT2
+(?-m:^(?<bad>[{}].*)$) ::= !PC!EXIT2
 (?-m:^W:[^ \n]*$) ::= !P!EXIT2
 (?-m:^B:[^ \n]*$) ::= !P!EXIT2
 (?-m:^K:[^ \n]*$) ::= !P!EXIT2
 (?-m:^O:[^ \n]*$) ::= !P!EXIT2
-
-# Error markers print first, then retain EXIT2 for the exit rule.
-^!PC! ::> stderr parse error: curly-brace syntax is not supported\n
-^!P! ::> stderr parse error: unsupported or malformed Lisp input\n
-EXIT2 ::- 2
 
 # Phase-0 primitive literals.
 ^W:(?<n><|NUM|>) B: K: O:$ ::> stdout {{n}}\n
@@ -44,5 +40,10 @@ EXIT2 ::- 2
 # Unsupported framed input fails loudly.
 ^W:[^\n]+ B: K: O:$ ::= !P!EXIT2
 
-# Raw input framing.
-(?-m:^(?<input>[^!\n].*)$) ::= W:{{input}} B: K: O:
+# Raw input framing. Keep this phase-0-specific so it does not rewrite rule rows.
+(?-m:^(?<input><|NUM|>|true|false|nil|\([^?][^\n]*)$) ::= W:{{input}} B: K: O:
+
+# Error markers print first, then retain EXIT2 for the exit rule.
+^!PC! ::> stderr parse error: curly-brace syntax is not supported\n
+^!P! ::> stderr parse error: unsupported or malformed Lisp input\n
+^EXIT2$ ::- 2

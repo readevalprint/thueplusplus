@@ -1,12 +1,13 @@
 # Include demo - shows @include directive
 
+# Flow: rewrite state to both output markers, then exit
+start ::= HELLO
+HELLO ::= BYE
+BYE ::= >hello>byeDONE
+
 @include lib/greet.tpp
 
-# Flow: say hello, then goodbye, then exit
-start ::= >helloHELLO
-HELLO ::= >byeBYE
-BYE ::= done
-done ::- 0
+DONE ::- 0
 
 ::=
 start
