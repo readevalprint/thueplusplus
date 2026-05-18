@@ -952,6 +952,9 @@ class ThueppInterpreter:
                         source_path, source_line = self._row_sources[index]
                     row_infos.append((line_number, row, offset, end, source_path, source_line))
                     offset = end
+                if self.state.endswith("\n"):
+                    line_number = len(row_infos) + 1
+                    row_infos.append((line_number, "", offset, offset, self.program_path, line_number))
 
             applied = False
 
@@ -966,26 +969,26 @@ class ThueppInterpreter:
                     )
                 self.eval_count += 1
 
-                target_start = row_end
-                probe_idx = idx + 1
-                while probe_idx < len(row_infos):
-                    probe_line, probe_row, _probe_start, probe_end, probe_source_path, probe_source_line = row_infos[probe_idx]
+                target_row = None
+                target_match = None
+                for probe_idx in range(idx + 1, len(row_infos)):
+                    probe_line, probe_row, probe_start, probe_end, probe_source_path, probe_source_line = row_infos[probe_idx]
                     stripped = probe_row.strip()
-                    if not stripped or stripped.startswith("#"):
-                        target_start = probe_end
-                        probe_idx += 1
+                    if stripped.startswith("#") or (stripped == "" and probe_start != len(self.state)):
                         continue
                     probe_rule = self._parse_rule_cached(probe_row, probe_source_line, probe_source_path)
-                    if probe_rule is None:
+                    if probe_rule is not None:
+                        continue
+                    match = rule.lhs_pattern.search(probe_row)
+                    if match:
+                        target_row = (probe_line, probe_row, probe_start, probe_end)
+                        target_match = match
                         break
-                    target_start = probe_end
-                    probe_idx += 1
-
-                suffix = self.state[target_start:]
-                match = rule.lhs_pattern.search(suffix)
-                if not match:
+                if target_row is None or target_match is None:
                     continue
 
+                probe_line, probe_row, probe_start, probe_end = target_row
+                match = target_match
                 groups = match.groupdict()
                 applied = True
 
@@ -993,8 +996,8 @@ class ThueppInterpreter:
                     escaped_state = self.state.replace("\n", "\\n")
                     print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
                     print(
-                        f"[{self.eval_count}] ROW {line_number} MATCHES DATA SUFFIX AT "
-                        f"{target_start + match.start()}:{target_start + match.end()}: {rule.lhs}",
+                        f"[{self.eval_count}] ROW {line_number} MATCHES ROW {probe_line} AT "
+                        f"{match.start()}:{match.end()}: {rule.lhs}",
                         file=sys.stderr,
                     )
                     print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
@@ -1078,8 +1081,9 @@ class ThueppInterpreter:
                 if replacement is None:
                     raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
 
-                new_suffix = suffix[:match.start()] + replacement + suffix[match.end():]
-                self._set_state(self.state[:target_start] + new_suffix)
+                row_ending = self.state[probe_start + len(probe_row):probe_end]
+                new_row = probe_row[:match.start()] + replacement + probe_row[match.end():]
+                self._set_state(self.state[:probe_start] + new_row + row_ending + self.state[probe_end:])
 
                 if self.debug:
                     escaped_result = self.state.replace("\n", "\\n")
