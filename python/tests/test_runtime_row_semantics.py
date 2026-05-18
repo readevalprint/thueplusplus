@@ -64,6 +64,17 @@ class TestRuntimeRowSemantics(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "y\n")
 
+    def test_lower_comment_rows_are_always_skipped_not_state(self):
+        result = run_program(
+            r"""
+            ^#data$ ::> stdout hash\n
+            #data
+            """
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+
     def test_one_substitution_uses_first_leftmost_match_in_lower_suffix(self):
         result = run_program(
             r"""
@@ -76,11 +87,11 @@ class TestRuntimeRowSemantics(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "ba\n")
 
-    def test_rule_matches_multiline_lower_suffix(self):
+    def test_rule_does_not_match_multiline_lower_suffix(self):
         result = run_program(
             r"""
             (?s)^W:(?<expr>.*)\nB:\nK:\nO:$ ::= O:{{expr}}
-            ^O:(?<out>.*)$ ::> stdout {{out}}\n
+            ^O:(?<out>.+)$ ::> stdout {{out}}\n
             W:(+ 1 2)
             B:
             K:
@@ -89,7 +100,7 @@ class TestRuntimeRowSemantics(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "(+ 1 2)\n")
+        self.assertEqual(result.stdout, "")
 
     def test_rule_does_not_rewrite_text_above_itself(self):
         result = run_program(

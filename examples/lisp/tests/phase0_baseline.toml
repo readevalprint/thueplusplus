@@ -1,0 +1,101 @@
+program = "../lisp.tpp"
+timeout = 5
+
+[[case]]
+name = "top level number"
+input = "42"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "top level true"
+input = "true"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "top level false"
+input = "false"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "top level nil"
+input = "nil"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "nil"
+
+[[case]]
+name = "raw internal-looking W state rejected"
+input = "W:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "raw internal-looking B state rejected"
+input = "B:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "raw internal-looking K state rejected"
+input = "K:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "raw internal-looking O state rejected"
+input = "O:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "single curly syntax rejected"
+input = "{+ 1 2}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: curly-brace syntax is not supported"]
+
+[[case]]
+name = "double curly syntax rejected"
+input = "{{+ 1 2}}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: curly-brace syntax is not supported"]
+
+[[case]]
+name = "arithmetic not supported in phase 0"
+input = "(+ 1 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]

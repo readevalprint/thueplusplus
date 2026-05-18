@@ -54,14 +54,19 @@ func TestGoInterpreterRuntimeRowSemantics(t *testing.T) {
 			stdout:  "y\n",
 		},
 		{
+			name:    "lower comment rows are always skipped not state",
+			program: "^#data$ ::> stdout hash\\n\n\n#data\n",
+			stdout:  "",
+		},
+		{
 			name:    "one substitution uses first leftmost match in lower suffix",
 			program: "^ba$ ::> stdout ba\\n\n\na ::= b\naa\n",
 			stdout:  "ba\n",
 		},
 		{
-			name:    "rule matches multiline lower suffix",
-			program: "(?s)^W:(?<expr>.*)\\nB:\\nK:\\nO:$ ::= O:{{expr}}\n^O:(?<out>.*)$ ::> stdout {{out}}\\n\n\nW:(+ 1 2)\nB:\nK:\nO:\n",
-			stdout:  "(+ 1 2)\n",
+			name:    "rule does not match multiline lower suffix",
+			program: "(?s)^W:(?<expr>.*)\\nB:\\nK:\\nO:$ ::= O:{{expr}}\n^O:(?<out>.+)$ ::> stdout {{out}}\\n\n\nW:(+ 1 2)\nB:\nK:\nO:\n",
+			stdout:  "",
 		},
 		{
 			name:    "rule does not rewrite text above itself",

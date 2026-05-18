@@ -41,7 +41,7 @@ class TestExampleConfigs(unittest.TestCase):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
         self.assertIn("Greenfield parenthesized Lisp rewrite", text)
-        self.assertIn("Lisp functions remain raw lambda values", text)
+        self.assertIn("Function forms are future-only", text)
         self.assertNotIn("defun", text)
         self.assertNotIn("1-5 fixed params", text)
         self.assertNotIn("$x", text)
@@ -69,7 +69,8 @@ class TestExampleConfigs(unittest.TestCase):
     def test_lisp_uses_canonical_work_binding_continuation_output_state(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertIn("W:{{input}}\\nB:\\nK:\\nO:", text)
+        self.assertIn("W:{{input}} B: K: O:", text)
+        self.assertIn("line-by-line, not on multiline suffixes", text)
         self.assertIn("#   K: call continuations, innermost first", text)
         self.assertNotIn("\\nF:", text)
 

@@ -1405,6 +1405,9 @@ func (i *Interpreter) Run() (int, error) {
 			offset = segmentEnd
 			lineNumber++
 		}
+		if strings.HasSuffix(i.State, "\n") {
+			rows = append(rows, rowInfo{lineNumber: lineNumber, row: "", start: offset, end: offset})
+		}
 
 		applied := false
 		for rowIndex, info := range rows {
@@ -1420,35 +1423,40 @@ func (i *Interpreter) Run() (int, error) {
 			}
 			i.EvalCount++
 
-			targetStart := info.end
+			var target rowInfo
+			var match matchInfo
+			matched := false
 			for probeIndex := rowIndex + 1; probeIndex < len(rows); probeIndex++ {
 				probe := rows[probeIndex]
 				trimmed := strings.TrimSpace(probe.row)
-				if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-					targetStart = probe.end
+				if strings.HasPrefix(trimmed, "#") || (trimmed == "" && probe.start != len(i.State)) {
 					continue
 				}
 				probeRule, err := i.parseRuleCached(probe.row, probe.lineNumber, i.ProgramPath)
 				if err != nil {
 					return 1, err
 				}
-				if probeRule == nil {
-					break
+				if probeRule != nil {
+					continue
 				}
-				targetStart = probe.end
+				m, ok := findMatch(*rule, probe.row)
+				if !ok {
+					continue
+				}
+				target = probe
+				match = m
+				matched = true
+				break
 			}
-
-			suffix := i.State[targetStart:]
-			m, ok := findMatch(*rule, suffix)
-			if !ok {
+			if !matched {
 				continue
 			}
 			applied = true
-			groups := m.groups
+			groups := match.groups
 			magicVars := map[string]string{"rule_index": strconv.Itoa(rowIndex)}
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
-				fmt.Fprintf(i.Stderr, "[%d] ROW %d MATCHES DATA SUFFIX AT %d:%d: %s\n", i.EvalCount, info.lineNumber, targetStart+m.start, targetStart+m.end, rule.LHS)
+				fmt.Fprintf(i.Stderr, "[%d] ROW %d MATCHES ROW %d AT %d:%d: %s\n", i.EvalCount, info.lineNumber, target.lineNumber, match.start, match.end, rule.LHS)
 				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
 			}
 			repl := ""
@@ -1532,8 +1540,9 @@ func (i *Interpreter) Run() (int, error) {
 				i.recordRuleCoverage(*rule)
 				return code, nil
 			}
-			newSuffix := suffix[:m.start] + repl + suffix[m.end:]
-			if err := i.setState(i.State[:targetStart] + newSuffix); err != nil {
+			rowEnding := i.State[target.start+len(target.row) : target.end]
+			newRow := target.row[:match.start] + repl + target.row[match.end:]
+			if err := i.setState(i.State[:target.start] + newRow + rowEnding + i.State[target.end:]); err != nil {
 				return 1, err
 			}
 			if i.Debug {
