@@ -47,8 +47,9 @@ class RuleCoverageCheckerTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            rules = checker.enumerate_rules(program)
+            rules, parse_error = checker.enumerate_rules(program)
 
+        self.assertIsNone(parse_error)
         self.assertEqual([rule.text for rule in rules], [
             r"foo::=bar ::= ok",
             r"[x:=!] ::= ok",
@@ -160,16 +161,17 @@ class RuleCoverageCheckerTest(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("coverage ignore comments are unsupported", result.stderr)
-    def test_all_example_discovery_fails_on_uncovered_root_program(self):
+    def test_manifest_discovery_does_not_scan_unlisted_root_programs(self):
         checker = load_checker_module()
         with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
             examples = Path(tmp) / "examples"
-            example = examples / "ambiguous"
+            example = examples / "explicit"
             tests = example / "tests"
             tests.mkdir(parents=True)
             (example / "covered.tpp").write_text("a ::- 0\n\n::=\na\n", encoding="utf-8")
-            (example / "skipped.tpp").write_text("b ::- 0\n\n::=\nb\n", encoding="utf-8")
-            (tests / "basic.toml").write_text(
+            (example / "unlisted.tpp").write_text("b ::- 0\n\n::=\nb\n", encoding="utf-8")
+            manifest = tests / "basic.toml"
+            manifest.write_text(
                 textwrap.dedent(
                     """
                     program = "../covered.tpp"
@@ -181,10 +183,11 @@ class RuleCoverageCheckerTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(RuntimeError, "have no shared coverage manifests"):
-                checker.discover_targets(examples)
+            targets = checker.discover_targets([manifest])
 
-    def test_all_example_discovery_groups_cases_by_program(self):
+        self.assertEqual([target.program.name for target in targets], ["covered.tpp"])
+
+    def test_manifest_discovery_groups_manifests_by_top_level_program(self):
         checker = load_checker_module()
         with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
             examples = Path(tmp) / "examples"
@@ -195,28 +198,32 @@ class RuleCoverageCheckerTest(unittest.TestCase):
             second = example / "second.tpp"
             first.write_text("a ::- 0\n\n::=\na\n", encoding="utf-8")
             second.write_text("b ::- 0\n\n::=\nb\n", encoding="utf-8")
-            (tests / "basic.toml").write_text(
+            first_manifest = tests / "first.toml"
+            second_manifest = tests / "second.toml"
+            first_manifest.write_text(
                 textwrap.dedent(
                     """
-                    [[case]]
-                    name = "first"
                     program = "../first.tpp"
 
-                    [case.expect]
+                    [expect]
                     exit_code = 0
-
-                    [[case]]
-                    name = "second"
+                    """
+                ).lstrip(),
+                encoding="utf-8",
+            )
+            second_manifest.write_text(
+                textwrap.dedent(
+                    """
                     program = "../second.tpp"
 
-                    [case.expect]
+                    [expect]
                     exit_code = 0
                     """
                 ).lstrip(),
                 encoding="utf-8",
             )
 
-            targets = checker.discover_targets(examples)
+            targets = checker.discover_targets([second_manifest, first_manifest])
 
         self.assertEqual([target.program.name for target in targets], ["first.tpp", "second.tpp"])
         self.assertEqual([len(target.cases) for target in targets], [1, 1])

@@ -1,0 +1,9 @@
+program = "fixtures/bad-missing-capture.tpp"
+timeout = 5
+
+[[case]]
+name = "missing capture rejected"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["::! argument 'b' is not a named capture"]

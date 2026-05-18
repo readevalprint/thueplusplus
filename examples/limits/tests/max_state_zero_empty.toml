@@ -1,0 +1,10 @@
+program = "../max-state-zero-empty.tpp"
+
+[[case]]
+name = "zero limit allows empty state"
+args = ["--max-state-bytes", "0"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""

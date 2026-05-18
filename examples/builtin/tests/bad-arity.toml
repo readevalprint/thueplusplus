@@ -1,0 +1,9 @@
+program = "fixtures/bad-arity.tpp"
+timeout = 5
+
+[[case]]
+name = "wrong arity fails loudly"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'add' expects 2 args, got 1"]

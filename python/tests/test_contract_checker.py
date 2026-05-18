@@ -172,7 +172,7 @@ class RepositoryConformanceCheckerTest(unittest.TestCase):
             dst = root / relative
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
-        for config in (REPO_ROOT / "examples").glob("*/tests/*.toml"):
+        for config in list((REPO_ROOT / "examples").glob("**/tests/*.toml")) + list((REPO_ROOT / "examples").glob("**/*.tpp")):
             dst = root / config.relative_to(REPO_ROOT)
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(config, dst)

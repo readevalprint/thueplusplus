@@ -43,14 +43,103 @@ def load_toml(path: Path) -> dict:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
-def expand_cases(config: dict) -> list[dict]:
+TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case", "requires"}
+CASE_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout"}
+EXPECT_KEYS = {
+    "exit_code",
+    "stdout",
+    "stdout_stripped",
+    "stdout_startswith",
+    "stdout_contains",
+    "stderr",
+    "stderr_stripped",
+    "stderr_contains",
+    "files",
+}
+BINDING_KEYS = {"files", "procs"}
+
+
+def validate_expect(config_path: Path, scope: str, expect) -> None:
+    if not isinstance(expect, dict) or not expect:
+        raise RuntimeError(f"{config_path} {scope}: missing expect table")
+    unknown = sorted(set(expect) - EXPECT_KEYS)
+    if unknown:
+        raise RuntimeError(f"{config_path} {scope}: unknown expect key(s): {', '.join(unknown)}")
+    if "exit_code" not in expect:
+        raise RuntimeError(f"{config_path} {scope}: missing expect.exit_code")
+    if not isinstance(expect["exit_code"], int):
+        raise RuntimeError(f"{config_path} {scope}: expect.exit_code must be an integer")
+
+
+def validate_bindings(config_path: Path, scope: str, bindings) -> None:
+    if not isinstance(bindings, dict):
+        raise RuntimeError(f"{config_path} {scope}: bindings must be a table")
+    unknown = sorted(set(bindings) - BINDING_KEYS)
+    if unknown:
+        raise RuntimeError(f"{config_path} {scope}: unknown bindings key(s): {', '.join(unknown)}")
+    for name, spec in bindings.get("files", {}).items():
+        if not isinstance(name, str) or not name:
+            raise RuntimeError(f"{config_path} {scope}: file binding names must be non-empty strings")
+        if isinstance(spec, str):
+            continue
+        if not isinstance(spec, dict):
+            raise RuntimeError(f"{config_path} {scope}: file binding {name!r} must be a fixture string or table")
+        unknown_spec = sorted(set(spec) - {"fixture", "writable"})
+        if unknown_spec:
+            raise RuntimeError(f"{config_path} {scope}: unknown file binding {name!r} key(s): {', '.join(unknown_spec)}")
+        if not isinstance(spec.get("fixture"), str) or not spec["fixture"]:
+            raise RuntimeError(f"{config_path} {scope}: file binding {name!r} requires a fixture string")
+        if "writable" in spec and not isinstance(spec["writable"], bool):
+            raise RuntimeError(f"{config_path} {scope}: file binding {name!r} writable must be boolean")
+    for name, command in bindings.get("procs", {}).items():
+        if not isinstance(name, str) or not name or not isinstance(command, str) or not command:
+            raise RuntimeError(f"{config_path} {scope}: proc bindings must map non-empty names to non-empty command strings")
+
+
+def validate_manifest(config_path: Path, config: dict) -> None:
+    unknown = sorted(set(config) - TOP_LEVEL_KEYS)
+    if unknown:
+        raise RuntimeError(f"{config_path}: unknown top-level key(s): {', '.join(unknown)}")
+    program = config.get("program")
+    if not isinstance(program, str) or not program.strip():
+        raise RuntimeError(f"{config_path}: missing top-level program")
+    if "requires" in config:
+        raise RuntimeError(f"{config_path}: requires.commands is not supported in shared manifests")
+    if "args" in config and not (isinstance(config["args"], list) and all(isinstance(arg, str) for arg in config["args"])):
+        raise RuntimeError(f"{config_path}: args must be a list of strings")
+    if "bindings" in config:
+        validate_bindings(config_path, "manifest", config["bindings"])
+    cases = config.get("case")
+    if cases is None:
+        validate_expect(config_path, str(config.get("name") or config_path.stem), config.get("expect"))
+        return
+    if not isinstance(cases, list) or not cases:
+        raise RuntimeError(f"{config_path}: case must be a non-empty array")
+    for index, case in enumerate(cases, 1):
+        if not isinstance(case, dict):
+            raise RuntimeError(f"{config_path} case #{index}: case must be a table")
+        scope = str(case.get("name") or f"case #{index}")
+        unknown_case = sorted(set(case) - CASE_KEYS)
+        if unknown_case:
+            raise RuntimeError(f"{config_path} {scope}: unknown case key(s): {', '.join(unknown_case)}")
+        if "program" in case:
+            raise RuntimeError(f"{config_path} {scope}: program is only allowed at manifest top level")
+        if "args" in case and not (isinstance(case["args"], list) and all(isinstance(arg, str) for arg in case["args"])):
+            raise RuntimeError(f"{config_path} {scope}: args must be a list of strings")
+        if "bindings" in case:
+            validate_bindings(config_path, scope, case["bindings"])
+        validate_expect(config_path, scope, case.get("expect"))
+
+
+def expand_cases(config: dict, config_path: Path | None = None) -> list[dict]:
+    if config_path is not None:
+        validate_manifest(config_path, config)
     cases = config.get("case") or []
     if not cases:
         return [config]
     expanded: list[dict] = []
     for case in cases:
-        merged = dict(config)
-        merged.pop("case", None)
+        merged = {key: value for key, value in config.items() if key != "case"}
         for key, value in case.items():
             if isinstance(value, dict) and isinstance(merged.get(key), dict):
                 nested = dict(merged[key])
@@ -178,7 +267,7 @@ def run_configs(interpreters: list[Interpreter], configs: list[Path], *, parity:
         root_tmp = Path(tmpdir)
         for config_path in configs:
             data = load_toml(config_path)
-            for case in expand_cases(data):
+            for case in expand_cases(data, config_path):
                 total += 1
                 results: list[CaseResult] = []
                 for interpreter in interpreters:
@@ -256,16 +345,30 @@ def contract_interpreters(contract_path: Path, build_root: Path, only: set[str] 
     return interpreters
 
 
+def collect_configs(configs: list[Path], manifest_globs: list[str] | None = None) -> list[Path]:
+    collected = list(configs)
+    for pattern in manifest_globs or []:
+        matches = sorted(ROOT.glob(pattern))
+        if not matches:
+            raise RuntimeError(f"manifest glob matched no files: {pattern}")
+        collected.extend(matches)
+    if not collected:
+        raise RuntimeError("no shared manifest files provided")
+    return collected
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run shared thue++ example manifests")
-    parser.add_argument("configs", type=Path, nargs="+", help="example TOML manifest(s)")
+    parser.add_argument("configs", type=Path, nargs="*", help="example TOML manifest(s)")
+    parser.add_argument("--manifest-glob", action="append", default=[], help="repository-relative glob for shared example TOML manifests; may be repeated")
     parser.add_argument("--contract", type=Path, required=True, help="Read available implementation commands from tools/thuepp-contract.toml-style contract")
     parser.add_argument("--implementation", action="append", help="Implementation name to select from --contract; may be repeated")
     parser.add_argument("--parity", action="store_true", help="compare exit code, stdout, stderr, and writable file outputs across interpreters")
     args = parser.parse_args(argv)
+    configs = collect_configs(args.configs, args.manifest_glob)
     with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
         interpreters = contract_interpreters(args.contract, Path(tmpdir), set(args.implementation) if args.implementation else None)
-        return run_configs(interpreters, args.configs, parity=args.parity)
+        return run_configs(interpreters, configs, parity=args.parity)
 
 
 if __name__ == "__main__":

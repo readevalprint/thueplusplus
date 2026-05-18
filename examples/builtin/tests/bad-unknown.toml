@@ -1,0 +1,9 @@
+program = "fixtures/bad-unknown.tpp"
+timeout = 5
+
+[[case]]
+name = "unknown builtin fails loudly"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Unknown builtin 'nope'"]
