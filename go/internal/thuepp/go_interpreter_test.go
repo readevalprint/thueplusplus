@@ -31,6 +31,61 @@ func TestGoInterpreterRunsHelloExample(t *testing.T) {
 	}
 }
 
+func TestGoInterpreterRuntimeRowSemantics(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	cases := []struct {
+		name    string
+		program string
+		stdout  string
+	}{
+		{
+			name:    "no section terminator rewrites lower data row",
+			program: "a ::= b\n^b$ ::> stdout b\\n\n\na\n",
+			stdout:  "b\n",
+		},
+		{
+			name:    "first delimiter only allows generated rule rhs",
+			program: "MAKE ::= x ::= y\n^y$ ::> stdout y\\n\n\nMAKE\nx\n",
+			stdout:  "y\n",
+		},
+		{
+			name:    "rule rewrites lower rule row before it executes",
+			program: "x ::= y\n^z$ ::> stdout z\\n\n\nx ::= z\nx\n",
+			stdout:  "z\n",
+		},
+		{
+			name:    "one substitution uses first match within target row",
+			program: "^ba$ ::> stdout ba\\n\n\na ::= b\naa\n",
+			stdout:  "ba\n",
+		},
+		{
+			name:    "restart from top after substitution",
+			program: "b ::= c\na ::= b\n^c$ ::> stdout c\\n\n\na\n",
+			stdout:  "c\n",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			programPath := filepath.Join(tmp, "runtime-rows.tpp")
+			if err := os.WriteFile(programPath, []byte(tc.program), 0644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(buildGoInterpreter(t, repoRoot), programPath)
+			cmd.Dir = repoRoot
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("go interpreter failed: %v\nstderr:\n%s", err, stderr.String())
+			}
+			if got := stdout.String(); got != tc.stdout {
+				t.Fatalf("stdout = %q, want %q\nstderr=%q", got, tc.stdout, stderr.String())
+			}
+		})
+	}
+}
+
 func TestGoInterpreterNumericLiteralLengthIsBounded(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	tmp := t.TempDir()

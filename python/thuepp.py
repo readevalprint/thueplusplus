@@ -169,52 +169,18 @@ class ThueppInterpreter:
         return '\n'.join(result_lines)
 
     def _parse_program(self, content: str) -> None:
-        """Parse the program content into rules and initial state."""
-        # First expand pattern definitions
+        """Load runtime rows as mutable state.
+
+        Rule rows are interpreted dynamically by ``run()`` when execution reaches
+        them. There is no rule/state section split and no standalone terminator.
+        """
         content = self._expand_patterns(content)
-        
-        lines = content.split("\n")
-        rules_section = True
-        initial_state_lines = []
-        terminator_found = False
-
-        current_source = self.program_path
-        current_line_number = 0
-
-        for i, line in enumerate(lines, 1):
-            stripped = line.strip()
-            if stripped.startswith("# thuepp-source: "):
-                source_ref = stripped.removeprefix("# thuepp-source: ")
-                source_path, _, source_line = source_ref.rpartition(":")
-                current_source = source_path
-                current_line_number = int(source_line) if source_line.isdecimal() else i
+        rows = []
+        for line in content.split("\n"):
+            if line.strip().startswith("# thuepp-source: "):
                 continue
-
-            # Skip empty lines and comments
-            if not stripped or stripped.startswith("#"):
-                if not rules_section:
-                    initial_state_lines.append(line)
-                continue
-
-            if rules_section:
-                # Check for terminating ::=
-                if line.strip() == "::=":
-                    rules_section = False
-                    terminator_found = True
-                    continue
-
-                # Parse rule
-                rule = self._parse_rule(line, current_line_number or i, current_source)
-                if rule:
-                    self.rules.append(rule)
-            else:
-                initial_state_lines.append(line)
-
-        if not terminator_found:
-            raise RuntimeError("Program must contain a terminating '::=' line")
-
-        # Join initial state (preserve internal newlines)
-        self.state = "\n".join(initial_state_lines).strip("\n")
+            rows.append(line)
+        self._set_state("\n".join(rows).strip("\n"))
 
     def _translate_lhs(self, lhs: str) -> str:
         """Translate supported RE2-style named captures for google-re2."""
@@ -234,7 +200,7 @@ class ThueppInterpreter:
 
         match = RULE_RE.match(line)
         if not match:
-            raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
+            return None
 
         lhs = match.group("lhs").rstrip()
         rhs = match.group("rhs") or ""
@@ -916,37 +882,45 @@ class ThueppInterpreter:
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
     def run(self) -> int:
-        """Execute the program. Returns exit code."""
+        """Execute runtime rows. Returns exit code."""
         while True:
-            # Probe budget: incremented once per ordered rule inspected this step
-            matched = False
+            rows = self.state.split("\n") if self.state else []
+            applied = False
 
-            for rule in self.rules:
+            for i, row in enumerate(rows):
+                rule = self._parse_rule(row, i + 1, self.program_path)
+                if rule is None:
+                    continue
+
                 if self.max_evals is not None and self.eval_count >= self.max_evals:
                     raise RuntimeError(
                         f"Rule probe limit ({self.max_evals}) exceeded"
                     )
                 self.eval_count += 1
 
-                match = rule.lhs_pattern.search(self.state)
-                if match:
+                for j in range(i + 1, len(rows)):
+                    target = rows[j]
+                    match = rule.lhs_pattern.search(target)
+                    if not match:
+                        continue
+
                     groups = match.groupdict()
-                    matched = True
+                    applied = True
 
                     if self.debug:
                         escaped_state = self.state.replace("\n", "\\n")
                         print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
-                        print(f"[{self.eval_count}] MATCH: {rule.lhs}", file=sys.stderr)
+                        print(f"[{self.eval_count}] ROW {i + 1} MATCHES ROW {j + 1}: {rule.lhs}", file=sys.stderr)
                         print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
+
+                    replacement: Optional[str] = None
 
                     if rule.operator == Operator.SUBSTITUTE:
                         replacement = self._expand_template(rule.rhs, groups)
-                        self._replace_match(match, replacement)
                         self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.DATA:
                         replacement = self._expand_data_template(rule.rhs, groups)
-                        self._replace_match(match, replacement)
                         self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.READ:
@@ -964,13 +938,11 @@ class ThueppInterpreter:
                         content, error = self._read_all(binding)
                         if error:
                             raise RuntimeError(error)
-                        self._replace_match(match, self._pct_encode(content))
+                        replacement = self._pct_encode(content)
                         self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.WRITE:
-                        # RHS format: resource_name content
                         expanded = self._expand_template(rule.rhs, groups)
-                        # Split on first whitespace, preserving content exactly
                         space_idx = -1
                         for idx, ch in enumerate(expanded):
                             if ch in " \t":
@@ -990,7 +962,6 @@ class ThueppInterpreter:
                         else:
                             write_error = self._write_string(binding, content)
                             replacement = write_error or ""
-                        self._replace_match(match, replacement)
                         if binding and not write_error:
                             self._record_rule_coverage(rule)
 
@@ -1003,11 +974,9 @@ class ThueppInterpreter:
                                 )
                             values.append(groups[arg])
                         replacement = self._eval_builtin(rule.builtin_name, values)
-                        self._replace_match(match, replacement)
                         self._record_rule_coverage(rule)
 
                     elif rule.operator == Operator.EXIT:
-                        # RHS format: {code} or just code
                         code_str = rule.rhs.strip()
                         if code_str.startswith("{") and code_str.endswith("}"):
                             code_str = code_str[1:-1]
@@ -1018,15 +987,23 @@ class ThueppInterpreter:
                             self._record_rule_coverage(rule)
                             return 1
 
+                    if replacement is None:
+                        raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
+
+                    rows[j] = target[:match.start()] + replacement + target[match.end():]
+                    self._set_state("\n".join(rows))
+
                     if self.debug:
                         escaped_result = self.state.replace("\n", "\\n")
                         print(f"[{self.eval_count}] RESULT: {escaped_result}", file=sys.stderr)
                         print(file=sys.stderr)
 
-                    break  # Restart from top after any match
+                    break
 
-            if not matched:
-                # No rules matched - exit with success
+                if applied:
+                    break
+
+            if not applied:
                 return 0
 
     def cleanup(self) -> None:
