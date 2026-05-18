@@ -31,6 +31,76 @@ func TestGoInterpreterRunsHelloExample(t *testing.T) {
 	}
 }
 
+func TestGoInterpreterRuntimeRowSemantics(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	cases := []struct {
+		name    string
+		program string
+		stdout  string
+	}{
+		{
+			name:    "no section terminator rewrites lower data row",
+			program: "a ::= b\n^b$ ::> stdout b\\n\n\na\n",
+			stdout:  "b\n",
+		},
+		{
+			name:    "first delimiter only allows generated rule rhs",
+			program: "MAKE ::= x ::= y\n^y$ ::> stdout y\\n\n\nMAKE\nx\n",
+			stdout:  "y\n",
+		},
+		{
+			name:    "static lower rule rows are skipped as rules not data",
+			program: "x ::= y\n^y$ ::> stdout y\\n\n\nx ::= z\nx\n",
+			stdout:  "y\n",
+		},
+		{
+			name:    "one substitution uses first leftmost match in lower suffix",
+			program: "^ba$ ::> stdout ba\\n\n\na ::= b\naa\n",
+			stdout:  "ba\n",
+		},
+		{
+			name:    "rule matches multiline lower suffix",
+			program: "(?s)^W:(?<expr>.*)\\nB:\\nK:\\nO:$ ::= O:{{expr}}\n^O:(?<out>.*)$ ::> stdout {{out}}\\n\n\nW:(+ 1 2)\nB:\nK:\nO:\n",
+			stdout:  "(+ 1 2)\n",
+		},
+		{
+			name:    "rule does not rewrite text above itself",
+			program: "x\nx ::= y\n^y$ ::> stdout y\\n\n",
+			stdout:  "",
+		},
+		{
+			name:    "rule index magic template var is active rule index",
+			program: "^x$ ::= got:{{rule_index}}\n^got:0$ ::> stdout zero\\n\n\nx\n",
+			stdout:  "zero\n",
+		},
+		{
+			name:    "restart from top after substitution",
+			program: "b ::= c\na ::= b\n^c$ ::> stdout c\\n\n\na\n",
+			stdout:  "c\n",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			programPath := filepath.Join(tmp, "runtime-rows.tpp")
+			if err := os.WriteFile(programPath, []byte(tc.program), 0644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(buildGoInterpreter(t, repoRoot), programPath)
+			cmd.Dir = repoRoot
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("go interpreter failed: %v\nstderr:\n%s", err, stderr.String())
+			}
+			if got := stdout.String(); got != tc.stdout {
+				t.Fatalf("stdout = %q, want %q\nstderr=%q", got, tc.stdout, stderr.String())
+			}
+		})
+	}
+}
+
 func TestGoInterpreterNumericLiteralLengthIsBounded(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	tmp := t.TempDir()
@@ -273,16 +343,13 @@ func TestGoInterpreterRuleOperatorParserContract(t *testing.T) {
 			wantStderr: `Invalid regex 'foo('`,
 		},
 		{
-			name: "operator requires whitespace",
+			name: "operator text without standalone spacing is data",
 			program: strings.Join([]string{
+				`^lhs::=rhs$ ::- 7`,
 				`lhs::=rhs`,
 				``,
-				`::=`,
-				`lhs`,
-				``,
 			}, "\n"),
-			wantCode:   -1,
-			wantStderr: `Invalid rule syntax: lhs::=rhs`,
+			wantCode: 7,
 		},
 		{
 			name: "unsupported operator fails loudly",

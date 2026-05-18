@@ -36,19 +36,19 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0
 # Hard cutoff: curly syntax and raw evaluator states are not user syntax.
 # Quoted Lisp source can contain delimiter-looking bytes; encode strings before
 # applying the raw curly cutoff so payloads like "{{x}}" stay inert data.
-^[^"\n]*[{}][^"\n]*"[^"\n]*".*$ ::= !PC!EXIT2
-^"[^"\n]*"[ 	]*[{}].*$ ::= !PC!EXIT2
-^(?<input>[^!\n]*"[^"\n]*"[^\n]*)$ ::= W:{{input}}\nB:\nK:\nO:
-^(?<bad>.*[{}].*)$ ::= !PC!EXIT2
-^W:[^\n]*$ ::= !P!EXIT2
-^B:[^\n]*$ ::= !P!EXIT2
-^K:[^\n]*$ ::= !P!EXIT2
-^O:[^\n]*$ ::= !P!EXIT2
+(?-m:^[^"\n]*[{}][^"\n]*"[^"\n]*".*$) ::= !PC!EXIT2
+(?-m:^"[^"\n]*"[ 	]*[{}].*$) ::= !PC!EXIT2
+(?-m:^(?<input>[^!\n]*"[^"\n]*"[^\n]*)$) ::= W:{{input}}\nB:\nK:\nO:
+(?-m:^(?<bad>.*[{}].*)$) ::= !PC!EXIT2
+(?-m:^W:[^\n]*$) ::= !P!EXIT2
+(?-m:^B:[^\n]*$) ::= !P!EXIT2
+(?-m:^K:[^\n]*$) ::= !P!EXIT2
+(?-m:^O:[^\n]*$) ::= !P!EXIT2
 
 ^EXIT2$ ::- 2
 
 # Canonical evaluator state.
-^(?<input>[^!WBKO\n][^\n]*|W[^:\n][^\n]*|B[^:\n][^\n]*|K[^:\n][^\n]*|O[^:\n][^\n]*)$ ::= W:{{input}}\nB:\nK:\nO:
+(?-m:^(?<input>[^!WBKO\n][^\n]*|W[^:\n][^\n]*|B[^:\n][^\n]*|K[^:\n][^\n]*|O[^:\n][^\n]*)$) ::= W:{{input}}\nB:\nK:\nO:
 
 # ---------------------------------------------------------------------------
 # Lisp functions remain raw lambda values. Bodies are not evaluated until call.

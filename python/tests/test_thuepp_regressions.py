@@ -132,14 +132,13 @@ class TestThueppRegressions(unittest.TestCase):
         self.assertEqual(result.returncode, 7, result.stderr)
 
     def test_rule_operator_requires_standalone_supported_token(self):
-        for source, want in [
-            ("lhs::=rhs\n\n::=\nlhs\n", "Invalid rule syntax: lhs::=rhs"),
-            ("lhs ::@ rhs\n\n::=\nlhs\n", "Invalid rule syntax: lhs ::@ rhs"),
-        ]:
-            with self.subTest(source=source):
-                result = run_program(source)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn(want, result.stderr)
+        result = run_program("lhs ::@ rhs\n\n::=\nlhs\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid rule syntax: lhs ::@ rhs", result.stderr)
+
+    def test_operator_text_without_standalone_spacing_is_data(self):
+        result = run_program("^lhs::=rhs$ ::- 7\nlhs::=rhs\n")
+        self.assertEqual(result.returncode, 7, result.stderr)
 
     def test_empty_rhs_substitution_still_parses(self):
         result = run_program(
@@ -249,7 +248,7 @@ class TestThueppRegressions(unittest.TestCase):
         )
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("State size (3 bytes) exceeds maximum (2 bytes)", result.stderr)
+        self.assertIn("State size (18 bytes) exceeds maximum (2 bytes)", result.stderr)
 
     def test_max_state_bytes_zero_rejects_non_empty_replacement(self):
         result = run_program(
@@ -264,7 +263,7 @@ class TestThueppRegressions(unittest.TestCase):
         )
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("State size (1 bytes) exceeds maximum (0 bytes)", result.stderr)
+        self.assertIn("State size (14 bytes) exceeds maximum (0 bytes)", result.stderr)
 
     def test_max_state_bytes_zero_allows_empty_state(self):
         result = run_program(
