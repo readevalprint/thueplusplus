@@ -49,9 +49,9 @@ func TestGoInterpreterRuntimeRowSemantics(t *testing.T) {
 			stdout:  "y\n",
 		},
 		{
-			name:    "static lower rule rows are skipped as rules not data",
-			program: "x ::= y\n^y$ ::> stdout y\\n\n\nx ::= z\nx\n",
-			stdout:  "y\n",
+			name:    "lower rule rows are state and can be rewritten",
+			program: "^OLD.*$ ::= ^x$ ::> stdout changed\\n\n\nOLD ::= NEW\nx\n",
+			stdout:  "changed",
 		},
 		{
 			name:    "lower comment rows are always skipped not state",
