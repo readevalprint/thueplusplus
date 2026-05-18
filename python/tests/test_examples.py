@@ -41,7 +41,7 @@ class TestExampleConfigs(unittest.TestCase):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
         self.assertIn("Greenfield parenthesized Lisp rewrite", text)
-        self.assertIn("Function forms are future-only", text)
+        self.assertIn("Function/control/list/map/quote/string forms are future-only", text)
         self.assertNotIn("defun", text)
         self.assertNotIn("1-5 fixed params", text)
         self.assertNotIn("$x", text)
@@ -66,13 +66,15 @@ class TestExampleConfigs(unittest.TestCase):
         self.assertNotIn("Temporary work markers are @...@ or #...«...»", text)
         self.assertNotIn("Parser-protection sentinels use §...§", text)
 
-    def test_lisp_uses_canonical_work_binding_continuation_output_state(self):
+    def test_lisp_uses_minimal_raw_stack_state(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
         text = program.read_text(encoding="utf-8")
-        self.assertIn("W:{{input}} B: K: O:", text)
+        self.assertIn("S:{{input}}", text)
         self.assertIn("line-by-line, not on multiline suffixes", text)
-        self.assertIn("#   K: call continuations, innermost first", text)
-        self.assertNotIn("\\nF:", text)
+        self.assertIn("raw source is preserved until an innermost frame can collapse", text)
+        self.assertNotIn("W:{{input}} B: K: O:", text)
+        self.assertNotIn("#   K: call continuations, innermost first", text)
+        self.assertNotIn("\nF:", text)
 
     def test_lisp_hash_keys_are_deleted_from_skeleton(self):
         program = EXAMPLES_ROOT / "lisp" / "lisp.tpp"
