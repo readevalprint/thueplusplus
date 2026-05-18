@@ -18,7 +18,7 @@
 #   (= a b), (< a b), (<= a b), (> a b), (>= a b)
 #   (if cond then else), (begin expr ...), bounded scalar while
 #   (def name expr), (set name expr)
-#   lists, quote
+#   lists, maps, quote
 #
 # Scope rules:
 #   first visible binding wins
@@ -30,8 +30,8 @@ NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 NAME <- [a-z_][a-z0-9_-]*
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 STR <- "(?:[^"\\\n]|\\\\n|\\\\"|\\\\\\\\)*"
-SCALAR <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|L:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;)
-BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|L:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|\\\\n|\\\\"|\\\\\\\\)*"|\(quote [^()]+\)|\(quote \([^()]*\)\)|\([^()]*\)|\(begin .+\))
+SCALAR <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|L:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|M:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;)
+BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|L:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|M:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|"(?:[^"\\\n]|\\\\n|\\\\"|\\\\\\\\)*"|\(quote [^()]+\)|\(quote \([^()]*\)\)|\([^()]*\)|\(begin .+\))
 
 # Hard cutoff: curly syntax and raw evaluator states are not user syntax.
 # Quoted Lisp source can contain delimiter-looking bytes; encode strings before
@@ -126,6 +126,13 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0
 @LPUSH\[(?<xs><|PCT|>)\|(?<v><|SCALAR|>)\]@ ::! lisp_push xs v
 @LSHOW\[(?<xs><|PCT|>)\]@ ::! lisp_show xs
 @QEXPR\[(?<expr><|PCT|>)\]@ ::! lisp_quote_expr expr
+@MMAP\[(?<xs><|PCT|>)\]@ ::! lisp_map xs
+@MHAS\[(?<m><|PCT|>)\|(?<k><|SCALAR|>)\]@ ::! lisp_has m k
+@MGET\[(?<m><|PCT|>)\|(?<k><|SCALAR|>)\]@ ::! lisp_mget m k
+@MPUT\[(?<m><|PCT|>)\|(?<k><|SCALAR|>)\|(?<v><|SCALAR|>)\]@ ::! lisp_put m k v
+@MDEL\[(?<m><|PCT|>)\|(?<k><|SCALAR|>)\]@ ::! lisp_del m k
+@MKEYS\[(?<m><|PCT|>)\]@ ::! lisp_keys m
+@MSHOW\[(?<m><|PCT|>)\]@ ::! lisp_mshow m
 
 @NUMEQ\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! numeq a b
 @LT\[(?<a><|NUM|>)\|(?<b><|NUM|>)\] ::! lt a b
@@ -246,6 +253,7 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0
 (?s)^W:(?<pre>[^\n]*)\(= S:(?<a><|PCT|>); S:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@EQ[{{a}}|{{b}}]]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(= Q:(?<a><|PCT|>); Q:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@EQ[{{a}}|{{b}}]]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(= L:(?<a><|PCT|>); L:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@EQ[{{a}}|{{b}}]]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(= M:(?<a><|PCT|>); M:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@EQ[{{a}}|{{b}}]]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(str-cat S:(?<a><|PCT|>); S:(?<b><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}S:{{a}}{{b}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 # ---------------------------------------------------------------------------
@@ -257,6 +265,19 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0
 (?s)^W:(?<pre>[^\n]*)\(list (?<a><|SCALAR|>) (?<b><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:{{a|pctenc}}%0A{{b|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(list (?<a><|SCALAR|>) (?<b><|SCALAR|>) (?<c><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:{{a|pctenc}}%0A{{b|pctenc}}%0A{{c|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(list (?<a><|SCALAR|>) (?<b><|SCALAR|>) (?<c><|SCALAR|>) (?<d><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:{{a|pctenc}}%0A{{b|pctenc}}%0A{{c|pctenc}}%0A{{d|pctenc}};{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+
+# Maps. Map payloads are PCT-encoded sorted key/value rows; keys are strings or quoted symbols.
+(?s)^W:(?<pre>[^\n]*)\(map\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}M:@MMAP[]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(map (?<k1><|SCALAR|>) (?<v1><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}M:@MMAP[{{k1|pctenc}}%0A{{v1|pctenc}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(map (?<k1><|SCALAR|>) (?<v1><|SCALAR|>) (?<k2><|SCALAR|>) (?<v2><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}M:@MMAP[{{k1|pctenc}}%0A{{v1|pctenc}}%0A{{k2|pctenc}}%0A{{v2|pctenc}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(map (?<k1><|SCALAR|>) (?<v1><|SCALAR|>) (?<k2><|SCALAR|>) (?<v2><|SCALAR|>) (?<k3><|SCALAR|>) (?<v3><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}M:@MMAP[{{k1|pctenc}}%0A{{v1|pctenc}}%0A{{k2|pctenc}}%0A{{v2|pctenc}}%0A{{k3|pctenc}}%0A{{v3|pctenc}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(map (?<k1><|SCALAR|>) (?<v1><|SCALAR|>) (?<k2><|SCALAR|>) (?<v2><|SCALAR|>) (?<k3><|SCALAR|>) (?<v3><|SCALAR|>) (?<k4><|SCALAR|>) (?<v4><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}M:@MMAP[{{k1|pctenc}}%0A{{v1|pctenc}}%0A{{k2|pctenc}}%0A{{v2|pctenc}}%0A{{k3|pctenc}}%0A{{v3|pctenc}}%0A{{k4|pctenc}}%0A{{v4|pctenc}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+
+(?s)^W:(?<pre>[^\n]*)\(has M:(?<m><|PCT|>); (?<k><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@BOOL[@MHAS[{{m}}|{{k}}]@]{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(get M:(?<m><|PCT|>); (?<k><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@MGET[{{m}}|{{k}}]@{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(put M:(?<m><|PCT|>); (?<k><|SCALAR|>) (?<v><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}M:@MPUT[{{m}}|{{k}}|{{v}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(del M:(?<m><|PCT|>); (?<k><|SCALAR|>)\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}M:@MDEL[{{m}}|{{k}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
+(?s)^W:(?<pre>[^\n]*)\(keys M:(?<m><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}L:@MKEYS[{{m}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 
 (?s)^W:(?<pre>[^\n]*)\(len L:(?<xs><|PCT|>);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}N:@LLEN[{{xs}}]@;{{post}}\nB:\n{{env}}K:\n{{kont}}O:
 (?s)^W:(?<pre>[^\n]*)\(get L:(?<xs><|PCT|>); N:(?<idx>[^;]+);\)(?<post>[^\n]*)\nB:\n(?<env>.*?)K:\n(?<kont>.*?)O:$ ::= W:{{pre}}@LGET[{{xs}}|{{idx}}]@{{post}}\nB:\n{{env}}K:\n{{kont}}O:
@@ -288,6 +309,7 @@ BODY <- (?:N:[^;]+;|B:[01];|Z;|S:(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*;|Q:(?:[A-Za-z0
 (?s)^W:S:(?<s><|PCT|>);\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO%:{{s}}
 (?s)^W:Q:(?<q><|PCT|>);\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO%:{{q}}
 (?s)^W:L:(?<xs><|PCT|>);\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO:@LSHOW[{{xs}}]@
+(?s)^W:M:(?<m><|PCT|>);\nB:\n(?<env>.*?)K:\nO:$ ::= W:\nO:@MSHOW[{{m}}]@
 (?s)^W:\nO%:(?<out><|PCT|>)$ ::> stdout {{out|pctdec}}\n
 (?s)^W:\nO:(?<out>.*?)$ ::> stdout {{out}}\n
 # Fail loud.
