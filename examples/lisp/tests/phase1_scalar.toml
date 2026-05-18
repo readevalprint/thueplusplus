@@ -1,0 +1,191 @@
+program = "../lisp.tpp"
+timeout = 5
+
+[[case]]
+name = "binary addition"
+input = "(+ 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "binary subtraction"
+input = "(- 5 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "binary multiplication"
+input = "(* 3 4)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "12"
+
+[[case]]
+name = "binary division returns rational"
+input = "(/ 7 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7/2"
+
+[[case]]
+name = "nested innermost arithmetic reduction"
+input = "(* (+ 1 2) 4)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "12"
+
+[[case]]
+name = "rational result is consumed by later operation"
+input = "(+ (/ 7 2) 1/2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "two inner frames collapse before outer frame"
+input = "(* (+ 1 2) (- 7 3))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "12"
+
+[[case]]
+name = "outer comparison waits for inner arithmetic collapse"
+input = "(= (+ 1 2) 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "numeric equality true"
+input = "(= 2 2.0)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "numeric equality false"
+input = "(= 2 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "less than true"
+input = "(< 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "less than false"
+input = "(< 2 1)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "less equal true on equality"
+input = "(<= 2 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "greater than true"
+input = "(> 3 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "greater equal true on equality"
+input = "(>= 3 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "division by zero fails loudly"
+input = "(/ 1 0)"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Builtin 'div' division by zero"]
+
+[[case]]
+name = "too few scalar operands fail loudly"
+input = "(+ 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "too many scalar operands fail loudly"
+input = "(+ 1 2 3)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "malformed numeric token fails loudly"
+input = "(+ 1x 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "booleans are not accepted as numeric operands"
+input = "(+ true 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]
+
+[[case]]
+name = "bang-prefixed input fails loudly"
+input = "!boom"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_contains = ["parse error: unsupported or malformed Lisp input"]

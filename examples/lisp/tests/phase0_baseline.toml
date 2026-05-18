@@ -90,12 +90,3 @@ input = "{{+ 1 2}}"
 exit_code = 2
 stdout = ""
 stderr_contains = ["parse error: curly-brace syntax is not supported"]
-
-[[case]]
-name = "arithmetic not supported in phase 0"
-input = "(+ 1 2)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]
