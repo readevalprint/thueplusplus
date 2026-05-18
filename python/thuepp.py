@@ -78,6 +78,9 @@ class ThueppInterpreter:
         self.rule_coverage_path = rule_coverage_path
         self.rule_coverage_counts: dict[str, int] = {}
         self.program_path = ""
+        self._rule_cache: dict[tuple[str, int, str], Optional[Rule]] = {}
+        self._initial_rows: list[str] = []
+        self._row_sources: list[tuple[str, int]] = []
 
         # Predefined bindings
         self.bindings["stdout"] = Binding("stdout", False, "stdout")
@@ -176,11 +179,48 @@ class ThueppInterpreter:
         """
         content = self._expand_patterns(content)
         rows = []
-        for line in content.split("\n"):
-            if line.strip().startswith("# thuepp-source: "):
+        sources = []
+        current_source: tuple[str, int] | None = None
+        for line_number, line in enumerate(content.split("\n"), 1):
+            stripped = line.strip()
+            if stripped.startswith("# thuepp-source: "):
+                marker = stripped[len("# thuepp-source: "):]
+                source_path, sep, source_line = marker.rpartition(":")
+                if sep and source_line.isdigit():
+                    current_source = (source_path, int(source_line))
                 continue
             rows.append(line)
-        self._set_state("\n".join(rows).strip("\n"))
+            sources.append(current_source or (self.program_path, line_number))
+        while rows and rows[-1] == "":
+            rows.pop()
+            sources.pop()
+        self._initial_rows = list(rows)
+        self._row_sources = sources
+        self.state = "\n".join(rows)
+
+    def apply_input_override(self, value: str) -> None:
+        """Replace file-provided data rows with an explicit input row.
+
+        Runtime-row programs have no explicit rule/state divider. For CLI input,
+        keep rows that parse as rules and append the supplied input as the final
+        target row; existing non-rule data rows are treated as file-provided
+        initial input and omitted.
+        """
+        rule_rows = []
+        rule_sources = []
+        for line_number, line in enumerate(self.state.split("\n"), 1):
+            source_path, source_line = (self.program_path, line_number)
+            if line_number - 1 < len(self._initial_rows) and self._initial_rows[line_number - 1] == line:
+                source_path, source_line = self._row_sources[line_number - 1]
+            rule = self._parse_rule(line, source_line, source_path)
+            if rule is not None:
+                rule_rows.append(line)
+                rule_sources.append((source_path, source_line))
+        rule_rows.append(value)
+        rule_sources.append((self.program_path, len(rule_rows)))
+        self._initial_rows = list(rule_rows)
+        self._row_sources = rule_sources
+        self.state = "\n".join(rule_rows)
 
     def _translate_lhs(self, lhs: str) -> str:
         """Translate supported RE2-style named captures for google-re2."""
@@ -200,6 +240,8 @@ class ThueppInterpreter:
 
         match = RULE_RE.match(line)
         if not match:
+            if py_re.search(r"[ \t]+::[^\s=<>!%-]", line):
+                raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
             return None
 
         lhs = match.group("lhs").rstrip()
@@ -218,7 +260,11 @@ class ThueppInterpreter:
 
         try:
             pattern_lhs = self._translate_lhs(lhs)
-            pattern = re.compile(pattern_lhs)
+            # Runtime rule rows rewrite the holistic suffix below themselves.
+            # Enable line anchors by default so row-style rules using ^...$ still
+            # match individual rows inside that suffix; dot remains non-newline
+            # unless a rule explicitly opts into (?s).
+            pattern = re.compile("(?m)" + pattern_lhs)
         except re.error as e:
             raise RuntimeError(f"Line {line_number}: Invalid regex '{lhs}': {e}")
 
@@ -230,6 +276,12 @@ class ThueppInterpreter:
             )
 
         return Rule(lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args)
+
+    def _parse_rule_cached(self, row: str, line_number: int, source_path: str) -> Optional[Rule]:
+        key = (row, line_number, source_path)
+        if key not in self._rule_cache:
+            self._rule_cache[key] = self._parse_rule(row, line_number, source_path)
+        return self._rule_cache[key]
 
     def _parse_builtin_call(
         self,
@@ -726,8 +778,10 @@ class ThueppInterpreter:
             pos = match.end()
         pieces.append(self._decode_replacement_escapes(template[pos:]))
         return "".join(pieces)
-    def _expand_data_template(self, template: str, groups: dict) -> str:
-        raw_vars = {**groups}
+    def _expand_data_template(self, template: str, groups: dict, extra: dict = None) -> str:
+        if extra is None:
+            extra = {}
+        raw_vars = {**groups, **extra}
         pieces = []
         pos = 0
         for match in py_re.finditer(r"{{([A-Za-z_]\w*)}}", template):
@@ -882,13 +936,27 @@ class ThueppInterpreter:
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
     def run(self) -> int:
-        """Execute runtime rows. Returns exit code."""
+        """Execute rule rows against the holistic data suffix below them."""
         while True:
-            rows = self.state.split("\n") if self.state else []
+            row_infos = []
+            offset = 0
+            if self.state:
+                for index, segment in enumerate(self.state.splitlines(keepends=True)):
+                    line_number = index + 1
+                    row = segment[:-1] if segment.endswith("\n") else segment
+                    if row.endswith("\r"):
+                        row = row[:-1]
+                    end = offset + len(segment)
+                    source_path, source_line = (self.program_path, line_number)
+                    if index < len(self._initial_rows) and self._initial_rows[index] == row:
+                        source_path, source_line = self._row_sources[index]
+                    row_infos.append((line_number, row, offset, end, source_path, source_line))
+                    offset = end
+
             applied = False
 
-            for i, row in enumerate(rows):
-                rule = self._parse_rule(row, i + 1, self.program_path)
+            for idx, (line_number, row, _row_start, row_end, source_path, source_line) in enumerate(row_infos):
+                rule = self._parse_rule_cached(row, source_line, source_path)
                 if rule is None:
                     continue
 
@@ -898,110 +966,127 @@ class ThueppInterpreter:
                     )
                 self.eval_count += 1
 
-                for j in range(i + 1, len(rows)):
-                    target = rows[j]
-                    match = rule.lhs_pattern.search(target)
-                    if not match:
+                target_start = row_end
+                probe_idx = idx + 1
+                while probe_idx < len(row_infos):
+                    probe_line, probe_row, _probe_start, probe_end, probe_source_path, probe_source_line = row_infos[probe_idx]
+                    stripped = probe_row.strip()
+                    if not stripped or stripped.startswith("#"):
+                        target_start = probe_end
+                        probe_idx += 1
                         continue
+                    probe_rule = self._parse_rule_cached(probe_row, probe_source_line, probe_source_path)
+                    if probe_rule is None:
+                        break
+                    target_start = probe_end
+                    probe_idx += 1
 
-                    groups = match.groupdict()
-                    applied = True
+                suffix = self.state[target_start:]
+                match = rule.lhs_pattern.search(suffix)
+                if not match:
+                    continue
 
-                    if self.debug:
-                        escaped_state = self.state.replace("\n", "\\n")
-                        print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
-                        print(f"[{self.eval_count}] ROW {i + 1} MATCHES ROW {j + 1}: {rule.lhs}", file=sys.stderr)
-                        print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
+                groups = match.groupdict()
+                applied = True
 
-                    replacement: Optional[str] = None
+                if self.debug:
+                    escaped_state = self.state.replace("\n", "\\n")
+                    print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
+                    print(
+                        f"[{self.eval_count}] ROW {line_number} MATCHES DATA SUFFIX AT "
+                        f"{target_start + match.start()}:{target_start + match.end()}: {rule.lhs}",
+                        file=sys.stderr,
+                    )
+                    print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
 
-                    if rule.operator == Operator.SUBSTITUTE:
-                        replacement = self._expand_template(rule.rhs, groups)
+                replacement: Optional[str] = None
+
+                magic_vars = {"rule_index": str(idx)}
+
+                if rule.operator == Operator.SUBSTITUTE:
+                    replacement = self._expand_template(rule.rhs, groups, magic_vars)
+                    self._record_rule_coverage(rule)
+
+                elif rule.operator == Operator.DATA:
+                    replacement = self._expand_data_template(rule.rhs, groups, magic_vars)
+                    self._record_rule_coverage(rule)
+
+                elif rule.operator == Operator.READ:
+                    parts = rule.rhs.strip().split()
+                    if len(parts) != 2:
+                        raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
+                    read_spec, resource = parts
+                    if read_spec != "-1":
+                        raise RuntimeError(f"Line {rule.line_number}: unsupported read spec '{read_spec}'")
+                    if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
+                        raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
+                    binding = self.bindings.get(resource)
+                    if not binding:
+                        raise RuntimeError(f"Unknown resource '{resource}'")
+                    content, error = self._read_all(binding)
+                    if error:
+                        raise RuntimeError(error)
+                    replacement = self._pct_encode(content)
+                    self._record_rule_coverage(rule)
+
+                elif rule.operator == Operator.WRITE:
+                    expanded = self._expand_template(rule.rhs, groups, magic_vars)
+                    space_idx = -1
+                    for pos, ch in enumerate(expanded):
+                        if ch in " \t":
+                            space_idx = pos
+                            break
+                    if space_idx >= 0:
+                        resource = expanded[:space_idx]
+                        content = expanded[space_idx + 1:]
+                    else:
+                        resource = expanded
+                        content = ""
+
+                    binding = self.bindings.get(resource)
+                    write_error = None
+                    if not binding:
+                        replacement = f"ERR:resource:{resource}"
+                    else:
+                        write_error = self._write_string(binding, content)
+                        replacement = write_error or ""
+                    if binding and not write_error:
                         self._record_rule_coverage(rule)
 
-                    elif rule.operator == Operator.DATA:
-                        replacement = self._expand_data_template(rule.rhs, groups)
+                elif rule.operator == Operator.BUILTIN:
+                    values = []
+                    for arg in rule.builtin_args:
+                        if arg not in groups:
+                            raise RuntimeError(
+                                f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
+                            )
+                        values.append(groups[arg])
+                    replacement = self._eval_builtin(rule.builtin_name, values)
+                    self._record_rule_coverage(rule)
+
+                elif rule.operator == Operator.EXIT:
+                    code_str = rule.rhs.strip()
+                    if code_str.startswith("{") and code_str.endswith("}"):
+                        code_str = code_str[1:-1]
+                    try:
                         self._record_rule_coverage(rule)
-
-                    elif rule.operator == Operator.READ:
-                        parts = rule.rhs.strip().split()
-                        if len(parts) != 2:
-                            raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
-                        read_spec, resource = parts
-                        if read_spec != "-1":
-                            raise RuntimeError(f"Line {rule.line_number}: unsupported read spec '{read_spec}'")
-                        if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
-                            raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
-                        binding = self.bindings.get(resource)
-                        if not binding:
-                            raise RuntimeError(f"Unknown resource '{resource}'")
-                        content, error = self._read_all(binding)
-                        if error:
-                            raise RuntimeError(error)
-                        replacement = self._pct_encode(content)
+                        return int(code_str)
+                    except ValueError:
                         self._record_rule_coverage(rule)
+                        return 1
 
-                    elif rule.operator == Operator.WRITE:
-                        expanded = self._expand_template(rule.rhs, groups)
-                        space_idx = -1
-                        for idx, ch in enumerate(expanded):
-                            if ch in " \t":
-                                space_idx = idx
-                                break
-                        if space_idx >= 0:
-                            resource = expanded[:space_idx]
-                            content = expanded[space_idx + 1:]
-                        else:
-                            resource = expanded
-                            content = ""
+                if replacement is None:
+                    raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
 
-                        binding = self.bindings.get(resource)
-                        write_error = None
-                        if not binding:
-                            replacement = f"ERR:resource:{resource}"
-                        else:
-                            write_error = self._write_string(binding, content)
-                            replacement = write_error or ""
-                        if binding and not write_error:
-                            self._record_rule_coverage(rule)
+                new_suffix = suffix[:match.start()] + replacement + suffix[match.end():]
+                self._set_state(self.state[:target_start] + new_suffix)
 
-                    elif rule.operator == Operator.BUILTIN:
-                        values = []
-                        for arg in rule.builtin_args:
-                            if arg not in groups:
-                                raise RuntimeError(
-                                    f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
-                                )
-                            values.append(groups[arg])
-                        replacement = self._eval_builtin(rule.builtin_name, values)
-                        self._record_rule_coverage(rule)
+                if self.debug:
+                    escaped_result = self.state.replace("\n", "\\n")
+                    print(f"[{self.eval_count}] RESULT: {escaped_result}", file=sys.stderr)
+                    print(file=sys.stderr)
 
-                    elif rule.operator == Operator.EXIT:
-                        code_str = rule.rhs.strip()
-                        if code_str.startswith("{") and code_str.endswith("}"):
-                            code_str = code_str[1:-1]
-                        try:
-                            self._record_rule_coverage(rule)
-                            return int(code_str)
-                        except ValueError:
-                            self._record_rule_coverage(rule)
-                            return 1
-
-                    if replacement is None:
-                        raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
-
-                    rows[j] = target[:match.start()] + replacement + target[match.end():]
-                    self._set_state("\n".join(rows))
-
-                    if self.debug:
-                        escaped_result = self.state.replace("\n", "\\n")
-                        print(f"[{self.eval_count}] RESULT: {escaped_result}", file=sys.stderr)
-                        print(file=sys.stderr)
-
-                    break
-
-                if applied:
-                    break
+                break
 
             if not applied:
                 return 0
@@ -1092,7 +1177,7 @@ def main():
         interpreter.load_program(args.program)
         
         if args.input is not None:
-            interpreter.state = args.input
+            interpreter.apply_input_override(args.input)
         
         exit_code = interpreter.run()
     except RuntimeError as e:

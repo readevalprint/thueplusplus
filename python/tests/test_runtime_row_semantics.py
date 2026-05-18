@@ -51,20 +51,20 @@ class TestRuntimeRowSemantics(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "y\n")
 
-    def test_rule_rewrites_lower_rule_row_before_it_executes(self):
+    def test_static_lower_rule_rows_are_skipped_as_rules_not_data(self):
         result = run_program(
             r"""
             x ::= y
-            ^z$ ::> stdout z\n
+            ^y$ ::> stdout y\n
             x ::= z
             x
             """
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "z\n")
+        self.assertEqual(result.stdout, "y\n")
 
-    def test_one_substitution_uses_first_match_only_within_target_row(self):
+    def test_one_substitution_uses_first_leftmost_match_in_lower_suffix(self):
         result = run_program(
             r"""
             ^ba$ ::> stdout ba\n
@@ -75,6 +75,45 @@ class TestRuntimeRowSemantics(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "ba\n")
+
+    def test_rule_matches_multiline_lower_suffix(self):
+        result = run_program(
+            r"""
+            (?s)^W:(?<expr>.*)\nB:\nK:\nO:$ ::= O:{{expr}}
+            ^O:(?<out>.*)$ ::> stdout {{out}}\n
+            W:(+ 1 2)
+            B:
+            K:
+            O:
+            """
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "(+ 1 2)\n")
+
+    def test_rule_does_not_rewrite_text_above_itself(self):
+        result = run_program(
+            r"""
+            x
+            x ::= y
+            ^y$ ::> stdout y\n
+            """
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_rule_index_magic_template_var_is_active_rule_index(self):
+        result = run_program(
+            r"""
+            ^x$ ::= got:{{rule_index}}
+            ^got:0$ ::> stdout zero\n
+            x
+            """
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "zero\n")
 
     def test_restart_from_top_after_substitution(self):
         result = run_program(

@@ -83,12 +83,34 @@ def enumerate_rules(program: Path) -> tuple[list[RuleSource], str | None]:
     reject_coverage_ignores(program)
     module = load_thuepp_module()
     interpreter = module.ThueppInterpreter()
+    resolved = program.resolve()
+    interpreter.program_path = str(resolved)
     try:
-        interpreter.load_program(str(program))
-    except Exception as exc:  # invalid shared negative fixtures have no surviving rules to cover
+        content = interpreter._expand_patterns(interpreter._load_with_includes(resolved, set()))
+    except Exception as exc:
         return [], str(exc)
+
     rules: list[RuleSource] = []
-    for rule in interpreter.rules:
+    current_source = str(resolved)
+    current_line_number = 0
+    for fallback_line_number, line in enumerate(content.split("\n"), 1):
+        stripped = line.strip()
+        if stripped.startswith("# thuepp-source: "):
+            source_ref = stripped.removeprefix("# thuepp-source: ")
+            source_path, _, source_line = source_ref.rpartition(":")
+            current_source = source_path
+            current_line_number = int(source_line) if source_line.isdecimal() else fallback_line_number
+            continue
+        try:
+            rule = interpreter._parse_rule(
+                line,
+                current_line_number or fallback_line_number,
+                current_source,
+            )
+        except Exception as exc:
+            return [], str(exc)
+        if rule is None:
+            continue
         source = Path(rule.source_path)
         rule_id = f"{rel(source)}:{rule.line_number}"
         rules.append(RuleSource(rule_id, source_line_text(rule.source_path, rule.line_number)))

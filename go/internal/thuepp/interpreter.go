@@ -75,10 +75,11 @@ type Interpreter struct {
 	RuleCoveragePath   string
 	RuleCoverageCounts map[string]int
 	ProgramPath        string
+	RuleCache          map[string]*Rule
 }
 
 func New() *Interpreter {
-	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr, RuleCoverageCounts: map[string]int{}}
+	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr, RuleCoverageCounts: map[string]int{}, RuleCache: map[string]*Rule{}}
 	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout"}
 	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr"}
 	return i
@@ -186,7 +187,8 @@ func (i *Interpreter) parseProgram(content string) error {
 		}
 		rows = append(rows, line)
 	}
-	return i.setState(strings.Trim(strings.Join(rows, "\n"), "\n"))
+	i.State = strings.Trim(strings.Join(rows, "\n"), "\n")
+	return nil
 }
 
 func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
@@ -196,6 +198,9 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	}
 	matches := rulePattern.FindStringSubmatch(line)
 	if matches == nil {
+		if regexp.MustCompile(`[ \t]+::[^\s=<>!%-]`).FindStringIndex(line) != nil {
+			return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
+		}
 		return nil, nil
 	}
 	lhs := strings.TrimRight(matches[1], " \t")
@@ -220,7 +225,7 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	if lhs == "" {
 		return nil, fmt.Errorf("Line %d: Rule must have a non-empty LHS", lineNumber)
 	}
-	re, err := regexp.Compile(lhs)
+	re, err := regexp.Compile("(?m)" + lhs)
 	if err != nil {
 		return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
 	}
@@ -234,6 +239,35 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 		}
 	}
 	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
+}
+
+func (i *Interpreter) parseRuleCached(line string, lineNumber int, sourcePath string) (*Rule, error) {
+	key := fmt.Sprintf("%s\x00%d\x00%s", sourcePath, lineNumber, line)
+	if rule, ok := i.RuleCache[key]; ok {
+		return rule, nil
+	}
+	rule, err := parseRule(line, lineNumber, sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	i.RuleCache[key] = rule
+	return rule, nil
+}
+
+func (i *Interpreter) ApplyInputOverride(value string) error {
+	var ruleRows []string
+	for n, line := range strings.Split(i.State, "\n") {
+		rule, err := parseRule(line, n+1, i.ProgramPath)
+		if err != nil {
+			return err
+		}
+		if rule != nil {
+			ruleRows = append(ruleRows, line)
+		}
+	}
+	ruleRows = append(ruleRows, value)
+	i.State = strings.Join(ruleRows, "\n")
+	return nil
 }
 
 func captureNames(re *regexp.Regexp) map[string]bool {
@@ -1096,7 +1130,14 @@ func decodeReplacementEscapes(text string) string {
 	return text
 }
 
-func (i *Interpreter) expandDataTemplate(template string, groups map[string]string) (string, error) {
+func (i *Interpreter) expandDataTemplate(template string, groups map[string]string, extra map[string]string) (string, error) {
+	raw := map[string]string{}
+	for k, v := range groups {
+		raw[k] = v
+	}
+	for k, v := range extra {
+		raw[k] = v
+	}
 	var out strings.Builder
 	pos := 0
 	for pos < len(template) {
@@ -1108,7 +1149,7 @@ func (i *Interpreter) expandDataTemplate(template string, groups map[string]stri
 					return "", fmt.Errorf("Filters are not supported inside ::%% templates")
 				}
 				if isWord(inside) && !(inside[0] >= '0' && inside[0] <= '9') {
-					value, ok := groups[inside]
+					value, ok := raw[inside]
 					if !ok {
 						return "", fmt.Errorf("Missing template capture '%s'", inside)
 					}
@@ -1344,13 +1385,30 @@ func formatDebugGroups(groups map[string]string) string {
 
 func (i *Interpreter) Run() (int, error) {
 	for {
-		var rows []string
-		if i.State != "" {
-			rows = strings.Split(i.State, "\n")
+		type rowInfo struct {
+			lineNumber int
+			row        string
+			start      int
+			end        int
 		}
+		var rows []rowInfo
+		offset := 0
+		lineNumber := 1
+		for offset < len(i.State) {
+			segmentEnd := offset + strings.IndexByte(i.State[offset:], '\n') + 1
+			if segmentEnd <= offset {
+				segmentEnd = len(i.State)
+			}
+			segment := i.State[offset:segmentEnd]
+			row := strings.TrimSuffix(strings.TrimSuffix(segment, "\n"), "\r")
+			rows = append(rows, rowInfo{lineNumber: lineNumber, row: row, start: offset, end: segmentEnd})
+			offset = segmentEnd
+			lineNumber++
+		}
+
 		applied := false
-		for rowIndex, row := range rows {
-			rule, err := parseRule(row, rowIndex+1, i.ProgramPath)
+		for rowIndex, info := range rows {
+			rule, err := i.parseRuleCached(info.row, info.lineNumber, i.ProgramPath)
 			if err != nil {
 				return 1, err
 			}
@@ -1361,112 +1419,127 @@ func (i *Interpreter) Run() (int, error) {
 				return 1, fmt.Errorf("Rule probe limit (%d) exceeded", *i.MaxEvals)
 			}
 			i.EvalCount++
-			for targetIndex := rowIndex + 1; targetIndex < len(rows); targetIndex++ {
-				target := rows[targetIndex]
-				m, ok := findMatch(*rule, target)
-				if !ok {
+
+			targetStart := info.end
+			for probeIndex := rowIndex + 1; probeIndex < len(rows); probeIndex++ {
+				probe := rows[probeIndex]
+				trimmed := strings.TrimSpace(probe.row)
+				if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+					targetStart = probe.end
 					continue
 				}
-				applied = true
-				groups := m.groups
-				if i.Debug {
-					fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
-					fmt.Fprintf(i.Stderr, "[%d] ROW %d MATCHES ROW %d: %s\n", i.EvalCount, rowIndex+1, targetIndex+1, rule.LHS)
-					fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
-				}
-				repl := ""
-				switch rule.Operator {
-				case Substitute:
-					var err error
-					repl, err = i.expandTemplate(rule.RHS, groups, nil)
-					if err != nil {
-						return 1, err
-					}
-					i.recordRuleCoverage(*rule)
-				case Data:
-					var err error
-					repl, err = i.expandDataTemplate(rule.RHS, groups)
-					if err != nil {
-						return 1, err
-					}
-					i.recordRuleCoverage(*rule)
-				case Read:
-					parts := strings.Fields(strings.TrimSpace(rule.RHS))
-					if len(parts) != 2 {
-						return 1, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
-					}
-					readSpec, resource := parts[0], parts[1]
-					if readSpec != "-1" {
-						return 1, fmt.Errorf("Line %d: unsupported read spec '%s'", rule.LineNumber, readSpec)
-					}
-					if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
-						return 1, fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
-					}
-					b := i.Bindings[resource]
-					if b == nil {
-						return 1, fmt.Errorf("Unknown resource '%s'", resource)
-					}
-					content, er := i.readAll(b)
-					if er != "" {
-						return 1, errors.New(er)
-					}
-					repl = pctEncode(content)
-					i.recordRuleCoverage(*rule)
-				case Write:
-					expanded, err := i.expandTemplate(rule.RHS, groups, nil)
-					if err != nil {
-						return 1, err
-					}
-					resource, content := splitResource(expanded)
-					b := i.Bindings[resource]
-					if b == nil {
-						repl = "ERR:resource:" + resource
-					} else {
-						repl = i.writeString(b, content)
-					}
-					if b != nil && repl == "" {
-						i.recordRuleCoverage(*rule)
-					}
-				case Builtin:
-					values := make([]string, 0, len(rule.BuiltinArgs))
-					for _, arg := range rule.BuiltinArgs {
-						value, ok := groups[arg]
-						if !ok {
-							return 1, fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
-						}
-						values = append(values, value)
-					}
-					var err error
-					repl, err = evalBuiltin(rule.BuiltinName, values)
-					if err != nil {
-						return 1, err
-					}
-					i.recordRuleCoverage(*rule)
-				case Exit:
-					codeStr := strings.TrimSpace(rule.RHS)
-					if strings.HasPrefix(codeStr, "{") && strings.HasSuffix(codeStr, "}") {
-						codeStr = codeStr[1 : len(codeStr)-1]
-					}
-					code, err := strconv.Atoi(codeStr)
-					if err != nil {
-						i.recordRuleCoverage(*rule)
-						return 1, nil
-					}
-					i.recordRuleCoverage(*rule)
-					return code, nil
-				}
-				rows[targetIndex] = target[:m.start] + repl + target[m.end:]
-				if err := i.setState(strings.Join(rows, "\n")); err != nil {
+				probeRule, err := i.parseRuleCached(probe.row, probe.lineNumber, i.ProgramPath)
+				if err != nil {
 					return 1, err
 				}
-				if i.Debug {
-					fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
+				if probeRule == nil {
+					break
 				}
-				break
+				targetStart = probe.end
 			}
-			if applied {
-				break
+
+			suffix := i.State[targetStart:]
+			m, ok := findMatch(*rule, suffix)
+			if !ok {
+				continue
 			}
+			applied = true
+			groups := m.groups
+			magicVars := map[string]string{"rule_index": strconv.Itoa(rowIndex)}
+			if i.Debug {
+				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
+				fmt.Fprintf(i.Stderr, "[%d] ROW %d MATCHES DATA SUFFIX AT %d:%d: %s\n", i.EvalCount, info.lineNumber, targetStart+m.start, targetStart+m.end, rule.LHS)
+				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
+			}
+			repl := ""
+			switch rule.Operator {
+			case Substitute:
+				var err error
+				repl, err = i.expandTemplate(rule.RHS, groups, magicVars)
+				if err != nil {
+					return 1, err
+				}
+				i.recordRuleCoverage(*rule)
+			case Data:
+				var err error
+				repl, err = i.expandDataTemplate(rule.RHS, groups, magicVars)
+				if err != nil {
+					return 1, err
+				}
+				i.recordRuleCoverage(*rule)
+			case Read:
+				parts := strings.Fields(strings.TrimSpace(rule.RHS))
+				if len(parts) != 2 {
+					return 1, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
+				}
+				readSpec, resource := parts[0], parts[1]
+				if readSpec != "-1" {
+					return 1, fmt.Errorf("Line %d: unsupported read spec '%s'", rule.LineNumber, readSpec)
+				}
+				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
+					return 1, fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
+				}
+				b := i.Bindings[resource]
+				if b == nil {
+					return 1, fmt.Errorf("Unknown resource '%s'", resource)
+				}
+				content, er := i.readAll(b)
+				if er != "" {
+					return 1, errors.New(er)
+				}
+				repl = pctEncode(content)
+				i.recordRuleCoverage(*rule)
+			case Write:
+				expanded, err := i.expandTemplate(rule.RHS, groups, magicVars)
+				if err != nil {
+					return 1, err
+				}
+				resource, content := splitResource(expanded)
+				b := i.Bindings[resource]
+				if b == nil {
+					repl = "ERR:resource:" + resource
+				} else {
+					repl = i.writeString(b, content)
+				}
+				if b != nil && repl == "" {
+					i.recordRuleCoverage(*rule)
+				}
+			case Builtin:
+				values := make([]string, 0, len(rule.BuiltinArgs))
+				for _, arg := range rule.BuiltinArgs {
+					value, ok := groups[arg]
+					if !ok {
+						return 1, fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
+					}
+					values = append(values, value)
+				}
+				var err error
+				repl, err = evalBuiltin(rule.BuiltinName, values)
+				if err != nil {
+					return 1, err
+				}
+				i.recordRuleCoverage(*rule)
+			case Exit:
+				codeStr := strings.TrimSpace(rule.RHS)
+				if strings.HasPrefix(codeStr, "{") && strings.HasSuffix(codeStr, "}") {
+					codeStr = codeStr[1 : len(codeStr)-1]
+				}
+				code, err := strconv.Atoi(codeStr)
+				if err != nil {
+					i.recordRuleCoverage(*rule)
+					return 1, nil
+				}
+				i.recordRuleCoverage(*rule)
+				return code, nil
+			}
+			newSuffix := suffix[:m.start] + repl + suffix[m.end:]
+			if err := i.setState(i.State[:targetStart] + newSuffix); err != nil {
+				return 1, err
+			}
+			if i.Debug {
+				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
+			}
+			break
 		}
 		if !applied {
 			return 0, nil

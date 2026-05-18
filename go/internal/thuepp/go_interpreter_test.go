@@ -49,14 +49,29 @@ func TestGoInterpreterRuntimeRowSemantics(t *testing.T) {
 			stdout:  "y\n",
 		},
 		{
-			name:    "rule rewrites lower rule row before it executes",
-			program: "x ::= y\n^z$ ::> stdout z\\n\n\nx ::= z\nx\n",
-			stdout:  "z\n",
+			name:    "static lower rule rows are skipped as rules not data",
+			program: "x ::= y\n^y$ ::> stdout y\\n\n\nx ::= z\nx\n",
+			stdout:  "y\n",
 		},
 		{
-			name:    "one substitution uses first match within target row",
+			name:    "one substitution uses first leftmost match in lower suffix",
 			program: "^ba$ ::> stdout ba\\n\n\na ::= b\naa\n",
 			stdout:  "ba\n",
+		},
+		{
+			name:    "rule matches multiline lower suffix",
+			program: "(?s)^W:(?<expr>.*)\\nB:\\nK:\\nO:$ ::= O:{{expr}}\n^O:(?<out>.*)$ ::> stdout {{out}}\\n\n\nW:(+ 1 2)\nB:\nK:\nO:\n",
+			stdout:  "(+ 1 2)\n",
+		},
+		{
+			name:    "rule does not rewrite text above itself",
+			program: "x\nx ::= y\n^y$ ::> stdout y\\n\n",
+			stdout:  "",
+		},
+		{
+			name:    "rule index magic template var is active rule index",
+			program: "^x$ ::= got:{{rule_index}}\n^got:0$ ::> stdout zero\\n\n\nx\n",
+			stdout:  "zero\n",
 		},
 		{
 			name:    "restart from top after substitution",
@@ -328,16 +343,13 @@ func TestGoInterpreterRuleOperatorParserContract(t *testing.T) {
 			wantStderr: `Invalid regex 'foo('`,
 		},
 		{
-			name: "operator requires whitespace",
+			name: "operator text without standalone spacing is data",
 			program: strings.Join([]string{
+				`^lhs::=rhs$ ::- 7`,
 				`lhs::=rhs`,
 				``,
-				`::=`,
-				`lhs`,
-				``,
 			}, "\n"),
-			wantCode:   -1,
-			wantStderr: `Invalid rule syntax: lhs::=rhs`,
+			wantCode: 7,
 		},
 		{
 			name: "unsupported operator fails loudly",
