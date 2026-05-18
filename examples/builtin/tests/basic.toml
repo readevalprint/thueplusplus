@@ -83,15 +83,6 @@ stderr = ""
 stdout_stripped = "0"
 
 [[case]]
-name = "scientific notation is rejected"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:1e3,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '1e3'"]
-
-[[case]]
 name = "fraction division reduces"
 input = "div:1,2"
 
@@ -268,87 +259,6 @@ stderr = ""
 stdout_stripped = "<num>2/3</num>"
 
 [[case]]
-name = "zero denominator fraction fails loudly"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:2/0,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' fraction denominator must be non-zero"]
-
-[[case]]
-name = "zero denominator with leading zeros fails loudly"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:2/00,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' fraction denominator must be non-zero"]
-
-[[case]]
-name = "signed denominator fraction is malformed"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:2/-3,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '2/-3'"]
-
-[[case]]
-name = "signed zero denominator fraction is malformed"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:2/-0,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '2/-0'"]
-
-[[case]]
-name = "double-signed fraction is malformed"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:-2/-3,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '-2/-3'"]
-
-[[case]]
-name = "repeated slash number is malformed"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:1/2/3,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '1/2/3'"]
-
-[[case]]
-name = "malformed decimal is rejected"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:1.2.3,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '1.2.3'"]
-
-[[case]]
-name = "leading-dot decimal is malformed"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:.5,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '.5'"]
-
-[[case]]
-name = "trailing-dot decimal is malformed"
-program = "fixtures/parser-error-fixture.tpp"
-input = "parser-add:5.,1"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expected numeric input, got '5.'"]
-
-[[case]]
 name = "modulo by zero fails loudly"
 input = "mod:1,0"
 
@@ -495,35 +405,3 @@ input = "b64dec:_w"
 [case.expect]
 exit_code = 1
 stderr_contains = ["Builtin 'b64dec' decoded bytes are not valid UTF-8"]
-
-[[case]]
-name = "unknown builtin fails loudly"
-program = "fixtures/bad-unknown.tpp"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Unknown builtin 'nope'"]
-
-[[case]]
-name = "wrong arity fails loudly"
-program = "fixtures/bad-arity.tpp"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["Builtin 'add' expects 2 args, got 1"]
-
-[[case]]
-name = "template arg spelling rejected"
-program = "fixtures/bad-template-arg.tpp"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["::! arguments must be capture names"]
-
-[[case]]
-name = "missing capture rejected"
-program = "fixtures/bad-missing-capture.tpp"
-
-[case.expect]
-exit_code = 1
-stderr_contains = ["::! argument 'b' is not a named capture"]

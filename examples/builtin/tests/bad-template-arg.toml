@@ -1,0 +1,9 @@
+program = "fixtures/bad-template-arg.tpp"
+timeout = 5
+
+[[case]]
+name = "template arg spelling rejected"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["::! arguments must be capture names"]

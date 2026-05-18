@@ -9,7 +9,7 @@ from typing import Any, cast
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = REPO_ROOT / "tools" / "thuepp-contract.toml"
 BUILTIN_EXAMPLE = REPO_ROOT / "examples" / "builtin" / "builtin.tpp"
-BUILTIN_MANIFEST = REPO_ROOT / "examples" / "builtin" / "tests" / "basic.toml"
+BUILTIN_TESTS = REPO_ROOT / "examples" / "builtin" / "tests"
 
 
 class BuiltinContractTest(unittest.TestCase):
@@ -31,7 +31,7 @@ class BuiltinContractTest(unittest.TestCase):
     def test_every_public_builtin_has_shared_fixture_coverage(self):
         builtins = self._public_builtin_names()
         example_text = BUILTIN_EXAMPLE.read_text(encoding="utf-8")
-        manifest_text = BUILTIN_MANIFEST.read_text(encoding="utf-8")
+        manifest_text = self._builtin_manifest_text()
 
         for name in builtins:
             with self.subTest(name=name):
@@ -39,12 +39,15 @@ class BuiltinContractTest(unittest.TestCase):
                 self.assertIn(f'input = "{name}:', manifest_text)
 
     def test_shared_fixtures_cover_builtin_parse_failures(self):
-        manifest_text = BUILTIN_MANIFEST.read_text(encoding="utf-8")
+        manifest_text = self._builtin_manifest_text()
 
         self.assertIn("Unknown builtin 'nope'", manifest_text)
         self.assertIn("Builtin 'add' expects 2 args, got 1", manifest_text)
         self.assertIn("::! arguments must be capture names", manifest_text)
         self.assertIn("::! argument 'b' is not a named capture", manifest_text)
+
+    def _builtin_manifest_text(self) -> str:
+        return "\n".join(path.read_text(encoding="utf-8") for path in sorted(BUILTIN_TESTS.glob("*.toml")))
 
     def _public_builtin_names(self) -> set[str]:
         text = BUILTIN_EXAMPLE.read_text(encoding="utf-8")

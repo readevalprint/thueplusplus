@@ -101,8 +101,8 @@ def check_makefile(root: Path) -> list[Failure]:
         "uv run python tools/check-contract",
         "uv run python -m unittest discover -s python/tests -v",
         "cd go && go test -count=1 ./...",
-        "tools/run-example-manifests --contract tools/thuepp-contract.toml --parity",
-        "uv run python tools/check-rule-coverage --all",
+        "tools/run-example-manifests --contract tools/thuepp-contract.toml --parity --manifest-glob 'examples/**/tests/*.toml'",
+        "uv run python tools/check-rule-coverage --manifest-glob 'examples/**/tests/*.toml'",
     ]
     for snippet in required:
         if snippet not in text:
@@ -201,8 +201,8 @@ def check_contract(root: Path) -> list[Failure]:
         if forbidden_path.exists() and "--interpreter" in read(forbidden_path):
             failures.append(Failure(forbidden_path, "shared runner --interpreter compatibility path must not be referenced"))
     makefile = read(root / "Makefile")
-    if "--contract tools/thuepp-contract.toml --parity" not in makefile:
-        failures.append(Failure(root / "Makefile", "shared manifest target must use tools/thuepp-contract.toml"))
+    if "--contract tools/thuepp-contract.toml --parity --manifest-glob 'examples/**/tests/*.toml'" not in makefile:
+        failures.append(Failure(root / "Makefile", "shared manifest target must use tools/thuepp-contract.toml and recursive manifest glob"))
     duplicate_full_manifest_checks = [
         (root / "python" / "tests" / "test_examples.py", ["run_configs", "*/tests/*.toml"]),
         (root / "go" / "internal" / "thuepp" / "go_interpreter_test.go", ["run-example-manifests", "examples", "tests", "*.toml"]),
@@ -266,18 +266,83 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     if "coverage: ignore" in text:
         failures.append(Failure(path, "coverage ignore comments are unsupported; add fixtures or delete the rule"))
     makefile = read(root / "Makefile")
-    if "tools/check-rule-coverage --all" not in makefile:
-        failures.append(Failure(root / "Makefile", "make test must include all-example rule coverage gate"))
+    if "tools/check-rule-coverage --manifest-glob 'examples/**/tests/*.toml'" not in makefile:
+        failures.append(Failure(root / "Makefile", "make test must include manifest-declared rule coverage gate"))
     return failures
+
+
+MANIFEST_TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case", "requires"}
+MANIFEST_CASE_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout"}
+MANIFEST_EXPECT_KEYS = {
+    "exit_code",
+    "stdout",
+    "stdout_stripped",
+    "stdout_startswith",
+    "stdout_contains",
+    "stderr",
+    "stderr_stripped",
+    "stderr_contains",
+    "files",
+}
+
+
+def check_manifest_expect(path: Path, failures: list[Failure], scope: str, expect) -> None:
+    if not isinstance(expect, dict) or not expect:
+        failures.append(Failure(path, f"{scope}: missing expect table"))
+        return
+    unknown = sorted(set(expect) - MANIFEST_EXPECT_KEYS)
+    if unknown:
+        failures.append(Failure(path, f"{scope}: unknown expect key(s): {', '.join(unknown)}"))
+    if "exit_code" not in expect:
+        failures.append(Failure(path, f"{scope}: missing expect.exit_code"))
+    elif not isinstance(expect["exit_code"], int):
+        failures.append(Failure(path, f"{scope}: expect.exit_code must be an integer"))
 
 
 def check_manifest_policy(root: Path) -> list[Failure]:
     failures: list[Failure] = []
-    for path in sorted((root / "examples").glob("*/tests/*.toml")):
+    manifests = sorted((root / "examples").glob("**/tests/*.toml"))
+    if not manifests:
+        return [Failure(root / "examples", "no shared manifest files matched examples/**/tests/*.toml")]
+    for path in manifests:
         data = load_toml(path)
+        unknown = sorted(set(data) - MANIFEST_TOP_LEVEL_KEYS)
+        if unknown:
+            failures.append(Failure(path, f"unknown top-level key(s): {', '.join(unknown)}"))
+        program = data.get("program")
+        if not isinstance(program, str) or not program.strip():
+            failures.append(Failure(path, "missing top-level program"))
+        else:
+            resolved = (path.parent / program).resolve()
+            if resolved.suffix != ".tpp":
+                failures.append(Failure(path, f"program must resolve to a .tpp file: {program}"))
+            if not resolved.exists():
+                failures.append(Failure(path, f"program does not exist: {program}"))
+            try:
+                resolved.relative_to(path.parents[1].resolve())
+            except ValueError:
+                failures.append(Failure(path, f"program escapes example directory: {program}"))
         requires = data.get("requires")
         if isinstance(requires, dict) and "commands" in requires:
             failures.append(Failure(path, "requires.commands is unsupported; enabled verification must fail loudly instead of skipping"))
+        cases = data.get("case")
+        if cases is None:
+            check_manifest_expect(path, failures, str(data.get("name") or path.stem), data.get("expect"))
+            continue
+        if not isinstance(cases, list) or not cases:
+            failures.append(Failure(path, "case must be a non-empty array"))
+            continue
+        for index, case in enumerate(cases, 1):
+            if not isinstance(case, dict):
+                failures.append(Failure(path, f"case #{index}: case must be a table"))
+                continue
+            scope = str(case.get("name") or f"case #{index}")
+            unknown_case = sorted(set(case) - MANIFEST_CASE_KEYS)
+            if unknown_case:
+                failures.append(Failure(path, f"{scope}: unknown case key(s): {', '.join(unknown_case)}"))
+            if "program" in case:
+                failures.append(Failure(path, f"{scope}: program is only allowed at manifest top level"))
+            check_manifest_expect(path, failures, scope, case.get("expect"))
     return failures
 
 

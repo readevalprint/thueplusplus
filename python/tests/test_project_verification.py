@@ -15,7 +15,7 @@ class ProjectVerificationEntrypointTest(unittest.TestCase):
         self.assertIn("cd go && go test -count=1 ./...", makefile)
         self.assertIn("tools/run-example-manifests --contract tools/thuepp-contract.toml --parity", makefile)
         self.assertIn(
-            "uv run python tools/check-rule-coverage --all",
+            "uv run python tools/check-rule-coverage --manifest-glob 'examples/**/tests/*.toml'",
             makefile,
         )
         self.assertNotIn("test-js", makefile)

@@ -150,7 +150,19 @@ class SharedExampleRunnerTest(unittest.TestCase):
                 runner.run_configs(fake_interpreters, [config])
 
             timeout_config = tmp / "timeout.toml"
-            timeout_config.write_text('program = "program.tpp"\ntimeout = 0.1\n', encoding="utf-8")
+            timeout_config.write_text(
+                textwrap.dedent(
+                    """
+                    program = "program.tpp"
+                    timeout = 0.1
+
+                    [expect]
+                    exit_code = 0
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
             sleep_interpreters = runner.contract_interpreters(contract, tmp / "artifacts", {"sleep"})
             with self.assertRaisesRegex(RuntimeError, "timed out"):
                 runner.run_configs(sleep_interpreters, [timeout_config])
@@ -272,6 +284,56 @@ class SharedExampleRunnerTest(unittest.TestCase):
             interpreters = runner.contract_interpreters(contract, tmp / "artifacts", {"fake"})
             with self.assertRaisesRegex(RuntimeError, "requires.commands is not supported"):
                 runner.run_configs(interpreters, [config])
+
+    def test_manifest_schema_fails_loudly_for_program_and_expect_policy(self):
+        runner = load_runner_module()
+        with tempfile.TemporaryDirectory(prefix="thuepp-runner-schema-") as tmpdir:
+            tmp = Path(tmpdir)
+            program = tmp / "program.tpp"
+            program.write_text("::=\n", encoding="utf-8")
+            cases = {
+                "missing-program.toml": """
+                    input = "x"
+
+                    [expect]
+                    exit_code = 0
+                """,
+                "case-program.toml": """
+                    program = "program.tpp"
+
+                    [[case]]
+                    name = "bad override"
+                    program = "other.tpp"
+
+                    [case.expect]
+                    exit_code = 0
+                """,
+                "missing-exit-code.toml": """
+                    program = "program.tpp"
+
+                    [expect]
+                    stdout = ""
+                """,
+                "unknown-key.toml": """
+                    program = "program.tpp"
+                    surprise = true
+
+                    [expect]
+                    exit_code = 0
+                """,
+            }
+            expected = {
+                "missing-program.toml": "missing top-level program",
+                "case-program.toml": "program is only allowed at manifest top level",
+                "missing-exit-code.toml": "missing expect.exit_code",
+                "unknown-key.toml": "unknown top-level key",
+            }
+            for filename, body in cases.items():
+                config = tmp / filename
+                config.write_text(textwrap.dedent(body).strip() + "\n", encoding="utf-8")
+                with self.subTest(filename=filename):
+                    with self.assertRaisesRegex(RuntimeError, expected[filename]):
+                        runner.expand_cases(runner.load_toml(config), config)
 
     def test_contract_interpreters_build_and_filter_available_implementations(self):
         runner = load_runner_module()
