@@ -57,12 +57,28 @@ Reader-backed outputs are intended to round trip: feeding a rendered number, boo
 Unsupported syntax exits non-zero with a named stderr error. Current deliberate unsupported/non-goal forms include:
 
 - `quote` and code-as-data forms: expected error class `unsupported_form` until a focused quote/list card changes the contract;
-- `define` and mutation-style top-level binding: unsupported; current behavior may surface as `unbound_name` until normalized by the error-taxonomy card;
-- `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided;
+- `define` and mutation-style top-level binding: unsupported, with error class `unsupported_form`;
+- `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided, with error class `unsupported_form`;
 - unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
 
 Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
+
+## Error symbols
+
+The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
+
+- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `quote`, `define`, `letrec`, raw internal-looking inputs, and other non-reader forms;
+- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `and`, `or`, `let`, and `lambda` shapes;
+- `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
+- `unbound_name`: an actual lookup miss for a bare variable or callee name;
+- `not_function`: attempting to apply a non-closure value;
+- `type_error`: an operand value has the wrong runtime type for the requested operation;
+- `division_by_zero`: division by zero, including computed zero denominators;
+- `invalid_numeric_token`: numeric-looking tokens that do not satisfy the numeric literal contract;
+- `invalid_string_escape`: backslash escapes outside the supported string escape set.
+
+Error normalization should not mask real lookup misses: an unknown variable or unknown callee remains `unbound_name`, while unsupported special-form names and malformed supported forms report their specific syntax/arity class.
 
 ## String escape contract
 
