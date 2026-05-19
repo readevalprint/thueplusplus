@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 
 MAX_NUMERIC_LITERAL_CHARS = 4096
-RULE_RE = py_re.compile(r"^(?P<lhs>.*?)[ \t]+::(?P<op>[=<>!%-])(?:[ \t]+(?P<rhs>.*)|[ \t]*)$")
+RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!%-])(?P<rhs>.*)$")
 
 
 class Operator(Enum):
@@ -236,17 +236,17 @@ class ThueppInterpreter:
     def _parse_rule(self, line: str, line_number: int, source_path: str) -> Optional[Rule]:
         """Parse a single rule line."""
         stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
+        if not stripped or stripped.startswith("#") or stripped == "::=":
             return None
 
         match = RULE_RE.match(line)
         if not match:
-            if py_re.search(r"[ \t]+::[^\s=<>!%-]", line):
+            if py_re.search(r"(?<!\\)::[^\s\w=<>!%-]", line):
                 raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
             return None
 
         lhs = match.group("lhs").rstrip()
-        rhs = match.group("rhs") or ""
+        rhs = (match.group("rhs") or "").lstrip(" \t")
         op = {
             "=": Operator.SUBSTITUTE,
             "<": Operator.READ,
@@ -257,7 +257,7 @@ class ThueppInterpreter:
         }[match.group("op")]
 
         if not lhs:
-            raise RuntimeError(f"Line {line_number}: Rule must have a non-empty LHS")
+            return None
 
         try:
             pattern_lhs = self._translate_lhs(lhs)
@@ -599,7 +599,7 @@ class ThueppInterpreter:
         if binding.name == "stdin":
             ready, _, _ = select.select([sys.stdin], [], [], 5.0)
             if not ready:
-                return "", "ERR:resource:stdin:timeout waiting for line"
+                return "", "ERR:resource:stdin:timeout"
             line = sys.stdin.readline()
             if line == "":
                 return "", "ERR:resource:stdin:EOF before newline"
@@ -621,7 +621,7 @@ class ThueppInterpreter:
                             stderr = stderr.decode("utf-8", errors="replace")
                         stderr = stderr.strip() or f"process exited {binding.process.returncode}"
                         return "", f"ERR:resource:{binding.name}:{stderr}"
-                    return "", f"ERR:resource:{binding.name}:timeout waiting for line"
+                    return "", f"ERR:resource:{binding.name}:timeout"
                 line = binding.process.stdout.readline()
                 if isinstance(line, bytes):
                     line = line.decode("utf-8", errors="replace")
@@ -708,8 +708,43 @@ class ThueppInterpreter:
         ]
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
+    def _document_disallowed_spans(self, row_infos: list[tuple], rule: Rule) -> list[tuple[int, int]]:
+        """Return document spans this rule should skip as match targets.
+
+        Matching is whole-document, but comments remain inert unless the rule
+        explicitly mentions an escaped literal hash (\#). Non-substitution
+        operators also skip rule rows so broad render/write/builtin rows do not
+        consume the program's own rule definitions.
+        """
+        spans = []
+        allow_comments = r"\#" in rule.lhs
+        allow_rule_rows = "::" in rule.lhs
+        for _line_number, row, start, end, source_path, source_line, _row_index in row_infos:
+            stripped = row.strip()
+            row_rule = self._parse_rule_cached(row, source_line, source_path)
+            if stripped.startswith("#") and not allow_comments:
+                spans.append((start, end))
+            elif row_rule is not None and not allow_rule_rows:
+                spans.append((start, end))
+        return spans
+
+    def _match_over_document(self, rule: Rule, row_infos: list[tuple]) -> Any:
+        disallowed = self._document_disallowed_spans(row_infos, rule)
+        pos = 0
+        while pos <= len(self.state):
+            match = rule.lhs_pattern.search(self.state, pos)
+            if not match:
+                return None
+            if not any(match.start() < end and start < match.end() for start, end in disallowed):
+                return match
+            next_pos = match.start() + 1
+            if next_pos <= pos:
+                next_pos = pos + 1
+            pos = next_pos
+        return None
+
     def run(self) -> int:
-        """Execute rule rows against the holistic data suffix below them."""
+        """Execute rules against the entire mutable document until quiescence."""
         while True:
             row_infos = []
             offset = 0
@@ -723,15 +758,15 @@ class ThueppInterpreter:
                     source_path, source_line = (self.program_path, line_number)
                     if index < len(self._initial_rows) and self._initial_rows[index] == row:
                         source_path, source_line = self._row_sources[index]
-                    row_infos.append((line_number, row, offset, end, source_path, source_line))
+                    row_infos.append((line_number, row, offset, end, source_path, source_line, index))
                     offset = end
                 if self.state.endswith("\n"):
                     line_number = len(row_infos) + 1
-                    row_infos.append((line_number, "", offset, offset, self.program_path, line_number))
+                    row_infos.append((line_number, "", offset, offset, self.program_path, line_number, len(row_infos)))
 
             applied = False
 
-            for idx, (line_number, row, _row_start, row_end, source_path, source_line) in enumerate(row_infos):
+            for line_number, row, _row_start, _row_end, source_path, source_line, row_index in row_infos:
                 rule = self._parse_rule_cached(row, source_line, source_path)
                 if rule is None:
                     continue
@@ -742,23 +777,10 @@ class ThueppInterpreter:
                     )
                 self.eval_count += 1
 
-                target_row = None
-                target_match = None
-                for probe_idx in range(idx + 1, len(row_infos)):
-                    probe_line, probe_row, probe_start, probe_end, probe_source_path, probe_source_line = row_infos[probe_idx]
-                    stripped = probe_row.strip()
-                    if stripped.startswith("#") or (stripped == "" and probe_start != len(self.state)):
-                        continue
-                    match = rule.lhs_pattern.search(probe_row)
-                    if match:
-                        target_row = (probe_line, probe_row, probe_start, probe_end)
-                        target_match = match
-                        break
-                if target_row is None or target_match is None:
+                match = self._match_over_document(rule, row_infos)
+                if not match:
                     continue
 
-                probe_line, probe_row, probe_start, probe_end = target_row
-                match = target_match
                 groups = match.groupdict()
                 applied = True
 
@@ -766,15 +788,14 @@ class ThueppInterpreter:
                     escaped_state = self.state.replace("\n", "\\n")
                     print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
                     print(
-                        f"[{self.eval_count}] ROW {line_number} MATCHES ROW {probe_line} AT "
+                        f"[{self.eval_count}] ROW {line_number} MATCHES DOCUMENT AT "
                         f"{match.start()}:{match.end()}: {rule.lhs}",
                         file=sys.stderr,
                     )
                     print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
 
                 replacement: Optional[str] = None
-
-                magic_vars = {"rule_index": str(idx)}
+                magic_vars = {"rule_index": str(row_index)}
 
                 if rule.operator == Operator.SUBSTITUTE:
                     replacement = self._expand_template(rule.rhs, groups, magic_vars)
@@ -854,9 +875,7 @@ class ThueppInterpreter:
                 if replacement is None:
                     raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
 
-                row_ending = self.state[probe_start + len(probe_row):probe_end]
-                new_row = probe_row[:match.start()] + replacement + probe_row[match.end():]
-                self._set_state(self.state[:probe_start] + new_row + row_ending + self.state[probe_end:])
+                self._set_state(self.state[:match.start()] + replacement + self.state[match.end():])
 
                 if self.debug:
                     escaped_result = self.state.replace("\n", "\\n")

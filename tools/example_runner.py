@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_MAX_EVALS = 10000
 
 
 @dataclass(frozen=True)
@@ -186,6 +187,10 @@ def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> tuple
     return str(target), writable
 
 
+def has_max_evals_arg(args: list[str]) -> bool:
+    return any(arg == "--max-evals" or arg.startswith("--max-evals=") for arg in args)
+
+
 def build_case_args(
     config_path: Path,
     case: dict,
@@ -197,6 +202,8 @@ def build_case_args(
     program = (tests_dir / case["program"]).resolve()
     args = [str(program)]
     args.extend(case.get("args", []))
+    if not has_max_evals_arg(args):
+        args.extend(["--max-evals", str(DEFAULT_MAX_EVALS)])
     if extra_args:
         args.extend(extra_args)
     bound_files: dict[str, str] = {}

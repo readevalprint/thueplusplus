@@ -1,5 +1,10 @@
+# Reconciled with the BO Lisp direction.
+# This manifest keeps scalar behavior already implemented by the BO evaluator.
+# Unsupported legacy scalar operators/comparisons remain in debt_scalar_bo.toml;
+# fail-loud gaps remain in debt_fail_loud_bo.toml.
 program = "../lisp.tpp"
-timeout = 5
+timeout = 10
+args = ["--max-evals", "60000"]
 
 [[case]]
 name = "binary addition"
@@ -9,6 +14,15 @@ input = "(+ 1 2)"
 exit_code = 0
 stderr = ""
 stdout_stripped = "3"
+
+[[case]]
+name = "nary addition"
+input = "(+ 1 2 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
 
 [[case]]
 name = "binary subtraction"
@@ -47,7 +61,16 @@ stderr = ""
 stdout_stripped = "12"
 
 [[case]]
-name = "rational result is consumed by later operation"
+name = "rational addition"
+input = "(+ 1/2 1/3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5/6"
+
+[[case]]
+name = "rational result from division is consumed by later operation"
 input = "(+ (/ 7 2) 1/2)"
 
 [case.expect]
@@ -56,7 +79,7 @@ stderr = ""
 stdout_stripped = "4"
 
 [[case]]
-name = "two inner frames collapse before outer frame"
+name = "two inner frames collapse before outer frame with subtraction"
 input = "(* (+ 1 2) (- 7 3))"
 
 [case.expect]
@@ -75,6 +98,15 @@ stdout_stripped = "true"
 
 [[case]]
 name = "numeric equality true"
+input = "(= 2 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "numeric equality accepts decimal token"
 input = "(= 2 2.0)"
 
 [case.expect]
@@ -135,57 +167,3 @@ input = "(>= 3 3)"
 exit_code = 0
 stderr = ""
 stdout_stripped = "true"
-
-[[case]]
-name = "division by zero fails loudly"
-input = "(/ 1 0)"
-
-[case.expect]
-exit_code = 1
-stdout = ""
-stderr_contains = ["Builtin 'div' division by zero"]
-
-[[case]]
-name = "too few scalar operands fail loudly"
-input = "(+ 1)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]
-
-[[case]]
-name = "too many scalar operands fail loudly"
-input = "(+ 1 2 3)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]
-
-[[case]]
-name = "malformed numeric token fails loudly"
-input = "(+ 1x 2)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]
-
-[[case]]
-name = "booleans are not accepted as numeric operands"
-input = "(+ true 1)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]
-
-[[case]]
-name = "bang-prefixed input fails loudly"
-input = "!boom"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_contains = ["parse error: unsupported or malformed Lisp input"]

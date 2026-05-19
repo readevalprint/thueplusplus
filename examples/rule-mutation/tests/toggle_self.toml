@@ -1,0 +1,9 @@
+program = "../toggle-self.tpp"
+
+[[case]]
+name = "rule toggles itself before halting"
+
+[case.expect]
+exit_code = 0
+stdout = "toggled self\n"
+stderr = ""

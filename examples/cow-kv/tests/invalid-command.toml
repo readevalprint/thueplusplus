@@ -1,0 +1,8 @@
+name = "invalid command reports error and continues"
+program = "../cow-kv.tpp"
+input = "set a base; frob a; get a"
+
+[expect]
+stdout = "ERR:invalid_command\nbase\n"
+stderr = ""
+exit_code = 0

@@ -1,0 +1,6 @@
+lambda_nary_names	((lambda (a b c) (+ a b c)) 1 2 3)	6
+lambda_nary_mul_body	((lambda (x y z) (* (+ x y) z)) 2 3 4)	20
+lambda_closure_diff_nums	(((lambda (x) (lambda (y) (+ x y))) 7) 8)	15
+lambda_shadow_diff_names	((lambda (x) ((lambda (y) y) 2)) 1)	2
+let_two_bindings	(let ((x 10) (y 5)) (+ x y))	15
+let_array_different_name	(let ((ys (array 4 "z" true))) (rest ys))	["z" true]

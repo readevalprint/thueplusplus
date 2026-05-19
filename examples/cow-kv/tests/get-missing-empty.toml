@@ -1,0 +1,8 @@
+name = "missing key outside transaction returns nil"
+program = "../cow-kv.tpp"
+input = "get absent"
+
+[expect]
+stdout = "nil\n"
+stderr = ""
+exit_code = 0

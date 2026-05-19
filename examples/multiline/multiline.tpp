@@ -1,10 +1,9 @@
-# Line-by-line row processing demonstration
-# Comments are always skipped. Rules rewrite or consume only the first matching
-# non-rule, non-comment row below the active rule, then restart from the top.
+# Whole-document matching demonstration.
+# Rules match and replace spans in the entire mutable document, not one row at a time.
 
-^result:$ ::> stdout Trimmed:\n\n
-^[ \t]*(?<text>[^ \t].*[^ \t])[ \t]*$ ::> stdout {{text}}\n
-result:
-  hello world  
-   indented line   
- another line 
+^W:(?<expr>[\s\S]*)\nB:\nK:\nO:$ ::= O:{{expr}}
+^O:(?<out>.+)$ ::> stdout {{out}}\n
+W:(+ 1 2)
+B:
+K:
+O:

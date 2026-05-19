@@ -1,0 +1,9 @@
+program = "../cycle-self.tpp"
+
+[[case]]
+name = "rule cycles itself before halting"
+
+[case.expect]
+exit_code = 0
+stdout = "cycled self\n"
+stderr = ""

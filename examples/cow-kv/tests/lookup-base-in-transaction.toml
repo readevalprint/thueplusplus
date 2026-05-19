@@ -1,0 +1,8 @@
+name = "transaction lookup falls through overlay to base value"
+program = "../cow-kv.tpp"
+input = "set a base; begin; get a"
+
+[expect]
+stdout = "base\n"
+stderr = ""
+exit_code = 0

@@ -1,0 +1,171 @@
+# Intentional RED debt manifest for BO fail-loud behavior.
+# These cases must not be silently accepted with rc 0 and empty output in the
+# production Lisp evaluator. They are split out from old phase manifests so the
+# legacy GREEN manifests can describe implemented BO behavior while this file
+# tracks explicit future work.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "raw internal-looking W state rejected"
+input = "W:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "raw internal-looking B state rejected"
+input = "B:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "raw internal-looking K state rejected"
+input = "K:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "raw internal-looking O state rejected"
+input = "O:foo"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "single curly syntax rejected"
+input = "{+ 1 2}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "malformed_list"
+
+[[case]]
+name = "double curly syntax rejected"
+input = "{{+ 1 2}}"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "malformed_list"
+
+[[case]]
+name = "division by zero fails loudly"
+input = "(/ 1 0)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "too few scalar operands fail loudly"
+input = "(+ 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "malformed numeric token fails loudly"
+input = "(+ 1x 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "invalid_numeric_token"
+
+[[case]]
+name = "booleans are not accepted as numeric operands"
+input = "(+ true 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "bang-prefixed input fails loudly"
+input = "!boom"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "plus zero operands fail loudly"
+input = "(+)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "malformed second numeric token fails loudly"
+input = "(+ 1 2x)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "invalid_numeric_token"
+
+[[case]]
+name = "boolean rhs is not accepted as numeric operand"
+input = "(+ 1 true)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "leading name in nary plus fails loudly"
+input = "(+ x 1 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "second name in nary plus fails loudly"
+input = "(+ 1 x 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "second name in binary plus fails loudly"
+input = "(+ 1 x)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "computed division by zero fails loudly"
+input = "(/ 1 (- 1 1))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+

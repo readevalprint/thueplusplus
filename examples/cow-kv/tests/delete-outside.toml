@@ -1,0 +1,8 @@
+name = "delete outside transaction writes base tombstone"
+program = "../cow-kv.tpp"
+input = "set a base; del a; get a"
+
+[expect]
+stdout = "nil\n"
+stderr = ""
+exit_code = 0

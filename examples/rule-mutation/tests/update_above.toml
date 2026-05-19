@@ -1,0 +1,9 @@
+program = "../update-above.tpp"
+
+[[case]]
+name = "rule updates a row above itself"
+
+[case.expect]
+exit_code = 0
+stdout = "above:new\n"
+stderr = ""

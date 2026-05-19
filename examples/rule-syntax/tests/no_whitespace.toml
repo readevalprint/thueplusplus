@@ -1,0 +1,9 @@
+program = "../no-whitespace.tpp"
+
+[[case]]
+name = "rule operators do not require surrounding whitespace"
+
+[case.expect]
+exit_code = 0
+stdout = "ok\n"
+stderr = ""

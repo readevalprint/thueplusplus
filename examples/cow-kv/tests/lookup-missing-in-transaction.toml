@@ -1,0 +1,8 @@
+name = "transaction lookup misses unrelated overlay and base entries"
+program = "../cow-kv.tpp"
+input = "set b base; begin; set c child; get a"
+
+[expect]
+stdout = "nil\n"
+stderr = ""
+exit_code = 0

@@ -32,7 +32,7 @@ const (
 
 var (
 	numericLiteralPattern  = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
-	rulePattern            = regexp.MustCompile(`^(.*?)[ \t]+::([=<>!%-])(?:[ \t]+(.*)|[ \t]*)$`)
+	rulePattern            = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!%-])(.*)$`)
 	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
 )
 
@@ -194,20 +194,20 @@ func (i *Interpreter) parseProgram(content string) error {
 
 func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	trimmed := strings.TrimSpace(line)
-	if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+	if trimmed == "" || strings.HasPrefix(trimmed, "#") || trimmed == "::=" {
 		return nil, nil
 	}
 	matches := rulePattern.FindStringSubmatch(line)
 	if matches == nil {
-		if regexp.MustCompile(`[ \t]+::[^\s=<>!%-]`).FindStringIndex(line) != nil {
+		if regexp.MustCompile(`(?:^|[^\\])::[^\s\w=<>!%-]`).FindStringIndex(line) != nil {
 			return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 		}
 		return nil, nil
 	}
-	lhs := strings.TrimRight(matches[1], " \t")
-	rhs := matches[3]
+	lhs := strings.TrimRight(matches[1]+matches[2], " \t")
+	rhs := strings.TrimLeft(matches[4], " \t")
 	var op Operator
-	switch matches[2] {
+	switch matches[3] {
 	case "=":
 		op = Substitute
 	case "<":
@@ -224,7 +224,7 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 		return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 	}
 	if lhs == "" {
-		return nil, fmt.Errorf("Line %d: Rule must have a non-empty LHS", lineNumber)
+		return nil, nil
 	}
 	re, err := regexp.Compile("(?m)" + lhs)
 	if err != nil {
@@ -803,7 +803,7 @@ func (i *Interpreter) readLine(b *Binding) (string, string) {
 			}
 			return stripped, ""
 		case <-time.After(5 * time.Second):
-			return "", fmt.Sprintf("ERR:resource:%s:timeout waiting for line", b.Name)
+			return "", fmt.Sprintf("ERR:resource:%s:timeout", b.Name)
 		case err := <-b.exitCh:
 			if err != nil {
 				msg := strings.TrimSpace(b.stderr.String())
@@ -920,34 +920,25 @@ func formatDebugGroups(groups map[string]string) string {
 	return "map[" + strings.Join(parts, " ") + "]"
 }
 
+type documentRow struct {
+	lineNumber int
+	row        string
+	index      int
+}
+
 func (i *Interpreter) Run() (int, error) {
 	for {
-		type rowInfo struct {
-			lineNumber int
-			row        string
-			start      int
-			end        int
+		var rows []documentRow
+		parts := strings.Split(i.State, "\n")
+		if i.State == "" {
+			parts = []string{}
 		}
-		var rows []rowInfo
-		offset := 0
-		lineNumber := 1
-		for offset < len(i.State) {
-			segmentEnd := offset + strings.IndexByte(i.State[offset:], '\n') + 1
-			if segmentEnd <= offset {
-				segmentEnd = len(i.State)
-			}
-			segment := i.State[offset:segmentEnd]
-			row := strings.TrimSuffix(strings.TrimSuffix(segment, "\n"), "\r")
-			rows = append(rows, rowInfo{lineNumber: lineNumber, row: row, start: offset, end: segmentEnd})
-			offset = segmentEnd
-			lineNumber++
-		}
-		if strings.HasSuffix(i.State, "\n") {
-			rows = append(rows, rowInfo{lineNumber: lineNumber, row: "", start: offset, end: offset})
+		for idx, row := range parts {
+			rows = append(rows, documentRow{lineNumber: idx + 1, row: strings.TrimSuffix(row, "\r"), index: idx})
 		}
 
 		applied := false
-		for rowIndex, info := range rows {
+		for _, info := range rows {
 			rule, err := i.parseRuleCached(info.row, info.lineNumber, i.ProgramPath)
 			if err != nil {
 				return 1, err
@@ -960,33 +951,16 @@ func (i *Interpreter) Run() (int, error) {
 			}
 			i.EvalCount++
 
-			var target rowInfo
-			var match matchInfo
-			matched := false
-			for probeIndex := rowIndex + 1; probeIndex < len(rows); probeIndex++ {
-				probe := rows[probeIndex]
-				trimmed := strings.TrimSpace(probe.row)
-				if strings.HasPrefix(trimmed, "#") || (trimmed == "" && probe.start != len(i.State)) {
-					continue
-				}
-				m, ok := findMatch(*rule, probe.row)
-				if !ok {
-					continue
-				}
-				target = probe
-				match = m
-				matched = true
-				break
-			}
-			if !matched {
+			match, ok := i.findAllowedDocumentMatch(*rule, rows)
+			if !ok {
 				continue
 			}
 			applied = true
 			groups := match.groups
-			magicVars := map[string]string{"rule_index": strconv.Itoa(rowIndex)}
+			magicVars := map[string]string{"rule_index": strconv.Itoa(info.index)}
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
-				fmt.Fprintf(i.Stderr, "[%d] ROW %d MATCHES ROW %d AT %d:%d: %s\n", i.EvalCount, info.lineNumber, target.lineNumber, match.start, match.end, rule.LHS)
+				fmt.Fprintf(i.Stderr, "[%d] ROW %d MATCHES DOCUMENT AT %d:%d: %s\n", i.EvalCount, info.lineNumber, match.start, match.end, rule.LHS)
 				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
 			}
 			repl := ""
@@ -1075,9 +1049,7 @@ func (i *Interpreter) Run() (int, error) {
 				i.recordRuleCoverage(*rule)
 				return code, nil
 			}
-			rowEnding := i.State[target.start+len(target.row) : target.end]
-			newRow := target.row[:match.start] + repl + target.row[match.end:]
-			if err := i.setState(i.State[:target.start] + newRow + rowEnding + i.State[target.end:]); err != nil {
+			if err := i.setState(i.State[:match.start] + repl + i.State[match.end:]); err != nil {
 				return 1, err
 			}
 			if i.Debug {
@@ -1091,8 +1063,80 @@ func (i *Interpreter) Run() (int, error) {
 	}
 }
 
+type disallowedSpan struct {
+	start int
+	end   int
+}
+
+func spansOverlap(aStart, aEnd, bStart, bEnd int) bool {
+	return aStart < bEnd && bStart < aEnd
+}
+
+func (i *Interpreter) documentDisallowedSpans(rule Rule, rows []documentRow) ([]disallowedSpan, error) {
+	spans := []disallowedSpan{}
+	allowComments := strings.Contains(rule.LHS, `\#`)
+	allowRuleRows := strings.Contains(rule.LHS, "::")
+	offset := 0
+	for _, row := range rows {
+		segmentLen := len(row.row)
+		if offset+segmentLen < len(i.State) && i.State[offset+segmentLen] == '\n' {
+			segmentLen++
+		}
+		trimmed := strings.TrimSpace(row.row)
+		rowRule, err := i.parseRuleCached(row.row, row.lineNumber, i.ProgramPath)
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasPrefix(trimmed, "#") && !allowComments {
+			spans = append(spans, disallowedSpan{start: offset, end: offset + segmentLen})
+		} else if rowRule != nil && !allowRuleRows {
+			spans = append(spans, disallowedSpan{start: offset, end: offset + segmentLen})
+		}
+		offset += segmentLen
+	}
+	return spans, nil
+}
+
+func (i *Interpreter) findAllowedDocumentMatch(rule Rule, rows []documentRow) (matchInfo, bool) {
+	spans, err := i.documentDisallowedSpans(rule, rows)
+	if err != nil {
+		return matchInfo{}, false
+	}
+	pos := 0
+	for pos <= len(i.State) {
+		m, ok := findMatchFrom(rule, i.State, pos)
+		if !ok {
+			return matchInfo{}, false
+		}
+		allowed := true
+		for _, span := range spans {
+			if spansOverlap(m.start, m.end, span.start, span.end) {
+				allowed = false
+				break
+			}
+		}
+		if allowed {
+			return m, true
+		}
+		next := m.start + 1
+		if next <= pos {
+			next = pos + 1
+		}
+		pos = next
+	}
+	return matchInfo{}, false
+}
+
 func findMatch(rule Rule, state string) (matchInfo, bool) {
-	idx := rule.Pattern.FindStringSubmatchIndex(state)
+	return findMatchFrom(rule, state, 0)
+}
+
+func findMatchFrom(rule Rule, state string, pos int) (matchInfo, bool) {
+	if pos > len(state) {
+		return matchInfo{}, false
+	}
+	suffix := state[pos:]
+	idx := rule.Pattern.FindStringSubmatchIndex(suffix)
 	if idx == nil {
 		return matchInfo{}, false
 	}
@@ -1100,10 +1144,10 @@ func findMatch(rule Rule, state string) (matchInfo, bool) {
 	groups := map[string]string{}
 	for n := 1; n < len(names) && 2*n+1 < len(idx); n++ {
 		if names[n] != "" && idx[2*n] >= 0 {
-			groups[names[n]] = state[idx[2*n]:idx[2*n+1]]
+			groups[names[n]] = suffix[idx[2*n]:idx[2*n+1]]
 		}
 	}
-	return matchInfo{start: idx[0], end: idx[1], groups: groups}, true
+	return matchInfo{start: pos + idx[0], end: pos + idx[1], groups: groups}, true
 }
 
 func splitResource(expanded string) (string, string) {

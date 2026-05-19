@@ -1,0 +1,103 @@
+# Former RED manifest now graduated for Lisp value-semantics edge cases.
+# This file avoids BO-era naming. It is kept under tests/ so ordinary
+# `examples/**/tests/*.toml` sweeps stay green while these desired behaviors are
+# still being implemented.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "if rejects numeric condition"
+input = "(if 0 1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "and rejects numeric lhs"
+input = "(and 1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "or rejects numeric lhs"
+input = "(or 0 (/ 1 0))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "if rejects string condition"
+input = "(if \"\" 1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "if rejects array condition"
+input = "(if (array) 1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "direct nested array renders"
+input = "(array 1 (array 2 3))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[1 [2 3]]"
+
+[[case]]
+name = "rest preserves nested array element"
+input = "(rest (array 0 (array 1 2) 3))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[[1 2] 3]"
+
+[[case]]
+name = "array can render stored closure"
+input = "(let ((f (lambda (x) x))) (array f))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[<closure>]"
+
+[[case]]
+name = "lambda argument closure can be stored in array"
+input = "((lambda (x) (array x)) (lambda (y) y))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[<closure>]"
+
+[[case]]
+name = "higher order closure stored in let can be applied later"
+input = "(let ((mk (lambda (x) (lambda (y) (+ x y))))) ((mk 10) 5))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "15"
+
+[[case]]
+name = "returning closure from lambda preserves captured env"
+input = "(((lambda (mk) (mk 10)) (lambda (x) (lambda (y) (+ x y)))) 5)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "15"
+
+[[case]]
+name = "string escape is preserved"
+input = "\"a\\\"b\""
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "a\"b"

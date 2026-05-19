@@ -11,6 +11,6 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^read$ ::= out:@IN@
 @IN@ ::< -1 input
 ^out:(?<x><|PCT|>)$ ::> stdout {{x|pctdec}}
-^(?<out>[\s\S]+)$ ::> stdout {{out}}\n
+^(?<out>[^\n]+)$ ::> stdout {{out}}\n
 
 ::=

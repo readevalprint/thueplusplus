@@ -1,0 +1,8 @@
+name = "transaction lookup sees base tombstone"
+program = "../cow-kv.tpp"
+input = "set a base; del a; begin; get a"
+
+[expect]
+stdout = "nil\n"
+stderr = ""
+exit_code = 0
