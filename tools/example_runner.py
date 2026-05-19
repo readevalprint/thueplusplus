@@ -7,6 +7,7 @@ implementation, as an external command. It must not import interpreter internals
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import re
 import shlex
 import subprocess
@@ -290,31 +291,59 @@ def assert_expect(config_path: Path, name: str, expect: dict, result: CaseResult
             raise RuntimeError(f"{config_path} {name} {result.interpreter}: file binding {binding} = {got!r}, want {expected!r}")
 
 
-def run_configs(interpreters: list[Interpreter], configs: list[Path], *, parity: bool = False) -> int:
-    total = 0
+def assert_parity(config_path: Path, case: dict, results: list[CaseResult]) -> None:
+    first = results[0]
+    for other in results[1:]:
+        if other.parity_payload() != first.parity_payload():
+            raise RuntimeError(
+                f"{config_path} {case_name(config_path, case)} parity mismatch {first.interpreter} vs {other.interpreter}\n"
+                f"{first.interpreter}: exit={first.exit_code} stdout={first.stdout!r} stderr={first.stderr!r} files={first.files!r}\n"
+                f"{other.interpreter}: exit={other.exit_code} stdout={other.stdout!r} stderr={other.stderr!r} files={other.files!r}"
+            )
+
+
+def run_manifest_case_set(
+    interpreters: list[Interpreter],
+    config_path: Path,
+    case: dict,
+    root_tmp: Path,
+    *,
+    parity: bool,
+) -> None:
+    results: list[CaseResult] = []
+    for interpreter in interpreters:
+        case_tmp = root_tmp / re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{config_path}:{case_name(config_path, case)}:{interpreter.name}")
+        case_tmp.mkdir(parents=True, exist_ok=True)
+        results.append(run_case(interpreter, config_path, case, case_tmp))
+    if parity and len(results) > 1:
+        assert_parity(config_path, case, results)
+
+
+def run_configs(interpreters: list[Interpreter], configs: list[Path], *, parity: bool = False, jobs: int = 1) -> int:
+    jobs = max(1, jobs)
+    work: list[tuple[Path, dict]] = []
+    for config_path in configs:
+        data = load_toml(config_path)
+        for case in expand_cases(data, config_path):
+            work.append((config_path, case))
+
     with tempfile.TemporaryDirectory(prefix="thuepp-examples-") as tmpdir:
         root_tmp = Path(tmpdir)
-        for config_path in configs:
-            data = load_toml(config_path)
-            for case in expand_cases(data, config_path):
-                total += 1
-                results: list[CaseResult] = []
-                for interpreter in interpreters:
-                    case_tmp = root_tmp / re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{config_path}:{case_name(config_path, case)}:{interpreter.name}")
-                    case_tmp.mkdir(parents=True, exist_ok=True)
-                    results.append(run_case(interpreter, config_path, case, case_tmp))
-                if parity and len(results) > 1:
-                    first = results[0]
-                    for other in results[1:]:
-                        if other.parity_payload() != first.parity_payload():
-                            raise RuntimeError(
-                                f"{config_path} {case_name(config_path, case)} parity mismatch {first.interpreter} vs {other.interpreter}\n"
-                                f"{first.interpreter}: exit={first.exit_code} stdout={first.stdout!r} stderr={first.stderr!r} files={first.files!r}\n"
-                                f"{other.interpreter}: exit={other.exit_code} stdout={other.stdout!r} stderr={other.stderr!r} files={other.files!r}"
-                            )
+        if jobs == 1 or len(work) <= 1:
+            for config_path, case in work:
+                run_manifest_case_set(interpreters, config_path, case, root_tmp, parity=parity)
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
+                futures = [
+                    executor.submit(run_manifest_case_set, interpreters, config_path, case, root_tmp, parity=parity)
+                    for config_path, case in work
+                ]
+                for future in futures:
+                    future.result()
+
     names = ", ".join(interpreter.name for interpreter in interpreters)
     mode = "parity" if parity and len(interpreters) > 1 else "run"
-    print(f"{mode}: {total} cases passed for {names}")
+    print(f"{mode}: {len(work)} cases passed for {names}")
     return 0
 
 
@@ -392,12 +421,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest-glob", action="append", default=[], help="repository-relative glob for shared example TOML manifests; may be repeated")
     parser.add_argument("--contract", type=Path, required=True, help="Read available implementation commands from tools/thuepp-contract.toml-style contract")
     parser.add_argument("--implementation", action="append", help="Implementation name to select from --contract; may be repeated")
+    parser.add_argument("--jobs", type=int, default=1, help="Run independent manifest cases concurrently; default: 1")
     parser.add_argument("--parity", action="store_true", help="compare exit code, stdout, stderr, and writable file outputs across interpreters")
     args = parser.parse_args(argv)
+    if args.jobs < 1:
+        raise RuntimeError("--jobs must be >= 1")
     configs = collect_configs(args.configs, args.manifest_glob)
     with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
         interpreters = contract_interpreters(args.contract, Path(tmpdir), set(args.implementation) if args.implementation else None)
-        return run_configs(interpreters, configs, parity=args.parity)
+        return run_configs(interpreters, configs, parity=args.parity, jobs=args.jobs)
 
 
 if __name__ == "__main__":

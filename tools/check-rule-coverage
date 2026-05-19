@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import importlib.util
 import re
 import sys
@@ -147,18 +148,41 @@ def read_coverage(path: Path) -> Counter[str]:
     return counts
 
 
-def check_cases(program: Path, cases: list[CoverageCase]) -> int:
+def coverage_case_tmp(root: Path, config_path: Path, case: dict) -> Path:
+    path = root / re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{config_path}:{case.get('name','case')}")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def check_cases(program: Path, cases: list[CoverageCase], jobs: int = 1) -> int:
     rules, parse_error = enumerate_rules(program)
     if parse_error is not None and any(case.case.get("expect", {}).get("exit_code") == 0 for case in cases):
         raise RuntimeError(f"{rel(program)}: could not enumerate rules for successful manifest case: {parse_error}")
     rule_by_id = {rule.rule_id: rule for rule in rules}
     counts: Counter[str] = Counter()
+    jobs = max(1, jobs)
     with tempfile.TemporaryDirectory(prefix="thuepp-coverage-") as tmpdir:
         tmp = Path(tmpdir)
-        for coverage_case in cases:
-            if parse_error is None:
-                counts.update(run_case(coverage_case.config_path, coverage_case.case, tmp))
+        if parse_error is None:
+            if jobs == 1 or len(cases) <= 1:
+                for coverage_case in cases:
+                    case_tmp = coverage_case_tmp(tmp, coverage_case.config_path, coverage_case.case)
+                    counts.update(run_case(coverage_case.config_path, coverage_case.case, case_tmp))
             else:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
+                    futures = [
+                        executor.submit(
+                            run_case,
+                            coverage_case.config_path,
+                            coverage_case.case,
+                            coverage_case_tmp(tmp, coverage_case.config_path, coverage_case.case),
+                        )
+                        for coverage_case in cases
+                    ]
+                    for future in futures:
+                        counts.update(future.result())
+        else:
+            for coverage_case in cases:
                 run_manifest_case(PYTHON_IMPLEMENTATION, coverage_case.config_path, coverage_case.case, tmp)
     unknown = sorted(set(counts) - set(rule_by_id))
     if unknown:
@@ -213,19 +237,19 @@ def discover_targets(manifests: list[Path]) -> list[CoverageTarget]:
     return [CoverageTarget(program, tuple(cases)) for program, cases in sorted(targets.items())]
 
 
-def check(program: Path, configs: list[Path]) -> int:
+def check(program: Path, configs: list[Path], jobs: int = 1) -> int:
     cases: list[CoverageCase] = []
     for config_path in configs:
         data = load_toml(config_path)
         for case in expand_cases(data, config_path):
             cases.append(CoverageCase(config_path, case))
-    return check_cases(program, cases)
+    return check_cases(program, cases, jobs=jobs)
 
 
-def check_all(manifests: list[Path]) -> int:
+def check_all(manifests: list[Path], jobs: int = 1) -> int:
     failures = 0
     for target in discover_targets(manifests):
-        if check_cases(target.program, list(target.cases)) != 0:
+        if check_cases(target.program, list(target.cases), jobs=jobs) != 0:
             failures += 1
         print()
     return 1 if failures else 0
@@ -235,20 +259,23 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Check .tpp rule coverage for TOML example cases")
     parser.add_argument("--all", action="store_true", help="check every shared manifest under examples/**/tests/*.toml")
     parser.add_argument("--manifest-glob", action="append", default=[], help="repository-relative glob for shared example TOML manifests; may be repeated")
+    parser.add_argument("--jobs", type=int, default=1, help="Run independent coverage cases concurrently; default: 1")
     parser.add_argument("program", type=Path, nargs="?")
     parser.add_argument("configs", type=Path, nargs="*")
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error("--jobs must be >= 1")
     if args.all:
         if args.program or args.configs or args.manifest_glob:
             parser.error("--all does not accept explicit program/config or --manifest-glob arguments")
-        return check_all(collect_configs([], ["examples/**/tests/*.toml"]))
+        return check_all(collect_configs([], ["examples/**/tests/*.toml"]), jobs=args.jobs)
     if args.manifest_glob:
         if args.program or args.configs:
             parser.error("--manifest-glob mode does not accept explicit program/config arguments")
-        return check_all(collect_configs([], args.manifest_glob))
+        return check_all(collect_configs([], args.manifest_glob), jobs=args.jobs)
     if args.program is None or not args.configs:
         parser.error("program and at least one config are required unless --all or --manifest-glob is set")
-    return check(args.program, args.configs)
+    return check(args.program, args.configs, jobs=args.jobs)
 
 
 if __name__ == "__main__":

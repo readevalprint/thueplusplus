@@ -13,9 +13,10 @@ NONBOOL <- (?:VNUM%5B-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)%5D|VSTR%5B(?:[A-Za-
 
 ^\([^)]*$ ::= ERR[malformed_list]
 ^"(?<pre>[^"\\]*)\\"(?<post>[^"]*)"$ ::= @OUT[{{pre|pctenc}}%22{{post|pctenc}}]@@EXIT0@
-^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\")*"|<|NUM|>|true|false)$ ::= C[{{input}}]
+^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\\\"|\\")*"|<|NUM|>|true|false)$ ::= C[{{input}}]
 # Phase A: protect quoted strings before paren framing.
-^C\[(?<pre>[^"]*)"(?<str>(?:[^"\\]|\\")*)"(?<post>[\s\S]*)\]$ ::= C[{{pre}}VSTR%5BUNESC[{{str|pctenc}}]%5D{{post}}]
+^C\[(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)\]$ ::= C[{{pre}}VSTR%5BUNESC[{{str|pctenc}}]%5D{{post}}]
+UNESC\[(?<pre><|PCT|>)%5C%5C%22(?<post><|PCT|>)\] ::= UNESC[{{pre}}%22{{post}}]
 UNESC\[(?<s><|PCT|>)\] ::= {{s}}
 
 

@@ -87,6 +87,38 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
+name = "subtraction rejects boolean rhs as type error"
+input = "(- 1 true)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "multiplication rejects boolean rhs as type error"
+input = "(* 1 true)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "division rejects boolean rhs as type error"
+input = "(/ 1 true)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "comparison rejects boolean rhs as type error"
+input = "(< 1 true)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
 name = "head rejects non array"
 input = "(head 1)"
 [case.expect]

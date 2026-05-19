@@ -71,6 +71,14 @@ stderr = ""
 stdout_stripped = "[<closure>]"
 
 [[case]]
+name = "array can render stored closure after scalar"
+input = "(let ((f (lambda (x) x))) (array 1 f))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[1 <closure>]"
+
+[[case]]
 name = "lambda argument closure can be stored in array"
 input = "((lambda (x) (array x)) (lambda (y) y))"
 [case.expect]
@@ -101,3 +109,27 @@ input = "\"a\\\"b\""
 exit_code = 0
 stderr = ""
 stdout_stripped = "a\"b"
+
+[[case]]
+name = "nested escaped string in selected if branch is preserved"
+input = '(if true "a\"b" 0)'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = 'a"b'
+
+[[case]]
+name = "escaped string in unchosen if branch stays protected"
+input = '(if true 1 "a\"b")'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "array renders nested escaped string"
+input = '(array 1 "a\"b")'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '[1 "a"b"]'
