@@ -5,6 +5,15 @@ timeout = 10
 args = ["--max-evals", "60000"]
 
 [[case]]
+name = "top-level empty array renders as reader syntax"
+input = "(array)"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "(array)"
+stderr = ""
+
+[[case]]
 name = "empty array head errors"
 input = "(head (array))"
 
@@ -19,7 +28,7 @@ input = "(rest (array 7))"
 
 [case.expect]
 exit_code = 0
-stdout_stripped = "[]"
+stdout_stripped = "(array)"
 stderr = ""
 
 [[case]]
@@ -73,7 +82,7 @@ input = "(if true \"not (code) [x]\" (/ 1 0))"
 
 [case.expect]
 exit_code = 0
-stdout_stripped = "not (code) [x]"
+stdout_stripped = "\"not (code) [x]\""
 stderr = ""
 
 [[case]]

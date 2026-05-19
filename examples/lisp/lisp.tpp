@@ -3,6 +3,7 @@
 # Scope: a deliberately small, fail-loud Lisp core used as the gold-standard language example for Python/Go parity.
 
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
+PCTNQ <- (?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[0-13-9A-F]|%[3-9A-F][0-9A-F])*
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 # Macro references are not expanded inside macro bodies, so NODE/VAL keep a
 # non-canonical equivalent spelling while direct rule captures use <|NUM|>.
@@ -12,7 +13,6 @@ NONNUM <- (?:VBOOL%5B(?:true|false)%5D|VSTR%5B(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?%
 NONBOOL <- (?:VNUM%5B-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)%5D|VSTR%5B(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?%5D|VARR%5B(?:[^;\]]*;)*?%5D|VCLOS%5B[^\]]*%5D)
 
 ^\([^)]*$ ::= ERR[malformed_list]
-^"(?<pre>[^"\\]*)\\"(?<post>[^"]*)"$ ::= @OUT[{{pre|pctenc}}%22{{post|pctenc}}]@@EXIT0@
 ^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\\\"|\\")*"|<|NUM|>|true|false)$ ::= C[{{input}}]
 # Phase A: protect quoted strings before paren framing.
 ^C\[(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)\]$ ::= C[{{pre}}VSTR%5BUNESC[{{str|pctenc}}]%5D{{post}}]
@@ -57,6 +57,7 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 # Nullary env-aware array must run before generic name lookup so `(let (...) (array))`
 # constructs an empty array rather than looking up `array` as a variable.
 ^EENV\[array\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= RET[VARR%5B%5D|{{k}}]
+^E\[array\|(?<k>.*)\]$ ::= RET[VARR%5B%5D|{{k}}]
 ^EENV\[(?<name>[A-Za-z_][A-Za-z0-9_-]*)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= LOOK[{{name}}|{{env}}|{{k}}]
 ^EENV\[(?<node><|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{node}}|{{env}}|{{k}}]
 
@@ -123,10 +124,10 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^RET\[(?<bad><|NONBOOL|>)\|KENOR\[(?<rhs>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ERR[type_error]
 ^EENV\[array (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= PACKARRENV[{{items}}|{{env}}|{{k}}|]
 ^PACKARRENV\[\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;\]]*;)*)\]$ ::= RET[VARR%5B{{acc}}%5D|{{k}}]
-^PACKARRENV\[(?<item>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;\]]*;)*)\]$ ::= ARGENV[{{item}}|{{env}}|KENARR[{{rest}}|{{env}}|{{acc}}] {{k}}]
+^PACKARRENV\[(?<item>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>|L%5B<|PCT|>%5D)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;\]]*;)*)\]$ ::= ARGENV[{{item}}|{{env}}|KENARR[{{rest}}|{{env}}|{{acc}}] {{k}}]
 ^RET\[(?<v><|VAL|>)\|KENARR\[(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[^;\]]*;)*)\] (?<k>.*)\]$ ::= PACKARRENV[{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};]
-^EENV\[head (?<arr>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{arr}}|{{env}}|KHEAD {{k}}]
-^EENV\[rest (?<arr>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{arr}}|{{env}}|KREST {{k}}]
+^EENV\[head (?<arr>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>|L%5B<|PCT|>%5D)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{arr}}|{{env}}|KHEAD {{k}}]
+^EENV\[rest (?<arr>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>|L%5B<|PCT|>%5D)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{arr}}|{{env}}|KREST {{k}}]
 ^EENV\[let L%5B(?<bindings><|PCT|>)%5D (?<body>L%5B<|PCT|>%5D)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= LETBINDRAW[{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}]
 ^EENV\[let L%5B(?<bindings><|PCT|>)%5D (?<body>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= LETBINDRAW[{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}]
 # Generic call: eval callee, eval args, then APPLY.
@@ -139,10 +140,10 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^RET\[(?<fn><|VAL|>)\|KENVCALL2\[(?<args>[^\^]*)\^(?<env>[^\]]*)\] (?<k>.*)\]$ ::= EVALARGSENV[{{args}}|{{env}}||{{k}}|{{fn}}]
 ^RET\[(?<fn><|VAL|>)\|KENVCALL\[(?<args>[^\]|]*)\|(?<env>[^|\]]*)\] (?<k>.*)\]$ ::= EVALARGSENV[{{args}}|{{env}}||{{k}}|{{fn}}]
 ^EVALARGS\[\|(?<acc>(?:[^;\]]*;)*)\|(?<k>.*)\|(?<fn><|VAL|>)\]$ ::= APPLY[{{fn}}|{{acc}}|{{k}}]
-^EVALARGS\[(?<arg><|NODE|>)(?: (?<rest>.*))?\|(?<acc>(?:[^;\]]*;)*)\|(?<k>.*)\|(?<fn><|VAL|>)\]$ ::= ARG[{{arg}}|KARG[{{rest}}|{{acc}}|{{fn}}] {{k}}]
+^EVALARGS\[(?<arg><|NODE|>|L%5B<|PCT|>%5D)(?: (?<rest>.*))?\|(?<acc>(?:[^;\]]*;)*)\|(?<k>.*)\|(?<fn><|VAL|>)\]$ ::= ARGENV[{{arg}}||KARG[{{rest}}|{{acc}}|{{fn}}] {{k}}]
 ^RET\[(?<v><|VAL|>)\|KARG\[(?<rest>[^|]*)\|(?<acc>(?:[^;\]]*;)*)\|(?<fn><|VAL|>)\] (?<k>.*)\]$ ::= EVALARGS[{{rest}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}]
 ^EVALARGSENV\[\|(?<env>[^|]*)\|(?<acc>(?:[^;\]]*;)*)\|(?<k>.*)\|(?<fn><|VAL|>)\]$ ::= APPLY[{{fn}}|{{acc}}|{{k}}]
-^EVALARGSENV\[(?<arg>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)(?: (?<rest>.*))?\|(?<env>[^|]*)\|(?<acc>(?:[^;\]]*;)*)\|(?<k>.*)\|(?<fn><|VAL|>)\]$ ::= ARGENV[{{arg}}|{{env}}|KARGENV[{{rest}}|{{env}}|{{acc}}|{{fn}}] {{k}}]
+^EVALARGSENV\[(?<arg>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>|L%5B<|PCT|>%5D)(?: (?<rest>.*))?\|(?<env>[^|]*)\|(?<acc>(?:[^;\]]*;)*)\|(?<k>.*)\|(?<fn><|VAL|>)\]$ ::= ARGENV[{{arg}}|{{env}}|KARGENV[{{rest}}|{{env}}|{{acc}}|{{fn}}] {{k}}]
 ^RET\[(?<v><|VAL|>)\|KARGENV\[(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[^;\]]*;)*)\|(?<fn><|VAL|>)\] (?<k>.*)\]$ ::= EVALARGSENV[{{rest}}|{{env}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}]
 
 # Apply VCLOS by binding params to arg values and evaluating body under captured env extension.
@@ -261,53 +262,38 @@ GE\[(?<a><|NUM|>),(?<b><|NUM|>)\] ::! ge a b
 ^RET\[(?<bad><|NONNUM|>)\|KREST (?<k>.*)\]$ ::= ERR[type_error]
 ^RET\[VNUM%5B(?<n><|NUM|>)%5D\|KREST (?<k>.*)\]$ ::= ERR[type_error]
 
-# Render final values.
+# Render final values. Public render output is recursive Lisp syntax for values that
+# have reader syntax, so arrays round-trip as `(array ...)` instead of a separate
+# display-only bracket form.
 
-^RET\[VARR%5B(?<items>(?:[^;\]]*;)*)%5D\|KDONE\]$ ::= RARR[{{items}}|]
-^RARR\[\|(?<out><|PCT|>)\]$ ::= @OUT[%5B{{out}}%5D]@@EXIT0@
-^RARR\[(?<v>[^;]*);(?<rest>.*)\|\]$ ::= RVFIRST[{{v|pctdec}}|{{rest}}]
-^RVFIRST\[VNUM%5B(?<n><|NUM|>)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|{{n|pctenc}}]
-^RVFIRST\[VBOOL%5B(?<b>true|false)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|{{b|pctenc}}]
-^RVFIRST\[VSTR%5B(?<s><|PCT|>)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|%22{{s}}%22]
-^RVFIRST\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|%3Cclosure%3E]
-^RVFIRST\[VARR%5B(?<items>(?:[^;\]]*;)*)%5D\|(?<rest>.*)\]$ ::= RNARR[{{items}}||RFIRST[{{rest}}]]
-^RARR\[(?<v>[^;]*);(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RVNEXT[{{v|pctdec}}|{{rest}}|{{out}}]
-^RVNEXT\[VNUM%5B(?<n><|NUM|>)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20{{n|pctenc}}]
-^RVNEXT\[VBOOL%5B(?<b>true|false)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20{{b|pctenc}}]
-^RVNEXT\[VSTR%5B(?<s><|PCT|>)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20%22{{s}}%22]
-^RVNEXT\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20%3Cclosure%3E]
-^RVNEXT\[VARR%5B(?<items>(?:[^;\]]*;)*)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|]
-^RNARR\[\|(?<nested><|PCT|>)\|RFIRST\[(?<rest>.*)\]\]$ ::= RARR[{{rest}}|%5B{{nested}}%5D]
-^RNARR\[(?<v>[^;]*);(?<items>.*)\|\|RFIRST\[(?<rest>.*)\]\]$ ::= RNVFIRST[{{v|pctdec}}|{{items}}|RFIRST[{{rest}}]]
-^RNVFIRST\[VNUM%5B(?<n><|NUM|>)%5D\|(?<items>.*)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|{{n|pctenc}}|RFIRST[{{rest}}]]
-^RNVFIRST\[VBOOL%5B(?<b>true|false)%5D\|(?<items>.*)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|{{b|pctenc}}|RFIRST[{{rest}}]]
-^RNVFIRST\[VSTR%5B(?<s><|PCT|>)%5D\|(?<items>.*)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|%22{{s}}%22|RFIRST[{{rest}}]]
-^RNVFIRST\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<items>.*)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|%3Cclosure%3E|RFIRST[{{rest}}]]
-^RNARR\[(?<v>[^;]*);(?<items>.*)\|(?<nested><|PCT|>)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNVNEXT[{{v|pctdec}}|{{items}}|{{nested}}|RFIRST[{{rest}}]]
-^RNVNEXT\[VNUM%5B(?<n><|NUM|>)%5D\|(?<items>.*)\|(?<nested><|PCT|>)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|{{nested}}%20{{n|pctenc}}|RFIRST[{{rest}}]]
-^RNVNEXT\[VBOOL%5B(?<b>true|false)%5D\|(?<items>.*)\|(?<nested><|PCT|>)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|{{nested}}%20{{b|pctenc}}|RFIRST[{{rest}}]]
-^RNVNEXT\[VSTR%5B(?<s><|PCT|>)%5D\|(?<items>.*)\|(?<nested><|PCT|>)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|{{nested}}%20%22{{s}}%22|RFIRST[{{rest}}]]
-^RNVNEXT\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<items>.*)\|(?<nested><|PCT|>)\|RFIRST\[(?<rest>.*)\]\]$ ::= RNARR[{{items}}|{{nested}}%20%3Cclosure%3E|RFIRST[{{rest}}]]
-^RNARRNEXT\[\|(?<rest>.*)\|(?<out><|PCT|>)\|(?<nested><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20%5B{{nested}}%5D]
-^RNARRNEXT\[(?<v>[^;]*);(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\|\]$ ::= RNVFIRSTNEXT[{{v|pctdec}}|{{items}}|{{rest}}|{{out}}]
-^RNVFIRSTNEXT\[VNUM%5B(?<n><|NUM|>)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|{{n|pctenc}}]
-^RNVFIRSTNEXT\[VBOOL%5B(?<b>true|false)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|{{b|pctenc}}]
-^RNVFIRSTNEXT\[VSTR%5B(?<s><|PCT|>)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|%22{{s}}%22]
-^RNVFIRSTNEXT\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|%3Cclosure%3E]
-^RNARRNEXT\[(?<v>[^;]*);(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\|(?<nested><|PCT|>)\]$ ::= RNVNEXTNEXT[{{v|pctdec}}|{{items}}|{{rest}}|{{out}}|{{nested}}]
-^RNVNEXTNEXT\[VNUM%5B(?<n><|NUM|>)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\|(?<nested><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|{{nested}}%20{{n|pctenc}}]
-^RNVNEXTNEXT\[VBOOL%5B(?<b>true|false)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\|(?<nested><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|{{nested}}%20{{b|pctenc}}]
-^RNVNEXTNEXT\[VSTR%5B(?<s><|PCT|>)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\|(?<nested><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|{{nested}}%20%22{{s}}%22]
-^RNVNEXTNEXT\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<items>.*)\|(?<rest>.*)\|(?<out><|PCT|>)\|(?<nested><|PCT|>)\]$ ::= RNARRNEXT[{{items}}|{{rest}}|{{out}}|{{nested}}%20%3Cclosure%3E]
+^RET\[VNUM%5B(?<n><|NUM|>)%5D\|KDONE\]$ ::= RENDER[VNUM%5B{{n}}%5D|KOUT]
+^RET\[VBOOL%5B(?<b>true|false)%5D\|KDONE\]$ ::= RENDER[VBOOL%5B{{b}}%5D|KOUT]
+^RET\[VSTR%5B(?<s><|PCT|>)%5D\|KDONE\]$ ::= RENDER[VSTR%5B{{s}}%5D|KOUT]
+^RET\[VCLOS%5B(?<c>[^\]]*)%5D\|KDONE\]$ ::= RENDER[VCLOS%5B{{c}}%5D|KOUT]
+^RET\[VARR%5B(?<items>(?:[^;\]]*;)*)%5D\|KDONE\]$ ::= RENDER[VARR%5B{{items}}%5D|KOUT]
+
+^RENDER\[VNUM%5B(?<n><|NUM|>)%5D\|(?<k>.*)\]$ ::= RRET[{{n|pctenc}}|{{k}}]
+^RENDER\[VBOOL%5B(?<b>true|false)%5D\|(?<k>.*)\]$ ::= RRET[{{b|pctenc}}|{{k}}]
+^RENDER\[VSTR%5B(?<s><|PCT|>)%5D\|(?<k>.*)\]$ ::= RSTR[{{s}}||{{k}}]
+^RENDER\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<k>.*)\]$ ::= RRET[%3Cclosure%3E|{{k}}]
+^RENDER\[VARR%5B(?<items>(?:[^;\]]*;)*)%5D\|(?<k>.*)\]$ ::= RLIST[{{items}}||KARRDONE[{{k}}]]
+
+^RSTR\[(?<pre><|PCTNQ|>)%22(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5C%22|{{k}}]
+^RSTR\[(?<tail><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RRET[%22{{acc}}{{tail}}%22|{{k}}]
+
+^RLIST\[\|\|KARRDONE\[(?<k>.*)\]\]$ ::= RRET[%28array%29|{{k}}]
+^RLIST\[\|(?<acc><|PCT|>)\|KARRDONE\[(?<k>.*)\]\]$ ::= RRET[%28array%20{{acc}}%29|{{k}}]
+^RLIST\[(?<v>[^;]*);(?<rest>[^|]*)\|\|(?<k>.*)\]$ ::= RENDER[{{v|pctdec}}|KARRFIRST[{{rest}}|{{k}}]]
+^RLIST\[(?<v>[^;]*);(?<rest>[^|]*)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RENDER[{{v|pctdec}}|KARRNEXT[{{rest}}|{{acc}}|{{k}}]]
+^RRET\[(?<frag><|PCT|>)\|KARRFIRST\[(?<rest>[^|]*)\|(?<k>.*)\]\]$ ::= RLIST[{{rest}}|{{frag}}|{{k}}]
+^RRET\[(?<frag><|PCT|>)\|KARRNEXT\[(?<rest>[^|]*)\|(?<acc><|PCT|>)\|(?<k>.*)\]\]$ ::= RLIST[{{rest}}|{{acc}}%20{{frag}}|{{k}}]
+
+^RRET\[(?<frag><|PCT|>)\|KOUT\]$ ::= @OUT[{{frag}}]@@EXIT0@
+^@OUT\[(?<v><|PCT|>)\]@@EXIT0@$ ::> stdout {{v|pctdec}}\n
 ^ERR\[(?<e>[A-Za-z0-9_]+)\]$ ::= @ERR[{{e}}]@@EXIT2@
 ^@ERR\[(?<v>[A-Za-z0-9_]+)\]@ ::> stderr {{v}}
 ^@EXIT2@$ ::- 2
 
-^RET\[VNUM%5B(?<n><|NUM|>)%5D\|KDONE\]$ ::= @OUT[{{n|pctenc}}]@@EXIT0@
-^RET\[VBOOL%5B(?<b>true|false)%5D\|KDONE\]$ ::= @OUT[{{b|pctenc}}]@@EXIT0@
-^RET\[VSTR%5B(?<s><|PCT|>)%5D\|KDONE\]$ ::= @OUT[{{s}}]@@EXIT0@
-^RET\[VCLOS%5B(?<c>[^\]]*)%5D\|KDONE\]$ ::= @OUT[%3Cclosure%3E]@@EXIT0@
-^@OUT\[(?<v><|PCT|>)\]@@EXIT0@$ ::> stdout {{v|pctdec}}\n
 # Final fail-loud fallback for raw or stuck evaluator states. Keep this last so
 # all supported reductions and explicit ERR/OUT exits get the first chance.
 ^\{(?<bad>[^\n]*)$ ::= ERR[malformed_list]
