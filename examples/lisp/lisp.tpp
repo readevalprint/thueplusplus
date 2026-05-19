@@ -57,7 +57,6 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^E\[lambda L%5B(?<params><|PCT|>)%5D (?<body><|NODE|>|[A-Za-z_][A-Za-z0-9_-]*)\|(?<k>.*)\]$ ::= RET[VCLOS%5B{{params}}^{{body|pctenc}}^%5D|{{k}}]
 ^EENV\[lambda L%5B(?<params><|PCT|>)%5D (?<body><|NODE|>|[A-Za-z_][A-Za-z0-9_-]*)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= RET[VCLOS%5B{{params}}^{{body|pctenc}}^{{env}}%5D|{{k}}]
 ^E\[lambda(?: (?<args>.*))?\|(?<k>.*)\]$ ::= ERR[wrong_arity]
-^EENV\[lambda(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
 
 # Env-aware demand/eval. L[...] before generic node to preserve env.
 ^ARGENV\[L%5B(?<payload><|PCT|>)%5D\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= EENV[{{payload|pctdec}}|{{env}}|{{k}}]
@@ -116,7 +115,6 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^RET\[VNUM%5B(?<a><|NUM|>)%5D\|KENGE1\[(?<b>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ARGENV[{{b}}|{{env}}|KENGE2[{{a}}] {{k}}]
 ^RET\[VNUM%5B(?<b><|NUM|>)%5D\|KENGE2\[(?<a><|NUM|>)\] (?<k>.*)\]$ ::= RET[VBOOL%5BGE[{{a}},{{b}}]%5D|{{k}}]
 ^EENV\[if (?<cond>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>) (?<then>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>) (?<els>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{cond}}|{{env}}|KENIF[{{then}}|{{els}}|{{env}}] {{k}}]
-^EENV\[if(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
 ^RET\[VBOOL%5Btrue%5D\|KENIF\[(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ARGENV[{{then}}|{{env}}|{{k}}]
 ^RET\[VBOOL%5Bfalse%5D\|KENIF\[(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ARGENV[{{els}}|{{env}}|{{k}}]
 ^RET\[(?<bad><|NONBOOL|>)\|KENIF\[(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ERR[type_error]
@@ -127,7 +125,6 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^RET\[VBOOL%5Bfalse%5D\|KENAND\[(?<rhs>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= RET[VBOOL%5Bfalse%5D|{{k}}]
 ^RET\[VBOOL%5Btrue%5D\|KENAND\[(?<rhs>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ARGENV[{{rhs}}|{{env}}|{{k}}]
 ^RET\[(?<bad><|NONBOOL|>)\|KENAND\[(?<rhs>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ERR[type_error]
-^EENV\[and(?: [A-Za-z_][A-Za-z0-9_-]*| <|NODE|>)?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
 ^EENV\[or (?<a>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>) (?<b>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>) (?<rest>.*)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= EENV[or L%5Bor%20{{a|pctenc}}%20{{b|pctenc}}%5D {{rest}}|{{env}}|{{k}}]
 ^EENV\[or true (?<rhs>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= RET[VBOOL%5Btrue%5D|{{k}}]
 ^EENV\[or false (?<rhs>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{rhs}}|{{env}}|{{k}}]
@@ -135,7 +132,6 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^RET\[VBOOL%5Btrue%5D\|KENOR\[(?<rhs>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= RET[VBOOL%5Btrue%5D|{{k}}]
 ^RET\[VBOOL%5Bfalse%5D\|KENOR\[(?<rhs>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ARGENV[{{rhs}}|{{env}}|{{k}}]
 ^RET\[(?<bad><|NONBOOL|>)\|KENOR\[(?<rhs>[^|]*)\|(?<env>[^|]*)\] (?<k>.*)\]$ ::= ERR[type_error]
-^EENV\[or(?: [A-Za-z_][A-Za-z0-9_-]*| <|NODE|>)?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
 ^EENV\[array (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= PACKARRENV[{{items}}|{{env}}|{{k}}|]
 ^PACKARRENV\[\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;\]]*;)*)\]$ ::= RET[VARR%5B{{acc}}%5D|{{k}}]
 ^PACKARRENV\[(?<item>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>|L%5B<|PCT|>%5D)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;\]]*;)*)\]$ ::= ARGENV[{{item}}|{{env}}|KENARR[{{rest}}|{{env}}|{{acc}}] {{k}}]
@@ -144,6 +140,10 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^EENV\[rest (?<arr>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>|L%5B<|PCT|>%5D)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{arr}}|{{env}}|KREST {{k}}]
 ^EENV\[let L%5B(?<bindings><|PCT|>)%5D (?<body>L%5B<|PCT|>%5D)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= LETBINDRAW[{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}]
 ^EENV\[let L%5B(?<bindings><|PCT|>)%5D (?<body>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= LETBINDRAW[{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}]
+^EENV\[lambda(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
+^EENV\[if(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
+^EENV\[and(?: (?<arg>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
+^EENV\[or(?: (?<arg>[A-Za-z_][A-Za-z0-9_-]*|<|NODE|>))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
 ^EENV\[let(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
 # Generic call: eval callee, eval args, then APPLY.
 ^EENV\[(?:define|letrec)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[unsupported_form]
