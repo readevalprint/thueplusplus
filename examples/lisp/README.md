@@ -59,10 +59,23 @@ Unsupported syntax exits non-zero with a named stderr error. Current deliberate 
 - `quote` and code-as-data forms: expected error class `unsupported_form` until a focused quote/list card changes the contract;
 - `define` and mutation-style top-level binding: unsupported, with error class `unsupported_form`;
 - `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided, with error class `unsupported_form`;
+- list/code-as-data constructors such as `list`, `map`, `quasiquote`, and `unquote`: unsupported until the quote/list tech-tree path defines representation and printer rules;
 - unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
 
 Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
+
+## Quote/list code-as-data boundary
+
+Decision for the hard-cutoff cleanup slice: quote/list code-as-data is too early and remains explicitly unsupported.
+
+Rationale:
+
+- Arrays are the current first-class aggregate value. A separate Lisp list/code-as-data value needs its own representation, equality, rendering, and interaction with functions before implementation.
+- `quote` should not be half-implemented as a display shortcut; it must preserve syntax as data and round-trip through the public renderer when it is eventually accepted.
+- `quasiquote`/`unquote` depend on a settled quote/list representation and remain downstream work rather than an implicit part of the current core.
+
+The future implementation path is #107 for lists/quote, with #111 for quasiquote/unquote after its dependencies. Until that path is promoted and specified, `quote`, `list`, `map`, `quasiquote`, and `unquote` are reserved non-goals that fail with `unsupported_form`.
 
 ## Error symbols
 
