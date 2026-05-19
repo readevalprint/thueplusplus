@@ -10,7 +10,7 @@ Atoms:
 
 - numbers matching the repository numeric literal contract: integers, decimals, and non-zero-denominator fractions;
 - booleans: `true`, `false`;
-- strings delimited by double quotes, with the currently supported quote escape described below;
+- strings delimited by double quotes, with the supported escape set described below;
 - names bound by `let` or lambda parameters.
 
 Compound forms:
@@ -36,7 +36,7 @@ Successful top-level output renders public values as reader syntax where the val
 
 - numbers as normalized numeric text;
 - booleans as `true` or `false`;
-- strings as quoted string syntax, preserving supported embedded quote escapes;
+- strings as quoted string syntax, preserving supported normal escapes;
 - arrays recursively as `(array ...)`, for example `(array 1 (array 2 3))`;
 - closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core.
 
@@ -59,14 +59,26 @@ Unsupported syntax exits non-zero with a named stderr error. Current deliberate 
 - `quote` and code-as-data forms: expected error class `unsupported_form` until a focused quote/list card changes the contract;
 - `define` and mutation-style top-level binding: unsupported; current behavior may surface as `unbound_name` until normalized by the error-taxonomy card;
 - `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided;
-- string escape forms beyond the currently implemented quote escape: unsupported until the string contract card decides them;
+- unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
 
 Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
 
 ## String escape contract
 
-The current evaluator protects quoted strings and supports escaped double quotes. Other escape sequences are not part of this card's contract and are handled by the dedicated string escape child task.
+The evaluator protects quoted strings before list framing. The supported normal escapes inside string literals are:
+
+- `\"` for an embedded double quote;
+- `\\` for an embedded backslash;
+- `\n` for newline;
+- `\t` for tab;
+- `\r` for carriage return;
+- `\b` for backspace;
+- `\f` for form feed.
+
+Rendered strings use the same reader syntax. Escape-backed values round trip through top-level output, lazy branches, and arrays.
+
+Other backslash escapes are intentionally unsupported. They fail loudly with `invalid_string_escape` rather than silently becoming host-language escapes or leaking internal state.
 
 ## Verification
 
