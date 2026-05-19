@@ -245,3 +245,93 @@ input = "(array (array (array (array 1))))"
 exit_code = 0
 stderr = ""
 stdout_stripped = "(array (array (array (array 1))))"
+
+
+[[case]]
+name = "escaped backslash string renders round-trippable"
+input = '"a\b"'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\b"'
+
+[[case]]
+name = "escaped backslash in selected lazy branch renders round-trippable"
+input = '(if true "a\b" 0)'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\b"'
+
+[[case]]
+name = "escaped backslash inside array renders round-trippable"
+input = '(array "a\b")'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '(array "a\b")'
+
+[[case]]
+name = "newline escape string renders round-trippable"
+input = '"a\nb"'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\nb"'
+
+[[case]]
+name = "tab escape string renders round-trippable"
+input = '"a\tb"'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\tb"'
+
+[[case]]
+name = "carriage return escape string renders round-trippable"
+input = '"a\rb"'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\rb"'
+
+[[case]]
+name = "backspace escape string renders round-trippable"
+input = '"a\bb"'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\bb"'
+
+[[case]]
+name = "form feed escape string renders round-trippable"
+input = '"a\fb"'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\fb"'
+
+[[case]]
+name = "newline escape inside array renders round-trippable"
+input = '(array "a\nb")'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '(array "a\nb")'
+
+[[case]]
+name = "punctuation string escape is rejected by explicit string contract"
+input = '"a\@b"'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "invalid_string_escape"
+
+
+[[case]]
+name = "escaped backslash before ordinary character renders round-trippable"
+input = '"a\\xb"'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"a\\xb"'

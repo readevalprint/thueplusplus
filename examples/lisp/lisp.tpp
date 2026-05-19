@@ -3,7 +3,7 @@
 # Scope: a deliberately small, fail-loud Lisp core used as the gold-standard language example for Python/Go parity.
 
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
-PCTNQ <- (?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[0-13-9A-F]|%[3-9A-F][0-9A-F])*
+PCTSTR <- (?:[A-Za-z0-9_.-]|%0[0-79BCEF]|%1[0-9A-F]|%2[0-13-9A-F]|%[3-4][0-9A-F]|%5[0-9A-BD-F]|%[6-9A-F][0-9A-F])*
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 # Macro references are not expanded inside macro bodies, so NODE/VAL keep a
 # non-canonical equivalent spelling while direct rule captures use <|NUM|>.
@@ -13,10 +13,18 @@ NONNUM <- (?:VBOOL%5B(?:true|false)%5D|VSTR%5B(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?%
 NONBOOL <- (?:VNUM%5B-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)%5D|VSTR%5B(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?%5D|VARR%5B(?:[^;\]]*;)*?%5D|VCLOS%5B[^\]]*%5D)
 
 ^\([^)]*$ ::= ERR[malformed_list]
-^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\\\"|\\")*"|<|NUM|>|true|false)$ ::= C[{{input}}]
+^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|<|NUM|>|true|false)$ ::= C[{{input}}]
 # Phase A: protect quoted strings before paren framing.
+^C\[(?<pre>[\s\S]*)\\@(?<post>[\s\S]*)\]$ ::= ERR[invalid_string_escape]
 ^C\[(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)\]$ ::= C[{{pre}}VSTR%5BUNESC[{{str|pctenc}}]%5D{{post}}]
-UNESC\[(?<pre><|PCT|>)%5C%5C%22(?<post><|PCT|>)\] ::= UNESC[{{pre}}%22{{post}}]
+^C\[(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)\]$ ::= C[{{pre}}VSTR%5BUNESC[{{str|pctenc}}]%5D{{post}}]
+UNESC\[(?<pre><|PCT|>)%5C%5C(?<post><|PCT|>)\] ::= UNESC[{{pre}}%5C{{post}}]
+UNESC\[(?<pre><|PCT|>)%5C%22(?<post><|PCT|>)\] ::= UNESC[{{pre}}%22{{post}}]
+UNESC\[(?<pre><|PCT|>)%5Cn(?<post><|PCT|>)\] ::= UNESC[{{pre}}%0A{{post}}]
+UNESC\[(?<pre><|PCT|>)%5Ct(?<post><|PCT|>)\] ::= UNESC[{{pre}}%09{{post}}]
+UNESC\[(?<pre><|PCT|>)%5Cr(?<post><|PCT|>)\] ::= UNESC[{{pre}}%0D{{post}}]
+UNESC\[(?<pre><|PCT|>)%5Cb(?<post><|PCT|>)\] ::= UNESC[{{pre}}%08{{post}}]
+UNESC\[(?<pre><|PCT|>)%5Cf(?<post><|PCT|>)\] ::= UNESC[{{pre}}%0C{{post}}]
 UNESC\[(?<s><|PCT|>)\] ::= {{s}}
 
 
@@ -278,7 +286,13 @@ GE\[(?<a><|NUM|>),(?<b><|NUM|>)\] ::! ge a b
 ^RENDER\[VCLOS%5B(?<c>[^\]]*)%5D\|(?<k>.*)\]$ ::= RRET[%3Cclosure%3E|{{k}}]
 ^RENDER\[VARR%5B(?<items>(?:[^;\]]*;)*)%5D\|(?<k>.*)\]$ ::= RLIST[{{items}}||KARRDONE[{{k}}]]
 
-^RSTR\[(?<pre><|PCTNQ|>)%22(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5C%22|{{k}}]
+^RSTR\[(?<pre><|PCTSTR|>)%5C(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5C%5C|{{k}}]
+^RSTR\[(?<pre><|PCTSTR|>)%22(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5C%22|{{k}}]
+^RSTR\[(?<pre><|PCTSTR|>)%0A(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5Cn|{{k}}]
+^RSTR\[(?<pre><|PCTSTR|>)%09(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5Ct|{{k}}]
+^RSTR\[(?<pre><|PCTSTR|>)%0D(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5Cr|{{k}}]
+^RSTR\[(?<pre><|PCTSTR|>)%08(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5Cb|{{k}}]
+^RSTR\[(?<pre><|PCTSTR|>)%0C(?<post><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RSTR[{{post}}|{{acc}}{{pre}}%5Cf|{{k}}]
 ^RSTR\[(?<tail><|PCT|>)\|(?<acc><|PCT|>)\|(?<k>.*)\]$ ::= RRET[%22{{acc}}{{tail}}%22|{{k}}]
 
 ^RLIST\[\|\|KARRDONE\[(?<k>.*)\]\]$ ::= RRET[%28array%29|{{k}}]
