@@ -21,7 +21,7 @@ input = "\"hello world\""
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "hello world"
+stdout_stripped = "\"hello world\""
 
 [[case]]
 name = "literal bool"
@@ -84,7 +84,7 @@ input = "(array 1 \"hi there\" false)"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[1 \"hi there\" false]"
+stdout_stripped = "(array 1 \"hi there\" false)"
 
 [[case]]
 name = "head array"
@@ -102,7 +102,7 @@ input = "(rest (array 8 \"x\" false))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[\"x\" false]"
+stdout_stripped = "(array \"x\" false)"
 
 [[case]]
 name = "lambda nary"
@@ -138,5 +138,5 @@ input = "(let ((xs (array 1 \"hi there\" 2))) (rest xs))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[\"hi there\" 2]"
+stdout_stripped = "(array \"hi there\" 2)"
 

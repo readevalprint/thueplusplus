@@ -49,4 +49,4 @@ input = "\"hello world\""
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "hello world"
+stdout_stripped = "\"hello world\""

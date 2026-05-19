@@ -32,15 +32,15 @@ The evaluator uses internal typed values while reducing:
 - arrays;
 - closures.
 
-Successful top-level output renders only public values:
+Successful top-level output renders public values as reader syntax where the value has reader syntax:
 
 - numbers as normalized numeric text;
 - booleans as `true` or `false`;
-- strings without surrounding quotes;
-- arrays as bracketed values such as `[1 2]`;
-- closures as `<closure>`.
+- strings as quoted string syntax, preserving supported embedded quote escapes;
+- arrays recursively as `(array ...)`, for example `(array 1 (array 2 3))`;
+- closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core.
 
-Internal evaluator markers are not part of the public contract and must not leak as successful output.
+Reader-backed outputs are intended to round trip: feeding a rendered number, boolean, string, or array back into the evaluator should recreate the same public value. Closure output is the explicit non-round-trippable exception until a dedicated closure serialization design exists.
 
 ## Evaluation model
 

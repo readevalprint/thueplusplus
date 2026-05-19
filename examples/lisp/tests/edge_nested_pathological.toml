@@ -11,4 +11,4 @@ input = "(let ((base 10)) (let ((mk (lambda (x) (lambda (y) (array base x y (arr
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[10 2 3 [12 5]]"
+stdout_stripped = "(array 10 2 3 (array 12 5))"

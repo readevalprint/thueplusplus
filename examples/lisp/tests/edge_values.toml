@@ -52,7 +52,7 @@ input = "(array 1 (array 2 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[1 [2 3]]"
+stdout_stripped = "(array 1 (array 2 3))"
 
 [[case]]
 name = "rest preserves nested array element"
@@ -60,7 +60,7 @@ input = "(rest (array 0 (array 1 2) 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[[1 2] 3]"
+stdout_stripped = "(array (array 1 2) 3)"
 
 [[case]]
 name = "array can render stored closure"
@@ -68,7 +68,7 @@ input = "(let ((f (lambda (x) x))) (array f))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[<closure>]"
+stdout_stripped = "(array <closure>)"
 
 [[case]]
 name = "array can render stored closure after scalar"
@@ -76,7 +76,7 @@ input = "(let ((f (lambda (x) x))) (array 1 f))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[1 <closure>]"
+stdout_stripped = "(array 1 <closure>)"
 
 [[case]]
 name = "lambda argument closure can be stored in array"
@@ -84,7 +84,7 @@ input = "((lambda (x) (array x)) (lambda (y) y))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "[<closure>]"
+stdout_stripped = "(array <closure>)"
 
 [[case]]
 name = "higher order closure stored in let can be applied later"
@@ -108,7 +108,7 @@ input = "\"a\\\"b\""
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "a\"b"
+stdout_stripped = '"a\"b"'
 
 [[case]]
 name = "nested escaped string in selected if branch is preserved"
@@ -116,7 +116,7 @@ input = '(if true "a\"b" 0)'
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = 'a"b'
+stdout_stripped = '"a\"b"'
 
 [[case]]
 name = "escaped string in unchosen if branch stays protected"
@@ -132,4 +132,116 @@ input = '(array 1 "a\"b")'
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '[1 "a"b"]'
+stdout_stripped = '(array 1 "a\"b")'
+
+[[case]]
+name = "lambda argument preserves computed array"
+input = "((lambda (x) x) (array 1 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array 1 2)"
+
+[[case]]
+name = "array supports deeply nested computed arrays"
+input = "(array (array (array 1)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array 1)))"
+
+[[case]]
+name = "nested array can contain computed array after scalar"
+input = "(array (array 0 (array 1)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array 0 (array 1)))"
+
+[[case]]
+name = "nonfirst nested array can start with computed array"
+input = "(array 0 (array (array 1)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array 0 (array (array 1)))"
+
+[[case]]
+name = "nonfirst nested array can contain computed array after scalar"
+input = "(array 0 (array 1 (array 2)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array 0 (array 1 (array 2)))"
+
+[[case]]
+name = "deep nested array can render boolean first"
+input = "(array (array (array true)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array true)))"
+
+[[case]]
+name = "deep nested array can render string first"
+input = '(array (array (array "x")))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array \"x\")))"
+
+[[case]]
+name = "deep nested array can render closure first"
+input = "(array (array (array (lambda (x) x))))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array <closure>)))"
+
+[[case]]
+name = "deep nested array can render numeric second"
+input = "(array (array (array 0 1)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array 0 1)))"
+
+[[case]]
+name = "deep nested array can render boolean second"
+input = "(array (array (array 0 true)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array 0 true)))"
+
+[[case]]
+name = "deep nested array can render string second"
+input = '(array (array (array 0 "x")))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array 0 \"x\")))"
+
+[[case]]
+name = "deep nested array can render closure second"
+input = "(array (array (array 0 (lambda (x) x))))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array 0 <closure>)))"
+
+[[case]]
+name = "deep nested array can render computed array second"
+input = "(array (array (array 0 (array 1))))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array 0 (array 1))))"
+
+[[case]]
+name = "deeper nested array can render computed array first"
+input = "(array (array (array (array 1))))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array (array (array (array 1))))"
