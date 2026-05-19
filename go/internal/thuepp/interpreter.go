@@ -59,6 +59,7 @@ type Binding struct {
 	stderr        bytes.Buffer
 	outCh         chan string
 	exitCh        chan error
+	inputReader   *bufio.Reader
 }
 
 type Interpreter struct {
@@ -79,6 +80,7 @@ type Interpreter struct {
 
 func New() *Interpreter {
 	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr, RuleCoverageCounts: map[string]int{}, RuleCache: map[string]*Rule{}}
+	i.Bindings["stdin"] = &Binding{Name: "stdin", PathOrCommand: "stdin", inputReader: bufio.NewReader(os.Stdin)}
 	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout"}
 	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr"}
 	return i
@@ -671,11 +673,10 @@ func (i *Interpreter) ensureProcess(b *Binding) error {
 	}
 	go func() {
 		reader := bufio.NewReader(b.stdout)
-		buf := make([]byte, 4096)
 		for {
-			n, err := reader.Read(buf)
-			if n > 0 {
-				b.outCh <- string(buf[:n])
+			line, err := reader.ReadString('\n')
+			if line != "" {
+				b.outCh <- line
 			}
 			if err != nil {
 				close(b.outCh)
@@ -688,6 +689,13 @@ func (i *Interpreter) ensureProcess(b *Binding) error {
 }
 
 func (i *Interpreter) readAll(b *Binding) (string, string) {
+	if b.Name == "stdin" {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return "", fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
+		}
+		return string(data), ""
+	}
 	if b.Name == "stdout" || b.Name == "stderr" {
 		return "", "ERR:resource:cannot_read_output_stream"
 	}
@@ -751,6 +759,63 @@ func (i *Interpreter) readAll(b *Binding) (string, string) {
 		return "", fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
 	}
 	return string(data), ""
+}
+
+func stripLineTerminator(line string) (string, bool) {
+	if !strings.HasSuffix(line, "\n") {
+		return "", false
+	}
+	line = strings.TrimSuffix(line, "\n")
+	line = strings.TrimSuffix(line, "\r")
+	return line, true
+}
+
+func (i *Interpreter) readLine(b *Binding) (string, string) {
+	if b.Name == "stdout" || b.Name == "stderr" {
+		return "", "ERR:resource:cannot_read_output_stream"
+	}
+	if b.Name == "stdin" {
+		if b.inputReader == nil {
+			b.inputReader = bufio.NewReader(os.Stdin)
+		}
+		line, err := b.inputReader.ReadString('\n')
+		if err != nil {
+			return "", "ERR:resource:stdin:EOF before newline"
+		}
+		stripped, ok := stripLineTerminator(line)
+		if !ok {
+			return "", "ERR:resource:stdin:EOF before newline"
+		}
+		return stripped, ""
+	}
+	if b.IsProcess {
+		if err := i.ensureProcess(b); err != nil {
+			return "", fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
+		}
+		select {
+		case line, ok := <-b.outCh:
+			if !ok {
+				return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
+			}
+			stripped, complete := stripLineTerminator(line)
+			if !complete {
+				return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
+			}
+			return stripped, ""
+		case <-time.After(5 * time.Second):
+			return "", fmt.Sprintf("ERR:resource:%s:timeout waiting for line", b.Name)
+		case err := <-b.exitCh:
+			if err != nil {
+				msg := strings.TrimSpace(b.stderr.String())
+				if msg == "" {
+					msg = fmt.Sprintf("process exited %d", b.cmd.ProcessState.ExitCode())
+				}
+				return "", fmt.Sprintf("ERR:resource:%s:%s", b.Name, msg)
+			}
+			return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
+		}
+	}
+	return "", fmt.Sprintf("ERR:resource:%s:/n requires process or stdin binding", b.Name)
 }
 
 func (i *Interpreter) writeString(b *Binding, content string) string {
@@ -946,7 +1011,7 @@ func (i *Interpreter) Run() (int, error) {
 					return 1, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
 				}
 				readSpec, resource := parts[0], parts[1]
-				if readSpec != "-1" {
+				if readSpec != "-1" && readSpec != "/n" {
 					return 1, fmt.Errorf("Line %d: unsupported read spec '%s'", rule.LineNumber, readSpec)
 				}
 				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
@@ -956,7 +1021,12 @@ func (i *Interpreter) Run() (int, error) {
 				if b == nil {
 					return 1, fmt.Errorf("Unknown resource '%s'", resource)
 				}
-				content, er := i.readAll(b)
+				var content, er string
+				if readSpec == "/n" {
+					content, er = i.readLine(b)
+				} else {
+					content, er = i.readAll(b)
+				}
 				if er != "" {
 					return 1, errors.New(er)
 				}

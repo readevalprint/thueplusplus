@@ -1,0 +1,11 @@
+name = "stateful TPP child process"
+program = "../parent-counter.tpp"
+timeout = 10
+
+[bindings.tpp]
+svc = { program = "../counter-service.tpp" }
+
+[expect]
+stdout = "1,2"
+stderr = ""
+exit_code = 0

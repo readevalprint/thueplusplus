@@ -56,7 +56,7 @@ EXPECT_KEYS = {
     "stderr_contains",
     "files",
 }
-BINDING_KEYS = {"files", "procs"}
+BINDING_KEYS = {"files", "procs", "tpp"}
 
 
 def validate_expect(config_path: Path, scope: str, expect) -> None:
@@ -94,6 +94,16 @@ def validate_bindings(config_path: Path, scope: str, bindings) -> None:
     for name, command in bindings.get("procs", {}).items():
         if not isinstance(name, str) or not name or not isinstance(command, str) or not command:
             raise RuntimeError(f"{config_path} {scope}: proc bindings must map non-empty names to non-empty command strings")
+    for name, spec in bindings.get("tpp", {}).items():
+        if not isinstance(name, str) or not name:
+            raise RuntimeError(f"{config_path} {scope}: tpp binding names must be non-empty strings")
+        if not isinstance(spec, dict):
+            raise RuntimeError(f"{config_path} {scope}: tpp binding {name!r} must be a table")
+        unknown_spec = sorted(set(spec) - {"program"})
+        if unknown_spec:
+            raise RuntimeError(f"{config_path} {scope}: unknown tpp binding {name!r} key(s): {', '.join(unknown_spec)}")
+        if not isinstance(spec.get("program"), str) or not spec["program"]:
+            raise RuntimeError(f"{config_path} {scope}: tpp binding {name!r} requires a program string")
 
 
 def validate_manifest(config_path: Path, config: dict) -> None:
@@ -176,7 +186,13 @@ def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> tuple
     return str(target), writable
 
 
-def build_case_args(config_path: Path, case: dict, tmp: Path, extra_args: list[str] | None = None) -> tuple[list[str], dict[str, str]]:
+def build_case_args(
+    config_path: Path,
+    case: dict,
+    tmp: Path,
+    extra_args: list[str] | None = None,
+    interpreter: Interpreter | None = None,
+) -> tuple[list[str], dict[str, str]]:
     tests_dir = config_path.parent
     program = (tests_dir / case["program"]).resolve()
     args = [str(program)]
@@ -190,6 +206,12 @@ def build_case_args(config_path: Path, case: dict, tmp: Path, extra_args: list[s
             bound_files[name] = bound
         args.extend([f"--file:{name}", bound])
     for name, command in case.get("bindings", {}).get("procs", {}).items():
+        args.extend([f"--proc:{name}", command])
+    for name, spec in case.get("bindings", {}).get("tpp", {}).items():
+        if interpreter is None:
+            raise RuntimeError(f"{config_path} {case_name(config_path, case)}: tpp bindings require an interpreter command")
+        child_program = (tests_dir / spec["program"]).resolve()
+        command = " ".join(shlex.quote(part) for part in (*interpreter.argv, str(child_program)))
         args.extend([f"--proc:{name}", command])
     if "input" in case:
         args.extend(["--input", case["input"]])
@@ -206,7 +228,7 @@ def run_case(
     check_expect: bool = True,
 ) -> CaseResult:
     validate_case_metadata(config_path, case)
-    args, bound_files = build_case_args(config_path, case, tmp, extra_args=extra_args)
+    args, bound_files = build_case_args(config_path, case, tmp, extra_args=extra_args, interpreter=interpreter)
     timeout = float(case.get("timeout", 10))
     try:
         result = subprocess.run(

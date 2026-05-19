@@ -83,6 +83,7 @@ class ThueppInterpreter:
         self._row_sources: list[tuple[str, int]] = []
 
         # Predefined bindings
+        self.bindings["stdin"] = Binding("stdin", False, "stdin")
         self.bindings["stdout"] = Binding("stdout", False, "stdout")
         self.bindings["stderr"] = Binding("stderr", False, "stderr")
 
@@ -546,6 +547,8 @@ class ThueppInterpreter:
 
     def _read_all(self, binding: Binding) -> tuple[str, Optional[str]]:
         """Read entire content from a binding. Returns (content, error)."""
+        if binding.name == "stdin":
+            return sys.stdin.read(), None
         if binding.name == "stdout" or binding.name == "stderr":
             return "", "ERR:resource:cannot_read_output_stream"
 
@@ -587,6 +590,53 @@ class ThueppInterpreter:
                 return "", f"ERR:resource:notfound:{binding.name}"
             except Exception as e:
                 return "", f"ERR:resource:{binding.name}:{e}"
+
+    def _read_line(self, binding: Binding) -> tuple[str, Optional[str]]:
+        """Read one newline-delimited message, stripping one line terminator."""
+        if binding.name == "stdout" or binding.name == "stderr":
+            return "", "ERR:resource:cannot_read_output_stream"
+
+        if binding.name == "stdin":
+            ready, _, _ = select.select([sys.stdin], [], [], 5.0)
+            if not ready:
+                return "", "ERR:resource:stdin:timeout waiting for line"
+            line = sys.stdin.readline()
+            if line == "":
+                return "", "ERR:resource:stdin:EOF before newline"
+            if line.endswith("\n"):
+                line = line[:-1]
+                if line.endswith("\r"):
+                    line = line[:-1]
+                return line, None
+            return "", "ERR:resource:stdin:EOF before newline"
+
+        if binding.is_process:
+            self._ensure_process(binding)
+            try:
+                ready, _, _ = select.select([binding.process.stdout], [], [], 5.0)
+                if not ready:
+                    if binding.process.poll() not in (None, 0):
+                        stderr = binding.process.stderr.read()
+                        if isinstance(stderr, bytes):
+                            stderr = stderr.decode("utf-8", errors="replace")
+                        stderr = stderr.strip() or f"process exited {binding.process.returncode}"
+                        return "", f"ERR:resource:{binding.name}:{stderr}"
+                    return "", f"ERR:resource:{binding.name}:timeout waiting for line"
+                line = binding.process.stdout.readline()
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8", errors="replace")
+                if line == "":
+                    return "", f"ERR:resource:{binding.name}:EOF before newline"
+                if line.endswith("\n"):
+                    line = line[:-1]
+                    if line.endswith("\r"):
+                        line = line[:-1]
+                    return line, None
+                return "", f"ERR:resource:{binding.name}:EOF before newline"
+            except OSError as e:
+                return "", f"ERR:resource:{binding.name}:{e}"
+
+        return "", f"ERR:resource:{binding.name}:/n requires process or stdin binding"
 
     def _write_string(self, binding: Binding, content: str) -> Optional[str]:
         """Write a string to a binding. Returns error or None."""
@@ -739,14 +789,17 @@ class ThueppInterpreter:
                     if len(parts) != 2:
                         raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
                     read_spec, resource = parts
-                    if read_spec != "-1":
+                    if read_spec not in ("-1", "/n"):
                         raise RuntimeError(f"Line {rule.line_number}: unsupported read spec '{read_spec}'")
                     if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
                         raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
                     binding = self.bindings.get(resource)
                     if not binding:
                         raise RuntimeError(f"Unknown resource '{resource}'")
-                    content, error = self._read_all(binding)
+                    if read_spec == "/n":
+                        content, error = self._read_line(binding)
+                    else:
+                        content, error = self._read_all(binding)
                     if error:
                         raise RuntimeError(error)
                     replacement = self._pct_encode(content)

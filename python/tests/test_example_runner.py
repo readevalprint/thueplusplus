@@ -66,6 +66,37 @@ class SharedExampleRunnerTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(result.stdout, "hi\n")
 
+    def test_tpp_bindings_lower_to_current_interpreter_external_command(self):
+        runner = load_runner_module()
+        interpreter = runner.Interpreter("fake", ("fake-thuepp", "--flag"))
+        with tempfile.TemporaryDirectory(prefix="thuepp-runner-tpp-binding-") as tmpdir:
+            tmp = Path(tmpdir)
+            (tmp / "parent.tpp").write_text("::=\n", encoding="utf-8")
+            (tmp / "child.tpp").write_text("::=\n", encoding="utf-8")
+            config = tmp / "basic.toml"
+            config.write_text(
+                textwrap.dedent(
+                    """
+                    program = "parent.tpp"
+
+                    [bindings.tpp]
+                    svc = { program = "child.tpp" }
+
+                    [expect]
+                    exit_code = 0
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+            case = runner.load_toml(config)
+            args, _ = runner.build_case_args(config, case, tmp, interpreter=interpreter)
+
+        self.assertIn("--proc:svc", args)
+        command = args[args.index("--proc:svc") + 1]
+        self.assertIn("fake-thuepp --flag", command)
+        self.assertIn("child.tpp", command)
+
     def test_runner_covers_bindings_expectation_variants_and_timeouts(self):
         runner = load_runner_module()
         with tempfile.TemporaryDirectory(prefix="thuepp-runner-contract-") as tmpdir:
