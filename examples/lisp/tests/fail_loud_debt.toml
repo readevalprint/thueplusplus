@@ -314,3 +314,40 @@ input = "(let ((x 1)) (quote x))"
 exit_code = 2
 stdout = ""
 stderr_stripped = "unsupported_form"
+
+
+[[case]]
+name = "recursive let self reference remains an unbound name"
+input = "(let ((fact (lambda (n) (if (= n 0) 1 (* n (fact (- n 1))))))) (fact 5))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "letrec factorial remains unsupported before recursion boundary"
+input = "(letrec ((fact (lambda (n) (if (= n 0) 1 (* n (fact (- n 1))))))) (fact 5))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "lambda has no implicit self binding"
+input = "(let ((f (lambda (n) (f n)))) (f 0))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "while remains unsupported before bounded loop policy"
+input = "(while true 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"

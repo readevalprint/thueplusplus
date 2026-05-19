@@ -59,6 +59,7 @@ Unsupported syntax exits non-zero with a named stderr error. Current deliberate 
 - `quote` and code-as-data forms: expected error class `unsupported_form` until a focused quote/list card changes the contract;
 - `define` and mutation-style top-level binding: unsupported, with error class `unsupported_form`;
 - `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided, with error class `unsupported_form`;
+- `while` and other looping forms: unsupported until #108 settles bounded-loop policy, with error class `unsupported_form`;
 - list/code-as-data constructors such as `list`, `map`, `quasiquote`, and `unquote`: unsupported until the quote/list tech-tree path defines representation and printer rules;
 - unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
@@ -76,6 +77,18 @@ Rationale:
 - `quasiquote`/`unquote` depend on a settled quote/list representation and remain downstream work rather than an implicit part of the current core.
 
 The future implementation path is #107 for lists/quote, with #111 for quasiquote/unquote after its dependencies. Until that path is promoted and specified, `quote`, `list`, `map`, `quasiquote`, and `unquote` are reserved non-goals that fail with `unsupported_form`.
+
+## Recursion and loop boundary
+
+Decision for the hard-cutoff cleanup slice: recursion and looping remain out of scope until the bounded-loop policy is settled.
+
+Rationale:
+
+- `let` is lexical and non-recursive: binding values are evaluated before the new binding is added to the environment.
+- `lambda` captures the lexical environment that exists at creation time; it does not gain an implicit self binding later.
+- `letrec`, named-function recursion, `while`, and any unbounded loop/recursion form require an explicit evaluation bound and failure behavior before implementation.
+
+The future policy gate is #108 (`bounded while before recursion`). Until that gate is complete or a human explicitly changes the boundary, recursive self-reference fails loudly (`unbound_name` for actual lookup misses) and `letrec` remains a reserved unsupported form (`unsupported_form`).
 
 ## Error symbols
 
