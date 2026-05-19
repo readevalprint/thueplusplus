@@ -1,0 +1,512 @@
+# Coverage-oriented GREEN manifest for BO Lisp evaluator paths.
+# These cases exercise intended runtime paths that are not part of the minimal
+# hard acceptance suite, without weakening existing behavior.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "let subtraction uses lexical env"
+input = "(let ((x 10)) (- x 3))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "let multiplication uses lexical env"
+input = "(let ((x 6)) (* x 7))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "let multiplication nary uses lexical env"
+input = "(let ((x 2)) (* x 3 4))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "24"
+
+[[case]]
+name = "let division uses lexical env"
+input = "(let ((x 8)) (/ x 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "let division literal zero fails loudly"
+input = "(let ((x 8)) (/ x 0))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "let division bound zero fails loudly"
+input = "(let ((x 8) (z 0)) (/ x z))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "let numeric equality uses lexical env"
+input = "(let ((x 2)) (= x 2.0))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "let less-than uses lexical env"
+input = "(let ((x 2)) (< x 3))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "let less-or-equal uses lexical env"
+input = "(let ((x 2)) (<= x 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "let greater-than uses lexical env"
+input = "(let ((x 3)) (> x 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "let greater-or-equal uses lexical env"
+input = "(let ((x 3)) (>= x 3))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "env if true skips division by zero"
+input = "(let ((x 1)) (if true x (/ 1 0)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "env if false skips division by zero"
+input = "(let ((x 1)) (if false (/ 1 0) x))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "env and true returns rhs"
+input = "(let ((x true)) (and x 9))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "env and false skips division by zero"
+input = "(let ((x false)) (and x (/ 1 0)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "env or true skips division by zero"
+input = "(let ((x true)) (or x (/ 1 0)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "env or false returns rhs"
+input = "(let ((x false)) (or x 9))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "let array uses lexical env"
+input = "(let ((x 1)) (array x false))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[1 false]"
+
+[[case]]
+name = "let head bound array"
+input = "(let ((xs (array 4 5))) (head xs))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "let rest bound array"
+input = "(let ((xs (array 4 5))) (rest xs))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[5]"
+
+[[case]]
+name = "array starts with boolean renderer"
+input = "(array true 1)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[true 1]"
+
+[[case]]
+name = "lambda renders closure"
+input = "(lambda (x) x)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<closure>"
+
+[[case]]
+name = "env and literal true shortcut returns rhs"
+input = "(let ((x 1)) (and true x))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "env and literal false shortcut skips rhs"
+input = "(let ((x 1)) (and false (/ 1 0)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "env nary and folds"
+input = "(let ((x true)) (and x true 9))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "env or literal true shortcut skips rhs"
+input = "(let ((x 1)) (or true (/ 1 0)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "env or literal false shortcut returns rhs"
+input = "(let ((x 1)) (or false x))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "env nary or folds"
+input = "(let ((x false)) (or x false 9))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "single-item list evaluates child"
+input = "(1)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "top-level nary multiplication folds"
+input = "(* 2 3 4)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "24"
+
+[[case]]
+name = "env empty array literal"
+input = "(let ((x 1)) (array))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[]"
+
+[[case]]
+name = "top-level computed and true returns rhs"
+input = "(and (= 1 1) 9)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "top-level computed or true skips rhs"
+input = "(or (= 1 1) (/ 1 0))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "rest empty array through continuation"
+input = "(rest (array))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[]"
+
+[[case]]
+name = "empty let evaluates body"
+input = "(let () 1)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+
+
+[[case]]
+name = "env subtraction rejects boolean lhs"
+input = "(let ((x true)) (- x 1))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "env subtraction rejects boolean rhs"
+input = "(let ((x true)) (- 1 x))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "env multiplication rejects boolean lhs"
+input = "(let ((x true)) (* x 1))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "env multiplication rejects boolean rhs"
+input = "(let ((x true)) (* 1 x))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "env division rejects boolean lhs"
+input = "(let ((x true)) (/ x 1))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "env division rejects boolean rhs"
+input = "(let ((x true)) (/ 1 x))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "env division rational zero fails loudly"
+input = "(let ((z 0/1)) (/ 1 z))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "env less-than rejects boolean lhs"
+input = "(let ((x true)) (< x 1))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "env less-than rejects boolean rhs"
+input = "(let ((x true)) (< 1 x))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "calling boolean is not function"
+input = "(true 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "not_function"
+
+[[case]]
+name = "calling string is not function"
+input = "(\"f\" 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "not_function"
+
+[[case]]
+name = "zero argument lambda rejects extra arg"
+input = "((lambda () 1) 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "empty let with nested body"
+input = "(let () (+ 1 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "multi binding let with atomic body"
+input = "(let ((x 1) (y 2)) x)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "head rejects boolean"
+input = "(head true)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "rest rejects boolean"
+input = "(rest true)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "nested array first boolean renders"
+input = "(array (array true))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[[true]]"
+
+[[case]]
+name = "nested array first string renders"
+input = "(array (array \"x\"))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[[\"x\"]]"
+
+[[case]]
+name = "nested array first closure renders"
+input = "(array (array (lambda (x) x)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[[<closure>]]"
+
+[[case]]
+name = "nested array next boolean renders"
+input = "(array (array 1 true))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[[1 true]]"
+
+[[case]]
+name = "nested array next string renders"
+input = "(array (array 1 \"x\"))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[[1 \"x\"]]"
+
+[[case]]
+name = "nested array next closure renders"
+input = "(array (array 1 (lambda (x) x)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[[1 <closure>]]"
+
+[[case]]
+name = "second nested array first boolean renders"
+input = "(array 0 (array true))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[0 [true]]"
+
+[[case]]
+name = "second nested array first string renders"
+input = "(array 0 (array \"x\"))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[0 [\"x\"]]"
+
+[[case]]
+name = "second nested array first closure renders"
+input = "(array 0 (array (lambda (x) x)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[0 [<closure>]]"
+
+[[case]]
+name = "second nested array next boolean renders"
+input = "(array 0 (array 1 true))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[0 [1 true]]"
+
+[[case]]
+name = "second nested array next string renders"
+input = "(array 0 (array 1 \"x\"))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[0 [1 \"x\"]]"
+
+[[case]]
+name = "second nested array next closure renders"
+input = "(array 0 (array 1 (lambda (x) x)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "[0 [1 <closure>]]"

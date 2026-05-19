@@ -1,0 +1,10 @@
+empty array head errors	(head (array))	2		empty_array
+singleton array rest is empty	(rest (array 7))	0	[]	
+nested let shadowing	(let ((x 1)) (let ((x 2)) x))	0	2	
+closure captures outer binding after later shadow	(let ((x 10)) (let ((f (lambda (y) (+ x y)))) (let ((x 99)) (f 5))))	0	15	
+apply lambda from array head	((head (array (lambda (x) (+ x 10)))) 5)	0	15	
+nary and short circuits after false	(and true false (/ 1 0))	0	false	
+nary or returns first truthy value	(or false false 9)	0	9	
+lazy if string protects syntax	(if true "not (code) [x]" (/ 1 0))	0	not (code) [x]	
+rational addition	(+ 1/2 1/3)	0	5/6	
+unbound name inside addition errors	(+ x 1)	2		unbound_name

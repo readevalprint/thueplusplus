@@ -1,0 +1,11 @@
+name = "newline read timeout reports compact resource error"
+program = "../line-read.tpp"
+timeout = 7
+
+[bindings.procs]
+worker = "sleep 6"
+
+[expect]
+stdout = ""
+stderr = "Error: ERR:resource:worker:timeout\n"
+exit_code = 1

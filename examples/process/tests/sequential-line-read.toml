@@ -1,0 +1,11 @@
+name = "sequential newline process reads"
+program = "../sequential-line-read.tpp"
+timeout = 10
+
+[bindings.procs]
+worker = "printf 'alpha\nbeta\n'"
+
+[expect]
+stdout = "alpha/beta"
+stderr = ""
+exit_code = 0

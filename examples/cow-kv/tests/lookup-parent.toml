@@ -1,0 +1,8 @@
+name = "transaction lookup falls through top frame to parent"
+program = "../cow-kv.tpp"
+input = "begin; set a parent; begin; get a"
+
+[expect]
+stdout = "parent\n"
+stderr = ""
+exit_code = 0

@@ -1,0 +1,8 @@
+name = "commit and discard without transaction report errors"
+program = "../cow-kv.tpp"
+input = "commit; discard"
+
+[expect]
+stdout = "ERR:no_transaction\nERR:no_transaction\n"
+stderr = ""
+exit_code = 0

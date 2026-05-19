@@ -1,0 +1,8 @@
+name = "empty separators are skipped"
+program = "../cow-kv.tpp"
+input = "set a base;; get a"
+
+[expect]
+stdout = "base\n"
+stderr = ""
+exit_code = 0

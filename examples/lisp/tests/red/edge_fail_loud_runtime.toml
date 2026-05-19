@@ -1,0 +1,143 @@
+# Intentional RED manifest for Lisp runtime fail-loud edge cases.
+# This file avoids BO-era naming. It is kept under tests/red/ so ordinary
+# `examples/**/tests/*.toml` sweeps stay green while these desired behaviors are
+# still being implemented.
+program = "../../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "zero argument lambda application evaluates body"
+input = "((lambda () 7))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "lambda too few arguments fails loudly"
+input = "((lambda (x) x))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "lambda too many arguments fails loudly"
+input = "((lambda (x) x) 1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "calling a number fails as not function"
+input = "(1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "not_function"
+
+[[case]]
+name = "calling an array fails as not function"
+input = "((array 1) 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "not_function"
+
+[[case]]
+name = "unbound callee fails as unbound name"
+input = "(foo 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "subtraction rejects boolean lhs as type error"
+input = "(- true 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "multiplication rejects boolean lhs as type error"
+input = "(* true 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "division rejects boolean lhs as type error"
+input = "(/ true 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "comparison rejects boolean lhs as type error"
+input = "(< true 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "head rejects non array"
+input = "(head 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "rest rejects non array"
+input = "(rest 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "decimal zero division is classified"
+input = "(/ 1 0.0)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "rational zero division is classified"
+input = "(/ 1 0/1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "malformed missing closing paren fails as malformed list"
+input = "(+ 1 2"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "malformed_list"
+
+[[case]]
+name = "empty list fails loudly"
+input = "()"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "unsupported quote form remains explicit"
+input = "(quote x)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"

@@ -1,7 +1,7 @@
-name = "multiline processing"
+name = "whole-document multiline processing"
 program = "../multiline.tpp"
 
 [expect]
-stdout = "Trimmed:\n\nhello world\nindented line\nanother line\n"
+stdout = "(+ 1 2)\n"
 stderr = ""
 exit_code = 0

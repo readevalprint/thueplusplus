@@ -1,0 +1,8 @@
+name = "commit publishes transaction overlay"
+program = "../cow-kv.tpp"
+input = "set a base; begin; set a child; commit; get a"
+
+[expect]
+stdout = "child\n"
+stderr = ""
+exit_code = 0

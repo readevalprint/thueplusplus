@@ -11,12 +11,12 @@
 
 # After write completes, state is: c0, c1, etc. (the ">N" was removed)
 # Transition to next count
-c0 ::= >1c1
-c1 ::= >2c2
-c2 ::= >3c3
-c3 ::= >4c4
-c4 ::= >5c5
-c5 ::= done
+^c0$ ::= >1c1
+^c1$ ::= >2c2
+^c2$ ::= >3c3
+^c3$ ::= >4c4
+^c4$ ::= >5c5
+^c5$ ::= done
 
 # Finish
 done ::> stdout Done!\n

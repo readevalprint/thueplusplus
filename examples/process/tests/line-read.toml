@@ -1,0 +1,11 @@
+name = "one newline process read"
+program = "../line-read.tpp"
+timeout = 10
+
+[bindings.procs]
+worker = "printf 'alpha\n'"
+
+[expect]
+stdout = "alpha"
+stderr = ""
+exit_code = 0

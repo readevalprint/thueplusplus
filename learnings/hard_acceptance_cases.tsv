@@ -1,0 +1,15 @@
+literal_int	42	42
+literal_string	"hello world"	hello world
+literal_bool	true	true
+nested_math	(+ 1 (* 2 3) (+ 4 5))	16
+compare	(= (+ 1 2) 3)	true
+if_lazy	(if (= (+ 1 2) 4) (/ 1 0) 12)	12
+and_lazy	(and false (/ 1 0))	false
+or_lazy	(or true (/ 1 0))	true
+array_mixed	(array 1 "hi there" false)	[1 "hi there" false]
+head_array	(head (array 8 9 10))	8
+rest_array	(rest (array 8 "x" false))	["x" false]
+lambda_nary	((lambda (x y z) (+ x y z)) 1 2 3)	6
+lambda_closure	(((lambda (x) (lambda (y) (+ x y))) 10) 5)	15
+lambda_shadow	((lambda (x) ((lambda (x) x) 2)) 1)	2
+let_array	(let ((xs (array 1 "hi there" 2))) (rest xs))	["hi there" 2]

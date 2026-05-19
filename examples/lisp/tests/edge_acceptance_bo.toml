@@ -1,0 +1,97 @@
+# Top edge cases selected after BO hard acceptance.
+# This is intentionally a RED manifest for the currently-missing behavior.
+# Uses examples/lisp/lisp.tpp after promoting the BO hard-acceptance candidate.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "empty array head errors"
+input = "(head (array))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "empty_array"
+
+[[case]]
+name = "singleton array rest is empty"
+input = "(rest (array 7))"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "[]"
+stderr = ""
+
+[[case]]
+name = "nested let shadowing"
+input = "(let ((x 1)) (let ((x 2)) x))"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "2"
+stderr = ""
+
+[[case]]
+name = "closure captures outer binding after later shadow"
+input = "(let ((x 10)) (let ((f (lambda (y) (+ x y)))) (let ((x 99)) (f 5))))"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "15"
+stderr = ""
+
+[[case]]
+name = "apply lambda from array head"
+input = "((head (array (lambda (x) (+ x 10)))) 5)"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "15"
+stderr = ""
+
+[[case]]
+name = "nary and short circuits after false"
+input = "(and true false (/ 1 0))"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "false"
+stderr = ""
+
+[[case]]
+name = "nary or returns first truthy value"
+input = "(or false false 9)"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "9"
+stderr = ""
+
+[[case]]
+name = "lazy if string protects syntax"
+input = "(if true \"not (code) [x]\" (/ 1 0))"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "not (code) [x]"
+stderr = ""
+
+[[case]]
+name = "rational addition"
+input = "(+ 1/2 1/3)"
+
+[case.expect]
+exit_code = 0
+stdout_stripped = "5/6"
+stderr = ""
+
+[[case]]
+name = "unbound name inside addition errors"
+input = "(+ x 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+

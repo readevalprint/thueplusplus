@@ -1,0 +1,8 @@
+let_four	(let ((a 1) (b 2) (c 3) (d 4)) (+ a b c d))	0	10	
+closure_env_array	((lambda (x y) (array x y (+ x y))) 2 5)	0	[2 5 7]	
+nested_env_if	((lambda (x) (if (and (= x 1) (< x 2)) (array x true) (/ 1 0))) 1)	0	[1 true]	
+lazy_or_in_lambda	((lambda (x) (or (= x 1) (/ 1 0))) 1)	0	true	
+string_with_syntax	(if true "not (code) [x]" (/ 1 0))	0	not (code) [x]	
+empty_array_rest	(rest (array))	0	[]	
+empty_array_head	(head (array))	2		empty_array
+lambda_returns_lambda	(((lambda (a b) (lambda (c d) (+ a b c d))) 1 2) 3 4)	0	10	

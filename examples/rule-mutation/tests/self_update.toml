@@ -1,0 +1,9 @@
+program = "../self-update.tpp"
+
+[[case]]
+name = "rule updates itself into an output rule"
+
+[case.expect]
+exit_code = 0
+stdout = "self updated\n"
+stderr = ""
