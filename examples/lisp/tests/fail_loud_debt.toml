@@ -168,3 +168,94 @@ exit_code = 2
 stdout = ""
 stderr_stripped = "division_by_zero"
 
+
+[[case]]
+name = "bare unknown variable is an unbound name"
+input = "missing"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "unsupported define form is not a lookup miss"
+input = "(define x 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "unsupported letrec form is not a lookup miss"
+input = "(letrec ((fact 1)) fact)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "malformed if with too few operands fails wrong arity"
+input = "(if true 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "malformed and with one operand fails wrong arity"
+input = "(and true)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "malformed or with one operand fails wrong arity"
+input = "(or false)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "malformed let without binding list fails wrong arity"
+input = "(let 1 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "malformed lambda without body fails wrong arity"
+input = "(lambda (x))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "unknown callee remains an unbound name"
+input = "(missing 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+
+[[case]]
+name = "malformed lambda in lexical environment fails wrong arity"
+input = "(let ((x 1)) (lambda (x)))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
