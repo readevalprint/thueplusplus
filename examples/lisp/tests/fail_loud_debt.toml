@@ -1,8 +1,7 @@
-# Intentional RED debt manifest for BO fail-loud behavior.
+# Fail-loud debt manifest for unsupported or malformed Lisp inputs.
 # These cases must not be silently accepted with rc 0 and empty output in the
-# production Lisp evaluator. They are split out from old phase manifests so the
-# legacy GREEN manifests can describe implemented BO behavior while this file
-# tracks explicit future work.
+# production Lisp evaluator. They track behavior that is intentionally rejected
+# until a focused child card changes the language contract.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--max-evals", "60000"]

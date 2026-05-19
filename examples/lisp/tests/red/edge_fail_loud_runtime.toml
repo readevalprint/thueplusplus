@@ -1,5 +1,5 @@
 # Intentional RED manifest for Lisp runtime fail-loud edge cases.
-# This file avoids BO-era naming. It is kept under tests/red/ so ordinary
+# This file keeps future runtime fail-loud edge cases under tests/red/ so ordinary
 # `examples/**/tests/*.toml` sweeps stay green while these desired behaviors are
 # still being implemented.
 program = "../../lisp.tpp"

@@ -1,6 +1,5 @@
-# Top edge cases selected after BO hard acceptance.
-# This is intentionally a RED manifest for the currently-missing behavior.
-# Uses examples/lisp/lisp.tpp after promoting the BO hard-acceptance candidate.
+# Edge acceptance cases for currently supported Lisp behavior.
+# These cases pin hard-won edge semantics in examples/lisp/lisp.tpp.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--max-evals", "60000"]

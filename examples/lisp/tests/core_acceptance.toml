@@ -1,5 +1,6 @@
-# Generated from learnings/hard_acceptance_cases.tsv.
-# Uses examples/lisp/lisp.tpp after promoting the BO hard-acceptance candidate.
+# Core acceptance cases for examples/lisp/lisp.tpp.
+# Originally generated from learnings/hard_acceptance_cases.tsv, then promoted
+# into the stable Lisp contract.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--max-evals", "60000"]

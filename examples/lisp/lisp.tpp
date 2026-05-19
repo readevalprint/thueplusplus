@@ -1,6 +1,6 @@
-# Attempt BO: BN hard-acceptance trunk under whole-document runtime.
+# Canonical Lisp evaluator implemented entirely as Thue++ rewrite rules.
 # Architecture: protect strings, freeze lists inside-out as L[pct(payload)], evaluate on demand with typed V* runtime values, lexical env, closures, n-ary let iterator, arrays via raw-semicolon pct(value) payload.
-# Scope: hard acceptance plus expanded edge probes. This is the best current candidate, but not yet polished production lisp.tpp.
+# Scope: a deliberately small, fail-loud Lisp core used as the gold-standard language example for Python/Go parity.
 
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
@@ -33,7 +33,7 @@ UNESC\[(?<s><|PCT|>)\] ::= {{s}}
 ^ARG\[L%5B(?<payload><|PCT|>)%5D\|(?<k>.*)\]$ ::= E[{{payload|pctdec}}|{{k}}]
 
 
-# BL lexical env and generic call/apply probe.
+# Lexical environment and generic call/apply support.
 # Closure payload: VCLOS[params_pct^body_pct^env_bindings]. Env bindings: name=pct(value);
 ^LOOK\[(?<want>[A-Za-z_][A-Za-z0-9_-]*)\|\|(?<k>.*)\]$ ::= ERR[unbound_name]
 ^LOOK\[(?<want>[A-Za-z_][A-Za-z0-9_-]*)\|(?<got>[A-Za-z_][A-Za-z0-9_-]*)=(?<val>[^;]*);(?<rest>.*)\|(?<k>.*)\]$ ::= LOOKEQTEST[{{want}}|{{got}}|{{val}}|{{rest}}|{{k}}]
@@ -309,7 +309,7 @@ GE\[(?<a><|NUM|>),(?<b><|NUM|>)\] ::! ge a b
 ^RET\[VCLOS%5B(?<c>[^\]]*)%5D\|KDONE\]$ ::= @OUT[%3Cclosure%3E]@@EXIT0@
 ^@OUT\[(?<v><|PCT|>)\]@@EXIT0@$ ::> stdout {{v|pctdec}}\n
 # Final fail-loud fallback for raw or stuck evaluator states. Keep this last so
-# all supported BO reductions and explicit ERR/OUT exits get the first chance.
+# all supported reductions and explicit ERR/OUT exits get the first chance.
 ^\{(?<bad>[^\n]*)$ ::= ERR[malformed_list]
 ^(?<bad>[^\n].*)$ ::= ERR[unsupported_form]
 
