@@ -1,7 +1,7 @@
-# Reconciled with the BO Lisp direction.
-# This manifest now contains only GREEN baseline literal behavior that is part of
-# the current BO core. Legacy nil/internal-state/curly fail-loud expectations
-# were either removed as out-of-scope (nil) or moved to debt_fail_loud_bo.toml.
+# Reconciled with the canonical Lisp evaluator.
+# This manifest now contains only baseline literal behavior that is part of
+# the current Lisp core. Legacy nil/internal-state/curly fail-loud expectations
+# were either removed as out-of-scope (nil) or moved to fail_loud_debt.toml.
 program = "../lisp.tpp"
 timeout = 5
 args = ["--max-evals", "60000"]

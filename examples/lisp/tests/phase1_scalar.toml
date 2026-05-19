@@ -1,7 +1,7 @@
-# Reconciled with the BO Lisp direction.
-# This manifest keeps scalar behavior already implemented by the BO evaluator.
-# Unsupported legacy scalar operators/comparisons remain in debt_scalar_bo.toml;
-# fail-loud gaps remain in debt_fail_loud_bo.toml.
+# Reconciled with the canonical Lisp evaluator.
+# This manifest keeps scalar behavior implemented by the canonical evaluator.
+# Unsupported legacy scalar operators/comparisons remain out of scope;
+# fail-loud gaps remain in fail_loud_debt.toml.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--max-evals", "60000"]
