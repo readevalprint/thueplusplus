@@ -147,8 +147,8 @@ STREQ\[(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)\] ::! eq a b
 ^EENV\[let(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[wrong_arity]
 # Generic call: eval callee, eval args, then APPLY.
 ^EENV\[(?:define|letrec)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[unsupported_form]
-^EENV\[(?:quote|list|map|quasiquote|unquote)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[unsupported_form]
-^E\[(?:quote|list|map|quasiquote|unquote)(?: (?<args>.*))?\|(?<k>.*)\]$ ::= ERR[unsupported_form]
+^EENV\[(?:quote|list|map|quasiquote|unquote|while)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ERR[unsupported_form]
+^E\[(?:quote|list|map|quasiquote|unquote|while)(?: (?<args>.*))?\|(?<k>.*)\]$ ::= ERR[unsupported_form]
 ^E\[(?<callee>[A-Za-z_][A-Za-z0-9_-]*) (?<args>.*)\|(?<k>.*)\]$ ::= EENV[{{callee}} {{args}}||{{k}}]
 ^E\[(?<callee><|NODE|>) (?<args>.*)\|(?<k>.*)\]$ ::= ARG[{{callee}}|KCALL[{{args}}] {{k}}]
 ^EENV\[(?<callee>L%5B<|PCT|>%5D) (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)\]$ ::= ARGENV[{{callee}}|{{env}}|KENVCALL2[{{args}}^{{env}}] {{k}}]
