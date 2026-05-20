@@ -32,12 +32,12 @@ const (
 )
 
 var (
-	numericLiteralPattern  = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
-	rulePattern            = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!%-])(.*)$`)
-	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
-	aliasDefPattern        = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
-	oldAliasRefPattern     = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
-	namedCapturePattern    = regexp.MustCompile(`\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>`)
+	numericLiteralPattern    = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
+	rulePattern              = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!%-])(.*)$`)
+	zeroDenominatorPattern   = regexp.MustCompile(`^-?[0-9]+/0+$`)
+	aliasDefPattern          = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
+	invalidAliasTokenPattern = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
+	namedCapturePattern      = regexp.MustCompile(`\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>`)
 )
 
 const MaxNumericLiteralChars = 4096
@@ -156,9 +156,9 @@ func aliasLineNumber(fallbackLine int, currentSourceLine int) int {
 }
 
 func expandAliasRefs(pattern string, aliases map[string]string, lineNumber int) (string, error) {
-	if match := oldAliasRefPattern.FindStringSubmatch(pattern); match != nil {
+	if match := invalidAliasTokenPattern.FindStringSubmatch(pattern); match != nil {
 		name := match[1]
-		return "", fmt.Errorf("Line %d: Old pattern alias syntax '<|%s|>' is no longer supported; use '$%s'", lineNumber, name, name)
+		return "", fmt.Errorf("Line %d: Invalid pattern alias token '<|%s|>'; use '$%s' aliases", lineNumber, name, name)
 	}
 	var out strings.Builder
 	substitutions := 0
