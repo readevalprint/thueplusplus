@@ -310,6 +310,47 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     return failures
 
 
+def check_lisp_nested_alias_cleanup(root: Path) -> list[Failure]:
+    path = root / "examples" / "lisp" / "lisp.tpp"
+    text = read(path)
+    failures: list[Failure] = []
+    forbidden = [
+        "Macro references are not expanded inside macro bodies",
+        "[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>",
+        "[A-Za-z_][A-Za-z0-9_-]*|$NODE",
+    ]
+    for snippet in forbidden:
+        if snippet in text:
+            failures.append(Failure(path, f"nested alias cleanup left duplicated/stale Lisp regex fragment: {snippet}"))
+    pct_no_space_body = "(?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[1-9A-F]|%[3-9A-F][0-9A-F])*"
+    if text.count(pct_no_space_body) != 1 or f"PCT_NO_SPACE <- {pct_no_space_body}" not in text:
+        failures.append(Failure(path, "specialized no-space pct regex should appear only as the PCT_NO_SPACE alias body"))
+    required_aliases = [
+        "PCTCHAR <-",
+        "NAME <-",
+        "EXPR <-",
+        "ITEMS <-",
+        "DICTKEY <-",
+        "DICTENTRIES <-",
+        "VNUM <-",
+        "VDICT <-",
+        "NONDICT <-",
+        "NONKEY <-",
+        "OPSYM <-",
+        "SYM <-",
+        "PCT_NO_SPACE <-",
+        "LET_VALUE_PCT <-",
+    ]
+    for snippet in required_aliases:
+        if snippet not in text:
+            failures.append(Failure(path, f"nested alias cleanup missing reusable Lisp alias: {snippet}"))
+    alias_bodies = re.findall(r"^(NODE|VAL|NONNUM|NONBOOL) <- (?P<body>.*)$", text, re.MULTILINE)
+    for name, body in alias_bodies:
+        if "$" not in body:
+            failures.append(Failure(path, f"{name} should be composed from nested aliases, not hand-expanded regex"))
+    return failures
+
+
 def check_manifest_policy(root: Path) -> list[Failure]:
     failures: list[Failure] = []
     manifests = sorted((root / "examples").glob("**/tests/*.toml"))
@@ -346,6 +387,7 @@ def check_all(root: Path) -> list[Failure]:
         check_contract,
         check_numeric_regex,
         check_lisp_coverage_policy,
+        check_lisp_nested_alias_cleanup,
         check_manifest_policy,
         check_no_hidden_red_manifests,
     ]
