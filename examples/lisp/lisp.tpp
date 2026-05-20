@@ -393,63 +393,25 @@ PCTEQ<(?<a>[ST]$PCT),(?<b>[ST]$PCT)> ::! eq a b
 ^E<\+ (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<bad>-?[0-9]+[A-Za-z_][A-Za-z0-9_-]*)(?: (?<rest>.*))?\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^E<\+ (true|false) (?<rhs>[A-Za-z_][A-Za-z0-9_-]*|$NODE)(?: (?<rest>.*))?\|(?<k>.*)>$ ::= ERR<type_error>
 ^E<\+ (?<lhs>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (true|false)(?: (?<rest>.*))?\|(?<k>.*)>$ ::= ERR<type_error>
-# Name-aware top-level + delegates through EENV so strict unbound names fail loudly instead of quiescing.
-^E<\+ (?<a>[A-Za-z_][A-Za-z0-9_-]*) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<rest>.*)\|(?<k>.*)>$ ::= EENV<+ {{a}} {{b}} {{rest}}||{{k}}>
-^E<\+ (?<a>[A-Za-z_][A-Za-z0-9_-]*) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<+ {{a}} {{b}}||{{k}}>
-^E<\+ (?<a>$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*) (?<rest>.*)\|(?<k>.*)>$ ::= EENV<+ {{a}} {{b}} {{rest}}||{{k}}>
-^E<\+ (?<a>$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*)\|(?<k>.*)>$ ::= EENV<+ {{a}} {{b}}||{{k}}>
-^E<\+ (?<a>$NODE) (?<b>$NODE) (?<rest>.*)\|(?<k>.*)>$ ::= E<+ L<%2B%20{{a|pctenc}}%20{{b|pctenc}}> {{rest}}|{{k}}>
-^E<\* (?<a>$NODE) (?<b>$NODE) (?<rest>.*)\|(?<k>.*)>$ ::= E<* L<%2A%20{{a|pctenc}}%20{{b|pctenc}}> {{rest}}|{{k}}>
-
-# Strict binary operators evaluate left then right on demand.
-^E<\+ (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KADD1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KADD1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KADD2<{{a}}> {{k}}>
-^RET<VNUM<(?<b>$NUM)>\|KADD2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
-
-^E<- (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KSUB1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KSUB1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KSUB2<{{a}}> {{k}}>
-^RET<(?<bad>$NONNUM)\|KSUB1<(?<b>$NODE)> (?<k>.*)>$ ::= ERR<type_error>
-^RET<VNUM<(?<b>$NUM)>\|KSUB2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>
-^RET<(?<bad>$NONNUM)\|KSUB2<(?<a>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
-
-^E<\* (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KMUL1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KMUL1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KMUL2<{{a}}> {{k}}>
-^RET<(?<bad>$NONNUM)\|KMUL1<(?<b>$NODE)> (?<k>.*)>$ ::= ERR<type_error>
-^RET<VNUM<(?<b>$NUM)>\|KMUL2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|{{k}}>
-^RET<(?<bad>$NONNUM)\|KMUL2<(?<a>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
-
-^E</ (?<a>$NODE) 0\|(?<k>.*)>$ ::= ERR<division_by_zero>
-^E</ (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KDIV1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KDIV1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KDIV2<{{a}}> {{k}}>
-^RET<(?<bad>$NONNUM)\|KDIV1<(?<b>$NODE)> (?<k>.*)>$ ::= ERR<type_error>
-^RET<VNUM<0>\|KDIV2<(?<a>$NUM)> (?<k>.*)>$ ::= ERR<division_by_zero>
-^RET<VNUM<0(?:\.0+|/[0-9]+)>\|KDIV2<(?<a>$NUM)> (?<k>.*)>$ ::= ERR<division_by_zero>
-^RET<VNUM<(?<b>$NUM)>\|KDIV2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VNUM<DIV<{{a}},{{b}}>>|{{k}}>
-^RET<(?<bad>$NONNUM)\|KDIV2<(?<a>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
+# Top-level numeric/comparison forms share the env-aware implementation with an empty env.
+^E<\+ (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<rest>.*)\|(?<k>.*)>$ ::= EENV<+ {{a}} {{b}} {{rest}}||{{k}}>
+^E<\+ (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<+ {{a}} {{b}}||{{k}}>
+^E<- (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<- {{a}} {{b}}||{{k}}>
+^E<\* (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<rest>.*)\|(?<k>.*)>$ ::= EENV<* {{a}} {{b}} {{rest}}||{{k}}>
+^E<\* (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<* {{a}} {{b}}||{{k}}>
+^E</ (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV</ {{a}} {{b}}||{{k}}>
 
 ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
 SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
 MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
 DIV<(?<a>$NUM),(?<b>$NUM)> ::! div a b
 
-# Compare: demand both numeric sides.
-^E<= (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KEQ1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KEQ1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KEQ2<{{a}}> {{k}}>
-^RET<VNUM<(?<b>$NUM)>\|KEQ2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VBOOL<EQ<{{a}},{{b}}>>|{{k}}>
-^E<< (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KLT1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KLT1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KLT2<{{a}}> {{k}}>
-^RET<(?<bad>$NONNUM)\|KLT1<(?<b>$NODE)> (?<k>.*)>$ ::= ERR<type_error>
-^RET<VNUM<(?<b>$NUM)>\|KLT2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VBOOL<LT<{{a}},{{b}}>>|{{k}}>
-^RET<(?<bad>$NONNUM)\|KLT2<(?<a>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
-^E<<= (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KLE1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KLE1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KLE2<{{a}}> {{k}}>
-^RET<VNUM<(?<b>$NUM)>\|KLE2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VBOOL<LE<{{a}},{{b}}>>|{{k}}>
-^E<> (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KGT1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KGT1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KGT2<{{a}}> {{k}}>
-^RET<VNUM<(?<b>$NUM)>\|KGT2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VBOOL<GT<{{a}},{{b}}>>|{{k}}>
-^E<>= (?<a>$NODE) (?<b>$NODE)\|(?<k>.*)>$ ::= ARG<{{a}}|KGE1<{{b}}> {{k}}>
-^RET<VNUM<(?<a>$NUM)>\|KGE1<(?<b>$NODE)> (?<k>.*)>$ ::= ARG<{{b}}|KGE2<{{a}}> {{k}}>
-^RET<VNUM<(?<b>$NUM)>\|KGE2<(?<a>$NUM)> (?<k>.*)>$ ::= RET<VBOOL<GE<{{a}},{{b}}>>|{{k}}>
+# Compare: demand both numeric sides through the env-aware implementation.
+^E<= (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<= {{a}} {{b}}||{{k}}>
+^E<< (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<< {{a}} {{b}}||{{k}}>
+^E<<= (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<<= {{a}} {{b}}||{{k}}>
+^E<> (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<> {{a}} {{b}}||{{k}}>
+^E<>= (?<a>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<b>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<>= {{a}} {{b}}||{{k}}>
 EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq a b
 LT<(?<a>$NUM),(?<b>$NUM)> ::! lt a b
 LE<(?<a>$NUM),(?<b>$NUM)> ::! le a b
