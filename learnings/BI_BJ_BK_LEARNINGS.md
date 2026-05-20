@@ -151,7 +151,7 @@ Observed issues:
    - Need explicit param-stream decoding/iteration, not ad-hoc raw-space matching.
 
 2. Rule order is fragile.
-   - Generic `ARGENV[<|NODE|>] -> ARG[...]` before `ARGENV[L...] -> EENV[...]` loses env for list bodies.
+   - Generic `ARGENV[$NODE] -> ARG[...]` before `ARGENV[L...] -> EENV[...]` loses env for list bodies.
    - Moving `L[...]` first fixed env loss but exposed other continuation-shape gaps.
 
 3. Immediate lambda is not enough for closures.

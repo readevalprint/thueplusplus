@@ -178,7 +178,7 @@ Correction after reading source:
 Example probe:
 
 ```text
-^pack:(?<a><|PCT|>),(?<b><|PCT|>)$ ::% A={{a}}|B={{b}}
+^pack:(?<a>$PCT),(?<b>$PCT)$ ::% A={{a}}|B={{b}}
 pack:N%3A1%20,K%3Afoo%253Abar%2520
 ```
 

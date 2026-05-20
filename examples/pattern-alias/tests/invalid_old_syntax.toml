@@ -1,0 +1,9 @@
+program = "../invalid-old-syntax.tpp"
+
+[[case]]
+name = "old angle-pipe alias syntax fails after dollar alias migration"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Old pattern alias syntax '<|PCT|>' is no longer supported; use '$PCT'"]

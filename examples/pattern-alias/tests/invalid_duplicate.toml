@@ -1,0 +1,9 @@
+program = "../invalid-duplicate.tpp"
+
+[[case]]
+name = "duplicate dollar alias definitions fail at parse time"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Duplicate pattern alias 'A'"]

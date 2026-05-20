@@ -35,9 +35,14 @@ var (
 	numericLiteralPattern  = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
 	rulePattern            = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!%-])(.*)$`)
 	zeroDenominatorPattern = regexp.MustCompile(`^-?[0-9]+/0+$`)
+	aliasDefPattern        = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
+	oldAliasRefPattern     = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
+	namedCapturePattern    = regexp.MustCompile(`\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>`)
 )
 
 const MaxNumericLiteralChars = 4096
+const MaxPatternAliasSubstitutionsPerLine = 10000
+const MaxExpandedPatternBytes = 1000000
 
 type Rule struct {
 	LHS         string
@@ -146,41 +151,119 @@ func (i *Interpreter) loadWithIncludes(filePath string, included map[string]bool
 	return b.String(), s.Err()
 }
 
-func expandPatterns(content string) string {
-	patterns := map[string]string{}
-	var patternOrder []string
+func aliasLineNumber(fallbackLine int, currentSourceLine int) int {
+	if currentSourceLine != 0 {
+		return currentSourceLine
+	}
+	return fallbackLine
+}
+
+func expandAliasRefs(pattern string, aliases map[string]string, lineNumber int) (string, error) {
+	if match := oldAliasRefPattern.FindStringSubmatch(pattern); match != nil {
+		name := match[1]
+		return "", fmt.Errorf("Line %d: Old pattern alias syntax '<|%s|>' is no longer supported; use '$%s'", lineNumber, name, name)
+	}
+	var out strings.Builder
+	substitutions := 0
+	for idx := 0; idx < len(pattern); {
+		if pattern[idx] != '$' || (idx > 0 && pattern[idx-1] == '\\') {
+			out.WriteByte(pattern[idx])
+			idx++
+			continue
+		}
+		end := idx + 1
+		if end >= len(pattern) || pattern[end] < 'A' || pattern[end] > 'Z' {
+			out.WriteByte(pattern[idx])
+			idx++
+			continue
+		}
+		end++
+		for end < len(pattern) {
+			ch := pattern[end]
+			if (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' {
+				end++
+				continue
+			}
+			break
+		}
+		name := pattern[idx+1 : end]
+		alias, ok := aliases[name]
+		if !ok {
+			return "", fmt.Errorf("Line %d: Unknown pattern alias '$%s'", lineNumber, name)
+		}
+		substitutions++
+		if substitutions > MaxPatternAliasSubstitutionsPerLine {
+			return "", fmt.Errorf("Line %d: Pattern alias expansion exceeded substitution limit (%d)", lineNumber, MaxPatternAliasSubstitutionsPerLine)
+		}
+		out.WriteString(alias)
+		idx = end
+	}
+	expanded := out.String()
+	if len([]byte(expanded)) > MaxExpandedPatternBytes {
+		return "", fmt.Errorf("Line %d: Pattern alias expansion exceeded byte limit (%d)", lineNumber, MaxExpandedPatternBytes)
+	}
+	return expanded, nil
+}
+
+func expandPatterns(content string) (string, error) {
+	aliases := map[string]string{}
 	var out []string
-	for _, line := range strings.Split(content, "\n") {
+	currentSourceLine := 0
+	for idx, line := range strings.Split(content, "\n") {
+		lineNumber := idx + 1
 		stripped := strings.TrimSpace(line)
+		if strings.HasPrefix(stripped, "# thuepp-source: ") {
+			marker := strings.TrimPrefix(stripped, "# thuepp-source: ")
+			if colon := strings.LastIndex(marker, ":"); colon >= 0 {
+				if sourceLine, err := strconv.Atoi(marker[colon+1:]); err == nil {
+					currentSourceLine = sourceLine
+				}
+			}
+			out = append(out, line)
+			continue
+		}
+		effectiveLine := aliasLineNumber(lineNumber, currentSourceLine)
 		if stripped == "" || strings.HasPrefix(stripped, "#") {
 			out = append(out, line)
 			continue
 		}
-		if strings.Contains(line, "<-") && !strings.Contains(line, "::=") {
-			parts := strings.SplitN(line, "<-", 2)
-			name := strings.TrimSpace(parts[0])
-			pat := strings.TrimSpace(parts[1])
-			if name != "" {
-				if _, exists := patterns[name]; !exists {
-					patternOrder = append(patternOrder, name)
-				}
-				patterns[name] = pat
-				out = append(out, "# [pattern] "+name+" <- "+pat)
-				continue
+		if aliasMatch := aliasDefPattern.FindStringSubmatch(line); aliasMatch != nil && rulePattern.FindStringSubmatch(line) == nil {
+			name := aliasMatch[1]
+			pat := strings.TrimSpace(aliasMatch[2])
+			if _, exists := aliases[name]; exists {
+				return "", fmt.Errorf("Line %d: Duplicate pattern alias '%s'", effectiveLine, name)
 			}
+			if namedCapturePattern.FindStringIndex(pat) != nil {
+				return "", fmt.Errorf("Line %d: Pattern alias '%s' must not contain named captures", effectiveLine, name)
+			}
+			expanded, err := expandAliasRefs(pat, aliases, effectiveLine)
+			if err != nil {
+				return "", err
+			}
+			aliases[name] = "(?:" + expanded + ")"
+			out = append(out, "# [pattern] "+name+" <- "+expanded)
+			continue
 		}
-		expanded := line
-		for _, name := range patternOrder {
-			pat := patterns[name]
-			expanded = strings.ReplaceAll(expanded, "<|"+name+"|>", pat)
+		if ruleMatch := rulePattern.FindStringSubmatch(line); ruleMatch != nil {
+			lhs := ruleMatch[1] + ruleMatch[2]
+			expandedLHS, err := expandAliasRefs(lhs, aliases, effectiveLine)
+			if err != nil {
+				return "", err
+			}
+			out = append(out, expandedLHS+"::"+ruleMatch[3]+ruleMatch[4])
+			continue
 		}
-		out = append(out, expanded)
+		out = append(out, line)
 	}
-	return strings.Join(out, "\n")
+	return strings.Join(out, "\n"), nil
 }
 
 func (i *Interpreter) parseProgram(content string) error {
-	content = expandPatterns(content)
+	var err error
+	content, err = expandPatterns(content)
+	if err != nil {
+		return err
+	}
 	i.Rules = nil
 	var rows []string
 	currentSourcePath := i.ProgramPath

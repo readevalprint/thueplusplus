@@ -1,0 +1,9 @@
+program = "../token-boundary.tpp"
+
+[[case]]
+name = "dollar alias token consumes longest uppercase identifier"
+
+[case.expect]
+exit_code = 0
+stdout = "abc\n"
+stderr = ""

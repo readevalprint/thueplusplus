@@ -21,7 +21,13 @@ from typing import Any, Optional
 
 
 MAX_NUMERIC_LITERAL_CHARS = 4096
+MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE = 10000
+MAX_EXPANDED_PATTERN_BYTES = 1000000
 RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!%-])(?P<rhs>.*)$")
+ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
+ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
+OLD_ALIAS_REF_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
+NAMED_CAPTURE_RE = py_re.compile(r"\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>")
 
 
 class Operator(Enum):
@@ -131,45 +137,89 @@ class ThueppInterpreter:
 
         return "".join(lines)
 
+    def _alias_line_number(self, fallback_line: int, current_source: tuple[str, int] | None) -> int:
+        return current_source[1] if current_source else fallback_line
+
+    def _expand_alias_refs(self, pattern: str, aliases: dict[str, str], line_number: int) -> str:
+        old = OLD_ALIAS_REF_RE.search(pattern)
+        if old:
+            name = old.group(1)
+            raise RuntimeError(
+                f"Line {line_number}: Old pattern alias syntax '<|{name}|>' is no longer supported; use '${name}'"
+            )
+        substitutions = 0
+
+        def replace(match: py_re.Match[str]) -> str:
+            nonlocal substitutions
+            name = match.group(1)
+            if name not in aliases:
+                raise RuntimeError(f"Line {line_number}: Unknown pattern alias '${name}'")
+            substitutions += 1
+            if substitutions > MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE:
+                raise RuntimeError(
+                    f"Line {line_number}: Pattern alias expansion exceeded substitution limit "
+                    f"({MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE})"
+                )
+            return aliases[name]
+
+        expanded = ALIAS_REF_RE.sub(replace, pattern)
+        if len(expanded.encode("utf-8")) > MAX_EXPANDED_PATTERN_BYTES:
+            raise RuntimeError(
+                f"Line {line_number}: Pattern alias expansion exceeded byte limit "
+                f"({MAX_EXPANDED_PATTERN_BYTES})"
+            )
+        return expanded
+
     def _expand_patterns(self, content: str) -> str:
-        """Expand PEG-style pattern definitions.
-        
-        Patterns are defined as: NAME <- pattern
-        Referenced as: <|NAME|>
-        
-        Example:
-            PREFIX <- (?<p>[^\n]*)
-            ^W:<|PREFIX|>\\{...\\} ::= ...
+        """Expand ordered pattern aliases in pattern contexts.
+
+        Aliases are defined as: NAME <- pattern
+        Referenced as: $NAME
         """
-        patterns: dict[str, str] = {}
+        aliases: dict[str, str] = {}
         result_lines: list[str] = []
-        
-        for line in content.split('\n'):
+        current_source: tuple[str, int] | None = None
+
+        for line_number, line in enumerate(content.split('\n'), 1):
             stripped = line.strip()
-            
+            if stripped.startswith("# thuepp-source: "):
+                marker = stripped[len("# thuepp-source: "):]
+                source_path, sep, source_line = marker.rpartition(":")
+                if sep and source_line.isdigit():
+                    current_source = (source_path, int(source_line))
+                result_lines.append(line)
+                continue
+
+            effective_line = self._alias_line_number(line_number, current_source)
+
             # Skip comments and empty lines (pass through)
             if not stripped or stripped.startswith('#'):
                 result_lines.append(line)
                 continue
-            
-            # Check for pattern definition: NAME <- pattern
-            if '<-' in line and '::=' not in line:
-                parts = line.split('<-', 1)
-                if len(parts) == 2:
-                    name = parts[0].strip()
-                    pattern = parts[1].strip()
-                    if name:  # Valid definition
-                        patterns[name] = pattern
-                        # Keep as comment for debugging
-                        result_lines.append(f'# [pattern] {name} <- {pattern}')
-                        continue
-            
-            # Expand pattern references in this line
-            expanded = line
-            for name, pattern in patterns.items():
-                expanded = expanded.replace(f'<|{name}|>', pattern)
-            result_lines.append(expanded)
-        
+
+            alias_match = ALIAS_DEF_RE.match(line)
+            if alias_match and not RULE_RE.match(line):
+                name = alias_match.group(1)
+                pattern = alias_match.group(2).strip()
+                if name in aliases:
+                    raise RuntimeError(f"Line {effective_line}: Duplicate pattern alias '{name}'")
+                if NAMED_CAPTURE_RE.search(pattern):
+                    raise RuntimeError(f"Line {effective_line}: Pattern alias '{name}' must not contain named captures")
+                expanded = self._expand_alias_refs(pattern, aliases, effective_line)
+                aliases[name] = f"(?:{expanded})"
+                # Keep as comment for debugging
+                result_lines.append(f'# [pattern] {name} <- {expanded}')
+                continue
+
+            match = RULE_RE.match(line)
+            if match:
+                lhs = match.group("lhs")
+                expanded_lhs = self._expand_alias_refs(lhs, aliases, effective_line)
+                result_lines.append(f'{expanded_lhs}::{match.group("op")}{match.group("rhs")}')
+                continue
+
+            result_lines.append(line)
+
         return '\n'.join(result_lines)
 
     def _parse_program(self, content: str) -> None:

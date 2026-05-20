@@ -1,0 +1,9 @@
+program = "../dollar-transitive.tpp"
+
+[[case]]
+name = "dollar aliases expand transitively and preserve alternative precedence"
+
+[case.expect]
+exit_code = 0
+stdout = "123:xcaty\n"
+stderr = ""
