@@ -334,6 +334,12 @@ PCTEQ<(?<a>[ST]$PCT),(?<b>[ST]$PCT)> ::! eq a b
 ^EENV<or(?: (?<arg>[A-Za-z_][A-Za-z0-9_-]*|$NODE))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<let(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 # Generic call: eval callee, eval args, then APPLY.
+# Unsupported future/reserved forms stay explicit so they fail with the public
+# unsupported_form contract instead of drifting into lookup/not_function errors.
+# - define/letrec: binding and recursion boundaries are deliberately absent.
+# - break/continue: while has no non-local loop-control channel.
+# - map: higher-order list API semantics are not in this greenfield slice.
+# - quasiquote/unquote/splice: only recognized in the quasiquote evaluator.
 ^EENV<(?:define|letrec)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<while(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^E<while(?: (?<args>.*))?\|(?<k>.*)>$ ::= ERR<wrong_arity>
