@@ -1,4 +1,4 @@
-name = "whole-document multiline processing"
+name = "multiline state processing"
 program = "../multiline.tpp"
 
 [expect]

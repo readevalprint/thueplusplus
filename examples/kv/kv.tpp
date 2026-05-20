@@ -39,7 +39,7 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^LIST\|(?<db><|PCT|>)@D@$ ::= @OP[{{db}}]@
 
 # Helpers are intentionally below all generator rules that mention them, so
-# runtime row-scoped execution does not rewrite generator rule rows in-place.
+# state-scoped execution does not rewrite generator text in-place.
 @K\[(?<linek>[^|\]]+)\|(?<k>[^\]]+)\]@ ::! eq linek k
 @W\[(?<db>(?:<|PCT|>|,)*)\]@ ::> db {{db|pctdec}}
 ^@OP\[(?<r><|PCT|>)\]@$ ::> stdout {{r|pctdec}}\n

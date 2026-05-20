@@ -1,7 +1,7 @@
 program = "../toggle-self.tpp"
 
 [[case]]
-name = "rule toggles itself before halting"
+name = "state row toggles before output"
 
 [case.expect]
 exit_code = 0

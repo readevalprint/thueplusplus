@@ -1,0 +1,10 @@
+program = "../generated-substitution-inert.tpp"
+
+[[case]]
+name = "generated substitution rule text remains inert data"
+timeout = 2
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""

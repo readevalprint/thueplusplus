@@ -1,7 +1,7 @@
 program = "../self-update.tpp"
 
 [[case]]
-name = "rule updates itself into an output rule"
+name = "state row enables output state"
 
 [case.expect]
 exit_code = 0
