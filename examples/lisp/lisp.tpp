@@ -414,6 +414,7 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 # have reader syntax, so arrays round-trip as `(array ...)` instead of a separate
 # display-only bracket form.
 
+^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KDONE>$ ::= RET<{{v}}|KDONE>
 ^RET<VNUM<(?<n>$NUM)>\|KDONE>$ ::= RENDER<VNUM<{{n}}>|KOUT>
 ^RET<VBOOL<(?<b>true|false)>\|KDONE>$ ::= RENDER<VBOOL<{{b}}>|KOUT>
 ^RET<VSTR<(?<s>$PCT)>\|KDONE>$ ::= RENDER<VSTR<{{s}}>|KOUT>
@@ -421,13 +422,6 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<VSYM<(?<name>$PCT)>\|KDONE>$ ::= RENDER<VSYM<{{name}}>|KOUT>
 ^RET<VLIST<(?<items>(?:[^;>]*;)*)>\|KDONE>$ ::= RENDER<VLIST<{{items}}>|KOUT>
 ^RET<VARR<(?<items>(?:[^;>]*;)*)>\|KDONE>$ ::= RENDER<VARR<{{items}}>|KOUT>
-^RETENV<VNUM<(?<n>$NUM)>\|(?<env>[^|]*)\|KDONE>$ ::= RENDER<VNUM<{{n}}>|KOUT>
-^RETENV<VBOOL<(?<b>true|false)>\|(?<env>[^|]*)\|KDONE>$ ::= RENDER<VBOOL<{{b}}>|KOUT>
-^RETENV<VSTR<(?<s>$PCT)>\|(?<env>[^|]*)\|KDONE>$ ::= RENDER<VSTR<{{s}}>|KOUT>
-^RETENV<VCLOS<(?<c>[^>]*)>\|(?<env>[^|]*)\|KDONE>$ ::= RENDER<VCLOS<{{c}}>|KOUT>
-^RETENV<VSYM<(?<name>$PCT)>\|(?<env>[^|]*)\|KDONE>$ ::= RENDER<VSYM<{{name}}>|KOUT>
-^RETENV<VLIST<(?<items>(?:[^;>]*;)*)>\|(?<env>[^|]*)\|KDONE>$ ::= RENDER<VLIST<{{items}}>|KOUT>
-^RETENV<VARR<(?<items>(?:[^;>]*;)*)>\|(?<env>[^|]*)\|KDONE>$ ::= RENDER<VARR<{{items}}>|KOUT>
 
 ^RENDER<VNUM<(?<n>$NUM)>\|(?<k>.*)>$ ::= RRET<{{n|pctenc}}|{{k}}>
 ^RENDER<VBOOL<(?<b>true|false)>\|(?<k>.*)>$ ::= RRET<{{b|pctenc}}|{{k}}>
