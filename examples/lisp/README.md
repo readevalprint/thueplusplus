@@ -78,8 +78,18 @@ Unsupported syntax exits non-zero with a named stderr error. Current deliberate 
 - `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided, with error class `unsupported_form`;
 - `break`, `continue`, and looping forms beyond minimal `(while cond body)`: unsupported with error class `unsupported_form`;
 - list/code-as-data forms beyond the current tech-tree slice, such as `map`: unsupported until their downstream cards define semantics;
+- bare `quasiquote`, `unquote`, and `splice` outside the quasiquote evaluator: unsupported with error class `unsupported_form`;
 - unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
+
+Reserved unsupported-form rules are kept only where they protect a deliberate public boundary:
+
+| Form(s) | Keep/delete | Reason |
+| --- | --- | --- |
+| `define`, `letrec` | keep | Binding recursion is intentionally absent; generic lookup/application would report the wrong failure boundary. |
+| `break`, `continue` | keep | Minimal `while` has no non-local loop-control channel, so these names must stay reserved and explicit. |
+| `map` | keep | Higher-order list traversal is outside the current list/code-as-data slice and should not be treated as an ordinary missing function. |
+| bare `quasiquote`, `unquote`, `splice` | keep | These forms are valid only through the quasiquote evaluator; outside that evaluator they remain unsupported syntax, not lookup misses. |
 
 Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
 
