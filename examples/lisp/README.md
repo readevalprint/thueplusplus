@@ -52,6 +52,8 @@ Reader-backed outputs are intended to round trip where the reader has a direct v
 
 ## Evaluation model
 
+Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusable lexical and runtime-value shapes (`NAME`, `EXPR`, `VAL`, `DICTENTRIES`, and related aliases). These aliases are documentation as well as parser input: they keep type sets such as dict receivers and dict keys visibly distinct while avoiding duplicated hand-expanded regex bodies.
+
 - Lists are frozen inside-out as encoded payloads before evaluation.
 - Values are demanded lazily from encoded nodes.
 - `let` creates lexical bindings.
