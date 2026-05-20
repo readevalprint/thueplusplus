@@ -18,6 +18,7 @@ Compound forms:
 - arithmetic: `+`, `-`, `*`, `/`;
 - numeric comparison/equality: `=`, `<`, `>`, `<=`, `>=`;
 - boolean control: `if`, `and`, `or`;
+- sequencing: `begin`;
 - lexical binding: `let`;
 - functions: `lambda` and direct application;
 - arrays: `array`, `head`, `rest`.
@@ -50,6 +51,7 @@ Reader-backed outputs are intended to round trip: feeding a rendered number, boo
 - `lambda` captures the lexical environment in a closure.
 - Function application evaluates arguments according to the current evaluator rules and checks arity.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
+- `begin` evaluates expressions in order and returns the final expression value.
 - Arithmetic and comparison forms are strict for the operands they require.
 
 ## Unsupported forms and fail-loud policy
@@ -95,7 +97,7 @@ The future policy gate is #108 (`bounded while before recursion`). Until that ga
 The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
 
 - `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `quote`, `define`, `letrec`, raw internal-looking inputs, and other non-reader forms;
-- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `and`, `or`, `let`, and `lambda` shapes;
+- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `begin`, `and`, `or`, `let`, and `lambda` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual lookup miss for a bare variable or callee name;
 - `not_function`: attempting to apply a non-closure value;

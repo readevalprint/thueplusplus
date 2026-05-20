@@ -56,6 +56,7 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^EENV<lambda L<(?<params>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
 ^E<lambda L<(?<params>$PCT)> (?<body>$NODE|[A-Za-z_][A-Za-z0-9_-]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^>|{{k}}>
 ^EENV<lambda L<(?<params>$PCT)> (?<body>$NODE|[A-Za-z_][A-Za-z0-9_-]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
+^E<begin\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^E<lambda(?: (?<args>.*))?\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
 # Env-aware demand/eval. L<...> before generic node to preserve env.
@@ -68,6 +69,7 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 # constructs an empty array rather than looking up `array` as a variable.
 ^EENV<array\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VARR<>|{{k}}>
 ^E<array\|(?<k>.*)>$ ::= RET<VARR<>|{{k}}>
+^EENV<begin\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?<name>[A-Za-z_][A-Za-z0-9_-]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^EENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node}}|{{env}}|{{k}}>
 
@@ -132,6 +134,9 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^RET<VBOOL<true>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|]*)> (?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<false>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|]*)> (?<k>.*)>$ ::= ARGENV<{{rhs}}|{{env}}|{{k}}>
 ^RET<(?<bad>$NONBOOL)\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|]*)> (?<k>.*)>$ ::= ERR<type_error>
+^EENV<begin (?<expr>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|{{k}}>
+^EENV<begin (?<first>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<rest>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
+^RET<(?<ignored>$VAL)\|KENBEGIN<(?<rest>$PCT)\|(?<env>[^|]*)> (?<k>.*)>$ ::= EENV<begin {{rest|pctdec}}|{{env}}|{{k}}>
 ^EENV<array (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKARRENV<{{items}}|{{env}}|{{k}}|>
 ^PACKARRENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= RET<VARR<{{acc}}>|{{k}}>
 ^PACKARRENV<(?<item>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ARGENV<{{item}}|{{env}}|KENARR<{{rest}}|{{env}}|{{acc}}> {{k}}>
