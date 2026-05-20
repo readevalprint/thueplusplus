@@ -115,7 +115,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	if inputOverride != nil { // Keep rule rows and replace file-provided data rows.
+	if inputOverride != nil { // Keep rules and replace file-provided state.
 		if err := interp.ApplyInputOverride(*inputOverride); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

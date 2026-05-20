@@ -127,5 +127,6 @@ Coverage ignores are intentionally unsupported. Every surviving Lisp rule must b
 - `@include` directive support
 - Predefined bindings: `stdout`, `stderr`
 - File and process bindings via CLI
+- Source rules are parsed once; execution rewrites only state rows (`--input` replaces source-provided state)
 - Resource reads: `::< -1 name` reads existing bulk/available content; `::< {timeout} name` reads one newline-delimited message from `stdin`/process resources, strips the line terminator, and PCT-encodes the payload
 - Execution limits (`--max-evals`, `--max-state-bytes`)

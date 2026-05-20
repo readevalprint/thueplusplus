@@ -15,4 +15,4 @@ args = ["--max-state-bytes", "0"]
 [case.expect]
 exit_code = 1
 stdout = ""
-stderr_contains = ["State size (11 bytes) exceeds maximum (0 bytes)"]
+stderr_contains = ["State size (1 bytes) exceeds maximum (0 bytes)"]

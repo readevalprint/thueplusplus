@@ -1,7 +1,7 @@
 program = "../update-above.tpp"
 
 [[case]]
-name = "rule updates a row above itself"
+name = "later rule updates earlier state row"
 
 [case.expect]
 exit_code = 0

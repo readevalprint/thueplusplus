@@ -76,11 +76,10 @@ type Interpreter struct {
 	RuleCoveragePath   string
 	RuleCoverageCounts map[string]int
 	ProgramPath        string
-	RuleCache          map[string]*Rule
 }
 
 func New() *Interpreter {
-	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr, RuleCoverageCounts: map[string]int{}, RuleCache: map[string]*Rule{}}
+	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr, RuleCoverageCounts: map[string]int{}}
 	i.Bindings["stdin"] = &Binding{Name: "stdin", PathOrCommand: "stdin", inputReader: bufio.NewReader(os.Stdin)}
 	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout"}
 	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr"}
@@ -182,14 +181,40 @@ func expandPatterns(content string) string {
 
 func (i *Interpreter) parseProgram(content string) error {
 	content = expandPatterns(content)
+	i.Rules = nil
 	var rows []string
-	for _, line := range strings.Split(content, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "# thuepp-source: ") {
+	currentSourcePath := i.ProgramPath
+	currentSourceLine := 0
+	for lineNumber, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "# thuepp-source: ") {
+			marker := strings.TrimPrefix(trimmed, "# thuepp-source: ")
+			if idx := strings.LastIndex(marker, ":"); idx >= 0 {
+				if sourceLine, err := strconv.Atoi(marker[idx+1:]); err == nil {
+					currentSourcePath = marker[:idx]
+					currentSourceLine = sourceLine
+				}
+			}
 			continue
 		}
-		rows = append(rows, line)
+		sourceLine := currentSourceLine
+		if sourceLine == 0 {
+			sourceLine = lineNumber + 1
+		}
+		rule, err := parseRule(line, sourceLine, currentSourcePath)
+		if err != nil {
+			return err
+		}
+		if rule != nil {
+			i.Rules = append(i.Rules, *rule)
+		} else {
+			rows = append(rows, line)
+		}
 	}
-	i.State = strings.Trim(strings.Join(rows, "\n"), "\n")
+	for len(rows) > 0 && rows[len(rows)-1] == "" {
+		rows = rows[:len(rows)-1]
+	}
+	i.State = strings.Join(rows, "\n")
 	return nil
 }
 
@@ -243,32 +268,8 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
 }
 
-func (i *Interpreter) parseRuleCached(line string, lineNumber int, sourcePath string) (*Rule, error) {
-	key := fmt.Sprintf("%s\x00%d\x00%s", sourcePath, lineNumber, line)
-	if rule, ok := i.RuleCache[key]; ok {
-		return rule, nil
-	}
-	rule, err := parseRule(line, lineNumber, sourcePath)
-	if err != nil {
-		return nil, err
-	}
-	i.RuleCache[key] = rule
-	return rule, nil
-}
-
 func (i *Interpreter) ApplyInputOverride(value string) error {
-	var ruleRows []string
-	for n, line := range strings.Split(i.State, "\n") {
-		rule, err := parseRule(line, n+1, i.ProgramPath)
-		if err != nil {
-			return err
-		}
-		if rule != nil {
-			ruleRows = append(ruleRows, line)
-		}
-	}
-	ruleRows = append(ruleRows, value)
-	i.State = strings.Join(ruleRows, "\n")
+	i.State = value
 	return nil
 }
 
@@ -921,7 +922,7 @@ func formatDebugGroups(groups map[string]string) string {
 	return "map[" + strings.Join(parts, " ") + "]"
 }
 
-type documentRow struct {
+type stateRow struct {
 	lineNumber int
 	row        string
 	index      int
@@ -929,39 +930,32 @@ type documentRow struct {
 
 func (i *Interpreter) Run() (int, error) {
 	for {
-		var rows []documentRow
+		var rows []stateRow
 		parts := strings.Split(i.State, "\n")
 		if i.State == "" {
 			parts = []string{}
 		}
 		for idx, row := range parts {
-			rows = append(rows, documentRow{lineNumber: idx + 1, row: strings.TrimSuffix(row, "\r"), index: idx})
+			rows = append(rows, stateRow{lineNumber: idx + 1, row: strings.TrimSuffix(row, "\r"), index: idx})
 		}
 
 		applied := false
-		for _, info := range rows {
-			rule, err := i.parseRuleCached(info.row, info.lineNumber, i.ProgramPath)
-			if err != nil {
-				return 1, err
-			}
-			if rule == nil {
-				continue
-			}
+		for ruleIndex, rule := range i.Rules {
 			if i.MaxEvals != nil && i.EvalCount >= *i.MaxEvals {
 				return 1, fmt.Errorf("Rule probe limit (%d) exceeded", *i.MaxEvals)
 			}
 			i.EvalCount++
 
-			match, ok := i.findAllowedDocumentMatch(*rule, rows)
+			match, ok := i.findAllowedStateMatch(rule, rows)
 			if !ok {
 				continue
 			}
 			applied = true
 			groups := match.groups
-			magicVars := map[string]string{"rule_index": strconv.Itoa(info.index)}
+			magicVars := map[string]string{"rule_index": strconv.Itoa(ruleIndex)}
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
-				fmt.Fprintf(i.Stderr, "[%d] ROW %d MATCHES DOCUMENT AT %d:%d: %s\n", i.EvalCount, info.lineNumber, match.start, match.end, rule.LHS)
+				fmt.Fprintf(i.Stderr, "[%d] RULE %d MATCHES STATE AT %d:%d: %s\n", i.EvalCount, rule.LineNumber, match.start, match.end, rule.LHS)
 				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
 			}
 			repl := ""
@@ -972,14 +966,14 @@ func (i *Interpreter) Run() (int, error) {
 				if err != nil {
 					return 1, err
 				}
-				i.recordRuleCoverage(*rule)
+				i.recordRuleCoverage(rule)
 			case Data:
 				var err error
 				repl, err = i.expandDataTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
 					return 1, err
 				}
-				i.recordRuleCoverage(*rule)
+				i.recordRuleCoverage(rule)
 			case Read:
 				parts := strings.Fields(strings.TrimSpace(rule.RHS))
 				if len(parts) != 2 {
@@ -1013,7 +1007,7 @@ func (i *Interpreter) Run() (int, error) {
 					return 1, errors.New(er)
 				}
 				repl = pctEncode(content)
-				i.recordRuleCoverage(*rule)
+				i.recordRuleCoverage(rule)
 			case Write:
 				expanded, err := i.expandTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
@@ -1027,7 +1021,7 @@ func (i *Interpreter) Run() (int, error) {
 					repl = i.writeString(b, content)
 				}
 				if b != nil && repl == "" {
-					i.recordRuleCoverage(*rule)
+					i.recordRuleCoverage(rule)
 				}
 			case Builtin:
 				values := make([]string, 0, len(rule.BuiltinArgs))
@@ -1043,7 +1037,7 @@ func (i *Interpreter) Run() (int, error) {
 				if err != nil {
 					return 1, err
 				}
-				i.recordRuleCoverage(*rule)
+				i.recordRuleCoverage(rule)
 			case Exit:
 				codeStr := strings.TrimSpace(rule.RHS)
 				if strings.HasPrefix(codeStr, "{") && strings.HasSuffix(codeStr, "}") {
@@ -1051,10 +1045,10 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				code, err := strconv.Atoi(codeStr)
 				if err != nil {
-					i.recordRuleCoverage(*rule)
+					i.recordRuleCoverage(rule)
 					return 1, nil
 				}
-				i.recordRuleCoverage(*rule)
+				i.recordRuleCoverage(rule)
 				return code, nil
 			}
 			if err := i.setState(i.State[:match.start] + repl + i.State[match.end:]); err != nil {
@@ -1080,10 +1074,9 @@ func spansOverlap(aStart, aEnd, bStart, bEnd int) bool {
 	return aStart < bEnd && bStart < aEnd
 }
 
-func (i *Interpreter) documentDisallowedSpans(rule Rule, rows []documentRow) ([]disallowedSpan, error) {
+func (i *Interpreter) stateCommentSpans(rule Rule, rows []stateRow) ([]disallowedSpan, error) {
 	spans := []disallowedSpan{}
 	allowComments := strings.Contains(rule.LHS, `\#`)
-	allowRuleRows := strings.Contains(rule.LHS, "::")
 	offset := 0
 	for _, row := range rows {
 		segmentLen := len(row.row)
@@ -1091,13 +1084,7 @@ func (i *Interpreter) documentDisallowedSpans(rule Rule, rows []documentRow) ([]
 			segmentLen++
 		}
 		trimmed := strings.TrimSpace(row.row)
-		rowRule, err := i.parseRuleCached(row.row, row.lineNumber, i.ProgramPath)
-		if err != nil {
-			return nil, err
-		}
 		if strings.HasPrefix(trimmed, "#") && !allowComments {
-			spans = append(spans, disallowedSpan{start: offset, end: offset + segmentLen})
-		} else if rowRule != nil && !allowRuleRows {
 			spans = append(spans, disallowedSpan{start: offset, end: offset + segmentLen})
 		}
 		offset += segmentLen
@@ -1105,8 +1092,8 @@ func (i *Interpreter) documentDisallowedSpans(rule Rule, rows []documentRow) ([]
 	return spans, nil
 }
 
-func (i *Interpreter) findAllowedDocumentMatch(rule Rule, rows []documentRow) (matchInfo, bool) {
-	spans, err := i.documentDisallowedSpans(rule, rows)
+func (i *Interpreter) findAllowedStateMatch(rule Rule, rows []stateRow) (matchInfo, bool) {
+	spans, err := i.stateCommentSpans(rule, rows)
 	if err != nil {
 		return matchInfo{}, false
 	}

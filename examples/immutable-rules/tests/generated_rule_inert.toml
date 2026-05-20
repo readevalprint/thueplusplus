@@ -1,0 +1,10 @@
+program = "../generated-rule-inert.tpp"
+
+[[case]]
+name = "generated rule text remains inert data"
+timeout = 2
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""

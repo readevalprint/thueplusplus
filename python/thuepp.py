@@ -79,7 +79,6 @@ class ThueppInterpreter:
         self.rule_coverage_path = rule_coverage_path
         self.rule_coverage_counts: dict[str, int] = {}
         self.program_path = ""
-        self._rule_cache: dict[tuple[str, int, str], Optional[Rule]] = {}
         self._initial_rows: list[str] = []
         self._row_sources: list[tuple[str, int]] = []
 
@@ -174,12 +173,9 @@ class ThueppInterpreter:
         return '\n'.join(result_lines)
 
     def _parse_program(self, content: str) -> None:
-        """Load runtime rows as mutable state.
-
-        Rule rows are interpreted dynamically by ``run()`` when execution reaches
-        them. There is no rule/state section split and no standalone terminator.
-        """
+        """Compile source rules once and load non-rule rows as mutable data."""
         content = self._expand_patterns(content)
+        self.rules = []
         rows = []
         sources = []
         current_source: tuple[str, int] | None = None
@@ -191,8 +187,13 @@ class ThueppInterpreter:
                 if sep and source_line.isdigit():
                     current_source = (source_path, int(source_line))
                 continue
-            rows.append(line)
-            sources.append(current_source or (self.program_path, line_number))
+            source_path, source_line = current_source or (self.program_path, line_number)
+            rule = self._parse_rule(line, source_line, source_path)
+            if rule is not None:
+                self.rules.append(rule)
+            else:
+                rows.append(line)
+                sources.append((source_path, source_line))
         while rows and rows[-1] == "":
             rows.pop()
             sources.pop()
@@ -201,28 +202,10 @@ class ThueppInterpreter:
         self.state = "\n".join(rows)
 
     def apply_input_override(self, value: str) -> None:
-        """Replace file-provided data rows with an explicit input row.
-
-        Runtime-row programs have no explicit rule/state divider. For CLI input,
-        keep rows that parse as rules and append the supplied input as the final
-        target row; existing non-rule data rows are treated as file-provided
-        initial input and omitted.
-        """
-        rule_rows = []
-        rule_sources = []
-        for line_number, line in enumerate(self.state.split("\n"), 1):
-            source_path, source_line = (self.program_path, line_number)
-            if line_number - 1 < len(self._initial_rows) and self._initial_rows[line_number - 1] == line:
-                source_path, source_line = self._row_sources[line_number - 1]
-            rule = self._parse_rule(line, source_line, source_path)
-            if rule is not None:
-                rule_rows.append(line)
-                rule_sources.append((source_path, source_line))
-        rule_rows.append(value)
-        rule_sources.append((self.program_path, len(rule_rows)))
-        self._initial_rows = list(rule_rows)
-        self._row_sources = rule_sources
-        self.state = "\n".join(rule_rows)
+        """Replace source data rows with explicit input while preserving compiled rules."""
+        self._initial_rows = [value]
+        self._row_sources = [(self.program_path, 1)]
+        self.state = value
 
     def _translate_lhs(self, lhs: str) -> str:
         """Translate supported RE2-style named captures for google-re2."""
@@ -262,7 +245,7 @@ class ThueppInterpreter:
 
         try:
             pattern_lhs = self._translate_lhs(lhs)
-            # Runtime rule rows rewrite the holistic suffix below themselves.
+            # Rules match the mutable state string.
             # Enable line anchors by default so row-style rules using ^...$ still
             # match individual rows inside that suffix; dot remains non-newline
             # unless a rule explicitly opts into (?s).
@@ -278,12 +261,6 @@ class ThueppInterpreter:
             )
 
         return Rule(lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args)
-
-    def _parse_rule_cached(self, row: str, line_number: int, source_path: str) -> Optional[Rule]:
-        key = (row, line_number, source_path)
-        if key not in self._rule_cache:
-            self._rule_cache[key] = self._parse_rule(row, line_number, source_path)
-        return self._rule_cache[key]
 
     def _parse_builtin_call(
         self,
@@ -709,28 +686,21 @@ class ThueppInterpreter:
         ]
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
-    def _document_disallowed_spans(self, row_infos: list[tuple], rule: Rule) -> list[tuple[int, int]]:
-        """Return document spans this rule should skip as match targets.
+    def _state_comment_spans(self, state_rows: list[tuple], rule: Rule) -> list[tuple[int, int]]:
+        """Return source-comment spans this rule should skip as match targets.
 
-        Matching is whole-document, but comments remain inert unless the rule
-        explicitly mentions an escaped literal hash (\#). Non-substitution
-        operators also skip rule rows so broad render/write/builtin rows do not
-        consume the program's own rule definitions.
+        Matching is over state, but source comments remain inert unless the rule
+        explicitly mentions an escaped literal hash (\#).
         """
         spans = []
         allow_comments = r"\#" in rule.lhs
-        allow_rule_rows = "::" in rule.lhs
-        for _line_number, row, start, end, source_path, source_line, _row_index in row_infos:
-            stripped = row.strip()
-            row_rule = self._parse_rule_cached(row, source_line, source_path)
-            if stripped.startswith("#") and not allow_comments:
-                spans.append((start, end))
-            elif row_rule is not None and not allow_rule_rows:
+        for _line_number, row, start, end, _source_path, _source_line, _row_index in state_rows:
+            if row.strip().startswith("#") and not allow_comments:
                 spans.append((start, end))
         return spans
 
-    def _match_over_document(self, rule: Rule, row_infos: list[tuple]) -> Any:
-        disallowed = self._document_disallowed_spans(row_infos, rule)
+    def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
+        disallowed = self._state_comment_spans(state_rows, rule)
         pos = 0
         while pos <= len(self.state):
             match = rule.lhs_pattern.search(self.state, pos)
@@ -745,9 +715,9 @@ class ThueppInterpreter:
         return None
 
     def run(self) -> int:
-        """Execute rules against the entire mutable document until quiescence."""
+        """Execute rules against mutable state until quiescence."""
         while True:
-            row_infos = []
+            state_rows = []
             offset = 0
             if self.state:
                 for index, segment in enumerate(self.state.splitlines(keepends=True)):
@@ -759,26 +729,22 @@ class ThueppInterpreter:
                     source_path, source_line = (self.program_path, line_number)
                     if index < len(self._initial_rows) and self._initial_rows[index] == row:
                         source_path, source_line = self._row_sources[index]
-                    row_infos.append((line_number, row, offset, end, source_path, source_line, index))
+                    state_rows.append((line_number, row, offset, end, source_path, source_line, index))
                     offset = end
                 if self.state.endswith("\n"):
-                    line_number = len(row_infos) + 1
-                    row_infos.append((line_number, "", offset, offset, self.program_path, line_number, len(row_infos)))
+                    line_number = len(state_rows) + 1
+                    state_rows.append((line_number, "", offset, offset, self.program_path, line_number, len(state_rows)))
 
             applied = False
 
-            for line_number, row, _row_start, _row_end, source_path, source_line, row_index in row_infos:
-                rule = self._parse_rule_cached(row, source_line, source_path)
-                if rule is None:
-                    continue
-
+            for rule_index, rule in enumerate(self.rules):
                 if self.max_evals is not None and self.eval_count >= self.max_evals:
                     raise RuntimeError(
                         f"Rule probe limit ({self.max_evals}) exceeded"
                     )
                 self.eval_count += 1
 
-                match = self._match_over_document(rule, row_infos)
+                match = self._match_state(rule, state_rows)
                 if not match:
                     continue
 
@@ -789,14 +755,14 @@ class ThueppInterpreter:
                     escaped_state = self.state.replace("\n", "\\n")
                     print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
                     print(
-                        f"[{self.eval_count}] ROW {line_number} MATCHES DOCUMENT AT "
+                        f"[{self.eval_count}] RULE {rule.line_number} MATCHES STATE AT "
                         f"{match.start()}:{match.end()}: {rule.lhs}",
                         file=sys.stderr,
                     )
                     print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
 
                 replacement: Optional[str] = None
-                magic_vars = {"rule_index": str(row_index)}
+                magic_vars = {"rule_index": str(rule_index)}
 
                 if rule.operator == Operator.SUBSTITUTE:
                     replacement = self._expand_template(rule.rhs, groups, magic_vars)
