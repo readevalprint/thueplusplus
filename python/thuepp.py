@@ -358,6 +358,8 @@ class ThueppInterpreter:
             "b64dec": 1,
             "pctenc": 1,
             "pctdec": 1,
+            "escape": 1,
+            "unescape": 1,
         }.get(name)
 
     def _b64url_encode(self, value: str) -> str:
@@ -417,6 +419,46 @@ class ThueppInterpreter:
         except UnicodeDecodeError as exc:
             raise RuntimeError(f"PCT payload decoded bytes are not valid UTF-8: {exc}")
 
+    def _escape(self, value: str) -> str:
+        text = self._pct_decode(value)
+        replacements = {
+            "\\": "\\\\",
+            '"': '\\"',
+            "\n": "\\n",
+            "\t": "\\t",
+            "\r": "\\r",
+            "\b": "\\b",
+            "\f": "\\f",
+        }
+        return self._pct_encode("".join(replacements.get(ch, ch) for ch in text))
+
+    def _unescape(self, value: str) -> str:
+        text = self._pct_decode(value)
+        replacements = {
+            "\\": "\\",
+            '"': '"',
+            "n": "\n",
+            "t": "\t",
+            "r": "\r",
+            "b": "\b",
+            "f": "\f",
+        }
+        out = []
+        i = 0
+        while i < len(text):
+            ch = text[i]
+            if ch != "\\":
+                out.append(ch)
+                i += 1
+                continue
+            if i + 1 >= len(text):
+                raise RuntimeError("Builtin 'unescape' has trailing backslash escape")
+            esc = text[i + 1]
+            if esc not in replacements:
+                raise RuntimeError(f"Builtin 'unescape' unsupported escape '\\{esc}'")
+            out.append(replacements[esc])
+            i += 2
+        return self._pct_encode("".join(out))
 
     def _is_numeric_literal(self, value: str) -> bool:
         return py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value) is not None
@@ -459,6 +501,10 @@ class ThueppInterpreter:
             return self._pct_encode(values[0])
         if name == "pctdec":
             return self._pct_decode(values[0])
+        if name == "escape":
+            return self._escape(values[0])
+        if name == "unescape":
+            return self._unescape(values[0])
         if name == "num":
             return f"<num>{self._format_rational(self._parse_number(values[0], name))}</num>"
 

@@ -17,6 +17,10 @@ N <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 ^num:(?<n>$N)$ ::! num n
 ^b64enc:(?<s>.*)$ ::! b64enc s
 ^b64dec:(?<s>.*)$ ::! b64dec s
+^pctenc:(?<s>.*)$ ::! pctenc s
+^pctdec:(?<s>.*)$ ::! pctdec s
+^escape:(?<s>.*)$ ::! escape s
+^unescape:(?<s>.*)$ ::! unescape s
 ^str:(?<s>.*)$ ::= <str>@B64ENC[{{s}}]@</str>
 @B64ENC\[(?<s>.*)\]@ ::! b64enc s
 ^(?<r>.+)$ ::> stdout {{r}}\n

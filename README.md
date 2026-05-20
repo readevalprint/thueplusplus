@@ -88,6 +88,10 @@ JavaScript is future work, not a currently available implementation. When it exi
 
 Numeric builtins use exact rational arithmetic and canonical rational output, not floating-point arithmetic or decimal approximation. The accepted numeric input grammar, migration note for decimal-looking division output, and display policy are specified in `docs/numeric-builtins.md`. Example-level readable typed value wrappers are specified in `docs/typed-values.md`.
 
+## String escape builtins
+
+`escape` and `unescape` provide generic source-literal string escaping over canonical PCT payloads. They are separate from `pctenc`/`pctdec`: PCT remains a lossless transport codec, while `escape`/`unescape` interpret the standard backslash spellings documented in `docs/string-escape-builtins.md`.
+
 ## Rule coverage counts
 
 Both interpreters can write successful rule application counts:
