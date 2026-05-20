@@ -1,7 +1,7 @@
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 ^read-one$ ::= got:@IN@
-@IN@ ::< /n worker
+@IN@ ::< 1 worker
 ^got:(?<value><|PCT|>)$ ::> stdout {{value|pctdec}}
 
 ::=

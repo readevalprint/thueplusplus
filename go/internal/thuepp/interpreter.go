@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"os"
 	"os/exec"
@@ -770,7 +771,7 @@ func stripLineTerminator(line string) (string, bool) {
 	return line, true
 }
 
-func (i *Interpreter) readLine(b *Binding) (string, string) {
+func (i *Interpreter) readLine(b *Binding, timeout time.Duration) (string, string) {
 	if b.Name == "stdout" || b.Name == "stderr" {
 		return "", "ERR:resource:cannot_read_output_stream"
 	}
@@ -802,7 +803,7 @@ func (i *Interpreter) readLine(b *Binding) (string, string) {
 				return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
 			}
 			return stripped, ""
-		case <-time.After(5 * time.Second):
+		case <-time.After(timeout):
 			return "", fmt.Sprintf("ERR:resource:%s:timeout", b.Name)
 		case err := <-b.exitCh:
 			if err != nil {
@@ -815,7 +816,7 @@ func (i *Interpreter) readLine(b *Binding) (string, string) {
 			return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
 		}
 	}
-	return "", fmt.Sprintf("ERR:resource:%s:/n requires process or stdin binding", b.Name)
+	return "", fmt.Sprintf("ERR:resource:%s:line read requires process or stdin binding", b.Name)
 }
 
 func (i *Interpreter) writeString(b *Binding, content string) string {
@@ -985,8 +986,15 @@ func (i *Interpreter) Run() (int, error) {
 					return 1, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
 				}
 				readSpec, resource := parts[0], parts[1]
-				if readSpec != "-1" && readSpec != "/n" {
-					return 1, fmt.Errorf("Line %d: unsupported read spec '%s'", rule.LineNumber, readSpec)
+				lineRead := false
+				var readTimeout time.Duration
+				if readSpec != "-1" {
+					seconds, err := strconv.ParseFloat(readSpec, 64)
+					if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
+						return 1, fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
+					}
+					lineRead = true
+					readTimeout = time.Duration(seconds * float64(time.Second))
 				}
 				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
 					return 1, fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
@@ -996,8 +1004,8 @@ func (i *Interpreter) Run() (int, error) {
 					return 1, fmt.Errorf("Unknown resource '%s'", resource)
 				}
 				var content, er string
-				if readSpec == "/n" {
-					content, er = i.readLine(b)
+				if lineRead {
+					content, er = i.readLine(b, readTimeout)
 				} else {
 					content, er = i.readAll(b)
 				}
