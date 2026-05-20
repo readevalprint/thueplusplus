@@ -16,9 +16,6 @@ python/tests/    Python implementation tests
 # Run a program
 ./python/thuepp.py <program.tpp>
 
-# With file bindings
-./python/thuepp.py <program.tpp> --file:<name> <path>
-
 # With process bindings
 ./python/thuepp.py <program.tpp> --proc:<name> <command>
 
@@ -82,7 +79,7 @@ make test
 `make test` runs the repository conformance check and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, and enforces rule coverage for all manifest-declared example programs. For focused debugging, pass explicit manifest paths directly to the runner:
 
 ```bash
-uv run python tools/example_runner.py examples/echo/tests/file-input.toml
+uv run python tools/example_runner.py examples/echo/tests/proc-input.toml
 ```
 
 JavaScript is future work, not a currently available implementation. When it exists, it should join `make test` through the shared manifest runner instead of a separate harness or a green no-op placeholder.
@@ -122,8 +119,8 @@ Coverage ignores are intentionally unsupported. Every surviving Lisp rule must b
 - Operators: `::=` (substitute), `::<` (read), `::>` (write), `::-` (exit)
 - `{{group}}` template syntax with escape sequences (`\n`, `\t`, `\r`, `\\`)
 - `@include` directive support
-- Predefined bindings: `stdout`, `stderr`
-- File and process bindings via CLI
+- Predefined bindings: `stdin`, `stdout`, `stderr`
+- Process bindings via CLI (`--proc:<name> <command>`)
 - Source rules are parsed once; execution rewrites only state rows (`--input` replaces source-provided state)
-- Resource reads: `::< -1 name` reads existing bulk/available content; `::< {timeout} name` reads one newline-delimited message from `stdin`/process resources, strips the line terminator, and PCT-encodes the payload
+- Resource reads: `::< -1 name` reads bulk/available character-stream content from `stdin`/process resources; `::< {timeout} name` reads one newline-delimited message from `stdin`/process resources, strips the line terminator, and PCT-encodes the payload
 - Execution limits (`--max-evals`, `--max-state-bytes`)

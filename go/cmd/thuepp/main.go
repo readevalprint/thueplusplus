@@ -88,14 +88,6 @@ func main() {
 			}
 			interp.MaxStateBytes = &v
 			idx++
-		case strings.HasPrefix(arg, "--file:"):
-			name := strings.TrimPrefix(arg, "--file:")
-			if idx+1 >= len(args) {
-				fmt.Fprintf(os.Stderr, "Error: --file:%s requires a path argument\n", name)
-				os.Exit(1)
-			}
-			interp.AddFileBinding(name, args[idx+1])
-			idx += 2
 		case strings.HasPrefix(arg, "--proc:"):
 			name := strings.TrimPrefix(arg, "--proc:")
 			if idx+1 >= len(args) {
@@ -135,5 +127,5 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--file:<name> <path>]... [--proc:<name> <command>]... [--input <state>] [options]")
+	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options]")
 }

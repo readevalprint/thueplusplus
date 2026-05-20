@@ -1,0 +1,10 @@
+name = "echo process input with bulk read"
+program = "../echo.tpp"
+
+[bindings.procs]
+input = "sh -c 'printf abc; printf \"\\n\"; printf def; printf \"\\n\"'"
+
+[expect]
+stdout = "abc\ndef\n"
+stderr = ""
+exit_code = 0

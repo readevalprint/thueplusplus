@@ -91,9 +91,6 @@ func New() *Interpreter {
 	return i
 }
 
-func (i *Interpreter) AddFileBinding(name, path string) {
-	i.Bindings[name] = &Binding{Name: name, PathOrCommand: path}
-}
 func (i *Interpreter) AddProcBinding(name, command string) {
 	i.Bindings[name] = &Binding{Name: name, IsProcess: true, PathOrCommand: command}
 }
@@ -836,14 +833,7 @@ func (i *Interpreter) readAll(b *Binding) (string, string) {
 			return "", ""
 		}
 	}
-	data, err := os.ReadFile(b.PathOrCommand)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", "ERR:resource:notfound:" + b.Name
-		}
-		return "", fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-	}
-	return string(data), ""
+	return "", fmt.Sprintf("ERR:resource:%s:bulk read requires process or stdin binding", b.Name)
 }
 
 func stripLineTerminator(line string) (string, bool) {
@@ -890,6 +880,17 @@ func (i *Interpreter) readLine(b *Binding, timeout time.Duration) (string, strin
 		case <-time.After(timeout):
 			return "", fmt.Sprintf("ERR:resource:%s:timeout", b.Name)
 		case err := <-b.exitCh:
+			select {
+			case line, ok := <-b.outCh:
+				if ok {
+					stripped, complete := stripLineTerminator(line)
+					if !complete {
+						return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
+					}
+					return stripped, ""
+				}
+			default:
+			}
 			if err != nil {
 				msg := strings.TrimSpace(b.stderr.String())
 				if msg == "" {
@@ -928,10 +929,7 @@ func (i *Interpreter) writeString(b *Binding, content string) string {
 		}
 		return ""
 	}
-	if err := os.WriteFile(b.PathOrCommand, []byte(content), 0644); err != nil {
-		return fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-	}
-	return ""
+	return fmt.Sprintf("ERR:resource:%s:write requires process or output stream binding", b.Name)
 }
 
 func (i *Interpreter) setState(s string) error {

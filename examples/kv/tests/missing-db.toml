@@ -1,8 +1,0 @@
-name = "kv missing db binding fails loudly"
-program = "../kv.tpp"
-input = "list"
-
-[expect]
-stdout = ""
-stderr_contains = ["Unknown resource 'db'"]
-exit_code = 1
