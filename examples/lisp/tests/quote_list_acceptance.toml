@@ -1,4 +1,5 @@
 program = "../lisp.tpp"
+args = ["--max-evals", "120000"]
 
 [[case]]
 name = "quote symbol"
@@ -217,48 +218,48 @@ stderr_stripped = "unsupported_form"
 exit_code = 2
 
 [[case]]
-name = "get zero bounded list"
-input = "(get 0 (list 7 8 9 10))"
+name = "at zero bounded list"
+input = "(at (list 7 8 9 10) 0)"
 [case.expect]
 stdout = "7\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "get one bounded list"
-input = "(get 1 (list 7 8 9 10))"
+name = "at one bounded list"
+input = "(at (list 7 8 9 10) 1)"
 [case.expect]
 stdout = "8\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "get two bounded list"
-input = "(get 2 (list 7 8 9 10))"
+name = "at two bounded list"
+input = "(at (list 7 8 9 10) 2)"
 [case.expect]
 stdout = "9\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "get three bounded list"
-input = "(get 3 (list 7 8 9 10))"
+name = "at three bounded list"
+input = "(at (list 7 8 9 10) 3)"
 [case.expect]
 stdout = "10\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "get index rejects non number"
-input = "(get true (list 7 8 9))"
+name = "at index rejects non number"
+input = "(at (list 7 8 9) true)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "get list rejects non list"
-input = "(get 0 7)"
+name = "at rejects non list"
+input = "(at 7 0)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -297,8 +298,8 @@ stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "list get out of bounds fails"
-input = "(get 4 (list 7 8 9))"
+name = "list at out of bounds fails"
+input = "(at (list 7 8 9) 4)"
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"

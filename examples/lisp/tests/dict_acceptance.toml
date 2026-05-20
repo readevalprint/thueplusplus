@@ -1,0 +1,322 @@
+program = "../lisp.tpp"
+args = ["--max-evals", "120000"]
+
+[[case]]
+name = "empty dict renders"
+input = "(dict)"
+[case.expect]
+stdout = "(dict)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "symbol key dict renders pair syntax"
+input = "(dict (x 1) (y 2))"
+[case.expect]
+stdout = "(dict (x 1) (y 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "string key dict renders escaped pair syntax"
+input = "(dict (\"x\" 1) (\"line\\nkey\" 2))"
+[case.expect]
+stdout = "(dict (\"x\" 1) (\"line\\nkey\" 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict values are evaluated"
+input = "(dict (x (+ 1 2)) (y (list 4 5)))"
+[case.expect]
+stdout = "(dict (x 3) (y (4 5)))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "lookup symbol key returns stored value"
+input = "(lookup (dict (x 1) (y 2)) (quote x) 99)"
+[case.expect]
+stdout = "1\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "lookup string key returns stored value"
+input = "(lookup (dict (\"x\" 1) (\"y\" 2)) \"y\" 99)"
+[case.expect]
+stdout = "2\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "symbol and string keys with same payload are distinct"
+input = "(let ((d (dict (x 1) (\"x\" 2)))) (list (lookup d (quote x) 99) (lookup d \"x\" 99)))"
+[case.expect]
+stdout = "(1 2)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "missing symbol key returns mandatory default"
+input = "(lookup (dict (x 1)) (quote missing) 99)"
+[case.expect]
+stdout = "99\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "present false does not fall through to default"
+input = "(lookup (dict (x false)) (quote x) true)"
+[case.expect]
+stdout = "false\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "lookup default is lazy when key is present"
+input = "(lookup (dict (x 1)) (quote x) (/ 1 0))"
+[case.expect]
+stdout = "1\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "lookup evaluates default when key is missing"
+input = "(lookup (dict (x 1)) (quote y) (+ 40 2))"
+[case.expect]
+stdout = "42\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "lookup requires default"
+input = "(lookup (dict (x 1)) (quote x))"
+[case.expect]
+stdout = ""
+stderr_stripped = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "has returns true for present symbol"
+input = "(has (dict (x 1)) (quote x))"
+[case.expect]
+stdout = "true\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "has returns false for missing string"
+input = "(has (dict (\"x\" 1)) \"y\")"
+[case.expect]
+stdout = "false\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "has distinguishes symbol from string"
+input = "(has (dict (x 1)) \"x\")"
+[case.expect]
+stdout = "false\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "put inserts new symbol key immutably"
+input = "(put (dict (x 1)) (quote y) 2)"
+[case.expect]
+stdout = "(dict (x 1) (y 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "put replaces existing string key in place"
+input = "(put (dict (\"x\" 1) (y 2)) \"x\" 9)"
+[case.expect]
+stdout = "(dict (\"x\" 9) (y 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "del removes existing symbol key"
+input = "(del (dict (x 1) (y 2)) (quote x))"
+[case.expect]
+stdout = "(dict (y 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "del missing key is no op"
+input = "(del (dict (x 1)) (quote y))"
+[case.expect]
+stdout = "(dict (x 1))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "put returns new dict without changing original binding"
+input = "(let ((d (dict (x 1)))) (list (lookup (put d (quote y) 2) (quote y) 99) (lookup d (quote y) 99)))"
+[case.expect]
+stdout = "(2 99)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "del returns new dict without changing original binding"
+input = "(let ((d (dict (x 1) (y 2)))) (list (lookup (del d (quote y)) (quote y) 99) (lookup d (quote y) 99)))"
+[case.expect]
+stdout = "(99 2)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "duplicate symbol key fails loud"
+input = "(dict (x 1) (x 2))"
+[case.expect]
+stdout = ""
+stderr_stripped = "duplicate_key"
+exit_code = 2
+
+[[case]]
+name = "duplicate string key fails loud"
+input = "(dict (\"x\" 1) (\"x\" 2))"
+[case.expect]
+stdout = ""
+stderr_stripped = "duplicate_key"
+exit_code = 2
+
+[[case]]
+name = "malformed dict pair rejects missing value"
+input = "(dict (x))"
+[case.expect]
+stdout = ""
+stderr_stripped = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "malformed dict pair rejects extra value"
+input = "(dict (x 1 2))"
+[case.expect]
+stdout = ""
+stderr_stripped = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "dict rejects number key"
+input = "(dict (1 2))"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "lookup rejects unsupported key type"
+input = "(lookup (dict (x 1)) 1 99)"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "lookup rejects non dict receiver"
+input = "(lookup (list 1) (quote x) 99)"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "put rejects non dict receiver"
+input = "(put (list 1) (quote x) 2)"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "del rejects unsupported key type"
+input = "(del (dict (x 1)) (list 1))"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "dict is not callable"
+input = "((dict (x 1)) (quote x) 99)"
+[case.expect]
+stdout = ""
+stderr_stripped = "not_function"
+exit_code = 2
+
+[[case]]
+name = "empty dict through let renders"
+input = "(let ((d (dict))) d)"
+[case.expect]
+stdout = "(dict)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict rejects non pair entry"
+input = "(dict x)"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "dict wrong arity in env"
+input = "(let ((x 1)) (dict (x 1) extra))"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "has rejects non dict receiver"
+input = "(has (list 1) (quote x))"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "has rejects unsupported key type"
+input = "(has (dict (x 1)) 1)"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "put rejects unsupported key type"
+input = "(put (dict (x 1)) 1 2)"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "del rejects non dict receiver"
+input = "(del (list 1) (quote x))"
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "del removes existing string key"
+input = "(del (dict (\"x\" 1) (y 2)) \"x\")"
+[case.expect]
+stdout = "(dict (y 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "at wrong arity in env"
+input = "(let ((xs (list 1 2))) (at xs))"
+[case.expect]
+stdout = ""
+stderr_stripped = "wrong_arity"
+exit_code = 2
