@@ -315,8 +315,6 @@ MANIFEST_EXPECT_KEYS = {
     "exit_code",
     "stdout",
     "stdout_stripped",
-    "stdout_startswith",
-    "stdout_contains",
     "stderr",
     "stderr_stripped",
     "stderr_contains",
