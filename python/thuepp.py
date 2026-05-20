@@ -7,6 +7,7 @@ A Python implementation of the thue++ esoteric programming language.
 import argparse
 import base64
 import binascii
+import math
 import re as py_re
 import re2 as re
 import select
@@ -591,13 +592,13 @@ class ThueppInterpreter:
             except Exception as e:
                 return "", f"ERR:resource:{binding.name}:{e}"
 
-    def _read_line(self, binding: Binding) -> tuple[str, Optional[str]]:
+    def _read_line(self, binding: Binding, timeout: float) -> tuple[str, Optional[str]]:
         """Read one newline-delimited message, stripping one line terminator."""
         if binding.name == "stdout" or binding.name == "stderr":
             return "", "ERR:resource:cannot_read_output_stream"
 
         if binding.name == "stdin":
-            ready, _, _ = select.select([sys.stdin], [], [], 5.0)
+            ready, _, _ = select.select([sys.stdin], [], [], timeout)
             if not ready:
                 return "", "ERR:resource:stdin:timeout"
             line = sys.stdin.readline()
@@ -613,7 +614,7 @@ class ThueppInterpreter:
         if binding.is_process:
             self._ensure_process(binding)
             try:
-                ready, _, _ = select.select([binding.process.stdout], [], [], 5.0)
+                ready, _, _ = select.select([binding.process.stdout], [], [], timeout)
                 if not ready:
                     if binding.process.poll() not in (None, 0):
                         stderr = binding.process.stderr.read()
@@ -636,7 +637,7 @@ class ThueppInterpreter:
             except OSError as e:
                 return "", f"ERR:resource:{binding.name}:{e}"
 
-        return "", f"ERR:resource:{binding.name}:/n requires process or stdin binding"
+        return "", f"ERR:resource:{binding.name}:line read requires process or stdin binding"
 
     def _write_string(self, binding: Binding, content: str) -> Optional[str]:
         """Write a string to a binding. Returns error or None."""
@@ -810,15 +811,21 @@ class ThueppInterpreter:
                     if len(parts) != 2:
                         raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
                     read_spec, resource = parts
-                    if read_spec not in ("-1", "/n"):
-                        raise RuntimeError(f"Line {rule.line_number}: unsupported read spec '{read_spec}'")
+                    read_timeout = None
+                    if read_spec != "-1":
+                        try:
+                            read_timeout = float(read_spec)
+                        except ValueError as exc:
+                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
+                        if not math.isfinite(read_timeout) or read_timeout <= 0:
+                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'")
                     if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
                         raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
                     binding = self.bindings.get(resource)
                     if not binding:
                         raise RuntimeError(f"Unknown resource '{resource}'")
-                    if read_spec == "/n":
-                        content, error = self._read_line(binding)
+                    if read_timeout is not None:
+                        content, error = self._read_line(binding, read_timeout)
                     else:
                         content, error = self._read_all(binding)
                     if error:
