@@ -444,6 +444,11 @@ class ThueppInterpreter:
         return f"{value.numerator}/{value.denominator}"
 
     def _eval_builtin(self, name: str, values: list[str]) -> str:
+        expected = self._builtin_arity(name)
+        if expected is None or len(values) != expected:
+            raise AssertionError(
+                f"internal error: invalid validated builtin '{name}' with {len(values)} values"
+            )
         if name == "eq":
             return "1" if values[0] == values[1] else "0"
         if name == "b64enc":
@@ -488,7 +493,7 @@ class ThueppInterpreter:
             return "1" if a > b else "0"
         if name == "ge":
             return "1" if a >= b else "0"
-        raise RuntimeError(f"Unknown builtin '{name}'")
+        raise AssertionError(f"internal error: validated builtin '{name}' has no evaluator")
 
 
     def _expand_template(self, template: str, groups: dict, extra: dict = None) -> str:

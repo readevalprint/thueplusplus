@@ -512,6 +512,9 @@ func formatRat(n *big.Rat) string {
 }
 
 func evalBuiltin(name string, values []string) (string, error) {
+	if arity, ok := builtinArity(name); !ok || len(values) != arity {
+		return "", fmt.Errorf("internal error: invalid validated builtin %q with %d values", name, len(values))
+	}
 	if name == "eq" {
 		if values[0] == values[1] {
 			return "1", nil
@@ -594,7 +597,7 @@ func evalBuiltin(name string, values []string) (string, error) {
 		}
 		return "0", nil
 	}
-	return "", fmt.Errorf("Unknown builtin '%s'", name)
+	return "", fmt.Errorf("internal error: validated builtin %q has no evaluator", name)
 }
 
 func (i *Interpreter) expandTemplate(template string, groups map[string]string, extra map[string]string) (string, error) {
