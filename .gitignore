@@ -1,4 +1,4 @@
-build/coverage/
+build/
 .coverage*
 .docker-home/
 .cache/
