@@ -162,10 +162,12 @@ def check_contract(root: Path) -> list[Failure]:
         root / "tools" / "check-code-coverage",
         root / "tools" / "check-contract",
         root / "tools" / "run-example-manifests",
+        root / "python" / "tests" / "test_project_verification.py",
+        root / "python" / "tests" / "test_contract_checker.py",
     ]
     for path in deleted:
         if path.exists():
-            failures.append(Failure(path, "stale verification artifact must stay deleted; make test is the only truth gate"))
+            failures.append(Failure(path, "stale verification artifact must stay deleted; make test and tools/check_contract.py are the policy owners"))
     runner_path = root / "tools" / "example_runner.py"
     runner_text = read(runner_path)
     try:
