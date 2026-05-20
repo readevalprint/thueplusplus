@@ -262,25 +262,7 @@ stderr_stripped = "wrong_arity"
 
 
 [[case]]
-name = "quote of nested form remains unsupported code as data"
-input = "(quote (+ 1 2))"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unsupported_form"
-
-[[case]]
-name = "list constructor remains unsupported before quote boundary"
-input = "(list 1 2)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unsupported_form"
-
-[[case]]
-name = "map constructor remains unsupported before quote boundary"
+name = "map constructor remains unsupported before map boundary"
 input = "(map (quote x) 1)"
 
 [case.expect]
@@ -300,15 +282,6 @@ stderr_stripped = "unsupported_form"
 [[case]]
 name = "bare unquote fails unsupported outside quasiquote"
 input = "(unquote x)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unsupported_form"
-
-[[case]]
-name = "quote remains unsupported inside lexical environment"
-input = "(let ((x 1)) (quote x))"
 
 [case.expect]
 exit_code = 2

@@ -21,7 +21,8 @@ Compound forms:
 - sequencing: `begin`;
 - lexical binding: `let`;
 - functions: `lambda` and direct application;
-- arrays: `array`, `head`, `rest`.
+- arrays: `array`, `head`, `rest`;
+- code-as-data lists: `quote`, `list`, `head`, `tail`, `empty?`, `push`, `len`, and `get`.
 
 ## Runtime values
 
@@ -31,6 +32,7 @@ The evaluator uses internal typed values while reducing:
 - booleans;
 - strings;
 - arrays;
+- symbols and proper lists for code-as-data;
 - closures.
 
 Successful top-level output renders public values as reader syntax where the value has reader syntax:
@@ -39,9 +41,10 @@ Successful top-level output renders public values as reader syntax where the val
 - booleans as `true` or `false`;
 - strings as quoted string syntax, preserving supported normal escapes;
 - arrays recursively as `(array ...)`, for example `(array 1 (array 2 3))`;
+- quoted symbols as their source names and proper lists as ordinary parenthesized source lists, for example `x`, `(+ 1 x)`, or `(1 2)`;
 - closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core.
 
-Reader-backed outputs are intended to round trip: feeding a rendered number, boolean, string, or array back into the evaluator should recreate the same public value. Closure output is the explicit non-round-trippable exception until a dedicated closure serialization design exists.
+Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, or array back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure output is the explicit non-round-trippable exception until a dedicated closure serialization design exists.
 
 ## Evaluation model
 
@@ -50,6 +53,8 @@ Reader-backed outputs are intended to round trip: feeding a rendered number, boo
 - `let` creates lexical bindings.
 - `lambda` captures the lexical environment in a closure.
 - Function application evaluates arguments according to the current evaluator rules and checks arity.
+- `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
+- `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
 - `begin` evaluates expressions in order and returns the final expression value.
 - Arithmetic and comparison forms are strict for the operands they require.
@@ -58,11 +63,10 @@ Reader-backed outputs are intended to round trip: feeding a rendered number, boo
 
 Unsupported syntax exits non-zero with a named stderr error. Current deliberate unsupported/non-goal forms include:
 
-- `quote` and code-as-data forms: expected error class `unsupported_form` until a focused quote/list card changes the contract;
 - `define` and mutation-style top-level binding: unsupported, with error class `unsupported_form`;
 - `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided, with error class `unsupported_form`;
 - `while` and other looping forms: unsupported until #108 settles bounded-loop policy, with error class `unsupported_form`;
-- list/code-as-data constructors such as `list`, `map`, `quasiquote`, and `unquote`: unsupported until the quote/list tech-tree path defines representation and printer rules;
+- list/code-as-data forms beyond #107, such as `map`, `quasiquote`, and `unquote`: unsupported until their downstream cards define semantics;
 - unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
 
@@ -70,15 +74,18 @@ Being a familiar Lisp feature is not enough for inclusion. A new form must eithe
 
 ## Quote/list code-as-data boundary
 
-Decision for the hard-cutoff cleanup slice: quote/list code-as-data is too early and remains explicitly unsupported.
+`quote` and `list` are the supported #107 code-as-data slice.
 
-Rationale:
+Implementation contract:
 
-- Arrays are the current first-class aggregate value. A separate Lisp list/code-as-data value needs its own representation, equality, rendering, and interaction with functions before implementation.
-- `quote` should not be half-implemented as a display shortcut; it must preserve syntax as data and round-trip through the public renderer when it is eventually accepted.
-- `quasiquote`/`unquote` depend on a settled quote/list representation and remain downstream work rather than an implicit part of the current core.
+- `(quote x)` returns a symbol value rendered as `x`.
+- `(quote (...))` returns a proper list value rendered as ordinary source-list syntax, for example `(+ 1 x)`.
+- `(quote (array 1 2))` is source data and renders as `(array 1 2)` without evaluating the array constructor.
+- `(list ...)` evaluates its operands and constructs a proper list value rendered as ordinary parenthesized list syntax.
+- Internally, quoted symbols use `VSYM<...>` and proper lists use `VLIST<...>` with pct-encoded item payloads. These constructors are implementation details and must not leak to successful stdout.
+- `head`, `tail`, `empty?`, `push`, `len`, and `get` operate on proper lists with small bounded rules and fail loudly for invalid type or access cases.
 
-The future implementation path is #107 for lists/quote, with #111 for quasiquote/unquote after its dependencies. Until that path is promoted and specified, `quote`, `list`, `map`, `quasiquote`, and `unquote` are reserved non-goals that fail with `unsupported_form`.
+`quasiquote`/`unquote` depend on this representation and remain downstream #111 work. Reader shorthand such as `'x`, backtick, and comma is also deferred; #107 uses keyword forms only.
 
 ## Recursion and loop boundary
 
@@ -96,7 +103,7 @@ The future policy gate is #108 (`bounded while before recursion`). Until that ga
 
 The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
 
-- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `quote`, `define`, `letrec`, raw internal-looking inputs, and other non-reader forms;
+- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `define`, `letrec`, `map`, `quasiquote`, `unquote`, raw internal-looking inputs, and other non-reader forms;
 - `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `begin`, `and`, `or`, `let`, and `lambda` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual lookup miss for a bare variable or callee name;

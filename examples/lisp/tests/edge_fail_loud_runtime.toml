@@ -165,11 +165,3 @@ input = "()"
 exit_code = 2
 stdout = ""
 stderr_stripped = "wrong_arity"
-
-[[case]]
-name = "unsupported quote form remains explicit"
-input = "(quote x)"
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unsupported_form"
