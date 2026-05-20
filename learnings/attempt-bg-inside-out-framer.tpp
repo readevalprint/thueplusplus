@@ -16,11 +16,11 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 # When no raw parens remain and the whole document is one encoded list, move to
 # first-outer-node evaluation.
-^C\[L%5B(?<payload><|PCT|>)%5D\]$ ::= OUTER[{{payload}}]
+^C\[L%5B(?<payload>$PCT)%5D\]$ ::= OUTER[{{payload}}]
 
 # Demonstrate decode of only the outer node. Nested L[...] children remain pct-
 # encoded in the decoded payload and therefore inert until deliberately selected.
-^OUTER\[(?<payload><|PCT|>)\]$ ::= @OUT[{{payload}}]@@EXIT0@
+^OUTER\[(?<payload>$PCT)\]$ ::= @OUT[{{payload}}]@@EXIT0@
 
-^@OUT\[(?<v><|PCT|>)\]@@EXIT0@$ ::> stdout {{v|pctdec}}\n
+^@OUT\[(?<v>$PCT)\]@@EXIT0@$ ::> stdout {{v|pctdec}}\n
 ^@EXIT0@$ ::- 0

@@ -1,0 +1,9 @@
+program = "../invalid-rule-forward.tpp"
+
+[[case]]
+name = "rule pattern rejects dollar alias reference before definition"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Unknown pattern alias '$LATER'"]

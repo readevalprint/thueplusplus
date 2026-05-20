@@ -91,7 +91,7 @@ Risks / edge cases:
 
 3. Payload delimiters still need discipline.
    - `L%5B...%5D` over PCT has the same encoded-close greed risk seen in BD if matched carelessly.
-   - Prefer atomic `L%5B(?<payload><|PCT|>)%5D` and avoid adjacent unseparated encoded constructors, or use raw delimiters/length prefixes later.
+   - Prefer atomic `L%5B(?<payload>$PCT)%5D` and avoid adjacent unseparated encoded constructors, or use raw delimiters/length prefixes later.
 
 4. This is not yet hard acceptance.
    - No strings, typed arrays, compare, lexical lookup, n-arity lambda, let, or closure apply in BH.

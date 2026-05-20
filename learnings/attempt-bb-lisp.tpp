@@ -14,7 +14,7 @@ VAL <- (?:VNUM\[-?[0-9]+\]|VBOOL\[(?:true|false)\]|VSTR\[(?:[A-Za-z0-9_.-]|%[0-9
 ^array_param_head$ ::= APPLY[VCLOS[P=xs;B=HEAD:xs;E=E0]|VARR[VNUM%255B8%255D;VNUM%255B9%255D;VNUM%255B10%255D;]|KDONE]
 
 # Closure apply extends captured env with one param frame. The new frame shadows captured env.
-^APPLY\[VCLOS\[P=(?<p>[A-Za-z_][A-Za-z0-9_]*);B=(?<body>[^;]+);E=(?<env>.*)\]\|(?<arg><|VAL|>)\|(?<k>.*)\]$ ::= EVALBODY[{{body}}|F[{{p}}={{arg}};]::{{env}}|{{k}}]
+^APPLY\[VCLOS\[P=(?<p>[A-Za-z_][A-Za-z0-9_]*);B=(?<body>[^;]+);E=(?<env>.*)\]\|(?<arg>$VAL)\|(?<k>.*)\]$ ::= EVALBODY[{{body}}|F[{{p}}={{arg}};]::{{env}}|{{k}}]
 
 # Body forms used by this probe.
 ^EVALBODY\[VAR:(?<name>[A-Za-z_][A-Za-z0-9_]*)\|(?<env>.*)\|(?<k>.*)\]$ ::= LOOK[{{name}}|{{env}}|{{k}}]
@@ -23,12 +23,12 @@ VAL <- (?:VNUM\[-?[0-9]+\]|VBOOL\[(?:true|false)\]|VSTR\[(?:[A-Za-z0-9_.-]|%[0-9
 ^EVALBODY\[HEAD:(?<x>[A-Za-z_][A-Za-z0-9_]*)\|(?<env>.*)\|(?<k>.*)\]$ ::= LOOK[{{x}}|{{env}}|KHEAD[{{k}}]]
 
 # Lookup: scan newest frame first, then rest. Exact variable rows before skip rows.
-^LOOK\[x\|F\[x=(?<v><|VAL|>);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
-^LOOK\[y\|F\[y=(?<v><|VAL|>);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
-^LOOK\[xs\|F\[xs=(?<v><|VAL|>);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
-^LOOK\[dummy\|F\[dummy=(?<v><|VAL|>);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
-^LOOK\[x\|F\[y=<|VAL|>;\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= LOOK[x|{{rest}}|{{k}}]
-^LOOK\[xs\|F\[dummy=<|VAL|>;\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= LOOK[xs|{{rest}}|{{k}}]
+^LOOK\[x\|F\[x=(?<v>$VAL);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
+^LOOK\[y\|F\[y=(?<v>$VAL);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
+^LOOK\[xs\|F\[xs=(?<v>$VAL);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
+^LOOK\[dummy\|F\[dummy=(?<v>$VAL);\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= RET[{{v}}|{{k}}]
+^LOOK\[x\|F\[y=$VAL;\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= LOOK[x|{{rest}}|{{k}}]
+^LOOK\[xs\|F\[dummy=$VAL;\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= LOOK[xs|{{rest}}|{{k}}]
 ^LOOK\[(?<name>[A-Za-z_][A-Za-z0-9_]*)\|F\[[^\n]*\]::(?<rest>[^|]*)\|(?<k>.*)\]$ ::= LOOK[{{name}}|{{rest}}|{{k}}]
 ^LOOK\[(?<name>[A-Za-z_][A-Za-z0-9_]*)\|E0\|(?<k>.*)\]$ ::= ERR[unbound]
 
@@ -49,20 +49,20 @@ ADD\[(?<a>-?[0-9]+),(?<b>-?[0-9]+)\] ::! add a b
 ^RET\[VNUM\[(?<n>-?[0-9]+)\]\|KDONE\]$ ::= @OUT[{{n|pctenc}}]@@EXIT0@
 ^RET\[VNUM%5B(?<n>-?[0-9]+)%5D\|KDONE\]$ ::= @OUT[{{n|pctenc}}]@@EXIT0@
 ^RET\[VBOOL\[(?<b>true|false)\]\|KDONE\]$ ::= @OUT[{{b|pctenc}}]@@EXIT0@
-^RET\[VSTR\[(?<s><|PCT|>)\]\|KDONE\]$ ::= @OUT[{{s}}]@@EXIT0@
+^RET\[VSTR\[(?<s>$PCT)\]\|KDONE\]$ ::= @OUT[{{s}}]@@EXIT0@
 ^RET\[VARR\[(?<items>.*)\]\|KDONE\]$ ::= RARR[{{items}}|]
-^RARR\[\|(?<out><|PCT|>)\]$ ::= @OUT[%5B{{out}}%5D]@@EXIT0@
+^RARR\[\|(?<out>$PCT)\]$ ::= @OUT[%5B{{out}}%5D]@@EXIT0@
 ^RARR\[(?<v>[^;]*);(?<rest>.*)\|\]$ ::= RVFIRST[{{v|pctdec}}|{{rest}}]
-^RARR\[(?<v>[^;]*);(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RVNEXT[{{v|pctdec}}|{{rest}}|{{out}}]
+^RARR\[(?<v>[^;]*);(?<rest>.*)\|(?<out>$PCT)\]$ ::= RVNEXT[{{v|pctdec}}|{{rest}}|{{out}}]
 ^RVFIRST\[VNUM%5B(?<n>-?[0-9]+)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|{{n|pctenc}}]
 ^RVFIRST\[VBOOL%5B(?<b>true|false)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|{{b|pctenc}}]
-^RVFIRST\[VSTR%5B(?<s><|PCT|>)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|%22{{s}}%22]
-^RVNEXT\[VNUM%5B(?<n>-?[0-9]+)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20{{n|pctenc}}]
-^RVNEXT\[VBOOL%5B(?<b>true|false)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20{{b|pctenc}}]
-^RVNEXT\[VSTR%5B(?<s><|PCT|>)%5D\|(?<rest>.*)\|(?<out><|PCT|>)\]$ ::= RARR[{{rest}}|{{out}}%20%22{{s}}%22]
+^RVFIRST\[VSTR%5B(?<s>$PCT)%5D\|(?<rest>.*)\]$ ::= RARR[{{rest}}|%22{{s}}%22]
+^RVNEXT\[VNUM%5B(?<n>-?[0-9]+)%5D\|(?<rest>.*)\|(?<out>$PCT)\]$ ::= RARR[{{rest}}|{{out}}%20{{n|pctenc}}]
+^RVNEXT\[VBOOL%5B(?<b>true|false)%5D\|(?<rest>.*)\|(?<out>$PCT)\]$ ::= RARR[{{rest}}|{{out}}%20{{b|pctenc}}]
+^RVNEXT\[VSTR%5B(?<s>$PCT)%5D\|(?<rest>.*)\|(?<out>$PCT)\]$ ::= RARR[{{rest}}|{{out}}%20%22{{s}}%22]
 
 ^ERR\[(?<e>[A-Za-z0-9_]+)\]$ ::= @ERR[{{e}}]@@EXIT2@
-@OUT\[(?<v><|PCT|>)\]@ ::> stdout {{v|pctdec}}\n
+@OUT\[(?<v>$PCT)\]@ ::> stdout {{v|pctdec}}\n
 @ERR\[(?<e>[A-Za-z0-9_]+)\]@ ::> stderr {{e}}\n
 @EXIT0@ ::- 0
 @EXIT2@ ::- 2

@@ -1,5 +1,5 @@
-A <- <|B|>
-B <- x
-^<|A|>$ ::> stdout deterministic\n
+A <- x
+B <- $A
+^$B$ ::> stdout deterministic\n
 ::=
 x

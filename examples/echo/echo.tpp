@@ -6,7 +6,7 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 # Read the entire input binding once as inert PCT, then decode only at output.
 ^read$ ::= echo:@IN@
 @IN@ ::< -1 input
-^echo:(?<data><|PCT|>)$ ::> stdout {{data|pctdec}}
+^echo:(?<data>$PCT)$ ::> stdout {{data|pctdec}}
 
 ::=
 read

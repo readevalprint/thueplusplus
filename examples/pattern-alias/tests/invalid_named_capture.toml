@@ -1,0 +1,9 @@
+program = "../invalid-named-capture.tpp"
+
+[[case]]
+name = "alias definitions reject named captures"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Pattern alias 'BAD' must not contain named captures"]

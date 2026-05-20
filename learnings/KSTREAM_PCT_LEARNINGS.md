@@ -11,7 +11,7 @@ Goal: verify source correction: use `::%` for frame payloads.
 Rule:
 
 ```tpp
-^MAKE\[(?<a><|ITEM|>),(?<b><|ITEM|>),(?<env><|PCT|>),(?<rest><|PCT|>)\]$ ::% KCALL2|A={{a}}|B={{b}}|ENV={{env}}|REST={{rest}}
+^MAKE\[(?<a>$ITEM),(?<b>$ITEM),(?<env>$PCT),(?<rest>$PCT)\]$ ::% KCALL2|A={{a}}|B={{b}}|ENV={{env}}|REST={{rest}}
 ```
 
 Result:
@@ -186,7 +186,7 @@ Corrections from Q:
 - rest continuation is outside frame payload.
 - K frames are separated by raw spaces, not `%20`.
   - Important: `%20` is valid inside a PCT token, so using `%20` as K-frame delimiter makes top-frame regex greedy/ambiguous.
-  - Raw space is not valid in `PCT`, so `(?<top><|PCT|>) (?<restk>.*)` splits correctly.
+  - Raw space is not valid in `PCT`, so `(?<top>$PCT) (?<restk>.*)` splits correctly.
 - `::%` rules match only a `K...F[...]` prefix within a row, leaving `REST[...]` suffix unchanged. This allows using `::%` for frame payload construction while keeping rest-k outside.
 
 Confirmed in TPP with prebuilt AST input:
@@ -337,7 +337,7 @@ Tradeoff:
 
 Important row-semantics lesson:
 
-- Do not use a broad row like `^(?<newenv><|PCT|>) REST[...]` for lambda env completion; it also catches unrelated frame-builder outputs.
+- Do not use a broad row like `^(?<newenv>$PCT) REST[...]` for lambda env completion; it also catches unrelated frame-builder outputs.
 - Namespace scratch rows, e.g. `LAMENVREADY:<pct-env> REST[...]`, so workspace rows do not steal `KCALL2F`/`KARG1F` products.
 - Multi-step workspace rows are fine and clearer than forcing every operation into one rule.
 
@@ -517,7 +517,7 @@ Files:
 Prerequisite source reading:
 
 - `python/thuepp.py` uses google-re2, so no lookahead/lookbehind. A failed attempt to guard broad source-entry with `(?!...)` was invalid.
-- Pattern definitions are expanded textually once. If `VAL <- ... <|PCT|> ...`, later `<|VAL|>` insertion does not recursively expand the nested `<|PCT|>` reference. Inline nested pattern bodies in composite pattern definitions.
+- Pattern definitions are expanded textually once. If `VAL <- ... $PCT ...`, later `$VAL` insertion does not recursively expand the nested `$PCT` reference. Inline nested pattern bodies in composite pattern definitions.
 - `::%` decodes each captured PCT variable before constructing and pct-encoding the whole template. Useful for frame construction, dangerous if the field should stay opaque/double-encoded.
 - `::!` builtins return untyped raw strings (`numeq`, `lt`, `gt` return `1`/`0`), so boolean results need wrapper states such as `VBOOL%5BEQ[...]%5D` before normalization.
 - Runtime rows are matched by ordered rules against later rows. A broad source-entry rule can reparse missed internal states unless source entry is narrow and all internal states have handlers.
@@ -621,7 +621,7 @@ Accumulated direction after AX/AY/AZ:
 1. Use inversion routinely: prove render/head/rest/apply/lookup invariants first, then connect parser/evaluator.
 2. Do not delimit PCT streams with pct-encoded delimiters such as `%20` or `%3B`; they are valid PCT tokens and regex splits become ambiguous. Use raw delimiters outside the PCT alphabet, or length-prefix fields.
 3. Keep source-entry rules positively narrow. RE2 does not support negative lookahead.
-4. Composite pattern definitions must inline nested pattern bodies; no recursive `<|PATTERN|>` expansion.
+4. Composite pattern definitions must inline nested pattern bodies; no recursive `$PATTERN` expansion.
 5. The next TPP attempt should refactor AX array packing to AZ's raw-semicolon `VARR[...]` payload.
 6. The next closure attempt should use AY's lexical model, not AV-style substitution.
 

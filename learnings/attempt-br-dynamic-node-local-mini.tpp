@@ -9,4 +9,4 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^\(if true 7 \(/ 1 0\)\)$ ::= ^NODE_BR_IF$ ::= @OUT%5B7%5D@@EXIT0@\nNODE_BR_IF
 ^\(let \(\(x 1\) \(y 2\)\) \(\+ x y\)\)$ ::= ^NODE_BR_LET$ ::= @OUT%5B3%5D@@EXIT0@\nNODE_BR_LET
 
-^@OUT%5B(?<v><|PCT|>)%5D@@EXIT0@$ ::> stdout {{v|pctdec}}\n
+^@OUT%5B(?<v>$PCT)%5D@@EXIT0@$ ::> stdout {{v|pctdec}}\n

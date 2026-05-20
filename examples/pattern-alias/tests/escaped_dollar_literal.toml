@@ -1,0 +1,9 @@
+program = "../escaped-dollar-literal.tpp"
+
+[[case]]
+name = "escaped dollar before alias-shaped text remains literal"
+
+[case.expect]
+exit_code = 0
+stdout = "literal\n"
+stderr = ""

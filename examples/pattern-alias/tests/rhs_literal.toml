@@ -1,0 +1,9 @@
+program = "../rhs-literal.tpp"
+
+[[case]]
+name = "rhs replacement leaves dollar alias text literal"
+
+[case.expect]
+exit_code = 0
+stdout = "$PCT\n"
+stderr = ""

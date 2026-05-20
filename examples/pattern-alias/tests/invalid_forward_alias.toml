@@ -1,0 +1,9 @@
+program = "../invalid-forward-alias.tpp"
+
+[[case]]
+name = "alias definition rejects forward dollar alias reference"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Unknown pattern alias '$B'"]

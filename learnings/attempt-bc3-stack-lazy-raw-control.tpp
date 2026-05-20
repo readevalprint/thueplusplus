@@ -33,7 +33,7 @@ NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 (?-m:^O:[^ \n]*$) ::= !P!EXIT2
 
 # Phase-0 primitive literals, now in the stack-shaped state row.
-^S:(?<n><|NUM|>)$ ::> stdout {{n}}\n
+^S:(?<n>$NUM)$ ::> stdout {{n}}\n
 ^S:true$ ::> stdout true\n
 ^S:false$ ::> stdout false\n
 ^S:nil$ ::> stdout nil\n
@@ -51,27 +51,27 @@ NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 # whose operands are already scalar numeric values, so evaluation stays lazy:
 # raw source is preserved until an innermost frame can collapse, then the outer
 # frame becomes reducible only if its operands have become scalar values.
-^S:(?<pre>.*)\(\+ (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}@ADD[{{a}},{{b}}]@{{post}}
-^S:(?<pre>.*)\(- (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}@SUB[{{a}},{{b}}]@{{post}}
-^S:(?<pre>.*)\(\* (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}@MUL[{{a}},{{b}}]@{{post}}
-^S:(?<pre>.*)\(/ (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}@DIV[{{a}},{{b}}]@{{post}}
-^S:(?<pre>.*)\(= (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@NUMEQ[{{a}},{{b}}]@){{post}}
-^S:(?<pre>.*)\(< (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@LT[{{a}},{{b}}]@){{post}}
-^S:(?<pre>.*)\(<= (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@LE[{{a}},{{b}}]@){{post}}
-^S:(?<pre>.*)\(> (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@GT[{{a}},{{b}}]@){{post}}
-^S:(?<pre>.*)\(>= (?<a><|NUM|>) (?<b><|NUM|>)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@GE[{{a}},{{b}}]@){{post}}
+^S:(?<pre>.*)\(\+ (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}@ADD[{{a}},{{b}}]@{{post}}
+^S:(?<pre>.*)\(- (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}@SUB[{{a}},{{b}}]@{{post}}
+^S:(?<pre>.*)\(\* (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}@MUL[{{a}},{{b}}]@{{post}}
+^S:(?<pre>.*)\(/ (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}@DIV[{{a}},{{b}}]@{{post}}
+^S:(?<pre>.*)\(= (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@NUMEQ[{{a}},{{b}}]@){{post}}
+^S:(?<pre>.*)\(< (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@LT[{{a}},{{b}}]@){{post}}
+^S:(?<pre>.*)\(<= (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@LE[{{a}},{{b}}]@){{post}}
+^S:(?<pre>.*)\(> (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@GT[{{a}},{{b}}]@){{post}}
+^S:(?<pre>.*)\(>= (?<a>$NUM) (?<b>$NUM)\)(?<post>.*)$ ::= S:{{pre}}BOOL(@GE[{{a}},{{b}}]@){{post}}
 
 # Generic numeric Thue++ builtins. These are the only arithmetic/comparison
 # host operations used here; none are Lisp-specific.
-@ADD\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! add a b
-@SUB\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! sub a b
-@MUL\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! mul a b
-@DIV\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! div a b
-@NUMEQ\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! numeq a b
-@LT\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! lt a b
-@LE\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! le a b
-@GT\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! gt a b
-@GE\[(?<a><|NUM|>),(?<b><|NUM|>)\]@ ::! ge a b
+@ADD\[(?<a>$NUM),(?<b>$NUM)\]@ ::! add a b
+@SUB\[(?<a>$NUM),(?<b>$NUM)\]@ ::! sub a b
+@MUL\[(?<a>$NUM),(?<b>$NUM)\]@ ::! mul a b
+@DIV\[(?<a>$NUM),(?<b>$NUM)\]@ ::! div a b
+@NUMEQ\[(?<a>$NUM),(?<b>$NUM)\]@ ::! numeq a b
+@LT\[(?<a>$NUM),(?<b>$NUM)\]@ ::! lt a b
+@LE\[(?<a>$NUM),(?<b>$NUM)\]@ ::! le a b
+@GT\[(?<a>$NUM),(?<b>$NUM)\]@ ::! gt a b
+@GE\[(?<a>$NUM),(?<b>$NUM)\]@ ::! ge a b
 
 # Comparison builtins return numeric booleans; convert only inside the explicit
 # comparison wrapper so ordinary numeric 0/1 values stay numeric.
