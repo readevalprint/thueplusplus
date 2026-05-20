@@ -1,8 +1,31 @@
+stages:
+  - test
+
+variables:
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+  UV_LINK_MODE: copy
+  GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
+  GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .cache/uv/
+    - .cache/go-build/
+    - .cache/go-mod/
+    - .venv/
+
 test:
-  image: golang:1.24-bookworm
+  image: golang:1.24.6-bookworm
   before_script:
-    - apt-get update
-    - apt-get install -y --no-install-recommends make python3 python3-pip python3-venv
-    - python3 -m pip install --break-system-packages --disable-pip-version-check uv
+    - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
+    - |
+      if ! command -v uv >/dev/null 2>&1; then
+        curl -LsSf https://astral.sh/uv/install.sh \
+          | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 sh -s -- --no-modify-path
+        export PATH="/tmp/uv-bin:$PATH"
+      fi
+    - uv --version
+    - go version
   script:
     - make test

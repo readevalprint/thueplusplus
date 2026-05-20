@@ -1,2 +1,5 @@
 build/coverage/
 .coverage*
+.docker-home/
+.cache/
+.venv/
