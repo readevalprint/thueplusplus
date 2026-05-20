@@ -132,6 +132,60 @@ stderr = ""
 stdout_stripped = "2"
 
 [[case]]
+name = "lambda partial renders closure"
+input = "((lambda (x y) (+ x y)) 1)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<closure>"
+
+[[case]]
+name = "lambda partial application completes"
+input = "(((lambda (x y) (+ x y)) 1) 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "lambda partial preserves lexical capture"
+input = "(let ((a 10)) (((lambda (x y) (+ (+ a x) y)) 1) 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "13"
+
+[[case]]
+name = "lambda partial preserves shadowing"
+input = "(let ((x 100)) (((lambda (x y) (+ x y)) 1) 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "lambda partial too many args rejects"
+input = "((lambda (x y) (+ x y)) 1 2 3)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "lambda partial zero arg rejects"
+input = "((lambda (x) x))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
 name = "let array"
 input = "(let ((xs (array 1 \"hi there\" 2))) (rest xs))"
 

@@ -272,20 +272,26 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^EVALARGSENV<(?<arg>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)(?: (?<rest>.*))?\|(?<env>[^|]*)\|(?<acc>(?:[^;>]*;)*)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= ARGENV<{{arg}}|{{env}}|KARGENV<{{rest}}|{{env}}|{{acc}}|{{fn}}> {{k}}>
 ^RET<(?<v>$VAL)\|KARGENV<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[^;>]*;)*)\|(?<fn>$VAL)> (?<k>.*)>$ ::= EVALARGSENV<{{rest}}|{{env}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}>
 
-# Apply VCLOS by binding params to arg values and evaluating body under captured env extension.
-^APPLY<VCLOS<(?<params>$PCT)\^(?<body>$PCT)\^(?<cenv>[^>]*)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= BINDCLOS<{{params}}|{{args}}|{{cenv}}|{{body}}|{{k}}>
+# Apply VCLOS by binding args left-to-right. The remaining params stream is the
+# closure's arity: a partially applied call returns a residual closure with the
+# unbound params and the extended captured env.
+^APPLY<VCLOS<(?<params>$PCT)\^(?<body>$PCT)\^(?<cenv>[^>]*)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= BINDCLOS0<{{params}}|{{args}}|{{cenv}}|{{body}}|{{k}}>
 ^APPLY<VNUM<(?<n>$NUM)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VBOOL<(?<b>true|false)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSTR<(?<s>$PCT)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VARR<(?<items>(?:[^;>]*;)*)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VLIST<(?<items>(?:[^;>]*;)*)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSYM<(?<name>$PCT)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
-^BINDCLOS<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{env}}|{{k}}>
-^BINDCLOS<\|(?<args>(?:[^;>]*;)+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^BINDCLOS<(?<params>$PCT)\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^BINDCLOS<(?<p>[A-Za-z_][A-Za-z0-9_-]*)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= BINDCLOS<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}>
-^BINDCLOS<(?<p>[A-Za-z_][A-Za-z0-9_-]*)\|(?<aval>[^;]*);(?<extra>.+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^BINDCLOS<(?<p>[A-Za-z_][A-Za-z0-9_-]*)\|(?<aval>[^;]*);\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{p}}={{aval}};{{env}}|{{k}}>
+^BINDCLOS0<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{env}}|{{k}}>
+^BINDCLOS0<\|(?<args>(?:[^;>]*;)+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^BINDCLOS0<(?<params>$PCT)\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^BINDCLOS0<(?<p>[A-Za-z_][A-Za-z0-9_-]*)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= BINDCLOS1<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}>
+^BINDCLOS0<(?<p>[A-Za-z_][A-Za-z0-9_-]*)\|(?<aval>[^;]*);(?<extra>.+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^BINDCLOS0<(?<p>[A-Za-z_][A-Za-z0-9_-]*)\|(?<aval>[^;]*);\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{p}}={{aval}};{{env}}|{{k}}>
+^BINDCLOS1<(?<params>$PCT)\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body}}^{{env}}>|{{k}}>
+^BINDCLOS1<(?<p>[A-Za-z_][A-Za-z0-9_-]*)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= BINDCLOS1<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}>
+^BINDCLOS1<(?<p>[A-Za-z_][A-Za-z0-9_-]*)\|(?<aval>[^;]*);(?<extra>.+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^BINDCLOS1<(?<p>[A-Za-z_][A-Za-z0-9_-]*)\|(?<aval>[^;]*);\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{p}}={{aval}};{{env}}|{{k}}>
 
 # Let binding-stream iterator. Decode the outer binding list once so raw spaces separate binding nodes.
 # The init capture deliberately excludes >, so it stops at this binding's close rather than the last binding.
