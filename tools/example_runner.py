@@ -98,9 +98,7 @@ def validate_manifest(config_path: Path, config: dict) -> None:
     unknown = sorted(set(config) - TOP_LEVEL_KEYS)
     if unknown:
         raise RuntimeError(f"{config_path}: unknown top-level key(s): {', '.join(unknown)}")
-    program = config.get("program")
-    if not isinstance(program, str) or not program.strip():
-        raise RuntimeError(f"{config_path}: missing top-level program")
+    validate_manifest_program(config_path, config)
     if "args" in config and not (isinstance(config["args"], list) and all(isinstance(arg, str) for arg in config["args"])):
         raise RuntimeError(f"{config_path}: args must be a list of strings")
     if "bindings" in config:
@@ -269,6 +267,10 @@ def case_program(config_path: Path, case: dict) -> Path:
     except ValueError as exc:
         raise RuntimeError(f"{config_path}: program escapes example directory: {program}") from exc
     return resolved
+
+
+def validate_manifest_program(config_path: Path, config: dict) -> Path:
+    return case_program(config_path, config)
 
 
 def rel(path: Path) -> str:

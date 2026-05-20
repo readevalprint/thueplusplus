@@ -325,17 +325,6 @@ def check_manifest_policy(root: Path) -> list[Failure]:
             if message.startswith(prefix):
                 message = message[len(prefix):].lstrip(": ")
             failures.append(Failure(path, message))
-            continue
-        program = data.get("program")
-        resolved = (path.parent / program).resolve()
-        if resolved.suffix != ".tpp":
-            failures.append(Failure(path, f"program must resolve to a .tpp file: {program}"))
-        if not resolved.exists():
-            failures.append(Failure(path, f"program does not exist: {program}"))
-        try:
-            resolved.relative_to(path.parents[1].resolve())
-        except ValueError:
-            failures.append(Failure(path, f"program escapes example directory: {program}"))
     return failures
 
 
