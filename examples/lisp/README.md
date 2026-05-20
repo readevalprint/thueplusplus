@@ -53,7 +53,7 @@ Reader-backed outputs are intended to round trip where the reader has a direct v
 - Values are demanded lazily from encoded nodes.
 - `let` creates lexical bindings.
 - `lambda` captures the lexical environment in a closure.
-- Function application evaluates arguments according to the current evaluator rules and checks arity.
+- Function application evaluates arguments according to the current evaluator rules and checks arity. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
