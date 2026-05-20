@@ -7,10 +7,10 @@ PCTSTR <- (?:[A-Za-z0-9_.-]|%0[0-79BCEF]|%1[0-9A-F]|%2[0-13-9A-F]|%[3-4][0-9A-F]
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 # Macro references are not expanded inside macro bodies, so NODE/VAL keep a
 # non-canonical equivalent spelling while direct rule captures use $NUM.
-NODE <- (?:-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)|true|false|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|L<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>)
-VAL <- (?:VNUM<-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)>|VBOOL<(?:true|false)>|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)
-NONNUM <- (?:VBOOL<(?:true|false)>|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)
-NONBOOL <- (?:VNUM<-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)>|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)
+NODE <- (?:-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)|true|false|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VDICT<(?:[ST](?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*=(?:[^;>]*);)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|L<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>)
+VAL <- (?:VNUM<-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)>|VBOOL<(?:true|false)>|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VDICT<(?:[ST](?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*=(?:[^;>]*);)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)
+NONNUM <- (?:VBOOL<(?:true|false)>|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VDICT<(?:[ST](?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*=(?:[^;>]*);)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)
+NONBOOL <- (?:VNUM<-?(?:[0-9]+(?:/[0-9]+)?|[0-9]+\.[0-9]+)>|VSTR<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VARR<(?:[^;>]*;)*?>|VLIST<(?:[^;>]*;)*?>|VDICT<(?:[ST](?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*=(?:[^;>]*);)*?>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)
 
 ^\([^)]*$ ::= ERR<malformed_list>
 ^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|$NUM|true|false|[A-Za-z_][A-Za-z0-9_-]*)$ ::= C<{{input}}>
@@ -71,6 +71,8 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^E<array\|(?<k>.*)>$ ::= RET<VARR<>|{{k}}>
 ^EENV<list\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
 ^E<list\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
+^EENV<dict\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<>|{{k}}>
+^E<dict\|(?<k>.*)>$ ::= RET<VDICT<>|{{k}}>
 ^EENV<begin\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?<name>[A-Za-z_][A-Za-z0-9_-]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^EENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node}}|{{env}}|{{k}}>
@@ -228,6 +230,82 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^PACKLISTENV<(?<item>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ARGENV<{{item}}|{{env}}|KENLIST<{{rest}}|{{env}}|{{acc}}> {{k}}>
 ^RET<(?<v>$VAL)\|KENLIST<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= PACKLISTENV<{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};>
 
+# Explicit dictionary values for #110. VDICT stores typed keys (`S` symbol, `T`
+# string) and pct-encoded values. Keys are compared by typed identity; symbol x
+# and string "x" intentionally do not collide.
+PCTEQ<(?<a>[ST]$PCT),(?<b>[ST]$PCT)> ::! eq a b
+^EENV<dict (?<entries>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKDICTENV<{{entries}}|{{env}}|{{k}}|>
+^PACKDICTENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[ST][^=;>]*=[^;>]*;)*)>$ ::= RET<VDICT<{{acc}}>|{{k}}>
+^PACKDICTENV<L<(?<entry>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[ST][^=;>]*=[^;>]*;)*)>$ ::= DICTENTRY<{{entry|pctdec}}|{{rest}}|{{env}}|{{k}}|{{acc}}>
+^PACKDICTENV<(?<bad>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[ST][^=;>]*=[^;>]*;)*)>$ ::= ERR<type_error>
+^DICTENTRY<(?<sym>[A-Za-z_][A-Za-z0-9_-]*) (?<val>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[ST][^=;>]*=[^;>]*;)*)>$ ::= ARGENV<{{val}}|{{env}}|KDICTADDNEW<S{{sym|pctenc}}|{{rest}}|{{env}}|{{acc}}> {{k}}>
+^DICTENTRY<VSTR<(?<s>$PCT)> (?<val>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[ST][^=;>]*=[^;>]*;)*)>$ ::= ARGENV<{{val}}|{{env}}|KDICTADDNEW<T{{s}}|{{rest}}|{{env}}|{{acc}}> {{k}}>
+^DICTENTRY<(?<badkey>$NUM|true|false|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|L<$PCT>|\+|\*|/|<=|>=|<|>|=)(?: (?<rest>[^|]*))?\|(?<more>.*)>$ ::= ERR<type_error>
+^DICTENTRY<(?<anything>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[ST][^=;>]*=[^;>]*;)*)>$ ::= ERR<wrong_arity>
+^RET<(?<v>$VAL)\|KDICTADDNEW<(?<key>[ST]$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[ST][^=;>]*=[^;>]*;)*)> (?<k>.*)>$ ::= DADDNEW<{{key}}|{{v|pctenc}}|{{acc}}|{{acc}}|{{rest}}|{{env}}|{{k}}>
+^DADDNEW<(?<key>[ST]$PCT)\|(?<val>[^|]*)\|\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKDICTENV<{{rest}}|{{env}}|{{k}}|{{orig}}{{key}}={{val}};>
+^DADDNEW<(?<key>[ST]$PCT)\|(?<val>[^|]*)\|(?<got>[ST]$PCT)=(?<old>[^;]*);(?<tail>[^|]*)\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= DADDNEWEQ<PCTEQ<{{key}},{{got}}>|{{key}}|{{val}}|{{tail}}|{{orig}}|{{rest}}|{{env}}|{{k}}>
+^DADDNEWEQ<1\|(?<key>[ST]$PCT)\|(?<val>[^|]*)\|(?<tail>[^|]*)\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<duplicate_key>
+^DADDNEWEQ<0\|(?<key>[ST]$PCT)\|(?<val>[^|]*)\|(?<tail>[^|]*)\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= DADDNEW<{{key}}|{{val}}|{{tail}}|{{orig}}|{{rest}}|{{env}}|{{k}}>
+
+^EENV<at (?<lst>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<idx>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{idx}}|{{env}}|KAT1<{{lst}}|{{env}}> {{k}}>
+^RET<VNUM<(?<idx>$NUM)>\|KAT1<(?<lst>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{lst}}|{{env}}|KAT2<{{idx}}> {{k}}>
+^RET<(?<bad>$NONNUM)\|KAT1<(?<lst>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
+
+^EENV<lookup (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<default>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{dict}}|{{env}}|KLOOKUPD<{{key|pctenc}}^{{default|pctenc}}^{{env}}> {{k}}>
+^RET<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|KLOOKUPD<(?<key>$PCT)\^(?<default>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{key|pctdec}}|{{env}}|KLOOKUPKEY<{{entries}}^{{default}}^{{env}}> {{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VSYM<$PCT>|VCLOS<[^>]*>)\|KLOOKUPD<(?<key>$PCT)\^(?<default>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<VSYM<(?<s>$PCT)>\|KLOOKUPKEY<(?<entries>[^\^]*)\^(?<default>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= DLOOK<S{{s}}|{{entries}}|{{default}}|{{env}}|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KLOOKUPKEY<(?<entries>[^\^]*)\^(?<default>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= DLOOK<T{{s}}|{{entries}}|{{default}}|{{env}}|{{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VCLOS<[^>]*>)\|KLOOKUPKEY<(?<entries>[^\^]*)\^(?<default>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^DLOOK<(?<want>[ST]$PCT)\|\|(?<default>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{default|pctdec}}|{{env}}|{{k}}>
+^DLOOK<(?<want>[ST]$PCT)\|(?<got>[ST]$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<default>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= DLOOKEQ<PCTEQ<{{want}},{{got}}>|{{want}}|{{val}}|{{rest}}|{{default}}|{{env}}|{{k}}>
+^DLOOKEQ<1\|(?<want>[ST]$PCT)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<default>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
+^DLOOKEQ<0\|(?<want>[ST]$PCT)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<default>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= DLOOK<{{want}}|{{rest}}|{{default}}|{{env}}|{{k}}>
+
+^EENV<has (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{dict}}|{{env}}|KHASD<{{key|pctenc}}^{{env}}> {{k}}>
+^RET<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|KHASD<(?<key>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{key|pctdec}}|{{env}}|KHASKEY<{{entries}}> {{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VSYM<$PCT>|VCLOS<[^>]*>)\|KHASD<(?<key>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<VSYM<(?<s>$PCT)>\|KHASKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DHAS<S{{s}}|{{entries}}|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KHASKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DHAS<T{{s}}|{{entries}}|{{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VCLOS<[^>]*>)\|KHASKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^DHAS<(?<want>[ST]$PCT)\|\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+^DHAS<(?<want>[ST]$PCT)\|(?<got>[ST]$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<k>.*)>$ ::= DHASEQ<PCTEQ<{{want}},{{got}}>|{{want}}|{{rest}}|{{k}}>
+^DHASEQ<1\|(?<want>[ST]$PCT)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
+^DHASEQ<0\|(?<want>[ST]$PCT)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= DHAS<{{want}}|{{rest}}|{{k}}>
+
+^EENV<put (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<val>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{dict}}|{{env}}|KPUTD<{{key|pctenc}}^{{val|pctenc}}^{{env}}> {{k}}>
+^RET<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|KPUTD<(?<key>$PCT)\^(?<val>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{key|pctdec}}|{{env}}|KPUTKEY<{{entries}}^{{val}}^{{env}}> {{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VSYM<$PCT>|VCLOS<[^>]*>)\|KPUTD<(?<key>$PCT)\^(?<val>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<VSYM<(?<s>$PCT)>\|KPUTKEY<(?<entries>[^\^]*)\^(?<val>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{val|pctdec}}|{{env}}|KPUTVAL<S{{s}}|{{entries}}> {{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KPUTKEY<(?<entries>[^\^]*)\^(?<val>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{val|pctdec}}|{{env}}|KPUTVAL<T{{s}}|{{entries}}> {{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VCLOS<[^>]*>)\|KPUTKEY<(?<entries>[^\^]*)\^(?<val>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<v>$VAL)\|KPUTVAL<(?<key>[ST]$PCT)\|(?<entries>[^>]*)> (?<k>.*)>$ ::= DPUT<{{key}}|{{v|pctenc}}|{{entries}}||{{k}}>
+^DPUT<(?<key>[ST]$PCT)\|(?<val>[^|]*)\|\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}{{key}}={{val}};>|{{k}}>
+^DPUT<(?<key>[ST]$PCT)\|(?<val>[^|]*)\|(?<got>[ST]$PCT)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DPUTEQ<PCTEQ<{{key}},{{got}}>|{{key}}|{{val}}|{{got}}|{{old}}|{{rest}}|{{acc}}|{{k}}>
+^DPUTEQ<1\|(?<key>[ST]$PCT)\|(?<val>[^|]*)\|(?<got>[ST]$PCT)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}{{got}}={{val}};{{rest}}>|{{k}}>
+^DPUTEQ<0\|(?<key>[ST]$PCT)\|(?<val>[^|]*)\|(?<got>[ST]$PCT)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DPUT<{{key}}|{{val}}|{{rest}}|{{acc}}{{got}}={{old}};|{{k}}>
+
+^EENV<del (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{dict}}|{{env}}|KDELD<{{key|pctenc}}^{{env}}> {{k}}>
+^E<dict (?<entries>[^|]*)\|(?<k>.*)>$ ::= EENV<dict {{entries}}||{{k}}>
+^E<at (?<lst>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<idx>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<k>.*)>$ ::= EENV<at {{lst}} {{idx}}||{{k}}>
+^E<lookup (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<default>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<k>.*)>$ ::= EENV<lookup {{dict}} {{key}} {{default}}||{{k}}>
+^E<has (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<k>.*)>$ ::= EENV<has {{dict}} {{key}}||{{k}}>
+^E<put (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<val>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<k>.*)>$ ::= EENV<put {{dict}} {{key}} {{val}}||{{k}}>
+^E<del (?<dict>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<key>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<k>.*)>$ ::= EENV<del {{dict}} {{key}}||{{k}}>
+^RET<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|KDELD<(?<key>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{key|pctdec}}|{{env}}|KDELKEY<{{entries}}> {{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VSYM<$PCT>|VCLOS<[^>]*>)\|KDELD<(?<key>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<VSYM<(?<s>$PCT)>\|KDELKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DDEL<S{{s}}|{{entries}}||{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KDELKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DDEL<T{{s}}|{{entries}}||{{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VARR<(?:[^;>]*;)*>|VLIST<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VCLOS<[^>]*>)\|KDELKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^DDEL<(?<key>[ST]$PCT)\|\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}>|{{k}}>
+^DDEL<(?<key>[ST]$PCT)\|(?<got>[ST]$PCT)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DDELEQ<PCTEQ<{{key}},{{got}}>|{{key}}|{{got}}|{{old}}|{{rest}}|{{acc}}|{{k}}>
+^DDELEQ<1\|(?<key>[ST]$PCT)\|(?<got>[ST]$PCT)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}{{rest}}>|{{k}}>
+^DDELEQ<0\|(?<key>[ST]$PCT)\|(?<got>[ST]$PCT)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DDEL<{{key}}|{{rest}}|{{acc}}{{got}}={{old}};|{{k}}>
+
+^EENV<(?:dict|at|lookup|has|put|del)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^E<(?:dict|at|lookup|has|put|del)(?: (?<args>.*))?\|(?<k>.*)>$ ::= ERR<wrong_arity>
+
 ^E<empty\? (?<lst>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<k>.*)>$ ::= EENV<empty? {{lst}}||{{k}}>
 ^EENV<tail (?<lst>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{lst}}|{{env}}|KTAIL {{k}}>
 ^EENV<empty\? (?<lst>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{lst}}|{{env}}|KEMPTY {{k}}>
@@ -236,9 +314,6 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^RET<VLIST<(?<items>(?:[^;>]*;)*)>\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= RET<VLIST<{{item|pctenc}};{{items}}>|{{k}}>
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<len (?<lst>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{lst}}|{{env}}|KLEN {{k}}>
-^EENV<get (?<idx>[A-Za-z_][A-Za-z0-9_-]*|$NODE) (?<lst>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{idx}}|{{env}}|KGET1<{{lst}}|{{env}}> {{k}}>
-^RET<VNUM<(?<idx>$NUM)>\|KGET1<(?<lst>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{lst}}|{{env}}|KGET2<{{idx}}> {{k}}>
-^RET<(?<bad>$NONNUM)\|KGET1<(?<lst>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<array (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKARRENV<{{items}}|{{env}}|{{k}}|>
 ^PACKARRENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= RET<VARR<{{acc}}>|{{k}}>
 ^PACKARRENV<(?<item>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ARGENV<{{item}}|{{env}}|KENARR<{{rest}}|{{env}}|{{acc}}> {{k}}>
@@ -281,6 +356,7 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^APPLY<VSTR<(?<s>$PCT)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VARR<(?<items>(?:[^;>]*;)*)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VLIST<(?<items>(?:[^;>]*;)*)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
+^APPLY<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSYM<(?<name>$PCT)>\|(?<args>(?:[^;>]*;)*)\|(?<k>.*)>$ ::= ERR<not_function>
 ^BINDCLOS0<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{env}}|{{k}}>
 ^BINDCLOS0<\|(?<args>(?:[^;>]*;)+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -394,16 +470,16 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<VLIST<[^;]*;[^;]*;[^;]*;>\|KLEN (?<k>.*)>$ ::= RET<VNUM<3>|{{k}}>
 ^RET<VLIST<[^;]*;[^;]*;[^;]*;[^;]*;>\|KLEN (?<k>.*)>$ ::= RET<VNUM<4>|{{k}}>
 ^RET<VLIST<(?<items>(?:[^;]*;){5,})>\|KLEN (?<k>.*)>$ ::= ERR<unsupported_form>
-^RET<VLIST<(?<v0>[^;]*);(?<rest>.*)>\|KGET2<0> (?<k>.*)>$ ::= RET<{{v0|pctdec}}|{{k}}>
-^RET<VLIST<[^;]*;(?<v1>[^;]*);(?<rest>.*)>\|KGET2<1> (?<k>.*)>$ ::= RET<{{v1|pctdec}}|{{k}}>
-^RET<VLIST<[^;]*;[^;]*;(?<v2>[^;]*);(?<rest>.*)>\|KGET2<2> (?<k>.*)>$ ::= RET<{{v2|pctdec}}|{{k}}>
-^RET<VLIST<[^;]*;[^;]*;[^;]*;(?<v3>[^;]*);(?<rest>.*)>\|KGET2<3> (?<k>.*)>$ ::= RET<{{v3|pctdec}}|{{k}}>
-^RET<VLIST<(?<items>(?:[^;>]*;)*)>\|KGET2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<index_out_of_bounds>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KHEAD (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KTAIL (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KGET2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<VLIST<(?<v0>[^;]*);(?<rest>.*)>\|KAT2<0> (?<k>.*)>$ ::= RET<{{v0|pctdec}}|{{k}}>
+^RET<VLIST<[^;]*;(?<v1>[^;]*);(?<rest>.*)>\|KAT2<1> (?<k>.*)>$ ::= RET<{{v1|pctdec}}|{{k}}>
+^RET<VLIST<[^;]*;[^;]*;(?<v2>[^;]*);(?<rest>.*)>\|KAT2<2> (?<k>.*)>$ ::= RET<{{v2|pctdec}}|{{k}}>
+^RET<VLIST<[^;]*;[^;]*;[^;]*;(?<v3>[^;]*);(?<rest>.*)>\|KAT2<3> (?<k>.*)>$ ::= RET<{{v3|pctdec}}|{{k}}>
+^RET<VLIST<(?<items>(?:[^;>]*;)*)>\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KHEAD (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KTAIL (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VDICT<(?:[ST][^=;>]*=[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
 ^RET<VARR<>\|KHEAD (?<k>.*)>$ ::= ERR<empty_array>
 ^RET<VARR<(?<first>[^;]*);(?<rest>.*)>\|KHEAD (?<k>.*)>$ ::= RET<{{first|pctdec}}|{{k}}>
 ^RET<VARR<>\|KREST (?<k>.*)>$ ::= RET<VARR<>|{{k}}>
@@ -422,6 +498,7 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<VCLOS<(?<c>[^>]*)>\|KDONE>$ ::= RENDER<VCLOS<{{c}}>|KOUT>
 ^RET<VSYM<(?<name>$PCT)>\|KDONE>$ ::= RENDER<VSYM<{{name}}>|KOUT>
 ^RET<VLIST<(?<items>(?:[^;>]*;)*)>\|KDONE>$ ::= RENDER<VLIST<{{items}}>|KOUT>
+^RET<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|KDONE>$ ::= RENDER<VDICT<{{entries}}>|KOUT>
 ^RET<VARR<(?<items>(?:[^;>]*;)*)>\|KDONE>$ ::= RENDER<VARR<{{items}}>|KOUT>
 
 ^RENDER<VNUM<(?<n>$NUM)>\|(?<k>.*)>$ ::= RRET<{{n|pctenc}}|{{k}}>
@@ -430,6 +507,7 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RENDER<VCLOS<(?<c>[^>]*)>\|(?<k>.*)>$ ::= RRET<%3Cclosure%3E|{{k}}>
 ^RENDER<VSYM<(?<name>$PCT)>\|(?<k>.*)>$ ::= RRET<{{name}}|{{k}}>
 ^RENDER<VLIST<(?<items>(?:[^;>]*;)*)>\|(?<k>.*)>$ ::= RLIST<{{items}}||KLISTDONE<{{k}}>>
+^RENDER<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|(?<k>.*)>$ ::= RDICT<{{entries}}||KDICTDONE<{{k}}>>
 ^RENDER<VARR<(?<items>(?:[^;>]*;)*)>\|(?<k>.*)>$ ::= RLIST<{{items}}||KARRDONE<{{k}}>>
 
 ^RSTR<(?<pre>$PCTSTR)%5C(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5C%5C|{{k}}>
@@ -449,6 +527,14 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RLIST<(?<v>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RENDER<{{v|pctdec}}|KARRNEXT<{{rest}}|{{acc}}|{{k}}>>
 ^RRET<(?<frag>$PCT)\|KARRFIRST<(?<rest>[^|]*)\|(?<k>.*)>>$ ::= RLIST<{{rest}}|{{frag}}|{{k}}>
 ^RRET<(?<frag>$PCT)\|KARRNEXT<(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RLIST<{{rest}}|{{acc}}%20{{frag}}|{{k}}>
+
+^RDICT<\|\|KDICTDONE<(?<k>.*)>>$ ::= RRET<%28dict%29|{{k}}>
+^RDICT<\|(?<acc>$PCT)\|KDICTDONE<(?<k>.*)>>$ ::= RRET<%28dict%20{{acc}}%29|{{k}}>
+^RDICT<S(?<key>$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RRET<{{key}}|KDICTVAL<{{val}}|{{rest}}|{{acc}}|{{k}}>>
+^RDICT<T(?<key>$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{key}}||KDICTVAL<{{val}}|{{rest}}|{{acc}}|{{k}}>>
+^RRET<(?<keyfrag>$PCT)\|KDICTVAL<(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RENDER<{{val|pctdec}}|KDICTPAIR<{{keyfrag}}|{{rest}}|{{acc}}|{{k}}>>
+^RRET<(?<valfrag>$PCT)\|KDICTPAIR<(?<keyfrag>$PCT)\|(?<rest>[^|]*)\|\|(?<k>.*)>>$ ::= RDICT<{{rest}}|%28{{keyfrag}}%20{{valfrag}}%29|{{k}}>
+^RRET<(?<valfrag>$PCT)\|KDICTPAIR<(?<keyfrag>$PCT)\|(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RDICT<{{rest}}|{{acc}}%20%28{{keyfrag}}%20{{valfrag}}%29|{{k}}>
 
 ^RRET<(?<frag>$PCT)\|KOUT>$ ::= @OUT<{{frag}}>@@EXIT0@
 ^@OUT<(?<v>$PCT)>@@EXIT0@$ ::> stdout {{v|pctdec}}\n

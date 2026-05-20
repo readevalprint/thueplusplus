@@ -23,7 +23,8 @@ Compound forms:
 - bounded iteration/state update: `while` and `set`;
 - functions: `lambda` and direct application;
 - arrays: `array`, `head`, `rest`;
-- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `head`, `tail`, `empty?`, `push`, `len`, and `get`.
+- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `head`, `tail`, `empty?`, `push`, `len`, and `at`;
+- dictionaries: `dict`, `lookup`, `has`, `put`, and `del`.
 
 ## Runtime values
 
@@ -34,6 +35,7 @@ The evaluator uses internal typed values while reducing:
 - strings;
 - arrays;
 - symbols and proper lists for code-as-data;
+- dictionaries with symbol or string keys;
 - closures.
 
 Successful top-level output renders public values as reader syntax where the value has reader syntax:
@@ -43,9 +45,10 @@ Successful top-level output renders public values as reader syntax where the val
 - strings as quoted string syntax, preserving supported normal escapes;
 - arrays recursively as `(array ...)`, for example `(array 1 (array 2 3))`;
 - quoted symbols as their source names and proper lists as ordinary parenthesized source lists, for example `x`, `(+ 1 x)`, or `(1 2)`;
+- dictionaries as pair-shaped `(dict (key value) ...)` syntax, for example `(dict (x 1) ("external key" 2))`;
 - closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core.
 
-Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, or array back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure output is the explicit non-round-trippable exception until a dedicated closure serialization design exists.
+Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, array, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure output is the explicit non-round-trippable exception until a dedicated closure serialization design exists.
 
 ## Evaluation model
 
@@ -53,7 +56,7 @@ Reader-backed outputs are intended to round trip where the reader has a direct v
 - Values are demanded lazily from encoded nodes.
 - `let` creates lexical bindings.
 - `lambda` captures the lexical environment in a closure.
-- Function application evaluates arguments according to the current evaluator rules and checks arity. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
+- Function application evaluates arguments according to the current evaluator rules and checks arity. Only closures are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -96,9 +99,40 @@ Implementation contract:
 - `(splice expr)` at the top-level quasiquoted expression, bare `splice`, and bare `unquote` fail with `unsupported_form`; malformed `unquote`/`splice` escape forms fail with `wrong_arity`; splicing a non-list fails with `type_error`.
 - Nested `(quasiquote ...)` is deliberately rejected with `unsupported_form` in this first slice; there is no implicit quasiquote-depth accounting yet.
 - Internally, quoted symbols use `VSYM<...>` and proper lists use `VLIST<...>` with pct-encoded item payloads. These constructors are implementation details and must not leak to successful stdout.
-- `head`, `tail`, `empty?`, `push`, `len`, and `get` operate on proper lists with small bounded rules and fail loudly for invalid type or access cases.
+- `head`, `tail`, `empty?`, `push`, `len`, and `at` operate on proper lists with small bounded rules and fail loudly for invalid type or access cases.
+
+`at` is the only supported positional list lookup form:
+
+```lisp
+(at (list 7 8 9) 1)
+```
+
+returns `8`. Non-numeric indices fail with `type_error`; out-of-bounds indices fail with `index_out_of_bounds`; malformed arity fails with `wrong_arity`. The old `get` name is not part of this greenfield slice.
 
 Reader shorthand such as `'x`, backtick, comma, and comma-at is still deferred; this core uses keyword forms only.
+
+## Dictionary boundary
+
+`dict` constructs an explicit dictionary value. It is not an association-list convention and not an overloaded function call target.
+
+Construction and rendering use pair-shaped entries:
+
+```lisp
+(dict (x 1) ("external key" 2))
+```
+
+Keys may be symbols or strings only. Key equality is typed and non-coercive: symbol `x` and string `"x"` are distinct keys, and there is no string-to-symbol conversion in this slice. Duplicate keys in one constructor fail with `duplicate_key`; malformed entries fail with `wrong_arity`; unsupported key types fail with `type_error`.
+
+Dictionary operations are explicit:
+
+```lisp
+(has d key)
+(lookup d key default)
+(put d key value)
+(del d key)
+```
+
+`lookup` always requires a default. A present key returns its stored value even when that value is `false` or `()`. A missing key evaluates and returns the default. `put` and `del` return new dictionary values and leave existing bindings unchanged; deleting a missing key is a no-op that returns an equivalent dictionary. Applying a dictionary as a function fails with `not_function`.
 
 ## Recursion and loop boundary
 
@@ -125,7 +159,7 @@ The evaluator exits non-zero and writes one named error symbol on stderr for rej
 - `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `begin`, `and`, `or`, `let`, and `lambda` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual lookup miss for a bare variable or callee name;
-- `not_function`: attempting to apply a non-closure value;
+- `not_function`: attempting to apply a non-closure value, including lists and dictionaries;
 - `type_error`: an operand value has the wrong runtime type for the requested operation;
 - `division_by_zero`: division by zero, including computed zero denominators;
 - `invalid_numeric_token`: numeric-looking tokens that do not satisfy the numeric literal contract;
