@@ -65,6 +65,13 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^ARGENV<false\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 ^ARGENV<(?<name>[A-Za-z_][A-Za-z0-9_-]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^ARGENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
+# Env-preserving expression demand: plain value returns keep the original env;
+# env-aware returns propagate the updated env. While bodies use this so generic
+# `begin` sequencing can own body ordering without a custom loop sequencer.
+^EENVKEEP<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
+^EENVKEEP<(?<expr>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
+^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
+^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 # Nullary env-aware array must run before generic name lookup so `(let (...) (array))`
 # constructs an empty array rather than looking up `array` as a variable.
 ^EENV<array\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VARR<>|{{k}}>
@@ -138,26 +145,18 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^RET<VBOOL<true>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<false>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{rhs}}|{{env}}|{{k}}>
 ^RET<(?<bad>$NONBOOL)\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^EENV<begin (?<expr>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|{{k}}>
+^EENV<begin (?<expr>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
 ^EENV<begin (?<first>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
 ^RET<(?<ignored>$VAL)\|KENBEGIN<(?<rest>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<begin {{rest|pctdec}}|{{env}}|{{k}}>
-^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KENBEGIN<(?<rest>$PCT)\|(?<oldenv>[^|]*)> (?<k>.*)>$ ::= EENV<begin {{rest|pctdec}}|{{env}}|{{k}}>
+^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KENBEGIN<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= EENV<begin {{rest|pctdec}}|{{env}}|{{k}}>
 
 # Minimal bounded loop/mutation slice for #108. `(while cond body)` repeats one
 # body expression; use `(begin ...)` in that body slot for sequencing. `set`
 # updates the nearest existing lexical binding and returns the assigned value.
 ^E<while (?<cond>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<body>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<k>.*)>$ ::= EENV<while {{cond}} {{body}}||{{k}}>
-^EENV<while (?<cond>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) L<begin%20(?<first>$PCT)%20(?<rest>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILESEQCOND<{{cond|pctenc}}^{{first}}^{{rest}}^{{env}}> {{k}}>
 ^EENV<while (?<cond>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>) (?<body>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILECOND<{{cond|pctenc}}^{{body|pctenc}}^{{env}}> {{k}}>
-^RET<VBOOL<false>\|KWHILESEQCOND<(?<cond>$PCT)\^(?<first>$PCT)\^(?<rest>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<VLIST<>|{{env}}|{{k}}>
-^RET<VBOOL<true>\|KWHILESEQCOND<(?<cond>$PCT)\^(?<first>$PCT)\^(?<rest>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{first|pctdec}}|{{env}}|KWHILESEQREST<{{cond}}^{{first}}^{{rest}}^{{env}}> {{k}}>
-^RET<(?<bad>$NONBOOL)\|KWHILESEQCOND<(?<cond>$PCT)\^(?<first>$PCT)\^(?<rest>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<ignored>$VAL)\|KWHILESEQREST<(?<cond>$PCT)\^(?<first>$PCT)\^(?<rest>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{rest|pctdec}}|{{env}}|KWHILESEQBODY<{{cond}}^{{first}}^{{rest}}^{{env}}> {{k}}>
-^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILESEQREST<(?<cond>$PCT)\^(?<first>$PCT)\^(?<rest>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{rest|pctdec}}|{{env}}|KWHILESEQBODY<{{cond}}^{{first}}^{{rest}}^{{env}}> {{k}}>
-^RET<(?<ignored>$VAL)\|KWHILESEQBODY<(?<cond>$PCT)\^(?<first>$PCT)\^(?<rest>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} L<begin%20{{first}}%20{{rest}}>|{{env}}|{{k}}>
-^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILESEQBODY<(?<cond>$PCT)\^(?<first>$PCT)\^(?<rest>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} L<begin%20{{first}}%20{{rest}}>|{{env}}|{{k}}>
 ^RET<VBOOL<false>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<VLIST<>|{{env}}|{{k}}>
-^RET<VBOOL<true>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{body|pctdec}}|{{env}}|KWHILEBODY<{{cond}}^{{body}}^{{env}}> {{k}}>
+^RET<VBOOL<true>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= EENVKEEP<{{body|pctdec}}|{{env}}|KWHILEBODY<{{cond}}^{{body}}^{{env}}> {{k}}>
 ^RET<(?<bad>$NONBOOL)\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILEBODY<(?<cond>$PCT)\^(?<body>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} {{body|pctdec}}|{{env}}|{{k}}>
 
