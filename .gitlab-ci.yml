@@ -1,37 +1,31 @@
 stages:
-  - build
   - test
 
 variables:
-  DEVCONTAINER_IMAGE: "$CI_REGISTRY_IMAGE/devcontainer:$CI_COMMIT_SHA"
-  KANIKO_CACHE_REPO: "$CI_REGISTRY_IMAGE/cache"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+  UV_LINK_MODE: copy
+  GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
+  GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
 
-build-devcontainer:
-  stage: build
-  image:
-    name: gcr.io/kaniko-project/executor:v1.23.2-debug
-    entrypoint: [""]
-  script:
-    - mkdir -p /kaniko/.docker
-    - >-
-      printf '{"auths":{"%s":{"username":"%s","password":"%s"}}}'
-      "$CI_REGISTRY" "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD"
-      > /kaniko/.docker/config.json
-    - >-
-      /kaniko/executor
-      --context "$CI_PROJECT_DIR"
-      --dockerfile "$CI_PROJECT_DIR/.devcontainer/Dockerfile.dev"
-      --destination "$DEVCONTAINER_IMAGE"
-      --cache=true
-      --cache-repo "$KANIKO_CACHE_REPO"
-      --insecure-registry "$CI_REGISTRY"
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .cache/uv/
+    - .cache/go-build/
+    - .cache/go-mod/
+    - .venv/
 
 test:
-  stage: test
-  image:
-    name: "$DEVCONTAINER_IMAGE"
-    entrypoint: [""]
-  needs:
-    - build-devcontainer
+  image: golang:1.24.6-bookworm
+  before_script:
+    - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
+    - |
+      if ! command -v uv >/dev/null 2>&1; then
+        curl -LsSf https://astral.sh/uv/install.sh \
+          | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 sh -s -- --no-modify-path
+        export PATH="/tmp/uv-bin:$PATH"
+      fi
+    - uv --version
+    - go version
   script:
     - make test
