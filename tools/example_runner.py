@@ -14,11 +14,14 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MAX_EVALS = 10000
+INTERNAL_JOBS = 8
+DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
 
 
 @dataclass(frozen=True)
@@ -302,134 +305,227 @@ def assert_parity(config_path: Path, case: dict, results: list[CaseResult]) -> N
             )
 
 
+def case_program(config_path: Path, case: dict) -> Path:
+    program = case.get("program")
+    if not isinstance(program, str) or not program.strip():
+        raise RuntimeError(f"{config_path} {case_name(config_path, case)}: missing top-level program")
+    resolved = (config_path.parent / program).resolve()
+    if resolved.suffix != ".tpp":
+        raise RuntimeError(f"{config_path}: program must be a .tpp file: {program}")
+    if not resolved.exists():
+        raise RuntimeError(f"{config_path}: program does not exist: {program}")
+    try:
+        resolved.relative_to(config_path.parents[1].resolve())
+    except ValueError as exc:
+        raise RuntimeError(f"{config_path}: program escapes example directory: {program}") from exc
+    return resolved
+
+
+def rel(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def reject_coverage_ignores(program: Path, seen: set[Path] | None = None) -> None:
+    seen = set() if seen is None else seen
+    program = program.resolve()
+    if program in seen:
+        raise RuntimeError(f"cyclic include detected: {program}")
+    seen.add(program)
+    for line_number, raw_line in enumerate(program.read_text(encoding="utf-8").splitlines(), 1):
+        stripped = raw_line.strip()
+        if stripped.startswith("@include "):
+            include_path = stripped[9:].strip()
+            if include_path.startswith('"') and include_path.endswith('"'):
+                include_path = include_path[1:-1]
+            reject_coverage_ignores(program.parent / include_path, seen)
+            continue
+        if stripped.startswith("# coverage: ignore"):
+            raise RuntimeError(f"{rel(program)}:{line_number}: coverage ignore comments are unsupported; add fixtures or delete the rule")
+
+
+def read_coverage(path: Path) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    if not path.exists():
+        raise RuntimeError(f"coverage file was not written: {path}")
+    row_re = re.compile(r"^(.+\.tpp:\d+)\t([1-9][0-9]*)$")
+    seen: set[str] = set()
+    for row_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        match = row_re.match(line)
+        if not match:
+            raise RuntimeError(f"{path}:{row_number}: malformed coverage row: {line!r}")
+        rule_id, count_text = match.groups()
+        if rule_id in seen:
+            raise RuntimeError(f"{path}:{row_number}: duplicate coverage row for {rule_id}")
+        seen.add(rule_id)
+        counts[rule_id] += int(count_text)
+    return counts
+
+
+def list_rules(interpreter: Interpreter, program: Path, require_success: bool) -> tuple[dict[str, str], str | None]:
+    reject_coverage_ignores(program)
+    completed = subprocess.run(
+        [*interpreter.argv, str(program), "--list-rules"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    if completed.returncode != 0:
+        error = completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}"
+        if require_success:
+            raise RuntimeError(f"{rel(program)}: could not enumerate rules for successful manifest case: {error}")
+        return {}, error
+    rules: dict[str, str] = {}
+    for row_number, line in enumerate(completed.stdout.splitlines(), 1):
+        if "\t" not in line:
+            raise RuntimeError(f"{rel(program)} --list-rules row {row_number}: malformed row: {line!r}")
+        rule_id, text = line.split("\t", 1)
+        if not re.match(r"^.+\.tpp:\d+$", rule_id):
+            raise RuntimeError(f"{rel(program)} --list-rules row {row_number}: malformed rule id: {rule_id!r}")
+        if rule_id in rules:
+            raise RuntimeError(f"{rel(program)} --list-rules row {row_number}: duplicate rule id: {rule_id}")
+        rules[rule_id] = text
+    return rules, None
+
+
 def run_manifest_case_set(
     interpreters: list[Interpreter],
     config_path: Path,
     case: dict,
     root_tmp: Path,
-    *,
-    parity: bool,
-) -> None:
+) -> tuple[Path, Counter[str]]:
     results: list[CaseResult] = []
+    coverage_counts: Counter[str] = Counter()
+    program = case_program(config_path, case)
     for interpreter in interpreters:
         case_tmp = root_tmp / re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{config_path}:{case_name(config_path, case)}:{interpreter.name}")
         case_tmp.mkdir(parents=True, exist_ok=True)
-        results.append(run_case(interpreter, config_path, case, case_tmp))
-    if parity and len(results) > 1:
-        assert_parity(config_path, case, results)
+        extra_args = None
+        coverage_path = case_tmp / "rule-coverage.tsv"
+        if interpreter.name == "python":
+            extra_args = ["--rule-coverage", str(coverage_path)]
+        results.append(run_case(interpreter, config_path, case, case_tmp, extra_args=extra_args))
+        if interpreter.name == "python":
+            coverage_counts.update(read_coverage(coverage_path))
+    assert_parity(config_path, case, results)
+    return program, coverage_counts
 
 
-def run_configs(interpreters: list[Interpreter], configs: list[Path], *, parity: bool = False, jobs: int = 1) -> int:
+def check_rule_coverage(
+    python_interpreter: Interpreter,
+    coverage_by_program: dict[Path, Counter[str]],
+    has_success_by_program: dict[Path, bool],
+) -> None:
+    failures: list[str] = []
+    for program in sorted(coverage_by_program):
+        counts = coverage_by_program[program]
+        rules, parse_error = list_rules(python_interpreter, program, has_success_by_program.get(program, False))
+        if parse_error is not None:
+            print(rel(program))
+            print("  rules:      0")
+            print("  covered:    0")
+            print("  uncovered:  0")
+            print(f"  parse_error: {parse_error}")
+            print()
+            continue
+        unknown = sorted(set(counts) - set(rules))
+        if unknown:
+            failures.append(f"{rel(program)}: unknown coverage rule IDs: {', '.join(unknown[:20])}")
+            continue
+        uncovered = [rule_id for rule_id in rules if counts[rule_id] == 0]
+        print(rel(program))
+        print(f"  rules:      {len(rules)}")
+        print(f"  covered:    {sum(1 for rule_id in rules if counts[rule_id] > 0)}")
+        print(f"  uncovered:  {len(uncovered)}")
+        if uncovered:
+            print("\nuncovered:")
+            for rule_id in uncovered:
+                print(f"  {rule_id}  {rules[rule_id]}")
+            failures.append(f"{rel(program)}: {len(uncovered)} uncovered rule(s)")
+        print()
+    if failures:
+        raise RuntimeError("rule coverage failed\n" + "\n".join(failures))
+
+
+def run_configs(interpreters: list[Interpreter], configs: list[Path], *, jobs: int = INTERNAL_JOBS) -> int:
     jobs = max(1, jobs)
     work: list[tuple[Path, dict]] = []
+    has_success_by_program: dict[Path, bool] = {}
     for config_path in configs:
         data = load_toml(config_path)
         for case in expand_cases(data, config_path):
+            program = case_program(config_path, case)
+            has_success_by_program[program] = has_success_by_program.get(program, False) or case.get("expect", {}).get("exit_code") == 0
             work.append((config_path, case))
 
+    coverage_by_program: dict[Path, Counter[str]] = {program: Counter() for program in has_success_by_program}
     with tempfile.TemporaryDirectory(prefix="thuepp-examples-") as tmpdir:
         root_tmp = Path(tmpdir)
         if jobs == 1 or len(work) <= 1:
             for config_path, case in work:
-                run_manifest_case_set(interpreters, config_path, case, root_tmp, parity=parity)
+                program, counts = run_manifest_case_set(interpreters, config_path, case, root_tmp)
+                coverage_by_program[program].update(counts)
         else:
             with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
                 futures = [
-                    executor.submit(run_manifest_case_set, interpreters, config_path, case, root_tmp, parity=parity)
+                    executor.submit(run_manifest_case_set, interpreters, config_path, case, root_tmp)
                     for config_path, case in work
                 ]
                 for future in futures:
-                    future.result()
+                    program, counts = future.result()
+                    coverage_by_program[program].update(counts)
 
     names = ", ".join(interpreter.name for interpreter in interpreters)
-    mode = "parity" if parity and len(interpreters) > 1 else "run"
-    print(f"{mode}: {len(work)} cases passed for {names}")
+    print(f"parity: {len(work)} cases passed for {names}")
+    python_interpreter = next(interpreter for interpreter in interpreters if interpreter.name == "python")
+    check_rule_coverage(python_interpreter, coverage_by_program, has_success_by_program)
     return 0
 
 
-def contract_interpreters(contract_path: Path, build_root: Path, only: set[str] | None = None) -> list[Interpreter]:
-    data = load_toml(contract_path)
-    implementations = data.get("implementations")
-    if not isinstance(implementations, dict):
-        raise RuntimeError(f"{contract_path}: missing [implementations] table")
-
-    selected = set() if only is None else set(only)
-    interpreters: list[Interpreter] = []
-    for name, spec in implementations.items():
-        if only is not None and name not in selected:
-            continue
-        if not isinstance(spec, dict):
-            raise RuntimeError(f"{contract_path}: implementation {name!r} must be a table")
-        if not bool(spec.get("available", False)):
-            if only is not None and name in selected:
-                raise RuntimeError(f"{contract_path}: implementation {name!r} is not available")
-            continue
-
-        command_template = spec.get("command")
-        if not isinstance(command_template, str) or not command_template.strip():
-            raise RuntimeError(f"{contract_path}: available implementation {name!r} must declare command")
-
-        artifact = build_root / f"{name}-thuepp"
-        build_root.mkdir(parents=True, exist_ok=True)
-        substitutions = {"artifact": str(artifact)}
-        build_template = spec.get("build")
-        if build_template is not None:
-            if not isinstance(build_template, str) or not build_template.strip():
-                raise RuntimeError(f"{contract_path}: implementation {name!r} build must be a non-empty string")
-            build_workdir = ROOT / str(spec.get("build_workdir", "."))
-            completed = subprocess.run(
-                shlex.split(build_template.format(**substitutions)),
-                cwd=build_workdir,
-                capture_output=True,
-                text=True,
-            )
-            if completed.returncode != 0:
-                raise RuntimeError(
-                    f"{contract_path}: implementation {name!r} build failed with exit {completed.returncode}\n"
-                    f"stdout={completed.stdout!r}\nstderr={completed.stderr!r}"
-                )
-
-        argv = tuple(shlex.split(command_template.format(**substitutions)))
-        if not argv:
-            raise RuntimeError(f"{contract_path}: available implementation {name!r} command resolved empty")
-        interpreters.append(Interpreter(name=name, argv=argv))
-
-    if only is not None:
-        missing = selected - set(implementations)
-        if missing:
-            raise RuntimeError(f"{contract_path}: unknown implementation(s): {', '.join(sorted(missing))}")
-    if not interpreters:
-        raise RuntimeError(f"{contract_path}: no available implementations selected")
-    return interpreters
+def build_interpreters(build_root: Path) -> list[Interpreter]:
+    build_root.mkdir(parents=True, exist_ok=True)
+    go_artifact = build_root / "go-thuepp"
+    completed = subprocess.run(
+        ["go", "build", "-o", str(go_artifact), "./cmd/thuepp"],
+        cwd=ROOT / "go",
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "go implementation build failed with exit "
+            f"{completed.returncode}\nstdout={completed.stdout!r}\nstderr={completed.stderr!r}"
+        )
+    return [
+        Interpreter("python", ("uv", "run", "python", "python/thuepp.py")),
+        Interpreter("go", (str(go_artifact),)),
+    ]
 
 
-def collect_configs(configs: list[Path], manifest_globs: list[str] | None = None) -> list[Path]:
-    collected = list(configs)
-    for pattern in manifest_globs or []:
-        matches = sorted(ROOT.glob(pattern))
-        if not matches:
-            raise RuntimeError(f"manifest glob matched no files: {pattern}")
-        collected.extend(matches)
+def collect_configs(configs: list[Path]) -> list[Path]:
+    if configs:
+        collected = [path if path.is_absolute() else ROOT / path for path in configs]
+    else:
+        collected = sorted(ROOT.glob(DEFAULT_MANIFEST_GLOB))
     if not collected:
-        raise RuntimeError("no shared manifest files provided")
+        raise RuntimeError(f"no shared manifest files matched {DEFAULT_MANIFEST_GLOB}")
+    missing = [path for path in collected if not path.exists()]
+    if missing:
+        raise RuntimeError("manifest file(s) do not exist: " + ", ".join(str(path) for path in missing))
     return collected
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run shared thue++ example manifests")
-    parser.add_argument("configs", type=Path, nargs="*", help="example TOML manifest(s)")
-    parser.add_argument("--manifest-glob", action="append", default=[], help="repository-relative glob for shared example TOML manifests; may be repeated")
-    parser.add_argument("--contract", type=Path, required=True, help="Read available implementation commands from tools/thuepp-contract.toml-style contract")
-    parser.add_argument("--implementation", action="append", help="Implementation name to select from --contract; may be repeated")
-    parser.add_argument("--jobs", type=int, default=1, help="Run independent manifest cases concurrently; default: 1")
-    parser.add_argument("--parity", action="store_true", help="compare exit code, stdout, stderr, and writable file outputs across interpreters")
+    parser = argparse.ArgumentParser(description="Run shared thue++ example manifests with mandatory Python/Go parity and rule coverage")
+    parser.add_argument("configs", type=Path, nargs="*", help="optional explicit example TOML manifest(s); defaults to examples/**/tests/*.toml")
     args = parser.parse_args(argv)
-    if args.jobs < 1:
-        raise RuntimeError("--jobs must be >= 1")
-    configs = collect_configs(args.configs, args.manifest_glob)
+    configs = collect_configs(args.configs)
     with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
-        interpreters = contract_interpreters(args.contract, Path(tmpdir), set(args.implementation) if args.implementation else None)
-        return run_configs(interpreters, configs, parity=args.parity, jobs=args.jobs)
+        interpreters = build_interpreters(Path(tmpdir))
+        return run_configs(interpreters, configs)
 
 
 if __name__ == "__main__":

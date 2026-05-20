@@ -955,6 +955,11 @@ def main():
         type=str,
         help="Write successful rule application counts as TSV to this path",
     )
+    parser.add_argument(
+        "--list-rules",
+        action="store_true",
+        help="List compiled rule source IDs and source text as TSV, then exit",
+    )
 
     # Parse known args first, then handle custom bindings
     args, remaining = parser.parse_known_args()
@@ -994,11 +999,21 @@ def main():
 
     try:
         interpreter.load_program(args.program)
-        
-        if args.input is not None:
-            interpreter.apply_input_override(args.input)
-        
-        exit_code = interpreter.run()
+
+        if args.list_rules:
+            for rule in interpreter.rules:
+                source = Path(rule.source_path)
+                try:
+                    display = source.resolve().relative_to(Path.cwd().resolve()).as_posix()
+                except ValueError:
+                    display = source.resolve().as_posix()
+                print(f"{display}:{rule.line_number}\t{rule.lhs}")
+            exit_code = 0
+        else:
+            if args.input is not None:
+                interpreter.apply_input_override(args.input)
+
+            exit_code = interpreter.run()
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         exit_code = 1

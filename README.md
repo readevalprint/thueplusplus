@@ -79,13 +79,10 @@ Use the repository-root truth-engine command before sending changes for review:
 make test
 ```
 
-`make test` runs the Python unittest suite, the Go test suite, the shared manifest parity runner, and the shared rule-coverage gate for all manifest-declared example programs. The shared manifest runner is Python tooling, but it reads available implementations from `tools/thuepp-contract.toml` and treats every implementation uniformly as an external command rather than importing interpreter internals. Optional helper targets are available for focused checks:
+`make test` runs the repository conformance check and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, and enforces rule coverage for all manifest-declared example programs. For focused debugging, pass explicit manifest paths directly to the runner:
 
 ```bash
-make test-python
-make test-go
-make test-shared
-make test-coverage
+uv run python tools/run-example-manifests examples/echo/tests/file-input.toml
 ```
 
 JavaScript is future work, not a currently available implementation. When it exists, it should join `make test` through the shared manifest runner instead of a separate harness or a green no-op placeholder.
@@ -110,10 +107,10 @@ examples/lisp/lisp.tpp:97	1
 examples/lisp/lisp.tpp:156	1
 ```
 
-Rules are counted only after a rule successfully applies. Failed probes, failed builtins, missing resources, and failed writes do not count. The shared checker merges counts across TOML cases and fails on any rule with zero coverage:
+Rules are counted only after a rule successfully applies. Failed probes, failed builtins, missing resources, and failed writes do not count. The shared manifest runner merges counts across TOML cases and fails on any surviving rule with zero coverage. It can also list compiled rules through the external Python CLI:
 
 ```bash
-uv run python tools/check-rule-coverage examples/lisp/lisp.tpp examples/lisp/tests/*.toml
+uv run python python/thuepp.py examples/lisp/lisp.tpp --list-rules
 ```
 
 Coverage ignores are intentionally unsupported. Every surviving Lisp rule must be covered by shared fixtures; otherwise add a fixture or delete the rule.

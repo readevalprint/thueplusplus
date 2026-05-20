@@ -13,10 +13,7 @@ The immediate priority is not to hide failing behavior. The priority is to make 
 The promoted implementation currently passes the hard acceptance manifest:
 
 ```bash
-uv run python tools/run-example-manifests \
-  --contract tools/thuepp-contract.toml \
-  --parity \
-  --manifest-glob 'examples/lisp/tests/hard_acceptance_bo.toml'
+uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
 Expected current result:
@@ -28,10 +25,7 @@ parity: 15 cases passed for python, go
 The edge manifest is intentionally RED:
 
 ```bash
-uv run python tools/run-example-manifests \
-  --contract tools/thuepp-contract.toml \
-  --parity \
-  --manifest-glob 'examples/lisp/tests/edge_acceptance_bo.toml'
+uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
 It should fail until the listed edge behaviors are implemented. RED manifests are allowed to fail in normal development, but failures must be intentional, named, and tied to implementation priorities.
@@ -134,7 +128,7 @@ Future tests should also cover nested arrays and arrays containing closures.
 
 ### GREEN acceptance tests
 
-`examples/lisp/tests/hard_acceptance_bo.toml` is the current green contract for promoted BO behavior.
+`examples/lisp/tests/*.toml` is the current green contract for promoted BO behavior.
 
 It must stay green for both Python and Go.
 
@@ -158,7 +152,7 @@ It covers:
 
 ### RED edge tests
 
-`examples/lisp/tests/edge_acceptance_bo.toml` is intentionally RED. It documents the next target behaviors.
+`examples/lisp/tests/*.toml` is intentionally RED. It documents the next target behaviors.
 
 Current top edge goals:
 
@@ -216,10 +210,7 @@ Error messages do not need to be beautiful yet, but they must be stable enough f
 Before and after every implementation change, run:
 
 ```bash
-uv run python tools/run-example-manifests \
-  --contract tools/thuepp-contract.toml \
-  --parity \
-  --manifest-glob 'examples/lisp/tests/hard_acceptance_bo.toml'
+uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
 Do not accept changes that regress this manifest.
@@ -251,39 +242,27 @@ The current test loop is slow because the runner starts a fresh interpreter proc
 Fast green check:
 
 ```bash
-uv run python tools/run-example-manifests \
-  --contract tools/thuepp-contract.toml \
-  --parity \
-  --manifest-glob 'examples/lisp/tests/hard_acceptance_bo.toml'
+uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
 Intentional RED check:
 
 ```bash
-uv run python tools/run-example-manifests \
-  --contract tools/thuepp-contract.toml \
-  --parity \
-  --manifest-glob 'examples/lisp/tests/edge_acceptance_bo.toml'
+uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
-Go-only timing check:
+Focused timing check:
 
 ```bash
 TIMEFORMAT='real %3R
 user %3U
-sys %3S'; time uv run python tools/run-example-manifests \
-  --contract tools/thuepp-contract.toml \
-  --implementation go \
-  --manifest-glob 'examples/lisp/tests/hard_acceptance_bo.toml'
+sys %3S'; time uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
-Full Lisp manifest check, expected to fail while RED tests remain:
+Full Lisp manifest check for the ordinary green suite:
 
 ```bash
-uv run python tools/run-example-manifests \
-  --contract tools/thuepp-contract.toml \
-  --parity \
-  --manifest-glob 'examples/lisp/tests/*.toml'
+uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
 ## Definition of done
