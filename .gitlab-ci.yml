@@ -1,8 +1,36 @@
+stages:
+  - build
+  - test
+
+variables:
+  DEVCONTAINER_IMAGE: "$CI_REGISTRY_IMAGE/devcontainer:$CI_COMMIT_SHA"
+  KANIKO_CACHE_REPO: "$CI_REGISTRY_IMAGE/cache"
+
+build-devcontainer:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - >-
+      printf '{"auths":{"%s":{"username":"%s","password":"%s"}}}'
+      "$CI_REGISTRY" "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD"
+      > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "$CI_PROJECT_DIR"
+      --dockerfile "$CI_PROJECT_DIR/.devcontainer/Dockerfile.dev"
+      --destination "$DEVCONTAINER_IMAGE"
+      --cache=true
+      --cache-repo "$KANIKO_CACHE_REPO"
+
 test:
-  image: golang:1.24-bookworm
-  before_script:
-    - apt-get update
-    - apt-get install -y --no-install-recommends make python3 python3-pip python3-venv
-    - python3 -m pip install --break-system-packages --disable-pip-version-check uv
+  stage: test
+  image:
+    name: "$DEVCONTAINER_IMAGE"
+    entrypoint: [""]
+  needs:
+    - build-devcontainer
   script:
     - make test

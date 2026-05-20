@@ -1,0 +1,39 @@
+{
+  "name": "ThuePlusPlus Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile.dev"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/thueplusplus,type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/thueplusplus",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.docker-home,target=/home/dev,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "mhutchie.git-graph",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "go.useLanguageServer": true,
+        "go.lintOnSave": "package",
+        "go.formatTool": "goimports",
+        "[go]": {
+          "editor.defaultFormatter": "golang.go",
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        }
+      }
+    }
+  },
+  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.docker-home",
+  "postCreateCommand": ".devcontainer/init-home.sh",
+  "runArgs": [
+    "--network=host"
+  ],
+  "forwardPorts": [],
+  "remoteUser": "dev"
+}
