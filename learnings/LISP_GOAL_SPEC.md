@@ -13,7 +13,7 @@ The immediate priority is not to hide failing behavior. The priority is to make 
 The promoted implementation currently passes the hard acceptance manifest:
 
 ```bash
-uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 Expected current result:
@@ -25,7 +25,7 @@ parity: 15 cases passed for python, go
 The edge manifest is intentionally RED:
 
 ```bash
-uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 It should fail until the listed edge behaviors are implemented. RED manifests are allowed to fail in normal development, but failures must be intentional, named, and tied to implementation priorities.
@@ -210,7 +210,7 @@ Error messages do not need to be beautiful yet, but they must be stable enough f
 Before and after every implementation change, run:
 
 ```bash
-uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 Do not accept changes that regress this manifest.
@@ -242,13 +242,13 @@ The current test loop is slow because the runner starts a fresh interpreter proc
 Fast green check:
 
 ```bash
-uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 Intentional RED check:
 
 ```bash
-uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 Focused timing check:
@@ -256,13 +256,13 @@ Focused timing check:
 ```bash
 TIMEFORMAT='real %3R
 user %3U
-sys %3S'; time uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+sys %3S'; time uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 Full Lisp manifest check for the ordinary green suite:
 
 ```bash
-uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 ## Definition of done

@@ -95,8 +95,8 @@ def check_makefile(root: Path) -> list[Failure]:
     failures: list[Failure] = []
     required = [
         "test:",
-        "uv run python tools/check-contract",
-        "uv run python tools/run-example-manifests",
+        "uv run python tools/check_contract.py",
+        "uv run python tools/example_runner.py",
     ]
     for snippet in required:
         if snippet not in text:
@@ -140,7 +140,7 @@ def check_readme(root: Path) -> list[Failure]:
     text = read(path)
     try:
         if updated_readme(root) != text:
-            failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/check-contract --update-readme"))
+            failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/check_contract.py --update-readme"))
     except ValueError as exc:
         failures.append(Failure(path, str(exc)))
     required = ["## Verification", "make test", "uv run", "pyproject.toml", "uv.lock", "python/thuepp.py"]
@@ -160,16 +160,12 @@ def check_contract(root: Path) -> list[Failure]:
         root / "tools" / "thuepp-contract.toml",
         root / "tools" / "check-rule-coverage",
         root / "tools" / "check-code-coverage",
+        root / "tools" / "check-contract",
+        root / "tools" / "run-example-manifests",
     ]
     for path in deleted:
         if path.exists():
             failures.append(Failure(path, "stale verification artifact must stay deleted; make test is the only truth gate"))
-    wrapper_path = root / "tools" / "run-example-manifests"
-    wrapper_text = read(wrapper_path)
-    if not wrapper_text.startswith("#!/usr/bin/env python3\n"):
-        failures.append(Failure(wrapper_path, "shared example manifest runner wrapper must be Python"))
-    if "from example_runner import main" not in wrapper_text:
-        failures.append(Failure(wrapper_path, "shared example manifest runner wrapper must delegate to tools/example_runner.py"))
     runner_path = root / "tools" / "example_runner.py"
     runner_text = read(runner_path)
     try:
@@ -228,7 +224,7 @@ def check_contract(root: Path) -> list[Failure]:
             failures.append(Failure(forbidden_path, "shared runner --interpreter compatibility path must not be referenced"))
     duplicate_full_manifest_checks = [
         (root / "python" / "tests" / "test_examples.py", ["run_configs", "*/tests/*.toml"]),
-        (root / "go" / "internal" / "thuepp" / "go_interpreter_test.go", ["run-example-manifests", "examples", "tests", "*.toml"]),
+        (root / "go" / "internal" / "thuepp" / "go_interpreter_test.go", ["example_runner.py", "examples", "tests", "*.toml"]),
     ]
     for duplicate_path, snippets in duplicate_full_manifest_checks:
         if not duplicate_path.exists():
