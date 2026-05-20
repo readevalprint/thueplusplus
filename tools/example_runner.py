@@ -48,7 +48,7 @@ def load_toml(path: Path) -> dict:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
-TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case", "requires"}
+TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case"}
 CASE_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout"}
 EXPECT_KEYS = {
     "exit_code",
@@ -101,8 +101,6 @@ def validate_manifest(config_path: Path, config: dict) -> None:
     program = config.get("program")
     if not isinstance(program, str) or not program.strip():
         raise RuntimeError(f"{config_path}: missing top-level program")
-    if "requires" in config:
-        raise RuntimeError(f"{config_path}: requires.commands is not supported in shared manifests")
     if "args" in config and not (isinstance(config["args"], list) and all(isinstance(arg, str) for arg in config["args"])):
         raise RuntimeError(f"{config_path}: args must be a list of strings")
     if "bindings" in config:
@@ -154,8 +152,6 @@ def case_name(config_path: Path, case: dict) -> str:
 
 
 def validate_case_metadata(config_path: Path, case: dict) -> None:
-    if case.get("requires"):
-        raise RuntimeError(f"{config_path} {case_name(config_path, case)}: requires.commands is not supported in shared manifests")
     if "args" in case and not (
         isinstance(case["args"], list) and all(isinstance(arg, str) for arg in case["args"])
     ):

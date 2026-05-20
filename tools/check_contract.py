@@ -210,7 +210,6 @@ def check_contract(root: Path) -> list[Failure]:
         "assert_parity",
         "check_rule_coverage",
         "subprocess.run",
-        "requires.commands is not supported",
     ]
     for snippet in required_runner:
         if snippet not in runner_text:
@@ -309,7 +308,7 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     return failures
 
 
-MANIFEST_TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case", "requires"}
+MANIFEST_TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case"}
 MANIFEST_CASE_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout"}
 MANIFEST_EXPECT_KEYS = {
     "exit_code",
@@ -357,9 +356,6 @@ def check_manifest_policy(root: Path) -> list[Failure]:
                 resolved.relative_to(path.parents[1].resolve())
             except ValueError:
                 failures.append(Failure(path, f"program escapes example directory: {program}"))
-        requires = data.get("requires")
-        if isinstance(requires, dict) and "commands" in requires:
-            failures.append(Failure(path, "requires.commands is unsupported; enabled verification must fail loudly instead of skipping"))
         bindings = data.get("bindings")
         if isinstance(bindings, dict):
             unknown_bindings = sorted(set(bindings) - {"procs", "tpp"})
