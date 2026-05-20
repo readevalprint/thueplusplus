@@ -134,6 +134,24 @@ def check_ci(root: Path) -> list[Failure]:
     return failures
 
 
+def check_pyproject_dependencies(root: Path) -> list[Failure]:
+    failures: list[Failure] = []
+    pyproject_path = root / "pyproject.toml"
+    project = load_toml(pyproject_path).get("project", {})
+    dependencies = project.get("dependencies", [])
+    for dependency in dependencies:
+        dep = str(dependency).split(";", 1)[0]
+        dep_name = re.split(r"\s|\[|=|<|>|~|!", dep, maxsplit=1)[0].strip().lower()
+        if dep_name == "coverage":
+            failures.append(
+                Failure(pyproject_path, "stale Python coverage package is not needed; make test uses manifest rule coverage")
+            )
+    lock_path = root / "uv.lock"
+    if 'name = "coverage"' in read(lock_path):
+        failures.append(Failure(lock_path, "stale Python coverage package remains locked after host-code coverage lane removal"))
+    return failures
+
+
 def check_readme(root: Path) -> list[Failure]:
     path = root / "README.md"
     failures: list[Failure] = []
@@ -388,6 +406,7 @@ def check_all(root: Path) -> list[Failure]:
     checks = [
         check_makefile,
         check_ci,
+        check_pyproject_dependencies,
         check_readme,
         check_contract,
         check_numeric_regex,
