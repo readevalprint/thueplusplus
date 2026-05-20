@@ -67,7 +67,7 @@ Hello, World!
 ```
 <!-- thuepp-readme-example:end -->
 
-<!-- The marker comment above names the example program and test config that supply this block. Regenerate it with: uv run python tools/check-contract --update-readme -->
+<!-- The marker comment above names the example program and test config that supply this block. Regenerate it with: uv run python tools/check_contract.py --update-readme -->
 
 All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`.
 
@@ -82,7 +82,7 @@ make test
 `make test` runs the repository conformance check and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, and enforces rule coverage for all manifest-declared example programs. For focused debugging, pass explicit manifest paths directly to the runner:
 
 ```bash
-uv run python tools/run-example-manifests examples/echo/tests/file-input.toml
+uv run python tools/example_runner.py examples/echo/tests/file-input.toml
 ```
 
 JavaScript is future work, not a currently available implementation. When it exists, it should join `make test` through the shared manifest runner instead of a separate harness or a green no-op placeholder.

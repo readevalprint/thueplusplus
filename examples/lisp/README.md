@@ -127,7 +127,7 @@ Other backslash escapes are intentionally unsupported. They fail loudly with `in
 Focused Lisp validation:
 
 ```sh
-uv run python tools/run-example-manifests examples/lisp/tests/*.toml
+uv run python tools/example_runner.py examples/lisp/tests/*.toml
 ```
 
 Repository validation:
