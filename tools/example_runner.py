@@ -59,9 +59,8 @@ EXPECT_KEYS = {
     "stderr",
     "stderr_stripped",
     "stderr_contains",
-    "files",
 }
-BINDING_KEYS = {"files", "procs", "tpp"}
+BINDING_KEYS = {"procs", "tpp"}
 
 
 def validate_expect(config_path: Path, scope: str, expect) -> None:
@@ -82,20 +81,6 @@ def validate_bindings(config_path: Path, scope: str, bindings) -> None:
     unknown = sorted(set(bindings) - BINDING_KEYS)
     if unknown:
         raise RuntimeError(f"{config_path} {scope}: unknown bindings key(s): {', '.join(unknown)}")
-    for name, spec in bindings.get("files", {}).items():
-        if not isinstance(name, str) or not name:
-            raise RuntimeError(f"{config_path} {scope}: file binding names must be non-empty strings")
-        if isinstance(spec, str):
-            continue
-        if not isinstance(spec, dict):
-            raise RuntimeError(f"{config_path} {scope}: file binding {name!r} must be a fixture string or table")
-        unknown_spec = sorted(set(spec) - {"fixture", "writable"})
-        if unknown_spec:
-            raise RuntimeError(f"{config_path} {scope}: unknown file binding {name!r} key(s): {', '.join(unknown_spec)}")
-        if not isinstance(spec.get("fixture"), str) or not spec["fixture"]:
-            raise RuntimeError(f"{config_path} {scope}: file binding {name!r} requires a fixture string")
-        if "writable" in spec and not isinstance(spec["writable"], bool):
-            raise RuntimeError(f"{config_path} {scope}: file binding {name!r} writable must be boolean")
     for name, command in bindings.get("procs", {}).items():
         if not isinstance(name, str) or not name or not isinstance(command, str) or not command:
             raise RuntimeError(f"{config_path} {scope}: proc bindings must map non-empty names to non-empty command strings")
@@ -179,18 +164,6 @@ def validate_case_metadata(config_path: Path, case: dict) -> None:
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: args must be a list of strings")
 
 
-def normalize_file_binding(tests_dir: Path, tmp: Path, name: str, spec) -> tuple[str, bool]:
-    if isinstance(spec, str):
-        fixture = tests_dir / spec
-        writable = False
-    else:
-        fixture = tests_dir / spec["fixture"]
-        writable = bool(spec.get("writable"))
-    target = tmp / f"{name}.fixture"
-    target.write_bytes(fixture.read_bytes())
-    return str(target), writable
-
-
 def has_max_evals_arg(args: list[str]) -> bool:
     return any(arg == "--max-evals" or arg.startswith("--max-evals=") for arg in args)
 
@@ -211,11 +184,6 @@ def build_case_args(
     if extra_args:
         args.extend(extra_args)
     bound_files: dict[str, str] = {}
-    for name, spec in case.get("bindings", {}).get("files", {}).items():
-        bound, writable = normalize_file_binding(tests_dir, tmp, name, spec)
-        if writable:
-            bound_files[name] = bound
-        args.extend([f"--file:{name}", bound])
     for name, command in case.get("bindings", {}).get("procs", {}).items():
         args.extend([f"--proc:{name}", command])
     for name, spec in case.get("bindings", {}).get("tpp", {}).items():
@@ -285,13 +253,6 @@ def assert_expect(config_path: Path, name: str, expect: dict, result: CaseResult
     for needle in expect.get("stderr_contains", []):
         if needle not in result.stderr:
             raise RuntimeError(f"{config_path} {name} {result.interpreter}: stderr missing {needle!r}")
-    for binding, expected_path in expect.get("files", {}).items():
-        if binding not in result.files:
-            raise RuntimeError(f"{config_path} {name} {result.interpreter}: expected bound file {binding!r} was not bound")
-        expected = (tests_dir / expected_path).read_text(encoding="utf-8")
-        got = result.files[binding]
-        if got != expected:
-            raise RuntimeError(f"{config_path} {name} {result.interpreter}: file binding {binding} = {got!r}, want {expected!r}")
 
 
 def assert_parity(config_path: Path, case: dict, results: list[CaseResult]) -> None:

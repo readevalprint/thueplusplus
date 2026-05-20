@@ -302,7 +302,6 @@ MANIFEST_EXPECT_KEYS = {
     "stderr",
     "stderr_stripped",
     "stderr_contains",
-    "files",
 }
 
 
@@ -345,6 +344,11 @@ def check_manifest_policy(root: Path) -> list[Failure]:
         requires = data.get("requires")
         if isinstance(requires, dict) and "commands" in requires:
             failures.append(Failure(path, "requires.commands is unsupported; enabled verification must fail loudly instead of skipping"))
+        bindings = data.get("bindings")
+        if isinstance(bindings, dict):
+            unknown_bindings = sorted(set(bindings) - {"procs", "tpp"})
+            if unknown_bindings:
+                failures.append(Failure(path, f"unknown bindings key(s): {', '.join(unknown_bindings)}"))
         cases = data.get("case")
         if cases is None:
             check_manifest_expect(path, failures, str(data.get("name") or path.stem), data.get("expect"))
@@ -362,6 +366,11 @@ def check_manifest_policy(root: Path) -> list[Failure]:
                 failures.append(Failure(path, f"{scope}: unknown case key(s): {', '.join(unknown_case)}"))
             if "program" in case:
                 failures.append(Failure(path, f"{scope}: program is only allowed at manifest top level"))
+            bindings = case.get("bindings")
+            if isinstance(bindings, dict):
+                unknown_bindings = sorted(set(bindings) - {"procs", "tpp"})
+                if unknown_bindings:
+                    failures.append(Failure(path, f"{scope}: unknown bindings key(s): {', '.join(unknown_bindings)}"))
             check_manifest_expect(path, failures, scope, case.get("expect"))
     return failures
 

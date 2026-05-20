@@ -68,8 +68,8 @@ stdout_stripped = "hello%5Cnworld%2C%20done"
 name = "read produces PCT and pctdec filter writes output"
 input = "read"
 
-[bindings.files]
-input = { fixture = "fixtures/input.txt" }
+[bindings.procs]
+input = "sh -c 'printf hello; printf \" \"; printf world; printf \"\n@RULE@ {{x}}\n\"'"
 
 [case.expect]
 exit_code = 0

@@ -32,7 +32,7 @@ NAMED_CAPTURE_RE = py_re.compile(r"\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>")
 
 class Operator(Enum):
     SUBSTITUTE = "::="
-    READ = "::<"   # Bulk read entire file/stream
+    READ = "::<"   # Read from stdin or proc character streams
     WRITE = "::>"
     EXIT = "::-"
     BUILTIN = "::!"
@@ -54,7 +54,7 @@ class Rule:
 
 @dataclass
 class Binding:
-    """A resource binding (file or process)."""
+    """A resource binding (stdin/stdout/stderr or process)."""
     name: str
     is_process: bool
     path_or_command: str
@@ -93,9 +93,6 @@ class ThueppInterpreter:
         self.bindings["stdout"] = Binding("stdout", False, "stdout")
         self.bindings["stderr"] = Binding("stderr", False, "stderr")
 
-    def add_file_binding(self, name: str, path: str) -> None:
-        """Bind a symbolic name to a file path."""
-        self.bindings[name] = Binding(name, False, path)
 
     def add_proc_binding(self, name: str, command: str) -> None:
         """Bind a symbolic name to a process command."""
@@ -609,15 +606,7 @@ class ThueppInterpreter:
                 return "".join(result), None
             except OSError as e:
                 return "", f"ERR:resource:{binding.name}:{e}"
-        else:
-            # File binding - read entire file
-            try:
-                with open(binding.path_or_command, "r", encoding="utf-8") as f:
-                    return f.read(), None
-            except FileNotFoundError:
-                return "", f"ERR:resource:notfound:{binding.name}"
-            except Exception as e:
-                return "", f"ERR:resource:{binding.name}:{e}"
+        return "", f"ERR:resource:{binding.name}:bulk read requires process or stdin binding"
 
     def _read_line(self, binding: Binding, timeout: float) -> tuple[str, Optional[str]]:
         """Read one newline-delimited message, stripping one line terminator."""
@@ -685,14 +674,7 @@ class ThueppInterpreter:
                 return None
             except OSError as e:
                 return f"ERR:resource:{binding.name}:{e}"
-        else:
-            # File binding - overwrite mode
-            try:
-                with open(binding.path_or_command, "w", encoding="utf-8") as f:
-                    f.write(content)
-                return None
-            except Exception as e:
-                return f"ERR:resource:{binding.name}:{e}"
+        return f"ERR:resource:{binding.name}:write requires process or output stream binding"
 
     def _set_state(self, new_state: str) -> None:
         """Set the state, checking size limits."""
@@ -924,7 +906,7 @@ class ThueppInterpreter:
 def main():
     parser = argparse.ArgumentParser(
         description="thue++ interpreter",
-        usage="thuepp.py <program> [--file:<name> <path>]... [--proc:<name> <command>]... [--input <state>] [options]",
+        usage="thuepp.py <program> [--proc:<name> <command>]... [--input <state>] [options]",
     )
     parser.add_argument("program", help="Path to the thue++ program")
     parser.add_argument(
@@ -975,16 +957,7 @@ def main():
     i = 0
     while i < len(remaining):
         arg = remaining[i]
-        if arg.startswith("--file:"):
-            name = arg[7:]
-            if i + 1 >= len(remaining):
-                print(
-                    f"Error: --file:{name} requires a path argument", file=sys.stderr)
-                sys.exit(1)
-            path = remaining[i + 1]
-            interpreter.add_file_binding(name, path)
-            i += 2
-        elif arg.startswith("--proc:"):
+        if arg.startswith("--proc:"):
             name = arg[7:]
             if i + 1 >= len(remaining):
                 print(
