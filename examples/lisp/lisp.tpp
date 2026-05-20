@@ -297,17 +297,12 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 # The init capture deliberately excludes >, so it stops at this binding's close rather than the last binding.
 # Env-aware let keeps caller bindings available while evaluating binding values, then shadows by prepending new bindings.
 
-^LETBINDRAW<\|(?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{body}}|{{env}}|{{k}}>
-^LETBINDRAW<\|(?<body>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{body}}|{{env}}|{{k}}>
-^LETBINDRAW<L<(?<n>[A-Za-z_][A-Za-z0-9_-]*)%20(?<v>(?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*)> (?<rest>.*)\|(?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN2<{{n}}|{{rest}}|{{body}}|{{env}}> {{k}}>
-^LETBINDRAW<L<(?<n>[A-Za-z_][A-Za-z0-9_-]*)%20(?<v>(?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*)> (?<rest>.*)\|(?<body>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}|{{rest}}|{{body}}|{{env}}> {{k}}>
-^LETBINDRAW<L<(?<n>[A-Za-z_][A-Za-z0-9_-]*)%20(?<v>(?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*)>\|(?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETLAST2<{{n}}|{{body}}|{{env}}> {{k}}>
-^LETBINDRAW<L<(?<n>[A-Za-z_][A-Za-z0-9_-]*)%20(?<v>(?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*)>\|(?<body>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETLAST<{{n}}|{{body}}|{{env}}> {{k}}>
+^LETBINDRAW<\|(?<body>L<$PCT>|[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{body}}|{{env}}|{{k}}>
+^LETBINDRAW<L<(?<n>[A-Za-z_][A-Za-z0-9_-]*)%20(?<v>(?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*)> (?<rest>.*)\|(?<body>L<$PCT>|[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}|{{rest}}|{{body}}|{{env}}> {{k}}>
+^LETBINDRAW<L<(?<n>[A-Za-z_][A-Za-z0-9_-]*)%20(?<v>(?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*)>\|(?<body>L<$PCT>|[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETLAST<{{n}}|{{body}}|{{env}}> {{k}}>
 ^LETARGENV<(?<node>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node|pctdec}}|{{env}}|{{k}}>
-^RET<(?<v>$VAL)\|KLETN2<(?<n>[A-Za-z_][A-Za-z0-9_-]*)\|(?<rest>[^|]*)\|(?<body>L<$PCT>)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
-^RET<(?<v>$VAL)\|KLETN<(?<n>[A-Za-z_][A-Za-z0-9_-]*)\|(?<rest>[^|]*)\|(?<body>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
-^RET<(?<v>$VAL)\|KLETLAST2<(?<n>[A-Za-z_][A-Za-z0-9_-]*)\|(?<body>L<$PCT>)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
-^RET<(?<v>$VAL)\|KLETLAST<(?<n>[A-Za-z_][A-Za-z0-9_-]*)\|(?<body>[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
+^RET<(?<v>$VAL)\|KLETN<(?<n>[A-Za-z_][A-Za-z0-9_-]*)\|(?<rest>[^|]*)\|(?<body>L<$PCT>|[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
+^RET<(?<v>$VAL)\|KLETLAST<(?<n>[A-Za-z_][A-Za-z0-9_-]*)\|(?<body>L<$PCT>|[A-Za-z_][A-Za-z0-9_-]*|$NODE)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
 
 # Single-item list: evaluate its only child. This keeps ("x") useful as a parser proof.
 ^E<L<lambda%20(?<payload>$PCT)>\|(?<k>.*)>$ ::= ARG<L<lambda%20{{payload}}>|KCALL<> {{k}}>
