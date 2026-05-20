@@ -10,6 +10,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+import example_runner
+
 
 README_MARKER_RE = re.compile(
     r"<!--\s*thuepp-readme-example:\s*"
@@ -308,31 +310,6 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     return failures
 
 
-MANIFEST_TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case"}
-MANIFEST_CASE_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout"}
-MANIFEST_EXPECT_KEYS = {
-    "exit_code",
-    "stdout",
-    "stdout_stripped",
-    "stderr",
-    "stderr_stripped",
-    "stderr_contains",
-}
-
-
-def check_manifest_expect(path: Path, failures: list[Failure], scope: str, expect) -> None:
-    if not isinstance(expect, dict) or not expect:
-        failures.append(Failure(path, f"{scope}: missing expect table"))
-        return
-    unknown = sorted(set(expect) - MANIFEST_EXPECT_KEYS)
-    if unknown:
-        failures.append(Failure(path, f"{scope}: unknown expect key(s): {', '.join(unknown)}"))
-    if "exit_code" not in expect:
-        failures.append(Failure(path, f"{scope}: missing expect.exit_code"))
-    elif not isinstance(expect["exit_code"], int):
-        failures.append(Failure(path, f"{scope}: expect.exit_code must be an integer"))
-
-
 def check_manifest_policy(root: Path) -> list[Failure]:
     failures: list[Failure] = []
     manifests = sorted((root / "examples").glob("**/tests/*.toml"))
@@ -340,50 +317,25 @@ def check_manifest_policy(root: Path) -> list[Failure]:
         return [Failure(root / "examples", "no shared manifest files matched examples/**/tests/*.toml")]
     for path in manifests:
         data = load_toml(path)
-        unknown = sorted(set(data) - MANIFEST_TOP_LEVEL_KEYS)
-        if unknown:
-            failures.append(Failure(path, f"unknown top-level key(s): {', '.join(unknown)}"))
+        try:
+            example_runner.validate_manifest(path, data)
+        except RuntimeError as exc:
+            prefix = f"{path}"
+            message = str(exc)
+            if message.startswith(prefix):
+                message = message[len(prefix):].lstrip(": ")
+            failures.append(Failure(path, message))
+            continue
         program = data.get("program")
-        if not isinstance(program, str) or not program.strip():
-            failures.append(Failure(path, "missing top-level program"))
-        else:
-            resolved = (path.parent / program).resolve()
-            if resolved.suffix != ".tpp":
-                failures.append(Failure(path, f"program must resolve to a .tpp file: {program}"))
-            if not resolved.exists():
-                failures.append(Failure(path, f"program does not exist: {program}"))
-            try:
-                resolved.relative_to(path.parents[1].resolve())
-            except ValueError:
-                failures.append(Failure(path, f"program escapes example directory: {program}"))
-        bindings = data.get("bindings")
-        if isinstance(bindings, dict):
-            unknown_bindings = sorted(set(bindings) - {"procs", "tpp"})
-            if unknown_bindings:
-                failures.append(Failure(path, f"unknown bindings key(s): {', '.join(unknown_bindings)}"))
-        cases = data.get("case")
-        if cases is None:
-            check_manifest_expect(path, failures, str(data.get("name") or path.stem), data.get("expect"))
-            continue
-        if not isinstance(cases, list) or not cases:
-            failures.append(Failure(path, "case must be a non-empty array"))
-            continue
-        for index, case in enumerate(cases, 1):
-            if not isinstance(case, dict):
-                failures.append(Failure(path, f"case #{index}: case must be a table"))
-                continue
-            scope = str(case.get("name") or f"case #{index}")
-            unknown_case = sorted(set(case) - MANIFEST_CASE_KEYS)
-            if unknown_case:
-                failures.append(Failure(path, f"{scope}: unknown case key(s): {', '.join(unknown_case)}"))
-            if "program" in case:
-                failures.append(Failure(path, f"{scope}: program is only allowed at manifest top level"))
-            bindings = case.get("bindings")
-            if isinstance(bindings, dict):
-                unknown_bindings = sorted(set(bindings) - {"procs", "tpp"})
-                if unknown_bindings:
-                    failures.append(Failure(path, f"{scope}: unknown bindings key(s): {', '.join(unknown_bindings)}"))
-            check_manifest_expect(path, failures, scope, case.get("expect"))
+        resolved = (path.parent / program).resolve()
+        if resolved.suffix != ".tpp":
+            failures.append(Failure(path, f"program must resolve to a .tpp file: {program}"))
+        if not resolved.exists():
+            failures.append(Failure(path, f"program does not exist: {program}"))
+        try:
+            resolved.relative_to(path.parents[1].resolve())
+        except ValueError:
+            failures.append(Failure(path, f"program escapes example directory: {program}"))
     return failures
 
 
