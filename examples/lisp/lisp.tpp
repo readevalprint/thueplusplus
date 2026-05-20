@@ -477,21 +477,14 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 
 ^RENDER<VNUM<(?<n>$NUM)>\|(?<k>.*)>$ ::= RRET<{{n|pctenc}}|{{k}}>
 ^RENDER<VBOOL<(?<b>true|false)>\|(?<k>.*)>$ ::= RRET<{{b|pctenc}}|{{k}}>
-^RENDER<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RSTR<{{s}}||{{k}}>
+^RENDER<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RRET<%22ESC<{{s}}>%22|{{k}}>
 ^RENDER<VCLOS<(?<c>[^>]*)>\|(?<k>.*)>$ ::= RRET<%3Cclosure%3E|{{k}}>
 ^RENDER<VSYM<(?<name>$PCT)>\|(?<k>.*)>$ ::= RRET<{{name}}|{{k}}>
 ^RENDER<VLIST<(?<items>(?:[^;>]*;)*)>\|(?<k>.*)>$ ::= RLIST<{{items}}||KLISTDONE<{{k}}>>
 ^RENDER<VDICT<(?<entries>(?:[ST][^=;>]*=[^;>]*;)*)>\|(?<k>.*)>$ ::= RDICT<{{entries}}||KDICTDONE<{{k}}>>
 ^RENDER<VARR<(?<items>(?:[^;>]*;)*)>\|(?<k>.*)>$ ::= RLIST<{{items}}||KARRDONE<{{k}}>>
 
-^RSTR<(?<pre>$PCTSTR)%5C(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5C%5C|{{k}}>
-^RSTR<(?<pre>$PCTSTR)%22(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5C%22|{{k}}>
-^RSTR<(?<pre>$PCTSTR)%0A(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5Cn|{{k}}>
-^RSTR<(?<pre>$PCTSTR)%09(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5Ct|{{k}}>
-^RSTR<(?<pre>$PCTSTR)%0D(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5Cr|{{k}}>
-^RSTR<(?<pre>$PCTSTR)%08(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5Cb|{{k}}>
-^RSTR<(?<pre>$PCTSTR)%0C(?<post>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{post}}|{{acc}}{{pre}}%5Cf|{{k}}>
-^RSTR<(?<tail>$PCT)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RRET<%22{{acc}}{{tail}}%22|{{k}}>
+ESC<(?<s>$PCT)> ::! escape s
 
 ^RLIST<\|\|KLISTDONE<(?<k>.*)>>$ ::= RRET<%28%29|{{k}}>
 ^RLIST<\|(?<acc>$PCT)\|KLISTDONE<(?<k>.*)>>$ ::= RRET<%28{{acc}}%29|{{k}}>
@@ -505,7 +498,7 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RDICT<\|\|KDICTDONE<(?<k>.*)>>$ ::= RRET<%28dict%29|{{k}}>
 ^RDICT<\|(?<acc>$PCT)\|KDICTDONE<(?<k>.*)>>$ ::= RRET<%28dict%20{{acc}}%29|{{k}}>
 ^RDICT<S(?<key>$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RRET<{{key}}|KDICTVAL<{{val}}|{{rest}}|{{acc}}|{{k}}>>
-^RDICT<T(?<key>$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RSTR<{{key}}||KDICTVAL<{{val}}|{{rest}}|{{acc}}|{{k}}>>
+^RDICT<T(?<key>$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RRET<%22ESC<{{key}}>%22|KDICTVAL<{{val}}|{{rest}}|{{acc}}|{{k}}>>
 ^RRET<(?<keyfrag>$PCT)\|KDICTVAL<(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RENDER<{{val|pctdec}}|KDICTPAIR<{{keyfrag}}|{{rest}}|{{acc}}|{{k}}>>
 ^RRET<(?<valfrag>$PCT)\|KDICTPAIR<(?<keyfrag>$PCT)\|(?<rest>[^|]*)\|\|(?<k>.*)>>$ ::= RDICT<{{rest}}|%28{{keyfrag}}%20{{valfrag}}%29|{{k}}>
 ^RRET<(?<valfrag>$PCT)\|KDICTPAIR<(?<keyfrag>$PCT)\|(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RDICT<{{rest}}|{{acc}}%20%28{{keyfrag}}%20{{valfrag}}%29|{{k}}>

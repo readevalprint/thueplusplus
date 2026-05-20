@@ -366,6 +366,67 @@ stderr = ""
 stdout_stripped = "こんにちは"
 
 [[case]]
+name = "percent encode preserves safe bytes and encodes delimiters"
+input = "pctenc:a b<>()|"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "a%20b%3C%3E%28%29%7C"
+
+[[case]]
+name = "percent decode canonical payload"
+input = "pctdec:a%20b%3C%3E%28%29%7C"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "a b<>()|"
+
+[[case]]
+name = "escape renders pct payload as escaped pct payload"
+input = "escape:a%0Ab%09c%22d%5Ce"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "a%5Cnb%5Ctc%5C%22d%5C%5Ce"
+
+[[case]]
+name = "unescape interprets escaped pct payload"
+input = "unescape:a%5Cnb%5Ctc%5C%22d%5C%5Ce"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "a%0Ab%09c%22d%5Ce"
+
+[[case]]
+name = "escape and unescape preserve unicode payload"
+input = "unescape:%E3%81%93%5Cn"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "%E3%81%93%0A"
+
+[[case]]
+name = "unescape rejects unsupported escape"
+input = "unescape:a%5Cqb"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'unescape' unsupported escape '\\q'"]
+
+[[case]]
+name = "unescape rejects trailing escape"
+input = "unescape:a%5C"
+
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 'unescape' has trailing backslash escape"]
+
+[[case]]
 name = "safe internal string payload example"
 input = "str:<str>@ADD[1|2]@</str>"
 

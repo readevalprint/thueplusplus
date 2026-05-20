@@ -390,22 +390,24 @@ func parseBuiltinCall(rhs string, lineNumber int, captures map[string]bool) (str
 
 func builtinArity(name string) (int, bool) {
 	arities := map[string]int{
-		"eq":     2,
-		"add":    2,
-		"sub":    2,
-		"mul":    2,
-		"div":    2,
-		"mod":    2,
-		"numeq":  2,
-		"lt":     2,
-		"le":     2,
-		"gt":     2,
-		"ge":     2,
-		"num":    1,
-		"b64enc": 1,
-		"b64dec": 1,
-		"pctenc": 1,
-		"pctdec": 1,
+		"eq":       2,
+		"add":      2,
+		"sub":      2,
+		"mul":      2,
+		"div":      2,
+		"mod":      2,
+		"numeq":    2,
+		"lt":       2,
+		"le":       2,
+		"gt":       2,
+		"ge":       2,
+		"num":      1,
+		"b64enc":   1,
+		"b64dec":   1,
+		"pctenc":   1,
+		"pctdec":   1,
+		"escape":   1,
+		"unescape": 1,
 	}
 	arity, ok := arities[name]
 	return arity, ok
@@ -487,6 +489,73 @@ func pctDecode(value string) (string, error) {
 	return string(data), nil
 }
 
+func escapePctPayload(value string) (string, error) {
+	text, err := pctDecode(value)
+	if err != nil {
+		return "", err
+	}
+	var out strings.Builder
+	for _, r := range text {
+		switch r {
+		case '\\':
+			out.WriteString(`\\`)
+		case '"':
+			out.WriteString(`\"`)
+		case '\n':
+			out.WriteString(`\n`)
+		case '\t':
+			out.WriteString(`\t`)
+		case '\r':
+			out.WriteString(`\r`)
+		case '\b':
+			out.WriteString(`\b`)
+		case '\f':
+			out.WriteString(`\f`)
+		default:
+			out.WriteRune(r)
+		}
+	}
+	return pctEncode(out.String()), nil
+}
+
+func unescapePctPayload(value string) (string, error) {
+	text, err := pctDecode(value)
+	if err != nil {
+		return "", err
+	}
+	var out strings.Builder
+	for pos := 0; pos < len(text); pos++ {
+		ch := text[pos]
+		if ch != '\\' {
+			out.WriteByte(ch)
+			continue
+		}
+		if pos+1 >= len(text) {
+			return "", fmt.Errorf("Builtin 'unescape' has trailing backslash escape")
+		}
+		pos++
+		switch text[pos] {
+		case '\\':
+			out.WriteByte('\\')
+		case '"':
+			out.WriteByte('"')
+		case 'n':
+			out.WriteByte('\n')
+		case 't':
+			out.WriteByte('\t')
+		case 'r':
+			out.WriteByte('\r')
+		case 'b':
+			out.WriteByte('\b')
+		case 'f':
+			out.WriteByte('\f')
+		default:
+			return "", fmt.Errorf("Builtin 'unescape' unsupported escape '\\%c'", text[pos])
+		}
+	}
+	return pctEncode(out.String()), nil
+}
+
 func parseNumber(value, builtin string) (*big.Rat, error) {
 	if !numericLiteralPattern.MatchString(value) {
 		return nil, fmt.Errorf("Builtin '%s' expected numeric input, got '%s'", builtin, value)
@@ -532,6 +601,12 @@ func evalBuiltin(name string, values []string) (string, error) {
 	}
 	if name == "pctdec" {
 		return pctDecode(values[0])
+	}
+	if name == "escape" {
+		return escapePctPayload(values[0])
+	}
+	if name == "unescape" {
+		return unescapePctPayload(values[0])
 	}
 	if name == "num" {
 		n, err := parseNumber(values[0], name)
