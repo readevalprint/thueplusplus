@@ -375,6 +375,15 @@ def check_manifest_policy(root: Path) -> list[Failure]:
     return failures
 
 
+
+def check_no_hidden_red_manifests(root: Path) -> list[Failure]:
+    failures: list[Failure] = []
+    for path in sorted((root / "examples").glob("**/tests/red")):
+        failures.append(Failure(path, "hidden executable-looking red manifest directory is not allowed; promote, delete, or move cases to learnings"))
+    for path in sorted((root / "examples").glob("**/tests/red/**/*.toml")):
+        failures.append(Failure(path, "hidden red manifest is not allowed; promote, delete, or move to non-executable learnings"))
+    return failures
+
 def check_all(root: Path) -> list[Failure]:
     checks = [
         check_makefile,
@@ -384,6 +393,7 @@ def check_all(root: Path) -> list[Failure]:
         check_numeric_regex,
         check_lisp_coverage_policy,
         check_manifest_policy,
+        check_no_hidden_red_manifests,
     ]
     failures: list[Failure] = []
     for check in checks:

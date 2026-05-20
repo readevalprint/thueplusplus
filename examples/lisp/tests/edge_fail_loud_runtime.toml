@@ -1,7 +1,5 @@
-# Former RED manifest now graduated for Lisp runtime fail-loud edge cases.
-# This file keeps runtime fail-loud edge cases in the normal tests/ sweep so ordinary
-# `examples/**/tests/*.toml` sweeps stay green while these desired behaviors are
-# still being implemented.
+# Graduated Lisp runtime fail-loud edge cases.
+# These cases live in the normal tests/ sweep and must stay green.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--max-evals", "60000"]
