@@ -23,7 +23,7 @@ Compound forms:
 - bounded iteration/state update: `while` and `set`;
 - functions: `lambda` and direct application;
 - arrays: `array`, `head`, `rest`;
-- code-as-data lists: `quote`, `list`, `head`, `tail`, `empty?`, `push`, `len`, and `get`.
+- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `head`, `tail`, `empty?`, `push`, `len`, and `get`.
 
 ## Runtime values
 
@@ -74,15 +74,15 @@ Unsupported syntax exits non-zero with a named stderr error. Current deliberate 
 - `define` and mutation-style top-level binding: unsupported, with error class `unsupported_form`;
 - `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided, with error class `unsupported_form`;
 - `break`, `continue`, and looping forms beyond minimal `(while cond body)`: unsupported with error class `unsupported_form`;
-- list/code-as-data forms beyond #107, such as `map`, `quasiquote`, and `unquote`: unsupported until their downstream cards define semantics;
+- list/code-as-data forms beyond the current tech-tree slice, such as `map`: unsupported until their downstream cards define semantics;
 - unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
 
 Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
 
-## Quote/list code-as-data boundary
+## Quote/list/quasiquote code-as-data boundary
 
-`quote` and `list` are the supported #107 code-as-data slice.
+`quote`, `list`, and `quasiquote` are the supported code-as-data slice.
 
 Implementation contract:
 
@@ -90,10 +90,15 @@ Implementation contract:
 - `(quote (...))` returns a proper list value rendered as ordinary source-list syntax, for example `(+ 1 x)`.
 - `(quote (array 1 2))` is source data and renders as `(array 1 2)` without evaluating the array constructor.
 - `(list ...)` evaluates its operands and constructs a proper list value rendered as ordinary parenthesized list syntax.
+- `(quasiquote expr)` returns code-as-data like `quote`, except recognized escape forms are evaluated inside the quasiquoted payload.
+- `(unquote expr)` is valid only inside `quasiquote`; it evaluates `expr` and inserts the resulting value as a single item/value.
+- `(splice expr)` is valid only as an item in a quasiquoted list; it evaluates `expr`, requires a proper list result, and appends that list's elements into the surrounding quasiquoted list.
+- `(splice expr)` at the top-level quasiquoted expression, bare `splice`, and bare `unquote` fail with `unsupported_form`; malformed `unquote`/`splice` escape forms fail with `wrong_arity`; splicing a non-list fails with `type_error`.
+- Nested `(quasiquote ...)` is deliberately rejected with `unsupported_form` in this first slice; there is no implicit quasiquote-depth accounting yet.
 - Internally, quoted symbols use `VSYM<...>` and proper lists use `VLIST<...>` with pct-encoded item payloads. These constructors are implementation details and must not leak to successful stdout.
 - `head`, `tail`, `empty?`, `push`, `len`, and `get` operate on proper lists with small bounded rules and fail loudly for invalid type or access cases.
 
-`quasiquote`/`unquote` depend on this representation and remain downstream #111 work. Reader shorthand such as `'x`, backtick, and comma is also deferred; #107 uses keyword forms only.
+Reader shorthand such as `'x`, backtick, comma, and comma-at is still deferred; this core uses keyword forms only.
 
 ## Recursion and loop boundary
 
@@ -116,7 +121,7 @@ misses) and `letrec` remains a reserved unsupported form (`unsupported_form`).
 
 The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
 
-- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `define`, `letrec`, `break`, `continue`, `map`, `quasiquote`, `unquote`, raw internal-looking inputs, and other non-reader forms;
+- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `define`, `letrec`, `break`, `continue`, `map`, bare `unquote`, bare `splice`, nested `quasiquote`, raw internal-looking inputs, and other non-reader forms;
 - `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `begin`, `and`, `or`, `let`, and `lambda` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual lookup miss for a bare variable or callee name;

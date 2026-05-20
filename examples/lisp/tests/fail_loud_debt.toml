@@ -271,15 +271,6 @@ stdout = ""
 stderr_stripped = "unsupported_form"
 
 [[case]]
-name = "quasiquote remains downstream of quote list representation"
-input = "(quasiquote (a b))"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unsupported_form"
-
-[[case]]
 name = "bare unquote fails unsupported outside quasiquote"
 input = "(unquote x)"
 

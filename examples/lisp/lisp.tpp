@@ -186,6 +186,43 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^QUOTELIST<(?<item>(?:\+|\*|/|<=|>=|<|>|=|[A-Za-z_][A-Za-z0-9_-]*|$NODE))(?: (?<rest>[^|]*))?\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= QUOTE<{{item}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
 ^RET<(?<v>$VAL)\|KQLIST<(?<rest>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= QUOTELIST<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
 
+# Quasiquote expands code-as-data like quote, except `(unquote expr)` evaluates one
+# value and `(splice expr)` expands list elements into the current quasiquoted list.
+# Nested quasiquote is deliberately rejected in this first slice to avoid implicit
+# depth accounting; bare unquote/splice stay unsupported outside this evaluator.
+^E<quasiquote (?<item>(?:\+|\*|/|<=|>=|<|>|=|[A-Za-z_][A-Za-z0-9_-]*|$NODE))\|(?<k>.*)>$ ::= QQ<{{item}}||{{k}}>
+^EENV<quasiquote (?<item>(?:\+|\*|/|<=|>=|<|>|=|[A-Za-z_][A-Za-z0-9_-]*|$NODE))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQ<{{item}}|{{env}}|{{k}}>
+^E<quasiquote(?: (?<args>.*))?\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<quasiquote(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^QQ<true\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
+^QQ<false\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+^QQ<(?<sym>\+|\*|/|<=|>=|<|>|=|[A-Za-z_][A-Za-z0-9_-]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VSYM<{{sym|pctenc}}>|{{k}}>
+^QQ<(?<n>$NUM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^QQ<VSTR<(?<s>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+^QQ<L<unquote>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^QQ<L<unquote%20(?<expr>(?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[1-9A-F]|%[3-9A-F][0-9A-F])*)%20(?<extra>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^QQ<L<unquote%20(?<expr>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|{{k}}>
+^QQ<L<splice(?:%20(?<args>$PCT))?>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
+^QQ<L<quasiquote(?:%20(?<args>$PCT))?>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
+^QQ<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQLIST<{{payload|pctdec}}|{{env}}|{{k}}|>
+^QQLIST<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= RETENV<VLIST<{{acc}}>|{{env}}|{{k}}>
+^QQLIST<L<unquote> (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ERR<wrong_arity>
+^QQLIST<L<unquote>\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ERR<wrong_arity>
+^QQLIST<L<unquote%20(?<expr>(?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[1-9A-F]|%[3-9A-F][0-9A-F])*)%20(?<extra>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ERR<wrong_arity>
+^QQLIST<L<unquote%20(?<expr>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
+^QQLIST<L<splice> (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ERR<wrong_arity>
+^QQLIST<L<splice>\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ERR<wrong_arity>
+^QQLIST<L<splice%20(?<expr>(?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[1-9A-F]|%[3-9A-F][0-9A-F])*)%20(?<extra>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ERR<wrong_arity>
+^QQLIST<L<splice%20(?<expr>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KQQSPLICE<{{rest}}|{{env}}|{{acc}}> {{k}}>
+^QQLIST<L<quasiquote(?:%20(?<args>$PCT))?>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ERR<unsupported_form>
+^QQLIST<(?<item>(?:\+|\*|/|<=|>=|<|>|=|[A-Za-z_][A-Za-z0-9_-]*|$NODE))(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= QQ<{{item}}|{{env}}|KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
+^RET<(?<v>$VAL)\|KQQITEM<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};>
+^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KQQITEM<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};>
+^RET<VLIST<(?<items>(?:[^;>]*;)*)>\|KQQSPLICE<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{items}}>
+^RETENV<VLIST<(?<items>(?:[^;>]*;)*)>\|(?<env>[^|]*)\|KQQSPLICE<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{items}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|KQQSPLICE<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= ERR<type_error>
+^RETENV<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VARR<(?:[^;>]*;)*>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>)\|(?<env>[^|]*)\|KQQSPLICE<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>(?:[^;>]*;)*)> (?<k>.*)>$ ::= ERR<type_error>
+
 ^EENV<list (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKLISTENV<{{items}}|{{env}}|{{k}}|>
 ^PACKLISTENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
 ^PACKLISTENV<(?<item>[A-Za-z_][A-Za-z0-9_-]*|$NODE|L<$PCT>)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>(?:[^;>]*;)*)>$ ::= ARGENV<{{item}}|{{env}}|KENLIST<{{rest}}|{{env}}|{{acc}}> {{k}}>
@@ -219,8 +256,8 @@ STREQ<(?<a>[A-Za-z_][A-Za-z0-9_-]*),(?<b>[A-Za-z_][A-Za-z0-9_-]*)> ::! eq a b
 ^EENV<(?:define|letrec)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<while(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^E<while(?: (?<args>.*))?\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:break|continue|map|quasiquote|unquote)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
-^E<(?:break|continue|map|quasiquote|unquote)(?: (?<args>.*))?\|(?<k>.*)>$ ::= ERR<unsupported_form>
+^EENV<(?:break|continue|map|quasiquote|unquote|splice)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
+^E<(?:break|continue|map|quasiquote|unquote|splice)(?: (?<args>.*))?\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^E<(?<callee>[A-Za-z_][A-Za-z0-9_-]*) (?<args>.*)\|(?<k>.*)>$ ::= EENV<{{callee}} {{args}}||{{k}}>
 ^E<(?<callee>$NODE) (?<args>.*)\|(?<k>.*)>$ ::= ARG<{{callee}}|KCALL<{{args|pctenc}}> {{k}}>
 ^EENV<(?<callee>L<$PCT>) (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{callee}}|{{env}}|KENVCALL2<{{args|pctenc}}^{{env}}> {{k}}>
