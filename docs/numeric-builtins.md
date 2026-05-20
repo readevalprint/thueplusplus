@@ -127,6 +127,6 @@ Example `.tpp` programs should either use this same grammar directly or delibera
 
 ## Synchronization check
 
-The fenced `regex` block above is the canonical source contract for the repository-level sync check. `python/tests/test_numeric_regex_sync.py` reads that exact block and verifies that the intended numeric regex snippets in Python, Go, `examples/builtin/builtin.tpp`, and `examples/lisp/lisp.tpp` stay aligned.
+The fenced `regex` block above is the canonical source contract for the repository-level sync check. `tools/check_contract.py` reads that exact block and verifies that the intended numeric regex snippets in Python, Go, `examples/builtin/builtin.tpp`, and `examples/lisp/lisp.tpp` stay aligned.
 
-If this grammar changes, update this document first, then update every interpreter/example snippet in the same MR. The sync test is intentionally lightweight rather than generated: `.tpp` programs need local regex text, but drift must fail loudly in CI instead of silently changing accepted numeric syntax.
+If this grammar changes, update this document first, then update every interpreter/example snippet in the same MR. The repository conformance check is intentionally lightweight rather than generated: `.tpp` programs need local regex text, but drift must fail loudly in CI instead of silently changing accepted numeric syntax.
