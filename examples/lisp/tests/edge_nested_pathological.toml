@@ -1,4 +1,4 @@
-# Former RED manifest now graduated for deeply nested Lisp parser/runtime edge cases.
+# Graduated deeply nested Lisp parser/runtime edge cases.
 # These cases stress greedy encoded-list capture, higher-order closures, arrays,
 # and lexical lets together so future changes do not regress nested framing.
 program = "../lisp.tpp"

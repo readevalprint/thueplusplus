@@ -1,7 +1,5 @@
-# Former RED manifest now graduated for Lisp value-semantics edge cases.
-# This file keeps value-semantics edge cases in the normal tests/ sweep so ordinary
-# `examples/**/tests/*.toml` sweeps stay green while these desired behaviors are
-# still being implemented.
+# Graduated Lisp value-semantics edge cases.
+# These cases live in the normal tests/ sweep and must stay green.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--max-evals", "60000"]
