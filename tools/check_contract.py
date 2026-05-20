@@ -94,21 +94,32 @@ def check_makefile(root: Path) -> list[Failure]:
     text = read(path)
     failures: list[Failure] = []
     required = [
-        "test: test-contract test-shared test-coverage",
-        "test-contract:",
-        "test-code-coverage:",
-        "uv run python tools/check-code-coverage",
+        "test:",
         "uv run python tools/check-contract",
-        "tools/run-example-manifests --contract tools/thuepp-contract.toml --parity --jobs 8 --manifest-glob 'examples/**/tests/*.toml'",
-        "uv run python tools/check-rule-coverage --jobs 8 --manifest-glob 'examples/**/tests/*.toml'",
+        "uv run python tools/run-example-manifests",
     ]
     for snippet in required:
         if snippet not in text:
-            failures.append(Failure(path, f"missing required verification wiring: {snippet}"))
+            failures.append(Failure(path, f"missing required flat verification wiring: {snippet}"))
+    forbidden = [
+        "test-shared",
+        "test-coverage",
+        "test-code-coverage",
+        "tools/check-rule-coverage",
+        "tools/check-code-coverage",
+        "tools/thuepp-contract.toml",
+        "--manifest-glob",
+        "--contract",
+        "--parity",
+        "--jobs",
+        "JOBS",
+    ]
+    for snippet in forbidden:
+        if snippet in text:
+            failures.append(Failure(path, f"flat make test must not expose stale verification layer or knob: {snippet}"))
     if re.search(r"^test-js\s*:", text, re.MULTILINE):
         failures.append(Failure(path, "test-js target must not be a green placeholder before JavaScript exists"))
     return failures
-
 
 def check_ci(root: Path) -> list[Failure]:
     path = root / ".gitlab-ci.yml"
@@ -144,24 +155,15 @@ def check_readme(root: Path) -> list[Failure]:
 
 
 def check_contract(root: Path) -> list[Failure]:
-    path = root / "tools" / "thuepp-contract.toml"
-    data = load_toml(path)
-    impls = data.get("implementations")
     failures: list[Failure] = []
-    if not isinstance(impls, dict):
-        return [Failure(path, "missing [implementations] table")]
-    for name, cfg in impls.items():
-        available = cfg.get("available")
-        command = cfg.get("command", "")
-        if available is True and not command:
-            failures.append(Failure(path, f"implementation {name!r} is available but has no command"))
-        if available is False and command:
-            failures.append(Failure(path, f"implementation {name!r} is unavailable but still declares a command"))
-    if impls.get("python", {}).get("command") != "uv run python python/thuepp.py":
-        failures.append(Failure(path, "python implementation must be invoked as the external python/thuepp.py command"))
-    go = impls.get("go", {})
-    if "{artifact}" not in go.get("build", "") or go.get("command") != "{artifact}":
-        failures.append(Failure(path, "go implementation must build and invoke a {artifact} binary through the shared runner"))
+    deleted = [
+        root / "tools" / "thuepp-contract.toml",
+        root / "tools" / "check-rule-coverage",
+        root / "tools" / "check-code-coverage",
+    ]
+    for path in deleted:
+        if path.exists():
+            failures.append(Failure(path, "stale verification artifact must stay deleted; make test is the only truth gate"))
     wrapper_path = root / "tools" / "run-example-manifests"
     wrapper_text = read(wrapper_path)
     if not wrapper_text.startswith("#!/usr/bin/env python3\n"):
@@ -183,10 +185,36 @@ def check_contract(root: Path) -> list[Failure]:
                     failures.append(Failure(runner_path, f"shared runner must not import Python implementation module {alias.name}"))
         elif isinstance(node, ast.ImportFrom) and node.module in forbidden_modules:
             failures.append(Failure(runner_path, f"shared runner must not import Python implementation module {node.module}"))
-    if "requires.commands" not in runner_text or "requires.commands is not supported" not in runner_text:
-        failures.append(Failure(runner_path, "shared runner must fail loudly on requires.commands metadata"))
-    if "subprocess.run" not in runner_text:
-        failures.append(Failure(runner_path, "shared runner must invoke implementations as external processes"))
+    required_runner = [
+        'Interpreter("python", ("uv", "run", "python", "python/thuepp.py"))',
+        '["go", "build", "-o", str(go_artifact), "./cmd/thuepp"]',
+        'DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"',
+        '"--list-rules"',
+        '"--rule-coverage"',
+        "assert_parity",
+        "check_rule_coverage",
+        "subprocess.run",
+        "requires.commands is not supported",
+    ]
+    for snippet in required_runner:
+        if snippet not in runner_text:
+            failures.append(Failure(runner_path, f"flat shared runner missing required behavior: {snippet}"))
+    forbidden_runner = [
+        "--manifest-glob",
+        "--contract",
+        "--implementation",
+        "--jobs",
+        "--parity",
+        "contract_interpreters",
+        "thuepp-contract.toml",
+    ]
+    for snippet in forbidden_runner:
+        if snippet in runner_text:
+            failures.append(Failure(runner_path, f"shared runner must not expose stale customization layer: {snippet}"))
+    python_path = root / "python" / "thuepp.py"
+    python_text = read(python_path)
+    if '"--list-rules"' not in python_text:
+        failures.append(Failure(python_path, "Python external command must expose --list-rules for runner-owned coverage enumeration"))
     forbidden_interpreter_paths = [
         runner_path,
         root / "python" / "tests" / "test_example_runner.py",
@@ -198,9 +226,6 @@ def check_contract(root: Path) -> list[Failure]:
     for forbidden_path in forbidden_interpreter_paths:
         if forbidden_path.exists() and "--interpreter" in read(forbidden_path):
             failures.append(Failure(forbidden_path, "shared runner --interpreter compatibility path must not be referenced"))
-    makefile = read(root / "Makefile")
-    if "--contract tools/thuepp-contract.toml --parity --jobs 8 --manifest-glob 'examples/**/tests/*.toml'" not in makefile:
-        failures.append(Failure(root / "Makefile", "shared manifest target must use tools/thuepp-contract.toml, recursive manifest glob, and explicit parallel jobs"))
     duplicate_full_manifest_checks = [
         (root / "python" / "tests" / "test_examples.py", ["run_configs", "*/tests/*.toml"]),
         (root / "go" / "internal" / "thuepp" / "go_interpreter_test.go", ["run-example-manifests", "examples", "tests", "*.toml"]),
@@ -210,9 +235,8 @@ def check_contract(root: Path) -> list[Failure]:
             continue
         duplicate_text = read(duplicate_path)
         if all(snippet in duplicate_text for snippet in snippets):
-            failures.append(Failure(duplicate_path, "full shared manifest execution belongs only to Makefile test-shared"))
+            failures.append(Failure(duplicate_path, "full shared manifest execution belongs only to make test"))
     return failures
-
 
 def contract_numeric_regex(root: Path) -> str:
     path = root / "docs" / "numeric-builtins.md"
@@ -263,9 +287,9 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     failures: list[Failure] = []
     if "coverage: ignore" in text:
         failures.append(Failure(path, "coverage ignore comments are unsupported; add fixtures or delete the rule"))
-    makefile = read(root / "Makefile")
-    if "tools/check-rule-coverage --jobs 8 --manifest-glob 'examples/**/tests/*.toml'" not in makefile:
-        failures.append(Failure(root / "Makefile", "make test must include manifest-declared rule coverage gate with explicit parallel jobs"))
+    runner = read(root / "tools" / "example_runner.py")
+    if "check_rule_coverage" not in runner or "--rule-coverage" not in runner:
+        failures.append(Failure(root / "tools" / "example_runner.py", "make test must include integrated manifest-declared rule coverage gate"))
     return failures
 
 

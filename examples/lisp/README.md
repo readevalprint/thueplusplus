@@ -127,8 +127,7 @@ Other backslash escapes are intentionally unsupported. They fail loudly with `in
 Focused Lisp validation:
 
 ```sh
-uv run python tools/run-example-manifests --contract tools/thuepp-contract.toml --parity --jobs 8 --manifest-glob 'examples/lisp/tests/*.toml'
-uv run python tools/check-rule-coverage --jobs 8 --manifest-glob 'examples/lisp/tests/*.toml'
+uv run python tools/run-example-manifests examples/lisp/tests/*.toml
 ```
 
 Repository validation:
@@ -137,4 +136,4 @@ Repository validation:
 make test
 ```
 
-All Lisp behavior must pass through the shared manifest runner with Python/Go parity. Do not add Python-, Go-, or JavaScript-specific Lisp evaluator helpers.
+All Lisp behavior must pass through the shared manifest runner with Python/Go parity and integrated rule coverage. Do not add Python-, Go-, or JavaScript-specific Lisp evaluator helpers.
