@@ -54,8 +54,6 @@ EXPECT_KEYS = {
     "exit_code",
     "stdout",
     "stdout_stripped",
-    "stdout_startswith",
-    "stdout_contains",
     "stderr",
     "stderr_stripped",
     "stderr_contains",
@@ -241,11 +239,6 @@ def assert_expect(config_path: Path, name: str, expect: dict, result: CaseResult
         raise RuntimeError(f"{config_path} {name} {result.interpreter}: stdout {result.stdout!r}, want {expect['stdout']!r}")
     if "stdout_stripped" in expect and result.stdout.strip() != expect["stdout_stripped"]:
         raise RuntimeError(f"{config_path} {name} {result.interpreter}: stripped stdout {result.stdout.strip()!r}, want {expect['stdout_stripped']!r}")
-    if "stdout_startswith" in expect and not result.stdout.strip().startswith(expect["stdout_startswith"]):
-        raise RuntimeError(f"{config_path} {name} {result.interpreter}: stdout does not start with {expect['stdout_startswith']!r}")
-    for needle in expect.get("stdout_contains", []):
-        if needle not in result.stdout:
-            raise RuntimeError(f"{config_path} {name} {result.interpreter}: stdout missing {needle!r}")
     if "stderr" in expect and result.stderr != expect["stderr"]:
         raise RuntimeError(f"{config_path} {name} {result.interpreter}: stderr {result.stderr!r}, want {expect['stderr']!r}")
     if "stderr_stripped" in expect and result.stderr.strip() != expect["stderr_stripped"]:
