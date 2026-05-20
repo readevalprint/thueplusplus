@@ -20,6 +20,7 @@ Compound forms:
 - boolean control: `if`, `and`, `or`;
 - sequencing: `begin`;
 - lexical binding: `let`;
+- bounded iteration/state update: `while` and `set`;
 - functions: `lambda` and direct application;
 - arrays: `array`, `head`, `rest`;
 - code-as-data lists: `quote`, `list`, `head`, `tail`, `empty?`, `push`, `len`, and `get`.
@@ -57,6 +58,13 @@ Reader-backed outputs are intended to round trip where the reader has a direct v
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
 - `begin` evaluates expressions in order and returns the final expression value.
+- `(while cond body)` evaluates `cond` before each iteration and evaluates the single
+  `body` expression only while the condition is boolean `true`; use `(begin ...)` as
+  that one body expression when sequencing is needed.
+- A false-initial or normally exhausted `while` returns `()`. Loop-side state is
+  observed through bindings updated by `set`.
+- `(set name expr)` updates the nearest existing lexical binding and returns the
+  assigned value; setting an unbound name fails with `unbound_name`.
 - Arithmetic and comparison forms are strict for the operands they require.
 
 ## Unsupported forms and fail-loud policy
@@ -65,7 +73,7 @@ Unsupported syntax exits non-zero with a named stderr error. Current deliberate 
 
 - `define` and mutation-style top-level binding: unsupported, with error class `unsupported_form`;
 - `letrec` and recursive self-reference: unsupported until the bounded recursion/loop boundary is explicitly decided, with error class `unsupported_form`;
-- `while` and other looping forms: unsupported until #108 settles bounded-loop policy, with error class `unsupported_form`;
+- `break`, `continue`, and looping forms beyond minimal `(while cond body)`: unsupported with error class `unsupported_form`;
 - list/code-as-data forms beyond #107, such as `map`, `quasiquote`, and `unquote`: unsupported until their downstream cards define semantics;
 - unsupported string escapes outside the normal supported set: expected error class `invalid_string_escape`;
 - malformed lists and raw internal-looking evaluator states: fail loudly.
@@ -89,21 +97,26 @@ Implementation contract:
 
 ## Recursion and loop boundary
 
-Decision for the hard-cutoff cleanup slice: recursion and looping remain out of scope until the bounded-loop policy is settled.
+#108 settles the first bounded iteration primitive as minimal `(while cond body)`.
+The body slot is exactly one expression; use `(begin ...)` in that slot for ordered
+multi-step updates. `break` and `continue` are deliberately not part of this slice.
 
 Rationale:
 
 - `let` is lexical and non-recursive: binding values are evaluated before the new binding is added to the environment.
 - `lambda` captures the lexical environment that exists at creation time; it does not gain an implicit self binding later.
-- `letrec`, named-function recursion, `while`, and any unbounded loop/recursion form require an explicit evaluation bound and failure behavior before implementation.
+- `letrec`, named-function recursion, `break`, `continue`, and richer loop-control forms require explicit policy before implementation.
 
-The future policy gate is #108 (`bounded while before recursion`). Until that gate is complete or a human explicitly changes the boundary, recursive self-reference fails loudly (`unbound_name` for actual lookup misses) and `letrec` remains a reserved unsupported form (`unsupported_form`).
+Non-terminating-looking `while` programs rely on the existing Thue++ evaluation limits
+and fail non-zero when those limits are exceeded; they must not silently return partial
+success. Recursive self-reference still fails loudly (`unbound_name` for actual lookup
+misses) and `letrec` remains a reserved unsupported form (`unsupported_form`).
 
 ## Error symbols
 
 The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
 
-- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `define`, `letrec`, `map`, `quasiquote`, `unquote`, raw internal-looking inputs, and other non-reader forms;
+- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `define`, `letrec`, `break`, `continue`, `map`, `quasiquote`, `unquote`, raw internal-looking inputs, and other non-reader forms;
 - `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `begin`, `and`, `or`, `let`, and `lambda` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual lookup miss for a bare variable or callee name;

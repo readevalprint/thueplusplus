@@ -1,0 +1,212 @@
+program = "../lisp.tpp"
+timeout = 20
+args = ["--max-evals", "120000"]
+
+[[case]]
+name = "while false initially returns empty list"
+input = "(while false 1)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
+
+[[case]]
+name = "while single body updates existing binding"
+input = "(let ((i 0)) (begin (while (< i 3) (set i (+ i 1))) i))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "while begin body sums numbers"
+input = "(let ((i 0) (sum 0)) (begin (while (< i 4) (begin (set sum (+ sum i)) (set i (+ i 1)))) sum))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
+
+[[case]]
+name = "while begin body traverses list value"
+input = "(let ((xs (list 1 2 3)) (acc (list))) (begin (while (< 0 (len xs)) (begin (set acc (push (head xs) acc)) (set xs (tail xs)))) acc))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(3 2 1)"
+
+[[case]]
+name = "while condition must be boolean"
+input = "(while 1 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "while requires cond and body only"
+input = "(while false 1 2)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "set requires existing binding"
+input = "(set i 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "break remains reserved unsupported form"
+input = "(break)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "continue remains reserved unsupported form"
+input = "(continue)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "non terminating while fails under eval limit"
+input = "(while true 1)"
+args = ["--max-evals", "200"]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Rule probe limit (200) exceeded"]
+
+[[case]]
+name = "while begin condition must be boolean"
+input = "(while 1 (begin 1 2))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "while begin body preserves plain first expression before set"
+input = "(let ((i 0)) (begin (while (< i 1) (begin 1 (set i (+ i 1)))) i))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "while begin body preserves plain final expression after set"
+input = "(let ((i 0)) (begin (while (< i 1) (begin (set i (+ i 1)) 99)) i))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "while plain body without state change fails under eval limit"
+input = "(let ((i 0)) (while (< i 1) 1))"
+args = ["--max-evals", "200"]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["Rule probe limit (200) exceeded"]
+
+[[case]]
+name = "set without args fails wrong arity"
+input = "(set)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "set missing value in lexical environment fails wrong arity"
+input = "(let ((x 1)) (set x))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "while wrong arity in lexical environment fails wrong arity"
+input = "(let ((x 1)) (while false 1 2))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "set can return numeric value"
+input = "(let ((x 1)) (set x 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "set can return boolean value"
+input = "(let ((x false)) (set x true))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "set can return string value"
+input = "(let ((x \"a\")) (set x \"b\"))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"b"'
+
+[[case]]
+name = "set can return closure value"
+input = "(let ((x 0)) (set x (lambda (y) y)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<closure>"
+
+[[case]]
+name = "set can return symbol value"
+input = "(let ((x 0)) (set x (quote name)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "name"
+
+[[case]]
+name = "set can return array value"
+input = "(let ((x (array))) (set x (array 1)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(array 1)"

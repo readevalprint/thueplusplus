@@ -315,12 +315,3 @@ input = "(let ((f (lambda (n) (f n)))) (f 0))"
 exit_code = 2
 stdout = ""
 stderr_stripped = "unbound_name"
-
-[[case]]
-name = "while remains unsupported before bounded loop policy"
-input = "(while true 1)"
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unsupported_form"
