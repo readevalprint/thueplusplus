@@ -5,9 +5,10 @@ Implementations of the thue++ language (v0.2 spec).
 ## Repository layout
 
 ```text
-examples/        Shared thue++ example programs, each in its own directory
+examples/        Shared thue++ example programs and manifest tests
 python/          Python implementation
-python/tests/    Python implementation tests
+go/              Go implementation
+tools/           Repository conformance checker and shared manifest runner
 ```
 
 ## Python implementation

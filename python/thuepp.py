@@ -26,7 +26,7 @@ MAX_EXPANDED_PATTERN_BYTES = 1000000
 RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!%-])(?P<rhs>.*)$")
 ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
 ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
-OLD_ALIAS_REF_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
+INVALID_ALIAS_TOKEN_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
 NAMED_CAPTURE_RE = py_re.compile(r"\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>")
 
 
@@ -138,11 +138,11 @@ class ThueppInterpreter:
         return current_source[1] if current_source else fallback_line
 
     def _expand_alias_refs(self, pattern: str, aliases: dict[str, str], line_number: int) -> str:
-        old = OLD_ALIAS_REF_RE.search(pattern)
-        if old:
-            name = old.group(1)
+        invalid = INVALID_ALIAS_TOKEN_RE.search(pattern)
+        if invalid:
+            name = invalid.group(1)
             raise RuntimeError(
-                f"Line {line_number}: Old pattern alias syntax '<|{name}|>' is no longer supported; use '${name}'"
+                f"Line {line_number}: Invalid pattern alias token '<|{name}|>'; use '${name}' aliases"
             )
         substitutions = 0
 

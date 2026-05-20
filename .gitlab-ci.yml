@@ -13,7 +13,6 @@ cache:
     - .cache/uv/
     - .cache/go-build/
     - .cache/go-mod/
-    - .venv/
 
 test:
   image: golang:1.24.6-bookworm

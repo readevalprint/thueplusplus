@@ -176,18 +176,6 @@ def check_readme(root: Path) -> list[Failure]:
 
 def check_contract(root: Path) -> list[Failure]:
     failures: list[Failure] = []
-    deleted = [
-        root / "tools" / "thuepp-contract.toml",
-        root / "tools" / "check-rule-coverage",
-        root / "tools" / "check-code-coverage",
-        root / "tools" / "check-contract",
-        root / "tools" / "run-example-manifests",
-        root / "python" / "tests" / "test_project_verification.py",
-        root / "python" / "tests" / "test_contract_checker.py",
-    ]
-    for path in deleted:
-        if path.exists():
-            failures.append(Failure(path, "stale verification artifact must stay deleted; make test and tools/check_contract.py are the policy owners"))
     runner_path = root / "tools" / "example_runner.py"
     runner_text = read(runner_path)
     try:
@@ -232,27 +220,12 @@ def check_contract(root: Path) -> list[Failure]:
     python_text = read(python_path)
     if '"--list-rules"' not in python_text:
         failures.append(Failure(python_path, "Python external command must expose --list-rules for runner-owned coverage enumeration"))
-    forbidden_interpreter_paths = [
-        runner_path,
-        root / "python" / "tests" / "test_example_runner.py",
-        root / "python" / "tests" / "test_examples.py",
-        root / "go" / "internal" / "thuepp" / "go_interpreter_test.go",
-        root / "Makefile",
-        root / "README.md",
-    ]
-    for forbidden_path in forbidden_interpreter_paths:
-        if forbidden_path.exists() and "--interpreter" in read(forbidden_path):
-            failures.append(Failure(forbidden_path, "shared runner --interpreter compatibility path must not be referenced"))
-    duplicate_full_manifest_checks = [
-        (root / "python" / "tests" / "test_examples.py", ["run_configs", "*/tests/*.toml"]),
-        (root / "go" / "internal" / "thuepp" / "go_interpreter_test.go", ["example_runner.py", "examples", "tests", "*.toml"]),
-    ]
-    for duplicate_path, snippets in duplicate_full_manifest_checks:
-        if not duplicate_path.exists():
-            continue
-        duplicate_text = read(duplicate_path)
-        if all(snippet in duplicate_text for snippet in snippets):
-            failures.append(Failure(duplicate_path, "full shared manifest execution belongs only to make test"))
+    current_policy_files = [runner_path, root / "Makefile", root / "README.md"]
+    for policy_path in current_policy_files:
+        if policy_path.exists() and "--interpreter" in read(policy_path):
+            failures.append(Failure(policy_path, "shared runner --interpreter compatibility path must not be referenced"))
+    if (root / "python" / "tests").exists():
+        failures.append(Failure(root / "python" / "tests", "python/tests is not a current verification owner; shared manifests and make test own repository verification"))
     return failures
 
 def contract_numeric_regex(root: Path) -> str:
@@ -277,7 +250,7 @@ def check_numeric_regex(root: Path) -> list[Failure]:
         failures.append(Failure(root / "docs" / "numeric-builtins.md", f"canonical numeric regex does not compile in Python: {exc}"))
     checks = [
         (root / "python" / "thuepp.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
-        (root / "go" / "internal" / "thuepp" / "interpreter.go", 1, f"numericLiteralPattern  = regexp.MustCompile(`^{grammar}$`)"),
+        (root / "go" / "internal" / "thuepp" / "interpreter.go", 1, None),
         (root / "examples" / "builtin" / "builtin.tpp", 1, f"N <- {grammar}"),
         (root / "examples" / "lisp" / "lisp.tpp", 1, None),
     ]
@@ -288,6 +261,8 @@ def check_numeric_regex(root: Path) -> list[Failure]:
             failures.append(Failure(path, f"canonical numeric regex occurs {actual} times; expected {expected_count}"))
         if required_snippet is not None and required_snippet not in text:
             failures.append(Failure(path, f"missing canonical numeric regex usage: {required_snippet}"))
+        if path.name == "interpreter.go" and re.search(r"numericLiteralPattern\s*=\s*regexp\.MustCompile\(`\^" + re.escape(grammar) + r"\$`\)", text) is None:
+            failures.append(Failure(path, "missing canonical numeric regex usage in numericLiteralPattern"))
     for stale in [
         r"-?(?:[0-9]+|[0-9]+\\.?[0-9]*)",
         r"-?(?:[0-9]+|[0-9]+\\.[0-9]+)",
@@ -370,12 +345,14 @@ def check_manifest_policy(root: Path) -> list[Failure]:
 
 
 
-def check_no_hidden_red_manifests(root: Path) -> list[Failure]:
+def check_no_off_sweep_manifests(root: Path) -> list[Failure]:
     failures: list[Failure] = []
-    for path in sorted((root / "examples").glob("**/tests/red")):
-        failures.append(Failure(path, "hidden executable-looking red manifest directory is not allowed; promote, delete, or move cases to learnings"))
-    for path in sorted((root / "examples").glob("**/tests/red/**/*.toml")):
-        failures.append(Failure(path, "hidden red manifest is not allowed; promote, delete, or move to non-executable learnings"))
+    default_manifests = {path.resolve() for path in root.glob(example_runner.DEFAULT_MANIFEST_GLOB)}
+    for path in sorted((root / "examples").glob("**/tests/**/*.toml")):
+        if path.resolve() not in default_manifests:
+            failures.append(Failure(path, "executable-looking TOML under examples must be matched by examples/**/tests/*.toml; promote it into the default sweep, delete it, or move historical evidence to learnings"))
+    for path in sorted((root / "examples").glob("**/failure-manifests/**/*.toml")):
+        failures.append(Failure(path, "failure-manifests are not a gated verification lane; promote to a checked contract path or delete stale debt"))
     return failures
 
 def check_all(root: Path) -> list[Failure]:
@@ -389,7 +366,7 @@ def check_all(root: Path) -> list[Failure]:
         check_lisp_coverage_policy,
         check_lisp_nested_alias_cleanup,
         check_manifest_policy,
-        check_no_hidden_red_manifests,
+        check_no_off_sweep_manifests,
     ]
     failures: list[Failure] = []
     for check in checks:
