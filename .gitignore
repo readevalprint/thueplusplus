@@ -3,3 +3,5 @@ build/
 .docker-home/
 .cache/
 .venv/
+demo/node_modules/
+demo/dist/
