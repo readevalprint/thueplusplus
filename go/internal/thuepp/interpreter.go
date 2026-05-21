@@ -106,18 +106,34 @@ func (i *Interpreter) LoadProgram(programPath string) error {
 // LoadProgramText loads a program from in-memory source text. sourcePath is
 // used for diagnostics and rule coverage IDs; it is not opened as a file.
 func (i *Interpreter) LoadProgramText(sourcePath, content string) error {
+	return i.LoadProgramTextWithInclude(sourcePath, content, nil)
+}
+
+// IncludeLoader returns source text for an @include path. The path argument is
+// the literal include operand after optional quotes are removed.
+type IncludeLoader func(path string) (string, error)
+
+// LoadProgramTextWithInclude loads a program from in-memory source text and
+// resolves @include directives through include. A nil include loader preserves
+// LoadProgramText behavior and rejects @include explicitly.
+func (i *Interpreter) LoadProgramTextWithInclude(sourcePath, content string, include IncludeLoader) error {
 	if strings.TrimSpace(sourcePath) == "" {
 		return fmt.Errorf("source path is required")
 	}
 	i.ProgramPath = sourcePath
-	annotated, err := annotateSourceText(sourcePath, content)
+	annotated, err := annotateSourceText(sourcePath, content, include, map[string]bool{})
 	if err != nil {
 		return err
 	}
 	return i.parseProgram(annotated)
 }
 
-func annotateSourceText(sourcePath, content string) (string, error) {
+func annotateSourceText(sourcePath, content string, include IncludeLoader, included map[string]bool) (string, error) {
+	if included[sourcePath] {
+		return "", fmt.Errorf("Cyclic include detected: %s", sourcePath)
+	}
+	included[sourcePath] = true
+	defer delete(included, sourcePath)
 	var b strings.Builder
 	s := bufio.NewScanner(strings.NewReader(content))
 	// allow long example lines
@@ -128,7 +144,23 @@ func annotateSourceText(sourcePath, content string) (string, error) {
 		line := s.Text() + "\n"
 		stripped := strings.TrimSpace(line)
 		if strings.HasPrefix(stripped, "@include ") {
-			return "", fmt.Errorf("Line %d: @include is not supported when loading source text", lineNumber)
+			if include == nil {
+				return "", fmt.Errorf("Line %d: @include is not supported when loading source text", lineNumber)
+			}
+			p := strings.TrimSpace(stripped[9:])
+			if strings.HasPrefix(p, "\"") && strings.HasSuffix(p, "\"") {
+				p = strings.TrimSuffix(strings.TrimPrefix(p, "\""), "\"")
+			}
+			inc, err := include(p)
+			if err != nil {
+				return "", fmt.Errorf("Line %d: include %q: %w", lineNumber, p, err)
+			}
+			annotated, err := annotateSourceText(p, inc, include, included)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(annotated)
+			continue
 		}
 		b.WriteString(fmt.Sprintf("# thuepp-source: %s:%d\n", sourcePath, lineNumber))
 		b.WriteString(line)
