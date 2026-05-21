@@ -31,9 +31,10 @@ NONNUM <- (?:$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONBOOL <- (?:$VNUM|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONKEY <- (?:$VNUM|$VBOOL|$VLIST|$VCLOS|$VPRIM)
 EXPR <- $NAME|$NODE
+READER_DATUM <- (?:\([^()]*\)|$OPSYM|$EXPR)
 
 ^\([^)]*$ ::= ERR<malformed_list>
-^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM)$ ::= C<{{input}}>
+^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)$ ::= C<{{input}}>
 # Phase A: protect quoted strings before paren framing.
 ^C<(?<pre>[\s\S]*)\\@(?<post>[\s\S]*)>$ ::= ERR<invalid_string_escape>
 ^C<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)>$ ::= C<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}>
@@ -47,17 +48,30 @@ UNESC<(?<pre>$PCT)%5Cb(?<post>$PCT)> ::= UNESC<{{pre}}%08{{post}}>
 UNESC<(?<pre>$PCT)%5Cf(?<post>$PCT)> ::= UNESC<{{pre}}%0C{{post}}>
 UNESC<(?<s>$PCT)> ::= {{s}}
 
+# Reader quote-family shorthand. Strings are already protected as VSTR<...>,
+# and list freezing may expose nested list datums as L<...>; expand to the
+# existing long-form source before evaluation or parse-result quoting.
+^C<(?<pre>[\s\S]*),@(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(splice {{datum}}){{post}}>
+^C<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(unquote {{datum}}){{post}}>
+^C<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(quasiquote {{datum}}){{post}}>
+^C<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(quote {{datum}}){{post}}>
+
 
 # Phase B: inside-out list freezing.
 ^C<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)>$ ::= C<{{pre}}L<{{inner|pctenc}}>{{post}}>
 ^C<L<(?<payload>$PCT)>>$ ::= CBOOT<{{payload|pctdec}}|KDONE>
 ^C<(?<atom>$NUM|true|false|VSTR<$PCT>)>$ ::= ARG<{{atom}}|KDONE>
 ^C<(?<name>$NAME)>$ ::= CBOOT<{{name}}|KDONE>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;set-nth=VPRIM%3Cset-nth%3E;|{{k}}>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;|{{k}}>
 
 # Parse source strings into values without evaluation. Mirrors C framing but exits through QUOTE.
+^P<(?<pre>[\s\S]*),@(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(splice {{datum}}){{post}}> KPARSE<{{k}}>
 ^P<(?<pre>[\s\S]*)\@(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
 ^P<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}> KPARSE<{{k}}>
+
+^P<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(unquote {{datum}}){{post}}> KPARSE<{{k}}>
+^P<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(quasiquote {{datum}}){{post}}> KPARSE<{{k}}>
+^P<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(quote {{datum}}){{post}}> KPARSE<{{k}}>
 
 ^P<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}L<{{inner|pctenc}}>{{post}}> KPARSE<{{k}}>
 ^P<L<(?<payload>$PCT)>> KPARSE<(?<k>.*)>$ ::= QUOTE<L<{{payload}}>|{{k}}>
@@ -105,7 +119,8 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^EENV<quote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<quasiquote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:set-var|fn|if|and|or|let|while)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?<prim>add|sub|mul|div|eq|lt|lte|gt|gte|first|rest|is-empty|cons|count|nth|get|contains|assoc|dissoc|type|parse|unparse|set-nth)\|(?<env>[^|]*)\|KDONE>$ ::= LOOK<{{prim}}|{{env}}|KDONE>
+^EENV<(?:symbol|name)\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
+^EENV<(?<prim>add|sub|mul|div|eq|lt|lte|gt|gte|first|rest|is-empty|cons|count|nth|get|contains|assoc|dissoc|type|parse|unparse|set-nth|symbol|name)\|(?<env>[^|]*)\|KDONE>$ ::= LOOK<{{prim}}|{{env}}|KDONE>
 
 ^EENV<(?:break|continue|map|unquote|splice|define|letrec)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -363,8 +378,8 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<unparse>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<unparse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= RENDER<{{a|pctdec}}|KUNPARSE<{{k}}>>
 ^RRET<(?<frag>$PCT)\|KUNPARSE<(?<k>.*)>>$ ::= RET<VSTR<{{frag}}>|{{k}}>
-^APPLY<VPRIM<type>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>first|rest|is-empty|count|type)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>type|symbol|name)>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>first|rest|is-empty|count|type|symbol|name)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>assoc|get|set-nth)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -374,6 +389,8 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<is-empty>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KEMPTY {{k}}>
 ^APPLY<VPRIM<count>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KLEN {{k}}>
 ^APPLY<VPRIM<type>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTYPE {{k}}>
+^APPLY<VPRIM<symbol>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= BSYMBOL<{{v|pctdec}}|{{k}}>
+^APPLY<VPRIM<name>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= BNAME<{{v|pctdec}}|{{k}}>
 ^APPLY<VPRIM<cons>\|(?<item>[^;]*);(?<lst>[^;]*);\|(?<k>.*)>$ ::= RET<{{lst|pctdec}}|KPUSH2<{{item|pctdec}}> {{k}}>
 ^APPLY<VPRIM<nth>\|(?<lst>[^;]*);(?<idx>[^;]*);\|(?<k>.*)>$ ::= BAT<{{lst|pctdec}}|{{idx|pctdec}}|{{k}}>
 ^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NAT)>\|(?<k>.*)>$ ::= RET<{{lst}}|KAT2<{{idx}}> {{k}}>
@@ -402,6 +419,18 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<dissoc>\|(?<alist>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BALISTDEL<{{alist|pctdec}}|{{key|pctdec}}|{{k}}>
 ^BALISTDEL<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTKEY<DEL|{{items}}^> {{k}}>
 ^BALISTDEL<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+
+# Symbol/name conversion. `symbol` accepts existing symbols idempotently or
+# strings whose rendered spelling would parse back as a symbol, not a boolean
+# or number. Operator strings are stored pct-encoded, matching quoted OPSYM.
+^BSYMBOL<VSYM<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
+^BSYMBOL<VSTR<(?:true|false)>\|(?<k>.*)>$ ::= ERR<invalid_symbol>
+^BSYMBOL<VSTR<(?<s>$NAME)>\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
+^BSYMBOL<VSTR<(?<s>%2B|%2A|%2F|%3C%3D|%3E%3D|%3C|%3E|%3D)>\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
+^BSYMBOL<VSTR<(?<bad>$PCT)>\|(?<k>.*)>$ ::= ERR<invalid_symbol>
+^BSYMBOL<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
+^BNAME<VSYM<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+^BNAME<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VLIST<$ITEMS>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
 
 ^BADD<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
 ^BSUB<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>

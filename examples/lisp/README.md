@@ -11,7 +11,8 @@ Atoms:
 - numbers matching the repository numeric literal contract: integers, decimals, and non-zero-denominator fractions;
 - booleans: `true`, `false`;
 - strings delimited by double quotes, with the supported escape set described below;
-- names bound by `let`, fn parameters, or the initial core environment.
+- names bound by `let`, fn parameters, or the initial core environment;
+- quote-family reader shorthand: `'datum`, `` `datum ``, `,datum`, and `,@datum`, which read as the long forms `(quote datum)`, `(quasiquote datum)`, `(unquote datum)`, and `(splice datum)`.
 
 Compound forms:
 
@@ -23,8 +24,9 @@ Compound forms:
 - bounded iteration/state update: `while` and `set-var`;
 - functions: `fn` and direct application;
 - lists: `list`, `first`, `rest`;
-- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `parse`, `unparse`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth`;
+- code-as-data lists: `quote`, quote-family reader shorthand, `quasiquote`, `unquote`, `splice`, `parse`, `unparse`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth`;
 - association-list helpers: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
+- symbol/name conversion primitives: `symbol` and `name`;
 - runtime type inspection: `type`.
 
 ## Runtime values
@@ -61,7 +63,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set-var`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set-var`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -163,7 +165,7 @@ To update a variable, explicitly rebind it with `set-var`:
 
 returns `(1 9 3)`. Without the `set-var`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(set-nth (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
 
-Reader shorthand such as `'x`, backtick, comma, and comma-splice is still deferred; this core uses keyword forms only.
+Reader shorthand is syntax only and canonicalizes to long-form code-as-data. `'x` reads as `(quote x)`, `` `(1 ,x) `` reads as `(quasiquote (1 (unquote x)))`, and `,@xs` reads as `(splice xs)`. The `splice` name remains the only long-form splicing form; there is no `unquote-splicing` form. Canonical rendering with `unparse` remains long-form/list syntax rather than source-preserving shorthand.
 
 ## Parse/unparse round trip
 
@@ -179,7 +181,20 @@ returns the list value `(add 1 2)`. To execute parsed code, pass that value to `
 (eval (parse "(add 1 2)") (dict ((quote add) add)))
 ```
 
-`unparse` converts a renderable value back to a source string that `parse` can read again. Numbers, booleans, strings, symbols, and lists unparse; closures and primitive callables fail with `unparseable_value`, including when nested inside a list or alist. `parse` and `unparse` are exact-arity primitive callables.
+`unparse` converts a renderable value back to a source string that `parse` can read again. Numbers, booleans, strings, symbols, and lists unparse; closures and primitive callables fail with `unparseable_value`, including when nested inside a list or alist. `parse` and `unparse` are exact-arity primitive callables. Reader shorthand is accepted by `parse`, but parsed shorthand returns canonical long-form values; for example `(parse "'x")` returns `(quote x)`.
+
+## Symbol/name conversion
+
+`symbol` and `name` convert between strings and symbol values:
+
+```lisp
+(symbol "x")      ; x
+(symbol "<=")     ; <=
+(symbol (quote x)) ; x
+(name (quote x))   ; "x"
+```
+
+`symbol` accepts exactly one string or symbol. Existing symbols are returned unchanged. String inputs must spell a token whose rendered form would parse again as a symbol, not as a number, boolean, string, or list. Invalid spellings such as `"has space"`, boolean spellings such as `"true"`/`"false"`, and numeric spellings such as `"1"`, `"1.0"`, or `"1/1"` fail with `invalid_symbol`. Non-string/non-symbol inputs fail with `type_error`. `name` accepts exactly one symbol and returns its source spelling as a string; non-symbol inputs fail with `type_error`.
 
 ## Association-list boundary
 
@@ -257,6 +272,7 @@ The evaluator exits non-zero and writes one named error symbol on stderr for rej
 - `type_error`: an operand value contains the wrong runtime type for the requested operation;
 - `division_by_zero`: division by zero, including computed zero denominators;
 - `invalid_numeric_token`: numeric-looking tokens that do not satisfy the numeric literal contract;
+- `invalid_symbol`: string-to-symbol conversion input whose printed form would not parse back as a symbol;
 - `invalid_string_escape`: backslash escapes outside the supported string escape set.
 
 Error normalization should not mask real get misses: an unknown variable or unknown callee remains `unbound_name`, while unsupported special-form names and malformed supported forms report their specific syntax/arity class.
