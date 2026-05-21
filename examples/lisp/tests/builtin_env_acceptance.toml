@@ -155,3 +155,129 @@ input = "(quasiquote (x (splice add)))"
 exit_code = 2
 stderr = "type_error"
 stdout_stripped = ""
+
+[[case]]
+name = "collection len is env callable"
+input = "(len (list 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "collection len shadowed by number is not callable"
+input = "(let ((len 7)) (len (list 1)))"
+
+[case.expect]
+exit_code = 2
+stderr = "not_function"
+stdout_stripped = ""
+
+[[case]]
+name = "eval receives len as explicit capability"
+input = "(eval (quote (len xs)) (dict (len len) (xs (list 1 2))))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "eval without len capability fails unbound"
+input = "(eval (quote (len xs)) (dict (xs (list 1 2))))"
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "eval receives has as explicit capability"
+input = "(eval (quote (has d k)) (dict (has has) (d (dict (a 42))) (k (quote a))))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "callable empty predicate remains public"
+input = "(empty? (list))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "callable at remains public"
+input = "(at (list 7 8) 1)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "8"
+
+[[case]]
+name = "callable push remains public"
+input = "(push 0 (list 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(0 1 2)"
+
+[[case]]
+name = "callable lookup too few args fails wrong arity"
+input = "(lookup (dict) (quote a))"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "callable len too many args fails wrong arity"
+input = "(len (list 1) (list 2))"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "eval receives lookup as explicit capability"
+input = "(eval (quote (lookup d k z)) (dict (lookup lookup) (d (dict (a 42))) (k (quote a)) (z 0)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "callable head no args fails wrong arity"
+input = "(head)"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "callable push too many args fails wrong arity"
+input = "(push 0 (list 1) 2)"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "callable lookup too many args fails wrong arity"
+input = "(lookup (dict) (quote a) 0 1)"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
