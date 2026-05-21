@@ -7,7 +7,8 @@ Implementations of the thue++ language (v0.2 spec).
 ```text
 examples/        Shared thue++ example programs and manifest tests
 python/          Python implementation
-go/              Go implementation
+go/              Go implementation and Go-WASM export package
+js/wasm/         JavaScript adapters for loading the Go-WASM module in Node and browsers
 tools/           Repository conformance checker and shared manifest runner
 ```
 
@@ -29,6 +30,7 @@ Requirements:
 - Python 3.11+
 - Project Python dependencies are managed by `uv` from `pyproject.toml` / `uv.lock`; use `uv run` or the `make` targets for deterministic development and tests.
 - Repository verification also requires `make` and Go for the shared Go implementation tests.
+- Go-WASM adapter tests additionally require Node.js.
 
 The interpreter entry point remains `python/thuepp.py`. Direct `./python/thuepp.py ...` examples assume the project dependencies have already been installed or are being run in the `uv` environment.
 
@@ -171,7 +173,17 @@ make test
 uv run python tools/example_runner.py examples/echo/tests/proc-input.toml
 ```
 
-JavaScript is future work, not a currently available implementation. When it exists, it should join `make test` through the shared manifest runner instead of a separate harness or a green no-op placeholder.
+For Go-WASM adapter changes, also run the focused adapter target:
+
+```bash
+make wasm-adapter-test
+```
+
+`make wasm-adapter-test` builds `build/thuepp.wasm` with `GOOS=js GOARCH=wasm` and runs the Node adapter tests in `go/wasm/adapter_test.js`. Those tests cover the JavaScript/WASM host boundary only: WASM loading, stdout buffering, stdin `readLine`, custom resource callbacks, missing-resource errors, callback timeout errors, include maps, coverage TSV return, and a worker smoke run. They intentionally do not run the full `examples/**/tests/*.toml` suite in JavaScript.
+
+JavaScript support is Go-WASM based. The Go interpreter remains the semantic implementation; the JavaScript files under `js/wasm/` only load the WASM artifact and adapt host resources for Node, browser, and worker environments. Full language conformance remains `make test` through the native Python/Go manifest runner.
+
+Browser resources are callbacks (`readAll`, `readLine`, `write`, and optional `close`). Browser and `GOOS=js/wasm` runs do not support OS subprocesses; attempts to bind subprocess-style resources fail loudly instead of emulating shell processes. See `js/wasm/README.md` for the adapter API shape.
 
 ## Numeric builtins
 
