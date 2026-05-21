@@ -67,7 +67,7 @@ exit_code = 0
 
 [[case]]
 name = "type reports closure as function"
-input = "(type (lambda (x) x))"
+input = "(type (fn (x) x))"
 [case.expect]
 stdout = "function\n"
 stderr = ""
@@ -114,7 +114,7 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "type missing fails through lookup"
+name = "type missing fails through get"
 input = "(type missing)"
 [case.expect]
 stdout = ""

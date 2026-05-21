@@ -150,16 +150,16 @@ stderr = ""
 stdout_stripped = "(1 false)"
 
 [[case]]
-name = "let head bound list"
-input = "(let ((xs (list 4 5))) (head xs))"
+name = "let first bound list"
+input = "(let ((xs (list 4 5))) (first xs))"
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "4"
 
 [[case]]
-name = "let tail bound list"
-input = "(let ((xs (list 4 5))) (tail xs))"
+name = "let rest bound list"
+input = "(let ((xs (list 4 5))) (rest xs))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -174,8 +174,8 @@ stderr = ""
 stdout_stripped = "(true 1)"
 
 [[case]]
-name = "lambda renders closure"
-input = "(lambda (x) x)"
+name = "fn renders closure"
+input = "(fn (x) x)"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -270,8 +270,8 @@ stderr = ""
 stdout_stripped = "true"
 
 [[case]]
-name = "tail empty list through continuation"
-input = "(tail (list))"
+name = "rest empty list through continuation"
+input = "(rest (list))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -376,8 +376,8 @@ stdout = ""
 stderr_stripped = "not_function"
 
 [[case]]
-name = "zero argument lambda rejects extra arg"
-input = "((lambda () 1) 2)"
+name = "zero argument fn rejects extra arg"
+input = "((fn () 1) 2)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -400,16 +400,16 @@ stderr = ""
 stdout_stripped = "1"
 
 [[case]]
-name = "head rejects boolean"
-input = "(head true)"
+name = "first rejects boolean"
+input = "(first true)"
 [case.expect]
 exit_code = 2
 stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "tail rejects boolean"
-input = "(tail true)"
+name = "rest rejects boolean"
+input = "(rest true)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -433,7 +433,7 @@ stdout_stripped = "((\"x\"))"
 
 [[case]]
 name = "nested list first closure renders"
-input = "(list (list (lambda (x) x)))"
+input = "(list (list (fn (x) x)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -457,7 +457,7 @@ stdout_stripped = "((1 \"x\"))"
 
 [[case]]
 name = "nested list next closure renders"
-input = "(list (list 1 (lambda (x) x)))"
+input = "(list (list 1 (fn (x) x)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -481,7 +481,7 @@ stdout_stripped = "(0 (\"x\"))"
 
 [[case]]
 name = "second nested list first closure renders"
-input = "(list 0 (list (lambda (x) x)))"
+input = "(list 0 (list (fn (x) x)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -505,7 +505,7 @@ stdout_stripped = "(0 (1 \"x\"))"
 
 [[case]]
 name = "second nested list next closure renders"
-input = "(list 0 (list 1 (lambda (x) x)))"
+input = "(list 0 (list 1 (fn (x) x)))"
 [case.expect]
 exit_code = 0
 stderr = ""

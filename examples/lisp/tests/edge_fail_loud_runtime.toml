@@ -5,24 +5,24 @@ timeout = 10
 args = ["--max-evals", "60000"]
 
 [[case]]
-name = "zero argument lambda application evaluates body"
-input = "((lambda () 7))"
+name = "zero argument fn application evaluates body"
+input = "((fn () 7))"
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "7"
 
 [[case]]
-name = "lambda too few arguments fails loudly"
-input = "((lambda (x) x))"
+name = "fn too few arguments fails loudly"
+input = "((fn (x) x))"
 [case.expect]
 exit_code = 2
 stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "lambda too many arguments fails loudly"
-input = "((lambda (x) x) 1 2)"
+name = "fn too many arguments fails loudly"
+input = "((fn (x) x) 1 2)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -117,16 +117,16 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "head rejects non list"
-input = "(head 1)"
+name = "first rejects non list"
+input = "(first 1)"
 [case.expect]
 exit_code = 2
 stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "tail rejects non list"
-input = "(tail 1)"
+name = "rest rejects non list"
+input = "(rest 1)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -181,8 +181,8 @@ stdout = ""
 stderr_stripped = "unbound_name"
 
 [[case]]
-name = "removed rest helper is unbound"
-input = "(rest (list 1 2))"
+name = "removed tail helper is unbound"
+input = "(tail (list 1 2))"
 [case.expect]
 exit_code = 2
 stdout = ""

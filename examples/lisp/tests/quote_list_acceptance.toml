@@ -114,24 +114,24 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "head list"
-input = "(head (list 1 2))"
+name = "first list"
+input = "(first (list 1 2))"
 [case.expect]
 stdout = "1\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "tail list"
-input = "(tail (list 1 2))"
+name = "rest list"
+input = "(rest (list 1 2))"
 [case.expect]
 stdout = "(2)\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "tail empty list"
-input = "(tail (list))"
+name = "rest empty list"
+input = "(rest (list))"
 [case.expect]
 stdout = "()\n"
 stderr = ""
@@ -139,7 +139,7 @@ exit_code = 0
 
 [[case]]
 name = "empty predicate true"
-input = "(empty? (list))"
+input = "(is-empty (list))"
 [case.expect]
 stdout = "true\n"
 stderr = ""
@@ -147,111 +147,111 @@ exit_code = 0
 
 [[case]]
 name = "empty predicate false"
-input = "(empty? (list 1))"
+input = "(is-empty (list 1))"
 [case.expect]
 stdout = "false\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "push prepends list"
-input = "(push 0 (list 1 2))"
+name = "cons prepends list"
+input = "(cons 0 (list 1 2))"
 [case.expect]
 stdout = "(0 1 2)\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "len empty list"
-input = "(len (list))"
+name = "count empty list"
+input = "(count (list))"
 [case.expect]
 stdout = "0\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "len single list"
-input = "(len (list 1))"
+name = "count single list"
+input = "(count (list 1))"
 [case.expect]
 stdout = "1\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "len two list"
-input = "(len (list 1 2))"
+name = "count two list"
+input = "(count (list 1 2))"
 [case.expect]
 stdout = "2\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "len bounded list"
-input = "(len (list 1 2 3))"
+name = "count bounded list"
+input = "(count (list 1 2 3))"
 [case.expect]
 stdout = "3\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "len four list"
-input = "(len (list 1 2 3 4))"
+name = "count four list"
+input = "(count (list 1 2 3 4))"
 [case.expect]
 stdout = "4\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "len ten list"
-input = "(len (list 1 2 3 4 5 6 7 8 9 10))"
+name = "count ten list"
+input = "(count (list 1 2 3 4 5 6 7 8 9 10))"
 [case.expect]
 stdout = "10\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "at zero arbitrary list"
-input = "(at (list 0 1 2 3 4 5 6 7 8 9) 0)"
+name = "nth zero arbitrary list"
+input = "(nth (list 0 1 2 3 4 5 6 7 8 9) 0)"
 [case.expect]
 stdout = "0\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "at nine arbitrary list"
-input = "(at (list 0 1 2 3 4 5 6 7 8 9) 9)"
+name = "nth nine arbitrary list"
+input = "(nth (list 0 1 2 3 4 5 6 7 8 9) 9)"
 [case.expect]
 stdout = "9\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "at index rejects non number"
-input = "(at (list 7 8 9) true)"
+name = "nth index rejects non number"
+input = "(nth (list 7 8 9) true)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "at rejects non list"
-input = "(at 7 0)"
+name = "nth rejects non list"
+input = "(nth 7 0)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "head empty list fails"
-input = "(head (list))"
+name = "first empty list fails"
+input = "(first (list))"
 [case.expect]
 stdout = ""
 stderr_stripped = "empty_list"
 exit_code = 2
 
 [[case]]
-name = "tail rejects scalar"
-input = "(tail 1)"
+name = "rest rejects scalar"
+input = "(rest 1)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -259,47 +259,47 @@ exit_code = 2
 
 [[case]]
 name = "empty predicate rejects scalar"
-input = "(empty? 1)"
+input = "(is-empty 1)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "len rejects scalar"
-input = "(len 1)"
+name = "count rejects scalar"
+input = "(count 1)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "list at out of bounds fails"
-input = "(at (list 7 8 9) 3)"
+name = "list nth out of bounds fails"
+input = "(nth (list 7 8 9) 3)"
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
 exit_code = 2
 
 [[case]]
-name = "list at negative index fails out of bounds"
-input = "(at (list 7 8 9) -1)"
+name = "list nth negative index fails out of bounds"
+input = "(nth (list 7 8 9) -1)"
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
 exit_code = 2
 
 [[case]]
-name = "list at decimal index fails type error"
-input = "(at (list 7 8 9) 1.5)"
+name = "list nth decimal index fails type error"
+input = "(nth (list 7 8 9) 1.5)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "list at fraction index fails type error"
-input = "(at (list 7 8 9) 1/2)"
+name = "list nth fraction index fails type error"
+input = "(nth (list 7 8 9) 1/2)"
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"

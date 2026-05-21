@@ -11,20 +11,20 @@ Atoms:
 - numbers matching the repository numeric literal contract: integers, decimals, and non-zero-denominator fractions;
 - booleans: `true`, `false`;
 - strings delimited by double quotes, with the supported escape set described below;
-- names bound by `let`, lambda parameters, or the initial core environment.
+- names bound by `let`, fn parameters, or the initial core environment.
 
 Compound forms:
 
 - arithmetic primitive callables from the initial core environment: `add`, `sub`, `mul`, `div`;
 - numeric comparison/equality primitive callables from the initial core environment: `eq`, `lt`, `gt`, `lte`, `gte`;
 - boolean control: `if`, `and`, `or`;
-- sequencing: `begin`;
+- sequencing: `do`;
 - lexical binding: `let`;
-- bounded iteration/state update: `while` and `set`;
-- functions: `lambda` and direct application;
-- lists: `list`, `head`, `tail`;
-- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `eval`, `head`, `tail`, `empty?`, `push`, `len`, and `at`;
-- dictionaries: `dict`, `lookup`, `has`, `put`, and `del`;
+- bounded iteration/state update: `while` and `set-var`;
+- functions: `fn` and direct application;
+- lists: `list`, `first`, `rest`;
+- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, and `nth`;
+- dictionaries: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
 - runtime type inspection: `type`.
 
 ## Runtime values
@@ -40,7 +40,7 @@ The evaluator uses internal typed values while reducing:
 - closures;
 - opaque primitive callables from the initial core environment.
 
-Successful top-level output renders public values as reader syntax where the value has reader syntax:
+Successful top-level output renders public values as reader syntax where the value contains reader syntax:
 
 - numbers as normalized numeric text;
 - booleans as `true` or `false`;
@@ -51,7 +51,7 @@ Successful top-level output renders public values as reader syntax where the val
 - closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core;
 - primitive callables as `<primitive>` because primitive capability values are opaque runtime values with no reader syntax in this core.
 
-Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, list, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and primitive-callable output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
+Reader-backed outputs are intended to round trip where the reader contains a direct value syntax. Feeding a rendered number, boolean, string, list, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and primitive-callable output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
 
 ## Evaluation model
 
@@ -60,19 +60,19 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - Lists are frozen inside-out as encoded payloads before evaluation.
 - Values are demanded lazily from encoded nodes.
 - `let` creates lexical bindings.
-- `lambda` captures the lexical environment in a closure.
+- `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`head`, `tail`, `empty?`, `push`, `len`, `at`, `lookup`, `has`, `put`, `del`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `lambda`, `let`, `begin`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `get`, `contains`, `assoc`, `dissoc`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set-var`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
-- `begin` evaluates expressions in order and returns the final expression value.
+- `do` evaluates expressions in order and returns the final expression value.
 - `(while cond body)` evaluates `cond` before each iteration and evaluates the single
-  `body` expression only while the condition is boolean `true`; use `(begin ...)` as
+  `body` expression only while the condition is boolean `true`; use `(do ...)` as
   that one body expression when sequencing is needed.
 - A false-initial or normally exhausted `while` returns `()`. Loop-side state is
-  observed through bindings updated by `set`.
-- `(set name expr)` updates the nearest existing lexical binding and returns the
+  observed through bindings updated by `set-var`.
+- `(set-var name expr)` updates the nearest existing lexical binding and returns the
   assigned value; setting an unbound name fails with `unbound_name`.
 - Arithmetic, comparison, collection, dictionary, and type-inspection primitive callables are strict for the operands they require and have exact arity.
 
@@ -112,10 +112,10 @@ Reserved unsupported-form rules are kept only where they protect a deliberate pu
 
 | Form(s) | Keep/delete | Reason |
 | --- | --- | --- |
-| `define`, `letrec` | keep | Binding recursion is intentionally absent; generic lookup/application would report the wrong failure boundary. |
-| `break`, `continue` | keep | Minimal `while` has no non-local loop-control channel, so these names must stay reserved and explicit. |
+| `define`, `letrec` | keep | Binding recursion is intentionally absent; generic get/application would report the wrong failure boundary. |
+| `break`, `continue` | keep | Minimal `while` contains no non-local loop-control channel, so these names must stay reserved and explicit. |
 | `map` | keep | Higher-order list traversal is outside the current list/code-as-data slice and should not be treated as an ordinary missing function. |
-| bare `quasiquote`, `unquote`, `splice` | keep | These forms are valid only through the quasiquote evaluator; outside that evaluator they remain unsupported syntax, not lookup misses. |
+| bare `quasiquote`, `unquote`, `splice` | keep | These forms are valid only through the quasiquote evaluator; outside that evaluator they remain unsupported syntax, not get misses. |
 
 Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
 
@@ -135,15 +135,15 @@ Implementation contract:
 - `(splice expr)` at the top-level quasiquoted expression, bare `splice`, and bare `unquote` fail with `unsupported_form`; malformed `unquote`/`splice` escape forms fail with `wrong_arity`; splicing a non-list fails with `type_error`.
 - Nested `(quasiquote ...)` is deliberately rejected with `unsupported_form` in this first slice; there is no implicit quasiquote-depth accounting yet.
 - Internally, quoted symbols use `VSYM<...>` and proper lists use `VLIST<...>` with pct-encoded item payloads. These constructors are implementation details and must not leak to successful stdout.
-- `head`, `tail`, `empty?`, `push`, `len`, `at`, and `assoc` operate on proper lists and fail loudly for invalid type or access cases.
+- `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `assoc` operate on proper lists and fail loudly for invalid type or access cases.
 
-`at` is the supported positional list lookup form:
+`nth` is the supported positional list get form:
 
 ```lisp
-(at (list 7 8 9) 1)
+(nth (list 7 8 9) 1)
 ```
 
-returns `8`. `at` accepts non-negative integer indices. Negative integer indices fail with `index_out_of_bounds`; decimal or fractional numeric indices fail with `type_error`; non-numeric indices fail with `type_error`; out-of-bounds non-negative integer indices fail with `index_out_of_bounds`; malformed arity fails with `wrong_arity`. The old `get` name is not part of this greenfield slice.
+returns `8`. `nth` accepts non-negative integer indices. Negative integer indices fail with `index_out_of_bounds`; decimal or fractional numeric indices fail with `type_error`; non-numeric indices fail with `type_error`; out-of-bounds non-negative integer indices fail with `index_out_of_bounds`; malformed arity fails with `wrong_arity`. The old `at` name is not part of this greenfield slice.
 
 `assoc` is the value-returning positional list update form:
 
@@ -153,18 +153,18 @@ returns `8`. `at` accepts non-negative integer indices. Negative integer indices
 
 returns `(1 9 3)`. It replaces the item at a zero-based integer index and returns a new list value. It does not insert, delete, or mutate an existing list object.
 
-To update a variable, explicitly rebind it with `set`:
+To update a variable, explicitly rebind it with `set-var`:
 
 ```lisp
 (let ((xs (list 1 2 3)))
-  (begin
-    (set xs (assoc xs 1 9))
+  (do
+    (set-var xs (assoc xs 1 9))
     xs))
 ```
 
-returns `(1 9 3)`. Without the `set`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(assoc (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
+returns `(1 9 3)`. Without the `set-var`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(assoc (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
 
-Reader shorthand such as `'x`, backtick, comma, and comma-at is still deferred; this core uses keyword forms only.
+Reader shorthand such as `'x`, backtick, comma, and comma-splice is still deferred; this core uses keyword forms only.
 
 ## Dictionary boundary
 
@@ -181,13 +181,13 @@ Keys may be symbols or strings only. Key equality is typed and non-coercive: sym
 Dictionary operations are explicit:
 
 ```lisp
-(has d key)
-(lookup d key default)
-(put d key value)
-(del d key)
+(contains d key)
+(get d key default)
+(assoc d key value)
+(dissoc d key)
 ```
 
-`lookup` always requires a default. A present key returns its stored value even when that value is `false` or `()`. A missing key evaluates and returns the default. `put` and `del` return new dictionary values and leave existing bindings unchanged; deleting a missing key is a no-op that returns an equivalent dictionary. Applying a dictionary as a function fails with `not_function`.
+`get` always requires a default. A present key returns its stored value even when that value is `false` or `()`. A missing key evaluates and returns the default. `assoc` and `dissoc` return new dictionary values and leave existing bindings unchanged; deleting a missing key is a no-op that returns an equivalent dictionary. Applying a dictionary as a function fails with `not_function`.
 
 ## Runtime type inspection
 
@@ -200,7 +200,7 @@ Dictionary operations are explicit:
 (type (quote hello))  ; symbol
 (type (list 1 2))     ; list
 (type (dict (x 1)))   ; dict
-(type (lambda (x) x)) ; function
+(type (fn (x) x)) ; function
 (type add)            ; builtin
 (type type)           ; builtin
 ```
@@ -210,13 +210,13 @@ Dictionary operations are explicit:
 ## Recursion and loop boundary
 
 #108 settles the first bounded iteration primitive as minimal `(while cond body)`.
-The body slot is exactly one expression; use `(begin ...)` in that slot for ordered
+The body slot is exactly one expression; use `(do ...)` in that slot for ordered
 multi-step updates. `break` and `continue` are deliberately not part of this slice.
 
 Rationale:
 
 - `let` is lexical and non-recursive: binding values are evaluated before the new binding is added to the environment.
-- `lambda` captures the lexical environment that exists at creation time; it does not gain an implicit self binding later.
+- `fn` captures the lexical environment that exists at creation time; it does not gain an implicit self binding later.
 - `letrec`, named-function recursion, `break`, `continue`, and richer loop-control forms require explicit policy before implementation.
 
 Non-terminating-looking `while` programs rely on the existing Thue++ evaluation limits
@@ -229,16 +229,16 @@ misses) and `letrec` remains a reserved unsupported form (`unsupported_form`).
 The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
 
 - `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `define`, `letrec`, `break`, `continue`, `map`, bare `unquote`, bare `splice`, nested `quasiquote`, raw internal-looking inputs, and other non-reader forms;
-- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `begin`, `and`, `or`, `let`, and `lambda` shapes;
+- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `do`, `and`, `or`, `let`, and `fn` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
-- `unbound_name`: an actual lookup miss for a bare variable or callee name;
+- `unbound_name`: an actual name-lookup miss for a bare variable or callee name;
 - `not_function`: attempting to apply a non-closure value, including lists and dictionaries;
-- `type_error`: an operand value has the wrong runtime type for the requested operation;
+- `type_error`: an operand value contains the wrong runtime type for the requested operation;
 - `division_by_zero`: division by zero, including computed zero denominators;
 - `invalid_numeric_token`: numeric-looking tokens that do not satisfy the numeric literal contract;
 - `invalid_string_escape`: backslash escapes outside the supported string escape set.
 
-Error normalization should not mask real lookup misses: an unknown variable or unknown callee remains `unbound_name`, while unsupported special-form names and malformed supported forms report their specific syntax/arity class.
+Error normalization should not mask real get misses: an unknown variable or unknown callee remains `unbound_name`, while unsupported special-form names and malformed supported forms report their specific syntax/arity class.
 
 ## String escape contract
 
