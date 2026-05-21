@@ -34,10 +34,10 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "quote array form as source data"
-input = "(quote (array 1 2))"
+name = "quote list form as source data"
+input = "(quote (list 1 2))"
 [case.expect]
-stdout = "(array 1 2)\n"
+stdout = "(list 1 2)\n"
 stderr = ""
 exit_code = 0
 
@@ -160,14 +160,6 @@ input = "(push 0 (list 1 2))"
 stdout = "(0 1 2)\n"
 stderr = ""
 exit_code = 0
-
-[[case]]
-name = "push rejects array tail"
-input = "(push 0 (array 1 2))"
-[case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
 
 [[case]]
 name = "len empty list"

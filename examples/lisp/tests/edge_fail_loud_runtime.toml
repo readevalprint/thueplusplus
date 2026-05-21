@@ -37,8 +37,8 @@ stdout = ""
 stderr_stripped = "not_function"
 
 [[case]]
-name = "calling an array fails as not function"
-input = "((array 1) 2)"
+name = "calling an list fails as not function"
+input = "((list 1) 2)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -117,7 +117,7 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "head rejects non array"
+name = "head rejects non list"
 input = "(head 1)"
 [case.expect]
 exit_code = 2
@@ -125,8 +125,8 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "rest rejects non array"
-input = "(rest 1)"
+name = "tail rejects non list"
+input = "(tail 1)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -163,3 +163,27 @@ input = "()"
 exit_code = 2
 stdout = ""
 stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "removed array constructor is unbound"
+input = "(array 1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "removed nullary array constructor is unbound"
+input = "(array)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "removed rest helper is unbound"
+input = "(rest (list 1 2))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"

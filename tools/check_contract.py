@@ -286,6 +286,10 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     for snippet in forbidden_eval_render_bridges:
         if snippet in text:
             failures.append(Failure(path, f"explicit eval must evaluate code values directly, not through render/reparse bridge: {snippet}"))
+    forbidden_array_fragments = ["VARR", "EENV<array", "PACKARRENV", "KENARR", "KARR", "VBUILTIN%3Crest%3E", "VBUILTIN<rest>"]
+    for snippet in forbidden_array_fragments:
+        if snippet in text:
+            failures.append(Failure(path, f"Lisp arrays/rest were deleted; stale implementation fragment remains: {snippet}"))
     return failures
 
 

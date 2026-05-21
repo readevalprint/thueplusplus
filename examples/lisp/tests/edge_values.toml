@@ -37,52 +37,52 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "if rejects array condition"
-input = "(if (array) 1 2)"
+name = "if rejects list condition"
+input = "(if (list) 1 2)"
 [case.expect]
 exit_code = 2
 stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "direct nested array renders"
-input = "(array 1 (array 2 3))"
+name = "direct nested list renders"
+input = "(list 1 (list 2 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 1 (array 2 3))"
+stdout_stripped = "(1 (2 3))"
 
 [[case]]
-name = "rest preserves nested array element"
-input = "(rest (array 0 (array 1 2) 3))"
+name = "tail preserves nested list element"
+input = "(tail (list 0 (list 1 2) 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array 1 2) 3)"
+stdout_stripped = "((1 2) 3)"
 
 [[case]]
-name = "array can render stored closure"
-input = "(let ((f (lambda (x) x))) (array f))"
+name = "list can render stored closure"
+input = "(let ((f (lambda (x) x))) (list f))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array <closure>)"
+stdout_stripped = "(<closure>)"
 
 [[case]]
-name = "array can render stored closure after scalar"
-input = "(let ((f (lambda (x) x))) (array 1 f))"
+name = "list can render stored closure after scalar"
+input = "(let ((f (lambda (x) x))) (list 1 f))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 1 <closure>)"
+stdout_stripped = "(1 <closure>)"
 
 [[case]]
-name = "lambda argument closure can be stored in array"
-input = "((lambda (x) (array x)) (lambda (y) y))"
+name = "lambda argument closure can be stored in list"
+input = "((lambda (x) (list x)) (lambda (y) y))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array <closure>)"
+stdout_stripped = "(<closure>)"
 
 [[case]]
 name = "higher order closure stored in let can be applied later"
@@ -125,124 +125,124 @@ stderr = ""
 stdout_stripped = "1"
 
 [[case]]
-name = "array renders nested escaped string"
-input = '(array 1 "a\"b")'
+name = "list renders nested escaped string"
+input = '(list 1 "a\"b")'
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '(array 1 "a\"b")'
+stdout_stripped = '(1 "a\"b")'
 
 [[case]]
-name = "lambda argument preserves computed array"
-input = "((lambda (x) x) (array 1 2))"
+name = "lambda argument preserves computed list"
+input = "((lambda (x) x) (list 1 2))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 1 2)"
+stdout_stripped = "(1 2)"
 
 [[case]]
-name = "array supports deeply nested computed arrays"
-input = "(array (array (array 1)))"
+name = "list supports deeply nested computed lists"
+input = "(list (list (list 1)))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array 1)))"
+stdout_stripped = "(((1)))"
 
 [[case]]
-name = "nested array can contain computed array after scalar"
-input = "(array (array 0 (array 1)))"
+name = "nested list can contain computed list after scalar"
+input = "(list (list 0 (list 1)))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array 0 (array 1)))"
+stdout_stripped = "((0 (1)))"
 
 [[case]]
-name = "nonfirst nested array can start with computed array"
-input = "(array 0 (array (array 1)))"
+name = "nonfirst nested list can start with computed list"
+input = "(list 0 (list (list 1)))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 0 (array (array 1)))"
+stdout_stripped = "(0 ((1)))"
 
 [[case]]
-name = "nonfirst nested array can contain computed array after scalar"
-input = "(array 0 (array 1 (array 2)))"
+name = "nonfirst nested list can contain computed list after scalar"
+input = "(list 0 (list 1 (list 2)))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 0 (array 1 (array 2)))"
+stdout_stripped = "(0 (1 (2)))"
 
 [[case]]
-name = "deep nested array can render boolean first"
-input = "(array (array (array true)))"
+name = "deep nested list can render boolean first"
+input = "(list (list (list true)))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array true)))"
+stdout_stripped = "(((true)))"
 
 [[case]]
-name = "deep nested array can render string first"
-input = '(array (array (array "x")))'
+name = "deep nested list can render string first"
+input = '(list (list (list "x")))'
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array \"x\")))"
+stdout_stripped = "(((\"x\")))"
 
 [[case]]
-name = "deep nested array can render closure first"
-input = "(array (array (array (lambda (x) x))))"
+name = "deep nested list can render closure first"
+input = "(list (list (list (lambda (x) x))))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array <closure>)))"
+stdout_stripped = "(((<closure>)))"
 
 [[case]]
-name = "deep nested array can render numeric second"
-input = "(array (array (array 0 1)))"
+name = "deep nested list can render numeric second"
+input = "(list (list (list 0 1)))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array 0 1)))"
+stdout_stripped = "(((0 1)))"
 
 [[case]]
-name = "deep nested array can render boolean second"
-input = "(array (array (array 0 true)))"
+name = "deep nested list can render boolean second"
+input = "(list (list (list 0 true)))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array 0 true)))"
+stdout_stripped = "(((0 true)))"
 
 [[case]]
-name = "deep nested array can render string second"
-input = '(array (array (array 0 "x")))'
+name = "deep nested list can render string second"
+input = '(list (list (list 0 "x")))'
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array 0 \"x\")))"
+stdout_stripped = "(((0 \"x\")))"
 
 [[case]]
-name = "deep nested array can render closure second"
-input = "(array (array (array 0 (lambda (x) x))))"
+name = "deep nested list can render closure second"
+input = "(list (list (list 0 (lambda (x) x))))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array 0 <closure>)))"
+stdout_stripped = "(((0 <closure>)))"
 
 [[case]]
-name = "deep nested array can render computed array second"
-input = "(array (array (array 0 (array 1))))"
+name = "deep nested list can render computed list second"
+input = "(list (list (list 0 (list 1))))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array 0 (array 1))))"
+stdout_stripped = "(((0 (1))))"
 
 [[case]]
-name = "deeper nested array can render computed array first"
-input = "(array (array (array (array 1))))"
+name = "deeper nested list can render computed list first"
+input = "(list (list (list (list 1))))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array (array (array (array 1))))"
+stdout_stripped = "((((1))))"
 
 
 [[case]]
@@ -262,12 +262,12 @@ stderr = ""
 stdout_stripped = '"a\b"'
 
 [[case]]
-name = "escaped backslash inside array renders round-trippable"
-input = '(array "a\b")'
+name = "escaped backslash inside list renders round-trippable"
+input = '(list "a\b")'
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '(array "a\b")'
+stdout_stripped = '("a\b")'
 
 [[case]]
 name = "newline escape string renders round-trippable"
@@ -310,12 +310,12 @@ stderr = ""
 stdout_stripped = '"a\fb"'
 
 [[case]]
-name = "newline escape inside array renders round-trippable"
-input = '(array "a\nb")'
+name = "newline escape inside list renders round-trippable"
+input = '(list "a\nb")'
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '(array "a\nb")'
+stdout_stripped = '("a\nb")'
 
 [[case]]
 name = "punctuation string escape is rejected by explicit string contract"

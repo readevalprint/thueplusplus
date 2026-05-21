@@ -22,7 +22,7 @@ Compound forms:
 - lexical binding: `let`;
 - bounded iteration/state update: `while` and `set`;
 - functions: `lambda` and direct application;
-- arrays: `array`, `head`, `rest`;
+- lists: `list`, `head`, `tail`;
 - code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `eval`, `head`, `tail`, `empty?`, `push`, `len`, and `at`;
 - dictionaries: `dict`, `lookup`, `has`, `put`, and `del`.
 
@@ -33,7 +33,7 @@ The evaluator uses internal typed values while reducing:
 - numbers;
 - booleans;
 - strings;
-- arrays;
+- lists;
 - symbols and proper lists for code-as-data;
 - dictionaries with symbol or string keys;
 - closures;
@@ -44,13 +44,13 @@ Successful top-level output renders public values as reader syntax where the val
 - numbers as normalized numeric text;
 - booleans as `true` or `false`;
 - strings as quoted string syntax, preserving supported normal escapes;
-- arrays recursively as `(array ...)`, for example `(array 1 (array 2 3))`;
-- quoted symbols as their source names and proper lists as ordinary parenthesized source lists, for example `x`, `(+ 1 x)`, or `(1 2)`;
+- proper lists as ordinary parenthesized source-list syntax, for example `()`, `(1 2)`, or `(1 (2 3))`;
+- quoted symbols as their source names, for example `x`;
 - dictionaries as pair-shaped `(dict (key value) ...)` syntax, for example `(dict (x 1) ("external key" 2))`;
 - closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core;
 - builtin callables as `<builtin>` because builtin capability values are opaque runtime values with no reader syntax in this core.
 
-Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, array, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and builtin output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
+Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, list, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and builtin output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
 
 ## Evaluation model
 
@@ -61,7 +61,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `lambda` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and builtin callable values are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named builtin callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`) and strict collection helpers (`head`, `tail`, `empty?`, `push`, `len`, `at`, `rest`, `lookup`, `has`, `put`, `del`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `lambda`, `let`, `begin`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `array`, `dict`) remain evaluator forms, not callable builtin values.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named builtin callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`) and strict collection helpers (`head`, `tail`, `empty?`, `push`, `len`, `at`, `lookup`, `has`, `put`, `del`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `lambda`, `let`, `begin`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable builtin values.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -92,7 +92,7 @@ Contract:
 - The dictionary is converted to the entire environment for the evaluated code. There is no ambient caller environment and no hidden core-environment fallback.
 - Code values are quoted symbols and proper lists. Symbols are looked up in the explicit scope. Lists are evaluated directly as code values: the first item resolves to a callable, remaining items are recursively evaluated as code-value arguments, and the callable is applied. This path does not render lists to public source text or reparse them.
 - Scalars are self-evaluating under `eval`: numbers, booleans, and strings return themselves. Strings are data, not source text; `(eval "(add 1 2)" (dict (add add)))` returns the string rather than parsing or executing it.
-- Arrays, dictionaries, closures, and builtin values are not code and fail with `type_error` when used as the first evaluated value to `eval`.
+- Dictionaries, closures, and builtin values are not code and fail with `type_error` when used as the first evaluated value to `eval`.
 - `(eval)`, `(eval expr)`, and extra-argument forms fail with `wrong_arity`.
 
 ## Unsupported forms and fail-loud policy
@@ -126,7 +126,7 @@ Implementation contract:
 
 - `(quote x)` returns a symbol value rendered as `x`.
 - `(quote (...))` returns a proper list value rendered as ordinary source-list syntax, for example `(+ 1 x)`.
-- `(quote (array 1 2))` is source data and renders as `(array 1 2)` without evaluating the array constructor.
+- `(quote (list 1 2))` is source data and renders as `(list 1 2)` without evaluating the list constructor.
 - `(list ...)` evaluates its operands and constructs a proper list value rendered as ordinary parenthesized list syntax.
 - `(quasiquote expr)` returns code-as-data like `quote`, except recognized escape forms are evaluated inside the quasiquoted payload.
 - `(unquote expr)` is valid only inside `quasiquote`; it evaluates `expr` and inserts the resulting value as a single item/value.
@@ -214,7 +214,7 @@ The evaluator protects quoted strings before list framing. The supported normal 
 - `\b` for backspace;
 - `\f` for form feed.
 
-Rendered strings use the same reader syntax. Escape-backed values round trip through top-level output, lazy branches, and arrays.
+Rendered strings use the same reader syntax. Escape-backed values round trip through top-level output, lazy branches, and lists.
 
 Other backslash escapes are intentionally unsupported. They fail loudly with `invalid_string_escape` rather than silently becoming host-language escapes or leaking internal state.
 

@@ -203,10 +203,10 @@ stderr = ""
 stdout_stripped = "name"
 
 [[case]]
-name = "set can return array value"
-input = "(let ((x (array))) (set x (array 1)))"
+name = "set can return list value"
+input = "(let ((x (list))) (set x (list 1)))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 1)"
+stdout_stripped = "(1)"
