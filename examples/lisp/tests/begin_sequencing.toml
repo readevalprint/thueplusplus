@@ -4,7 +4,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "do single expression returns value"
-input = "(do (add 1 2))"
+input = '(do (add 1 2))'
 
 [case.expect]
 exit_code = 0
@@ -13,7 +13,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "do returns final expression"
-input = "(do (add 1 2) (add 3 4) 9)"
+input = '(do (add 1 2) (add 3 4) 9)'
 
 [case.expect]
 exit_code = 0
@@ -22,7 +22,7 @@ stdout_stripped = "9"
 
 [[case]]
 name = "do evaluates earlier expressions before final"
-input = "(do (div 1 0) 9)"
+input = '(do (div 1 0) 9)'
 
 [case.expect]
 exit_code = 2
@@ -31,7 +31,7 @@ stdout = ""
 
 [[case]]
 name = "do preserves lexical environment across sequence"
-input = "(let ((x 4)) (do (add x 1) (add x 2)))"
+input = '(let ((x 4)) (do (add x 1) (add x 2)))'
 
 [case.expect]
 exit_code = 0
@@ -40,7 +40,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "do selected by lazy if"
-input = "(if true (do (add 1 2) (add 3 4)) (div 1 0))"
+input = '(if true (do (add 1 2) (add 3 4)) (div 1 0))'
 
 [case.expect]
 exit_code = 0
@@ -49,7 +49,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "empty do fails wrong arity"
-input = "(do)"
+input = '(do)'
 
 [case.expect]
 exit_code = 2
@@ -58,7 +58,7 @@ stdout = ""
 
 [[case]]
 name = "empty do in lexical environment fails wrong arity"
-input = "(let ((x 1)) (do))"
+input = '(let ((x 1)) (do))'
 
 [case.expect]
 exit_code = 2
@@ -67,7 +67,7 @@ stdout = ""
 
 [[case]]
 name = "else keyword remains unsupported in if"
-input = "(if true 1 else 2)"
+input = '(if true 1 else 2)'
 
 [case.expect]
 exit_code = 2

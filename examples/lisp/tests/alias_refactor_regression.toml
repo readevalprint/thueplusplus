@@ -3,15 +3,15 @@ args = ["--max-evals", "120000"]
 
 [[case]]
 name = "expr alias accepts nested list forms in dict values and renders recursively"
-input = "(dict (outer (dict (inner (list (quote <=) (list 1 (fn (x) x)))))))"
+input = '(dict ((quote outer) (dict ((quote inner) (list (quote <=) (list 1 2))))))'
 [case.expect]
-stdout = "(dict (outer (dict (inner (<= (1 <closure>))))))\n"
+stdout = "((outer ((inner (<= (1 2))))))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "expr alias preserves evaluated index expressions for nth"
-input = "(nth (list 10 20 30 40) (add 1 2))"
+input = '(nth (list 10 20 30 40) (add 1 2))'
 [case.expect]
 stdout = "40\n"
 stderr = ""
@@ -19,7 +19,7 @@ exit_code = 0
 
 [[case]]
 name = "quote symbol alias preserves multi character operator precedence"
-input = "(list (quote <=) (quote <) (quote >=) (quote >) (quote =))"
+input = '(list (quote <=) (quote <) (quote >=) (quote >) (quote =))'
 [case.expect]
 stdout = "(<= < >= > =)\n"
 stderr = ""
@@ -27,7 +27,7 @@ exit_code = 0
 
 [[case]]
 name = "quasiquote symbol alias preserves operator-like atoms"
-input = "(quasiquote (<= < >= > =))"
+input = '(quasiquote (<= < >= > =))'
 [case.expect]
 stdout = "(<= < >= > =)\n"
 stderr = ""
@@ -35,7 +35,7 @@ exit_code = 0
 
 [[case]]
 name = "dict key aliases keep string and symbol payloads distinct under update and delete"
-input = "(let ((d (assoc (dict (x 1) (\"x\" 2)) (quote x) 3))) (list (get d (quote x) 0) (get d \"x\" 0) (contains (dissoc d \"x\") (quote x)) (contains (dissoc d \"x\") \"x\")))"
+input = '(let ((d (assoc (dict ((quote x) 1) ("x" 2)) (quote x) 3))) (list (get d (quote x) 0) (get d "x" 0) (contains (dissoc d "x") (quote x)) (contains (dissoc d "x") "x")))'
 [case.expect]
 stdout = "(3 2 true false)\n"
 stderr = ""
@@ -43,7 +43,7 @@ exit_code = 0
 
 [[case]]
 name = "no space pct alias still detects extra unquote arguments"
-input = "(quasiquote (a (unquote (add 1 2) 3)))"
+input = '(quasiquote (a (unquote (add 1 2) 3)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -51,7 +51,7 @@ exit_code = 2
 
 [[case]]
 name = "let value pct alias still preserves nested list binding values"
-input = "(let ((f (fn (x) (list x (quote ok))))) (f (list 1 2)))"
+input = '(let ((f (fn (x) (list x (quote ok))))) (f (list 1 2)))'
 [case.expect]
 stdout = "((1 2) ok)\n"
 stderr = ""

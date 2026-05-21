@@ -22,20 +22,18 @@ VNUM <- VNUM<$NUM>
 VBOOL <- VBOOL<(?:true|false)>
 VSTR <- VSTR<$PCT>
 VLIST <- VLIST<$ITEMS>
-VDICT <- VDICT<$DICTENTRIES>
 VSYM <- VSYM<$PCT>
 VCLOS <- VCLOS<[^>]*>
 VPRIM <- VPRIM<$NAME>
-NODE <- (?:$NUM|true|false|$VSTR|$VLIST|$VDICT|$VSYM|L<$PCT>)
-VAL <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VDICT|$VSYM|$VCLOS|$VPRIM)
-NONNUM <- (?:$VBOOL|$VSTR|$VLIST|$VDICT|$VSYM|$VCLOS|$VPRIM)
-NONBOOL <- (?:$VNUM|$VSTR|$VLIST|$VDICT|$VSYM|$VCLOS|$VPRIM)
-NONDICT <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
-NONKEY <- (?:$VNUM|$VBOOL|$VLIST|$VDICT|$VCLOS|$VPRIM)
+NODE <- (?:$NUM|true|false|$VSTR|$VLIST|$VSYM|L<$PCT>)
+VAL <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
+NONNUM <- (?:$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
+NONBOOL <- (?:$VNUM|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
+NONKEY <- (?:$VNUM|$VBOOL|$VLIST|$VCLOS|$VPRIM)
 EXPR <- $NAME|$NODE
 
 ^\([^)]*$ ::= ERR<malformed_list>
-^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|$NUM|true|false|$NAME)$ ::= C<{{input}}>
+^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM)$ ::= C<{{input}}>
 # Phase A: protect quoted strings before paren framing.
 ^C<(?<pre>[\s\S]*)\\@(?<post>[\s\S]*)>$ ::= ERR<invalid_string_escape>
 ^C<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)>$ ::= C<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}>
@@ -55,7 +53,17 @@ UNESC<(?<s>$PCT)> ::= {{s}}
 ^C<L<(?<payload>$PCT)>>$ ::= CBOOT<{{payload|pctdec}}|KDONE>
 ^C<(?<atom>$NUM|true|false|VSTR<$PCT>)>$ ::= ARG<{{atom}}|KDONE>
 ^C<(?<name>$NAME)>$ ::= CBOOT<{{name}}|KDONE>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;|{{k}}>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;set-nth=VPRIM%3Cset-nth%3E;|{{k}}>
+
+# Parse source strings into values without evaluation. Mirrors C framing but exits through QUOTE.
+^P<(?<pre>[\s\S]*)\@(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
+^P<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}> KPARSE<{{k}}>
+
+^P<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}L<{{inner|pctenc}}>{{post}}> KPARSE<{{k}}>
+^P<L<(?<payload>$PCT)>> KPARSE<(?<k>.*)>$ ::= QUOTE<L<{{payload}}>|{{k}}>
+^P<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
+^P<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
+
 
 # Demand a node: literals return; encoded lists decode only when demanded.
 ^ARG<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
@@ -91,13 +99,14 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^EENV<list\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
-^EENV<dict\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<>|{{k}}>
+^EENV<dict\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
 ^EENV<do\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<eval\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<quote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<quasiquote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:set-var|fn|if|and|or|let|while)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:add|sub|mul|div|eq|lt|lte|gt|gte|first|rest|is-empty|cons|count|nth|assoc|contains|dissoc|type)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<(?<prim>add|sub|mul|div|eq|lt|lte|gt|gte|first|rest|is-empty|cons|count|nth|get|contains|assoc|dissoc|type|parse|unparse|set-nth)\|(?<env>[^|]*)\|KDONE>$ ::= LOOK<{{prim}}|{{env}}|KDONE>
+
 ^EENV<(?:break|continue|map|unquote|splice|define|letrec)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<L<fn%20L%3C%3E%20(?<body>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<fn L<> {{body|pctdec}}|{{env}}|KCALLNOARGS {{k}}>
@@ -222,12 +231,16 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 # public render/reparse fallback.
 ^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
 ^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
-^RET<VDICT<(?<entries>$DICTENTRIES)>\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= D2ENV<{{entries}}|{{code}}|{{k}}|>
-^RET<(?<bad>$NONDICT)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
-^D2ENV<\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= CODEVAL<{{code}}|{{acc}}|{{k}}>
-^D2ENV<S(?<key>$NAME)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= D2ENV<{{rest}}|{{code}}|{{k}}|{{acc}}{{key}}={{val}};>
-^D2ENV<S(?<key>$PCT)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
-^D2ENV<T(?<key>$PCT)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
+^RET<VLIST<(?<items>$ITEMS)>\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ALIST2ENV<{{items}}|{{code}}|{{k}}|>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
+^ALIST2ENV<\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= CODEVAL<{{code}}|{{acc}}|{{k}}>
+^ALIST2ENV<(?<pair>[^;]*);(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ALIST2ENVPAIR<{{pair|pctdec}}|{{rest}}|{{code}}|{{k}}|{{acc}}>
+^ALIST2ENVPAIR<VLIST<(?<key>[^;]*);(?<val>[^;]*);>\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ALIST2ENVKEY<{{key|pctdec}}|{{val}}|{{rest}}|{{code}}|{{k}}|{{acc}}>
+^ALIST2ENVPAIR<(?<bad>[^|]*)\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
+^ALIST2ENVKEY<VSYM<(?<key>$NAME)>\|(?<val>[^|]*)\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ALIST2ENV<{{rest}}|{{code}}|{{k}}|{{acc}}{{key}}={{val}};>
+^ALIST2ENVKEY<VSYM<(?<bad>$PCT)>\|(?<val>[^|]*)\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
+^ALIST2ENVKEY<VSTR<(?<key>$PCT)>\|(?<val>[^|]*)\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
+^ALIST2ENVKEY<(?<bad>$VAL)\|(?<val>[^|]*)\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
 ^CODEVAL<VNUM<(?<n>$NUM)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
 ^CODEVAL<VBOOL<(?<b>true|false)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
 ^CODEVAL<VSTR<(?<s>$PCT)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
@@ -239,47 +252,64 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^CODEARGS<\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= APPLY<{{fn}}|{{acc}}|{{k}}>
 ^CODEARGS<(?<arg>[^;]*);(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= CODEVAL<{{arg|pctdec}}|{{scopeenv}}|KCODEARG<{{rest}}|{{scopeenv}}|{{acc}}|{{fn}}> {{k}}>
 ^RET<(?<v>$VAL)\|KCODEARG<(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<fn>$VAL)> (?<k>.*)>$ ::= CODEARGS<{{rest}}|{{scopeenv}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}>
-^CODEVAL<(?<bad>VDICT<$DICTENTRIES>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
+^CODEVAL<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
 ^EENV<eval(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
-# Explicit dictionary values for #110. VDICT stores typed keys (`S` symbol, `T`
-# string) and pct-encoded values. Keys are compared by typed identity; symbol x
-# and string "x" intentionally do not collide.
+# Association lists. `dict` is an evaluated helper that returns a normal list
+# of two-item key/value lists. Keys evaluate to symbols or strings; values evaluate normally.
 PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
-^EENV<dict (?<entries>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKDICTENV<{{entries}}|{{env}}|{{k}}|>
-^PACKDICTENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$DICTENTRIES)>$ ::= RET<VDICT<{{acc}}>|{{k}}>
-^PACKDICTENV<L<(?<entry>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$DICTENTRIES)>$ ::= DICTENTRY<{{entry|pctdec}}|{{rest}}|{{env}}|{{k}}|{{acc}}>
-^PACKDICTENV<(?<bad>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$DICTENTRIES)>$ ::= ERR<type_error>
-^DICTENTRY<(?<sym>$NAME) (?<val>$EXPR)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$DICTENTRIES)>$ ::= ARGENV<{{val}}|{{env}}|KDICTADDNEW<S{{sym|pctenc}}|{{rest}}|{{env}}|{{acc}}> {{k}}>
-^DICTENTRY<VSTR<(?<s>$PCT)> (?<val>$EXPR)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$DICTENTRIES)>$ ::= ARGENV<{{val}}|{{env}}|KDICTADDNEW<T{{s}}|{{rest}}|{{env}}|{{acc}}> {{k}}>
-^DICTENTRY<(?<badkey>$NUM|true|false|VLIST<$ITEMS>|VDICT<$DICTENTRIES>|L<$PCT>|$OPSYM)(?: (?<rest>[^|]*))?\|(?<more>.*)>$ ::= ERR<type_error>
-^DICTENTRY<(?<anything>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$DICTENTRIES)>$ ::= ERR<wrong_arity>
-^RET<(?<v>$VAL)\|KDICTADDNEW<(?<key>$DICTKEY)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$DICTENTRIES)> (?<k>.*)>$ ::= DADDNEW<{{key}}|{{v|pctenc}}|{{acc}}|{{acc}}|{{rest}}|{{env}}|{{k}}>
-^DADDNEW<(?<key>$DICTKEY)\|(?<val>[^|]*)\|\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKDICTENV<{{rest}}|{{env}}|{{k}}|{{orig}}{{key}}={{val}};>
-^DADDNEW<(?<key>$DICTKEY)\|(?<val>[^|]*)\|(?<got>$DICTKEY)=(?<old>[^;]*);(?<tail>[^|]*)\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= DADDNEWEQ<PCTEQ<{{key}},{{got}}>|{{key}}|{{val}}|{{tail}}|{{orig}}|{{rest}}|{{env}}|{{k}}>
-^DADDNEWEQ<1\|(?<key>$DICTKEY)\|(?<val>[^|]*)\|(?<tail>[^|]*)\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<duplicate_key>
-^DADDNEWEQ<0\|(?<key>$DICTKEY)\|(?<val>[^|]*)\|(?<tail>[^|]*)\|(?<orig>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= DADDNEW<{{key}}|{{val}}|{{tail}}|{{orig}}|{{rest}}|{{env}}|{{k}}>
+^EENV<dict (?<entries>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKDICTENV<{{entries}}|{{env}}|{{k}}||>
+^PACKDICTENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^PACKDICTENV<L<(?<entry>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)>$ ::= DICTENTRY<{{entry|pctdec}}|{{rest}}|{{env}}|{{k}}|{{acc}}|{{keys}}>
+^PACKDICTENV<(?<bad>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)>$ ::= ERR<type_error>
+^DICTENTRY<(?<key>$EXPR) (?<val>$EXPR)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)>$ ::= ARGENV<{{key}}|{{env}}|KDICTKEY<{{val|pctenc}}|{{rest}}|{{env}}|{{acc}}|{{keys}}> {{k}}>
+^DICTENTRY<(?<anything>[^|]*)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)>$ ::= ERR<wrong_arity>
+^RET<VSYM<(?<s>$PCT)>\|KDICTKEY<(?<val>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)> (?<k>.*)>$ ::= ARGENV<{{val|pctdec}}|{{env}}|KDICTVAL<VSYM<{{s}}>|S{{s}}|{{rest}}|{{env}}|{{acc}}|{{keys}}> {{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KDICTKEY<(?<val>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)> (?<k>.*)>$ ::= ARGENV<{{val|pctdec}}|{{env}}|KDICTVAL<VSTR<{{s}}>|T{{s}}|{{rest}}|{{env}}|{{acc}}|{{keys}}> {{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KDICTKEY<(?<val>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<val>$VAL)\|KDICTVAL<(?<keyval>$VAL)\|(?<key>$DICTKEY)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)\|(?<keys>$DICTENTRIES)> (?<k>.*)>$ ::= BUILDDICTPAIR<VLIST<{{keyval|pctenc}};{{val|pctenc}};>|{{key}}|{{keys}}|{{rest}}|{{env}}|{{k}}|{{acc}}>
+^BUILDDICTPAIR<(?<pair>$VLIST)\|(?<key>$DICTKEY)\|(?<keys>$DICTENTRIES)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= ALADDNEW<{{key}}|{{pair|pctenc}}|{{keys}}|{{keys}}|{{rest}}|{{env}}|{{k}}|{{acc}}>
+^ALADDNEW<(?<key>$DICTKEY)\|(?<pair>$PCT)\|\|(?<orig>$DICTENTRIES)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= PACKDICTENV<{{rest}}|{{env}}|{{k}}|{{acc}}{{pair}};|{{orig}}{{key}}=x;>
+^ALADDNEW<(?<key>$DICTKEY)\|(?<pair>$PCT)\|(?<got>$DICTKEY)=(?<old>[^;]*);(?<tail>$DICTENTRIES)\|(?<orig>$DICTENTRIES)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= ALADDNEWEQ<PCTEQ<{{key}},{{got}}>|{{key}}|{{pair}}|{{tail}}|{{orig}}|{{rest}}|{{env}}|{{k}}|{{acc}}>
+^ALADDNEWEQ<1\|(?<key>$DICTKEY)\|(?<pair>$PCT)\|(?<tail>$DICTENTRIES)\|(?<orig>$DICTENTRIES)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= ERR<duplicate_key>
+^ALADDNEWEQ<0\|(?<key>$DICTKEY)\|(?<pair>$PCT)\|(?<tail>$DICTENTRIES)\|(?<orig>$DICTENTRIES)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= ALADDNEW<{{key}}|{{pair}}|{{tail}}|{{orig}}|{{rest}}|{{env}}|{{k}}|{{acc}}>
 
-^RET<VSYM<(?<s>$PCT)>\|KHASKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DHAS<S{{s}}|{{entries}}|{{k}}>
-^RET<VSTR<(?<s>$PCT)>\|KHASKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DHAS<T{{s}}|{{entries}}|{{k}}>
-^RET<(?<bad>$NONKEY)\|KHASKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^DHAS<(?<want>$DICTKEY)\|\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
-^DHAS<(?<want>$DICTKEY)\|(?<got>$DICTKEY)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<k>.*)>$ ::= DHASEQ<PCTEQ<{{want}},{{got}}>|{{want}}|{{rest}}|{{k}}>
-^DHASEQ<1\|(?<want>$DICTKEY)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
-^DHASEQ<0\|(?<want>$DICTKEY)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= DHAS<{{want}}|{{rest}}|{{k}}>
-
-^DPUT<(?<key>$DICTKEY)\|(?<val>[^|]*)\|\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}{{key}}={{val}};>|{{k}}>
-^DPUT<(?<key>$DICTKEY)\|(?<val>[^|]*)\|(?<got>$DICTKEY)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DPUTEQ<PCTEQ<{{key}},{{got}}>|{{key}}|{{val}}|{{got}}|{{old}}|{{rest}}|{{acc}}|{{k}}>
-^DPUTEQ<1\|(?<key>$DICTKEY)\|(?<val>[^|]*)\|(?<got>$DICTKEY)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}{{got}}={{val}};{{rest}}>|{{k}}>
-^DPUTEQ<0\|(?<key>$DICTKEY)\|(?<val>[^|]*)\|(?<got>$DICTKEY)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DPUT<{{key}}|{{val}}|{{rest}}|{{acc}}{{got}}={{old}};|{{k}}>
-
-^RET<VSYM<(?<s>$PCT)>\|KDELKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DDEL<S{{s}}|{{entries}}||{{k}}>
-^RET<VSTR<(?<s>$PCT)>\|KDELKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= DDEL<T{{s}}|{{entries}}||{{k}}>
-^RET<(?<bad>$NONKEY)\|KDELKEY<(?<entries>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^DDEL<(?<key>$DICTKEY)\|\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}>|{{k}}>
-^DDEL<(?<key>$DICTKEY)\|(?<got>$DICTKEY)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DDELEQ<PCTEQ<{{key}},{{got}}>|{{key}}|{{got}}|{{old}}|{{rest}}|{{acc}}|{{k}}>
-^DDELEQ<1\|(?<key>$DICTKEY)\|(?<got>$DICTKEY)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<{{acc}}{{rest}}>|{{k}}>
-^DDELEQ<0\|(?<key>$DICTKEY)\|(?<got>$DICTKEY)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<acc>[^|]*)\|(?<k>.*)>$ ::= DDEL<{{key}}|{{rest}}|{{acc}}{{got}}={{old}};|{{k}}>
+# Alist key helpers and map operations.
+^RET<VSYM<(?<s>$PCT)>\|KALISTKEY<(?<op>[A-Z]+)\|(?<items>[^\^>]*)\^(?<payload>[^>]*)> (?<k>.*)>$ ::= ALIST{{op}}<S{{s}}|{{items}}|{{payload}}|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KALISTKEY<(?<op>[A-Z]+)\|(?<items>[^\^>]*)\^(?<payload>[^>]*)> (?<k>.*)>$ ::= ALIST{{op}}<T{{s}}|{{items}}|{{payload}}|{{k}}>
+^RET<(?<bad>$NONKEY)\|KALISTKEY<(?<op>[A-Z]+)\|(?<items>[^\^>]*)\^(?<payload>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^ALISTPAIR<(?<item>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|(?<next>[A-Z]+)>$ ::= ALISTPAIR2<{{item|pctdec}}|{{want}}|{{rest}}|{{payload}}|{{k}}|{{next}}>
+^ALISTPAIR2<VLIST<(?<key>[^;]*);(?<val>[^;]*);>\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|(?<next>[A-Z]+)>$ ::= ALISTPAIRKEY<{{key|pctdec}}|{{val}}|{{want}}|{{rest}}|{{payload}}|{{k}}|{{next}}>
+^ALISTPAIR2<(?<bad>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|(?<next>[A-Z]+)>$ ::= ERR<type_error>
+^ALISTPAIRKEY<VSYM<(?<s>$PCT)>\|(?<val>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|(?<next>[A-Z]+)>$ ::= ALISTPAIRKEY2<PCTEQ<S{{s}},{{want}}>|{{val}}|{{want}}|{{rest}}|{{payload}}|{{k}}|{{next}}>
+^ALISTPAIRKEY<VSTR<(?<s>$PCT)>\|(?<val>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|(?<next>[A-Z]+)>$ ::= ALISTPAIRKEY2<PCTEQ<T{{s}},{{want}}>|{{val}}|{{want}}|{{rest}}|{{payload}}|{{k}}|{{next}}>
+^ALISTPAIRKEY<(?<bad>$VAL)\|(?<val>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|(?<next>[A-Z]+)>$ ::= ERR<type_error>
+^ALISTPAIRKEY2<1\|(?<val>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|GET>$ ::= RET<{{val|pctdec}}|{{k}}>
+^ALISTPAIRKEY2<0\|(?<val>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|GET>$ ::= ALISTGET<{{want}}|{{rest}}|{{payload}}|{{k}}>
+^ALISTGET<(?<want>$DICTKEY)\|\|(?<default>[^|]*)\|(?<k>.*)>$ ::= RET<{{default|pctdec}}|{{k}}>
+^ALISTGET<(?<want>$DICTKEY)\|(?<item>[^;]*);(?<rest>$ITEMS)\|(?<default>[^|]*)\|(?<k>.*)>$ ::= ALISTPAIR<{{item}}|{{want}}|{{rest}}|{{default}}|{{k}}|GET>
+^ALISTPAIRKEY2<1\|(?<val>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|HAS>$ ::= RET<VBOOL<true>|{{k}}>
+^ALISTPAIRKEY2<0\|(?<val>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)\|HAS>$ ::= ALISTHAS<{{want}}|{{rest}}|{{payload}}|{{k}}>
+^ALISTHAS<(?<want>$DICTKEY)\|\|(?<payload>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+^ALISTHAS<(?<want>$DICTKEY)\|(?<item>[^;]*);(?<rest>$ITEMS)\|(?<payload>[^|]*)\|(?<k>.*)>$ ::= ALISTPAIR<{{item}}|{{want}}|{{rest}}|{{payload}}|{{k}}|HAS>
+^ALISTPUT<(?<want>$DICTKEY)\|\|(?<payload>[^\^]*)\^(?<orig>$ITEMS)\^(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{payload}};{{orig}}>|{{k}}>
+^ALISTPUT<(?<want>$DICTKEY)\|(?<item>[^;]*);(?<rest>$ITEMS)\|(?<payload>[^\^]*)\^(?<orig>$ITEMS)\^(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUTPAIR<{{item|pctdec}}|{{item}}|{{want}}|{{rest}}|{{payload}}|{{orig}}|{{acc}}|{{k}}>
+^ALISTPUTPAIR<VLIST<(?<key>[^;]*);(?<oldval>[^;]*);>\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<newpair>$PCT)\|(?<orig>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUTKEY<{{key|pctdec}}|{{rawitem}}|{{want}}|{{rest}}|{{newpair}}|{{orig}}|{{acc}}|{{k}}>
+^ALISTPUTPAIR<(?<bad>[^|]*)\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<newpair>$PCT)\|(?<orig>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^ALISTPUTKEY<VSYM<(?<s>$PCT)>\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<newpair>$PCT)\|(?<orig>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUTEQ<PCTEQ<S{{s}},{{want}}>|{{rawitem}}|{{want}}|{{rest}}|{{newpair}}|{{orig}}|{{acc}}|{{k}}>
+^ALISTPUTKEY<VSTR<(?<s>$PCT)>\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<newpair>$PCT)\|(?<orig>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUTEQ<PCTEQ<T{{s}},{{want}}>|{{rawitem}}|{{want}}|{{rest}}|{{newpair}}|{{orig}}|{{acc}}|{{k}}>
+^ALISTPUTKEY<(?<bad>$VAL)\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<newpair>$PCT)\|(?<orig>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^ALISTPUTEQ<1\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<newpair>$PCT)\|(?<orig>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{acc}}{{newpair}};{{rest}}>|{{k}}>
+^ALISTPUTEQ<0\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<newpair>$PCT)\|(?<orig>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUT<{{want}}|{{rest}}|{{newpair}}^{{orig}}^{{acc}}{{rawitem}};|{{k}}>
+^ALISTDEL<(?<want>$DICTKEY)\|\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^ALISTDEL<(?<want>$DICTKEY)\|(?<item>[^;]*);(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTDELPAIR<{{item|pctdec}}|{{item}}|{{want}}|{{rest}}|{{acc}}|{{k}}>
+^ALISTDELPAIR<VLIST<(?<key>[^;]*);(?<val>[^;]*);>\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTDELKEY<{{key|pctdec}}|{{rawitem}}|{{want}}|{{rest}}|{{acc}}|{{k}}>
+^ALISTDELPAIR<(?<bad>[^|]*)\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^ALISTDELKEY<VSYM<(?<s>$PCT)>\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTDELEQ<PCTEQ<S{{s}},{{want}}>|{{rawitem}}|{{want}}|{{rest}}|{{acc}}|{{k}}>
+^ALISTDELKEY<VSTR<(?<s>$PCT)>\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTDELEQ<PCTEQ<T{{s}},{{want}}>|{{rawitem}}|{{want}}|{{rest}}|{{acc}}|{{k}}>
+^ALISTDELKEY<(?<bad>$VAL)\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^ALISTDELEQ<1\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTDEL<{{want}}|{{rest}}|{{acc}}|{{k}}>
+^ALISTDELEQ<0\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTDEL<{{want}}|{{rest}}|{{acc}}{{rawitem}};|{{k}}>
 
 ^RET<VLIST<(?<items>$ITEMS)>\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= RET<VLIST<{{item|pctenc}};{{items}}>|{{k}}>
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
@@ -326,12 +356,19 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<gt>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGT<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 ^APPLY<VPRIM<gte>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGE<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 
+^APPLY<VPRIM<parse>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<parse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARSE<{{a|pctdec}}|{{k}}>
+^BPARSE<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= P<{{s|pctdec}}> KPARSE<{{k}}>
+^BPARSE<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
+^APPLY<VPRIM<unparse>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<unparse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= RENDER<{{a|pctdec}}|KUNPARSE<{{k}}>>
+^RRET<(?<frag>$PCT)\|KUNPARSE<(?<k>.*)>>$ ::= RET<VSTR<{{frag}}>|{{k}}>
 ^APPLY<VPRIM<type>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>first|rest|is-empty|count|type)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>assoc|get)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>assoc|get)>\|(?<a>[^;]*);(?<b>[^;]*);(?<c>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>assoc|get|set-nth)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>assoc|get|set-nth)>\|(?<a>[^;]*);(?<b>[^;]*);(?<c>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
 ^APPLY<VPRIM<rest>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTAIL {{k}}>
 ^APPLY<VPRIM<is-empty>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KEMPTY {{k}}>
@@ -343,32 +380,29 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NEGINT)>\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
 ^BAT<(?<lst>$VAL)\|VNUM<(?<bad>$NONINTNUM)>\|(?<k>.*)>$ ::= ERR<type_error>
 ^BAT<(?<lst>$VAL)\|(?<bad>$NONNUM)\|(?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<assoc>\|(?<lst>[^;]*);(?<idx>[^;]*);(?<val>[^;]*);\|(?<k>.*)>$ ::= BASSOC<{{lst|pctdec}}|{{idx|pctdec}}|{{val|pctdec}}|{{k}}>
-^BASSOC<VLIST<(?<items>$ITEMS)>\|VNUM<(?<idx>$NAT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<VLIST<{{items}}>|KASSOC2<{{idx}}|{{val|pctenc}}> {{k}}>
-^BASSOC<VLIST<(?<items>$ITEMS)>\|VNUM<(?<idx>$NEGINT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
-^BASSOC<VLIST<(?<items>$ITEMS)>\|VNUM<(?<bad>$NONINTNUM)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^BASSOC<VLIST<(?<items>$ITEMS)>\|(?<bad>$NONNUM)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^BASSOC<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KPUTKEYV<{{entries}}^{{val|pctenc}}> {{k}}>
-^BASSOC<(?<bad>$VNUM|$VBOOL|$VSTR|$VSYM|$VCLOS|$VPRIM)\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<contains>\|(?<dict>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BHAS<{{dict|pctdec}}|{{key|pctdec}}|{{k}}>
-^BHAS<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KHASKEY<{{entries}}> {{k}}>
-^BHAS<(?<bad>$NONDICT)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<get>\|(?<dict>[^;]*);(?<key>[^;]*);(?<default>[^;]*);\|(?<k>.*)>$ ::= BLOOKUP<{{dict|pctdec}}|{{key|pctdec}}|{{default|pctdec}}|{{k}}>
-^BLOOKUP<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KLOOKUPKEYV<{{entries}}^{{default|pctenc}}> {{k}}>
-^BLOOKUP<(?<bad>$NONDICT)\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^RET<VSYM<(?<s>$PCT)>\|KLOOKUPKEYV<(?<entries>[^\^]*)\^(?<default>[^>]*)> (?<k>.*)>$ ::= DLOOKV<S{{s}}|{{entries}}|{{default}}|{{k}}>
-^RET<VSTR<(?<s>$PCT)>\|KLOOKUPKEYV<(?<entries>[^\^]*)\^(?<default>[^>]*)> (?<k>.*)>$ ::= DLOOKV<T{{s}}|{{entries}}|{{default}}|{{k}}>
-^RET<(?<bad>$NONKEY)\|KLOOKUPKEYV<(?<entries>[^\^]*)\^(?<default>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^DLOOKV<(?<want>$DICTKEY)\|\|(?<default>[^|]*)\|(?<k>.*)>$ ::= RET<{{default|pctdec}}|{{k}}>
-^DLOOKV<(?<want>$DICTKEY)\|(?<got>$DICTKEY)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<default>[^|]*)\|(?<k>.*)>$ ::= DLOOKVEQ<PCTEQ<{{want}},{{got}}>|{{want}}|{{val}}|{{rest}}|{{default}}|{{k}}>
-^DLOOKVEQ<1\|(?<want>$DICTKEY)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<default>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
-^DLOOKVEQ<0\|(?<want>$DICTKEY)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<default>[^|]*)\|(?<k>.*)>$ ::= DLOOKV<{{want}}|{{rest}}|{{default}}|{{k}}>
-^RET<VSYM<(?<s>$PCT)>\|KPUTKEYV<(?<entries>[^\^]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= DPUT<S{{s}}|{{val}}|{{entries}}||{{k}}>
-^RET<VSTR<(?<s>$PCT)>\|KPUTKEYV<(?<entries>[^\^]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= DPUT<T{{s}}|{{val}}|{{entries}}||{{k}}>
-^RET<(?<bad>$NONKEY)\|KPUTKEYV<(?<entries>[^\^]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<dissoc>\|(?<dict>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BDEL<{{dict|pctdec}}|{{key|pctdec}}|{{k}}>
-^BDEL<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KDELKEY<{{entries}}> {{k}}>
-^BDEL<(?<bad>$NONDICT)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^APPLY<VPRIM<set-nth>\|(?<lst>[^;]*);(?<idx>[^;]*);(?<val>[^;]*);\|(?<k>.*)>$ ::= BSETNTH<{{lst|pctdec}}|{{idx|pctdec}}|{{val|pctdec}}|{{k}}>
+^APPLY<VPRIM<assoc>\|(?<lst>[^;]*);(?<key>[^;]*);(?<val>[^;]*);\|(?<k>.*)>$ ::= BALISTPUT<{{lst|pctdec}}|{{key|pctdec}}|{{val|pctdec}}|{{k}}>
+^BSETNTH<VLIST<(?<items>$ITEMS)>\|VNUM<(?<idx>$NAT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<VLIST<{{items}}>|KSETNTH2<{{idx}}|{{val|pctenc}}> {{k}}>
+^BSETNTH<VLIST<(?<items>$ITEMS)>\|VNUM<(?<idx>$NEGINT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^BSETNTH<VLIST<(?<items>$ITEMS)>\|VNUM<(?<bad>$NONINTNUM)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BSETNTH<VLIST<(?<items>$ITEMS)>\|(?<bad>$NONNUM)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BSETNTH<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<idx>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^APPLY<VPRIM<contains>\|(?<alist>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BALISTHAS<{{alist|pctdec}}|{{key|pctdec}}|{{k}}>
+^BALISTHAS<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTKEY<HAS|{{items}}^> {{k}}>
+^BALISTHAS<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^APPLY<VPRIM<get>\|(?<alist>[^;]*);(?<key>[^;]*);(?<default>[^;]*);\|(?<k>.*)>$ ::= BALISTGET<{{alist|pctdec}}|{{key|pctdec}}|{{default|pctdec}}|{{k}}>
+^BALISTGET<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTKEY<GET|{{items}}^{{default|pctenc}}> {{k}}>
+^BALISTGET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BALISTPUT<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTPUTKEY<{{items}}^{{val|pctenc}}> {{k}}>
+^BALISTPUT<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^RET<VSYM<(?<s>$PCT)>\|KALISTPUTKEY<(?<items>[^\^>]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= BUILDPUTPAIR<VLIST<VSYM%3C{{s}}%3E;{{val}};>|S{{s}}|{{items}}|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KALISTPUTKEY<(?<items>[^\^>]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= BUILDPUTPAIR<VLIST<VSTR%3C{{s}}%3E;{{val}};>|T{{s}}|{{items}}|{{k}}>
+^BUILDPUTPAIR<(?<pair>$VLIST)\|(?<key>$DICTKEY)\|(?<items>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUT<{{key}}|{{items}}|{{pair|pctenc}}^{{items}}^|{{k}}>
+^RET<(?<bad>$NONKEY)\|KALISTPUTKEY<(?<items>[^\^>]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^APPLY<VPRIM<dissoc>\|(?<alist>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BALISTDEL<{{alist|pctdec}}|{{key|pctdec}}|{{k}}>
+^BALISTDEL<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTKEY<DEL|{{items}}^> {{k}}>
+^BALISTDEL<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+
 ^BADD<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
 ^BSUB<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>
 ^BMUL<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|{{k}}>
@@ -385,7 +419,6 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VBOOL<(?<b>true|false)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSTR<(?<s>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VLIST<(?<items>$ITEMS)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
-^APPLY<VDICT<(?<entries>$DICTENTRIES)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSYM<(?<name>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^BINDCLOS0<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{env}}|{{k}}>
 ^BINDCLOS0<\|(?<args>(?:[^;>]*;)+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -428,7 +461,6 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<VBOOL<(?:true|false)>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<boolean>|{{k}}>
 ^RET<VSTR<$PCT>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<string>|{{k}}>
 ^RET<VLIST<$ITEMS>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<list>|{{k}}>
-^RET<VDICT<$DICTENTRIES>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<dict>|{{k}}>
 ^RET<VSYM<$PCT>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<symbol>|{{k}}>
 ^RET<VCLOS<[^>]*>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<function>|{{k}}>
 ^RET<VPRIM<$NAME>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<builtin>|{{k}}>
@@ -445,15 +477,15 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^ATWALK<\|(?<idx>$NAT)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
 ^ATWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|0\|(?<k>.*)>$ ::= RET<{{item|pctdec}}|{{k}}>
 ^ATWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<idx>$POS)\|(?<k>.*)>$ ::= ATWALK<{{rest}}|SUB<{{idx}},1>|{{k}}>
-^RET<VLIST<(?<items>$ITEMS)>\|KASSOC2<(?<idx>$NAT)\|(?<val>[^>]*)> (?<k>.*)>$ ::= ASSOCWALK<{{items}}|{{idx}}|{{val}}||{{k}}>
-^ASSOCWALK<\|(?<idx>$NAT)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
-^ASSOCWALK<(?<old>[^;]*);(?<rest>$ITEMS)\|0\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{acc}}{{val}};{{rest}}>|{{k}}>
-^ASSOCWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<idx>$POS)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ASSOCWALK<{{rest}}|SUB<{{idx}},1>|{{val}}|{{acc}}{{item}};|{{k}}>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KHEAD (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KTAIL (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<VLIST<(?<items>$ITEMS)>\|KSETNTH2<(?<idx>$NAT)\|(?<val>[^>]*)> (?<k>.*)>$ ::= SETNTHWALK<{{items}}|{{idx}}|{{val}}||{{k}}>
+^SETNTHWALK<\|(?<idx>$NAT)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^SETNTHWALK<(?<old>[^;]*);(?<rest>$ITEMS)\|0\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{acc}}{{val}};{{rest}}>|{{k}}>
+^SETNTHWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<idx>$POS)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= SETNTHWALK<{{rest}}|SUB<{{idx}},1>|{{val}}|{{acc}}{{item}};|{{k}}>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KHEAD (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KTAIL (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
 
 # Render final values. Public render output is recursive Lisp syntax for values that
 # have reader syntax.
@@ -464,11 +496,10 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RENDER<VNUM<(?<n>$NUM)>\|(?<k>.*)>$ ::= RRET<{{n|pctenc}}|{{k}}>
 ^RENDER<VBOOL<(?<b>true|false)>\|(?<k>.*)>$ ::= RRET<{{b|pctenc}}|{{k}}>
 ^RENDER<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RRET<%22ESC<{{s}}>%22|{{k}}>
-^RENDER<VCLOS<(?<c>[^>]*)>\|(?<k>.*)>$ ::= RRET<%3Cclosure%3E|{{k}}>
-^RENDER<VPRIM<(?<name>$NAME)>\|(?<k>.*)>$ ::= RRET<%3Cprimitive%3E|{{k}}>
+^RENDER<VCLOS<(?<c>[^>]*)>\|(?<k>.*)>$ ::= ERR<unparseable_value>
+^RENDER<VPRIM<(?<name>$NAME)>\|(?<k>.*)>$ ::= ERR<unparseable_value>
 ^RENDER<VSYM<(?<name>$PCT)>\|(?<k>.*)>$ ::= RRET<{{name}}|{{k}}>
 ^RENDER<VLIST<(?<items>$ITEMS)>\|(?<k>.*)>$ ::= RLIST<{{items}}||KLISTDONE<{{k}}>>
-^RENDER<VDICT<(?<entries>$DICTENTRIES)>\|(?<k>.*)>$ ::= RDICT<{{entries}}||KDICTDONE<{{k}}>>
 
 ESC<(?<s>$PCT)> ::! escape s
 
@@ -478,14 +509,6 @@ ESC<(?<s>$PCT)> ::! escape s
 ^RLIST<(?<v>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RENDER<{{v|pctdec}}|KLISTNEXT<{{rest}}|{{acc}}|{{k}}>>
 ^RRET<(?<frag>$PCT)\|KLISTFIRST<(?<rest>[^|]*)\|(?<k>.*)>>$ ::= RLIST<{{rest}}|{{frag}}|{{k}}>
 ^RRET<(?<frag>$PCT)\|KLISTNEXT<(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RLIST<{{rest}}|{{acc}}%20{{frag}}|{{k}}>
-
-^RDICT<\|\|KDICTDONE<(?<k>.*)>>$ ::= RRET<%28dict%29|{{k}}>
-^RDICT<\|(?<acc>$PCT)\|KDICTDONE<(?<k>.*)>>$ ::= RRET<%28dict%20{{acc}}%29|{{k}}>
-^RDICT<S(?<key>$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RRET<{{key}}|KDICTVAL<{{val}}|{{rest}}|{{acc}}|{{k}}>>
-^RDICT<T(?<key>$PCT)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RRET<%22ESC<{{key}}>%22|KDICTVAL<{{val}}|{{rest}}|{{acc}}|{{k}}>>
-^RRET<(?<keyfrag>$PCT)\|KDICTVAL<(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RENDER<{{val|pctdec}}|KDICTPAIR<{{keyfrag}}|{{rest}}|{{acc}}|{{k}}>>
-^RRET<(?<valfrag>$PCT)\|KDICTPAIR<(?<keyfrag>$PCT)\|(?<rest>[^|]*)\|\|(?<k>.*)>>$ ::= RDICT<{{rest}}|%28{{keyfrag}}%20{{valfrag}}%29|{{k}}>
-^RRET<(?<valfrag>$PCT)\|KDICTPAIR<(?<keyfrag>$PCT)\|(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RDICT<{{rest}}|{{acc}}%20%28{{keyfrag}}%20{{valfrag}}%29|{{k}}>
 
 ^RRET<(?<frag>$PCT)\|KOUT>$ ::= @OUT<{{frag}}>@@EXIT0@
 ^@OUT<(?<v>$PCT)>@@EXIT0@$ ::> stdout {{v|pctdec}}\n

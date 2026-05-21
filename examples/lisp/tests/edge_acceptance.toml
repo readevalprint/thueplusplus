@@ -6,7 +6,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "top-level empty list renders as reader syntax"
-input = "(list)"
+input = '(list)'
 
 [case.expect]
 exit_code = 0
@@ -15,7 +15,7 @@ stderr = ""
 
 [[case]]
 name = "empty list first errors"
-input = "(first (list))"
+input = '(first (list))'
 
 [case.expect]
 exit_code = 2
@@ -24,7 +24,7 @@ stderr_stripped = "empty_list"
 
 [[case]]
 name = "singleton list rest is empty"
-input = "(rest (list 7))"
+input = '(rest (list 7))'
 
 [case.expect]
 exit_code = 0
@@ -33,7 +33,7 @@ stderr = ""
 
 [[case]]
 name = "nested let shadowing"
-input = "(let ((x 1)) (let ((x 2)) x))"
+input = '(let ((x 1)) (let ((x 2)) x))'
 
 [case.expect]
 exit_code = 0
@@ -42,7 +42,7 @@ stderr = ""
 
 [[case]]
 name = "closure captures outer binding after later shadow"
-input = "(let ((x 10)) (let ((f (fn (y) (add x y)))) (let ((x 99)) (f 5))))"
+input = '(let ((x 10)) (let ((f (fn (y) (add x y)))) (let ((x 99)) (f 5))))'
 
 [case.expect]
 exit_code = 0
@@ -51,7 +51,7 @@ stderr = ""
 
 [[case]]
 name = "apply fn from list first"
-input = "((first (list (fn (x) (add x 10)))) 5)"
+input = '((first (list (fn (x) (add x 10)))) 5)'
 
 [case.expect]
 exit_code = 0
@@ -60,7 +60,7 @@ stderr = ""
 
 [[case]]
 name = "nary and short circuits after false"
-input = "(and true false (div 1 0))"
+input = '(and true false (div 1 0))'
 
 [case.expect]
 exit_code = 0
@@ -69,7 +69,7 @@ stderr = ""
 
 [[case]]
 name = "nary or returns first truthy value"
-input = "(or false false 9)"
+input = '(or false false 9)'
 
 [case.expect]
 exit_code = 0
@@ -78,7 +78,7 @@ stderr = ""
 
 [[case]]
 name = "lazy if string protects syntax"
-input = "(if true \"not (code) [x]\" (div 1 0))"
+input = '(if true "not (code) [x]" (div 1 0))'
 
 [case.expect]
 exit_code = 0
@@ -87,7 +87,7 @@ stderr = ""
 
 [[case]]
 name = "rational addition"
-input = "(add 1/2 1/3)"
+input = '(add 1/2 1/3)'
 
 [case.expect]
 exit_code = 0
@@ -96,7 +96,7 @@ stderr = ""
 
 [[case]]
 name = "unbound name inside addition errors"
-input = "(add x 1)"
+input = '(add x 1)'
 
 [case.expect]
 exit_code = 2

@@ -3,7 +3,7 @@ args = ["--max-evals", "120000"]
 
 [[case]]
 name = "quote symbol"
-input = "(quote x)"
+input = '(quote x)'
 [case.expect]
 stdout = "x\n"
 stderr = ""
@@ -11,7 +11,7 @@ exit_code = 0
 
 [[case]]
 name = "quote scalar literals"
-input = "(quote 1)"
+input = '(quote 1)'
 [case.expect]
 stdout = "1\n"
 stderr = ""
@@ -19,7 +19,7 @@ exit_code = 0
 
 [[case]]
 name = "quote booleans and string"
-input = "(list (quote true) (quote false) (quote \"q\"))"
+input = '(list (quote true) (quote false) (quote "q"))'
 [case.expect]
 stdout = "(true false \"q\")\n"
 stderr = ""
@@ -27,7 +27,7 @@ exit_code = 0
 
 [[case]]
 name = "quote nested source list"
-input = "(quote (+ 1 x))"
+input = '(quote (+ 1 x))'
 [case.expect]
 stdout = "(+ 1 x)\n"
 stderr = ""
@@ -35,7 +35,7 @@ exit_code = 0
 
 [[case]]
 name = "quote list form as source data"
-input = "(quote (list 1 2))"
+input = '(quote (list 1 2))'
 [case.expect]
 stdout = "(list 1 2)\n"
 stderr = ""
@@ -43,7 +43,7 @@ exit_code = 0
 
 [[case]]
 name = "quote in lexical environment stays data"
-input = "(let ((x 1)) (quote x))"
+input = '(let ((x 1)) (quote x))'
 [case.expect]
 stdout = "x\n"
 stderr = ""
@@ -51,7 +51,7 @@ exit_code = 0
 
 [[case]]
 name = "quote no args wrong arity"
-input = "(quote)"
+input = '(quote)'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -59,7 +59,7 @@ exit_code = 2
 
 [[case]]
 name = "quote too many args wrong arity"
-input = "(quote 1 2)"
+input = '(quote 1 2)'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -67,7 +67,7 @@ exit_code = 2
 
 [[case]]
 name = "quote wrong arity in lexical environment"
-input = "(let ((x 1)) (quote 1 2))"
+input = '(let ((x 1)) (quote 1 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -75,7 +75,7 @@ exit_code = 2
 
 [[case]]
 name = "dynamic list evaluates children"
-input = "(list 1 (add 1 2) \"x\")"
+input = '(list 1 (add 1 2) "x")'
 [case.expect]
 stdout = "(1 3 \"x\")\n"
 stderr = ""
@@ -83,7 +83,7 @@ exit_code = 0
 
 [[case]]
 name = "empty list renders source list"
-input = "(list)"
+input = '(list)'
 [case.expect]
 stdout = "()\n"
 stderr = ""
@@ -91,7 +91,7 @@ exit_code = 0
 
 [[case]]
 name = "single item list renders"
-input = "(list 9)"
+input = '(list 9)'
 [case.expect]
 stdout = "(9)\n"
 stderr = ""
@@ -99,7 +99,7 @@ exit_code = 0
 
 [[case]]
 name = "two item list renders"
-input = "(list 9 10)"
+input = '(list 9 10)'
 [case.expect]
 stdout = "(9 10)\n"
 stderr = ""
@@ -107,7 +107,7 @@ exit_code = 0
 
 [[case]]
 name = "four item list renders"
-input = "(list 1 2 3 4)"
+input = '(list 1 2 3 4)'
 [case.expect]
 stdout = "(1 2 3 4)\n"
 stderr = ""
@@ -115,7 +115,7 @@ exit_code = 0
 
 [[case]]
 name = "first list"
-input = "(first (list 1 2))"
+input = '(first (list 1 2))'
 [case.expect]
 stdout = "1\n"
 stderr = ""
@@ -123,7 +123,7 @@ exit_code = 0
 
 [[case]]
 name = "rest list"
-input = "(rest (list 1 2))"
+input = '(rest (list 1 2))'
 [case.expect]
 stdout = "(2)\n"
 stderr = ""
@@ -131,7 +131,7 @@ exit_code = 0
 
 [[case]]
 name = "rest empty list"
-input = "(rest (list))"
+input = '(rest (list))'
 [case.expect]
 stdout = "()\n"
 stderr = ""
@@ -139,7 +139,7 @@ exit_code = 0
 
 [[case]]
 name = "empty predicate true"
-input = "(is-empty (list))"
+input = '(is-empty (list))'
 [case.expect]
 stdout = "true\n"
 stderr = ""
@@ -147,7 +147,7 @@ exit_code = 0
 
 [[case]]
 name = "empty predicate false"
-input = "(is-empty (list 1))"
+input = '(is-empty (list 1))'
 [case.expect]
 stdout = "false\n"
 stderr = ""
@@ -155,7 +155,7 @@ exit_code = 0
 
 [[case]]
 name = "cons prepends list"
-input = "(cons 0 (list 1 2))"
+input = '(cons 0 (list 1 2))'
 [case.expect]
 stdout = "(0 1 2)\n"
 stderr = ""
@@ -163,7 +163,7 @@ exit_code = 0
 
 [[case]]
 name = "count empty list"
-input = "(count (list))"
+input = '(count (list))'
 [case.expect]
 stdout = "0\n"
 stderr = ""
@@ -171,7 +171,7 @@ exit_code = 0
 
 [[case]]
 name = "count single list"
-input = "(count (list 1))"
+input = '(count (list 1))'
 [case.expect]
 stdout = "1\n"
 stderr = ""
@@ -179,7 +179,7 @@ exit_code = 0
 
 [[case]]
 name = "count two list"
-input = "(count (list 1 2))"
+input = '(count (list 1 2))'
 [case.expect]
 stdout = "2\n"
 stderr = ""
@@ -187,7 +187,7 @@ exit_code = 0
 
 [[case]]
 name = "count bounded list"
-input = "(count (list 1 2 3))"
+input = '(count (list 1 2 3))'
 [case.expect]
 stdout = "3\n"
 stderr = ""
@@ -195,7 +195,7 @@ exit_code = 0
 
 [[case]]
 name = "count four list"
-input = "(count (list 1 2 3 4))"
+input = '(count (list 1 2 3 4))'
 [case.expect]
 stdout = "4\n"
 stderr = ""
@@ -203,7 +203,7 @@ exit_code = 0
 
 [[case]]
 name = "count ten list"
-input = "(count (list 1 2 3 4 5 6 7 8 9 10))"
+input = '(count (list 1 2 3 4 5 6 7 8 9 10))'
 [case.expect]
 stdout = "10\n"
 stderr = ""
@@ -211,7 +211,7 @@ exit_code = 0
 
 [[case]]
 name = "nth zero arbitrary list"
-input = "(nth (list 0 1 2 3 4 5 6 7 8 9) 0)"
+input = '(nth (list 0 1 2 3 4 5 6 7 8 9) 0)'
 [case.expect]
 stdout = "0\n"
 stderr = ""
@@ -219,7 +219,7 @@ exit_code = 0
 
 [[case]]
 name = "nth nine arbitrary list"
-input = "(nth (list 0 1 2 3 4 5 6 7 8 9) 9)"
+input = '(nth (list 0 1 2 3 4 5 6 7 8 9) 9)'
 [case.expect]
 stdout = "9\n"
 stderr = ""
@@ -227,7 +227,7 @@ exit_code = 0
 
 [[case]]
 name = "nth index rejects non number"
-input = "(nth (list 7 8 9) true)"
+input = '(nth (list 7 8 9) true)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -235,7 +235,7 @@ exit_code = 2
 
 [[case]]
 name = "nth rejects non list"
-input = "(nth 7 0)"
+input = '(nth 7 0)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -243,7 +243,7 @@ exit_code = 2
 
 [[case]]
 name = "first empty list fails"
-input = "(first (list))"
+input = '(first (list))'
 [case.expect]
 stdout = ""
 stderr_stripped = "empty_list"
@@ -251,7 +251,7 @@ exit_code = 2
 
 [[case]]
 name = "rest rejects scalar"
-input = "(rest 1)"
+input = '(rest 1)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -259,7 +259,7 @@ exit_code = 2
 
 [[case]]
 name = "empty predicate rejects scalar"
-input = "(is-empty 1)"
+input = '(is-empty 1)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -267,7 +267,7 @@ exit_code = 2
 
 [[case]]
 name = "count rejects scalar"
-input = "(count 1)"
+input = '(count 1)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -275,7 +275,7 @@ exit_code = 2
 
 [[case]]
 name = "list nth out of bounds fails"
-input = "(nth (list 7 8 9) 3)"
+input = '(nth (list 7 8 9) 3)'
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
@@ -283,7 +283,7 @@ exit_code = 2
 
 [[case]]
 name = "list nth negative index fails out of bounds"
-input = "(nth (list 7 8 9) -1)"
+input = '(nth (list 7 8 9) -1)'
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
@@ -291,7 +291,7 @@ exit_code = 2
 
 [[case]]
 name = "list nth decimal index fails type error"
-input = "(nth (list 7 8 9) 1.5)"
+input = '(nth (list 7 8 9) 1.5)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -299,7 +299,7 @@ exit_code = 2
 
 [[case]]
 name = "list nth fraction index fails type error"
-input = "(nth (list 7 8 9) 1/2)"
+input = '(nth (list 7 8 9) 1/2)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -307,7 +307,7 @@ exit_code = 2
 
 [[case]]
 name = "single quoted symbol list evaluates child"
-input = "((quote x))"
+input = '((quote x))'
 [case.expect]
 stdout = "x\n"
 stderr = ""
@@ -315,7 +315,7 @@ exit_code = 0
 
 [[case]]
 name = "single dynamic list evaluates child"
-input = "((list 1))"
+input = '((list 1))'
 [case.expect]
 stdout = "(1)\n"
 stderr = ""
@@ -323,7 +323,7 @@ exit_code = 0
 
 [[case]]
 name = "quoted symbol as callee is not function"
-input = "(let ((f (quote x))) (f 1))"
+input = '(let ((f (quote x))) (f 1))'
 [case.expect]
 stdout = ""
 stderr_stripped = "not_function"
@@ -331,7 +331,7 @@ exit_code = 2
 
 [[case]]
 name = "dynamic list as callee is not function"
-input = "(let ((f (list 1))) (f 1))"
+input = '(let ((f (list 1))) (f 1))'
 [case.expect]
 stdout = ""
 stderr_stripped = "not_function"
@@ -339,7 +339,7 @@ exit_code = 2
 
 [[case]]
 name = "env unsupported map remains explicit"
-input = "(let ((x 1)) (map x 1))"
+input = '(let ((x 1)) (map x 1))'
 [case.expect]
 stdout = ""
 stderr_stripped = "unsupported_form"

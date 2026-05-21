@@ -6,7 +6,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "zero argument fn application evaluates body"
-input = "((fn () 7))"
+input = '((fn () 7))'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -14,7 +14,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "fn too few arguments fails loudly"
-input = "((fn (x) x))"
+input = '((fn (x) x))'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -22,7 +22,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "fn too many arguments fails loudly"
-input = "((fn (x) x) 1 2)"
+input = '((fn (x) x) 1 2)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -30,7 +30,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "calling a number fails as not function"
-input = "(1 2)"
+input = '(1 2)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -38,7 +38,7 @@ stderr_stripped = "not_function"
 
 [[case]]
 name = "calling an list fails as not function"
-input = "((list 1) 2)"
+input = '((list 1) 2)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -46,7 +46,7 @@ stderr_stripped = "not_function"
 
 [[case]]
 name = "unbound callee fails as unbound name"
-input = "(foo 1)"
+input = '(foo 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -54,7 +54,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "subtraction rejects boolean lhs as type error"
-input = "(sub true 1)"
+input = '(sub true 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -62,7 +62,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "multiplication rejects boolean lhs as type error"
-input = "(mul true 1)"
+input = '(mul true 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -70,7 +70,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "division rejects boolean lhs as type error"
-input = "(div true 1)"
+input = '(div true 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -78,7 +78,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "comparison rejects boolean lhs as type error"
-input = "(lt true 1)"
+input = '(lt true 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -86,7 +86,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "subtraction rejects boolean rhs as type error"
-input = "(sub 1 true)"
+input = '(sub 1 true)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -94,7 +94,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "multiplication rejects boolean rhs as type error"
-input = "(mul 1 true)"
+input = '(mul 1 true)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -102,7 +102,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "division rejects boolean rhs as type error"
-input = "(div 1 true)"
+input = '(div 1 true)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -110,7 +110,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "comparison rejects boolean rhs as type error"
-input = "(lt 1 true)"
+input = '(lt 1 true)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -118,7 +118,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "first rejects non list"
-input = "(first 1)"
+input = '(first 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -126,7 +126,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "rest rejects non list"
-input = "(rest 1)"
+input = '(rest 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -134,7 +134,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "decimal zero division is classified"
-input = "(div 1 0.0)"
+input = '(div 1 0.0)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -142,7 +142,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "rational zero division is classified"
-input = "(div 1 0/1)"
+input = '(div 1 0/1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -150,7 +150,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "malformed missing closing paren fails as malformed list"
-input = "(+ 1 2"
+input = '(+ 1 2'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -158,7 +158,7 @@ stderr_stripped = "malformed_list"
 
 [[case]]
 name = "empty list fails loudly"
-input = "()"
+input = '()'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -166,7 +166,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "removed array constructor is unbound"
-input = "(array 1 2)"
+input = '(array 1 2)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -174,7 +174,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "removed nullary array constructor is unbound"
-input = "(array)"
+input = '(array)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -182,7 +182,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "removed tail helper is unbound"
-input = "(tail (list 1 2))"
+input = '(tail (list 1 2))'
 [case.expect]
 exit_code = 2
 stdout = ""

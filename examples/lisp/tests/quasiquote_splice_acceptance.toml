@@ -3,7 +3,7 @@ args = ["--max-evals", "120000"]
 
 [[case]]
 name = "quasiquote scalar returns scalar data"
-input = "(quasiquote 7)"
+input = '(quasiquote 7)'
 [case.expect]
 stdout = "7\n"
 stderr = ""
@@ -11,7 +11,7 @@ exit_code = 0
 
 [[case]]
 name = "quasiquote symbol returns symbol data"
-input = "(quasiquote alpha)"
+input = '(quasiquote alpha)'
 [case.expect]
 stdout = "alpha\n"
 stderr = ""
@@ -19,7 +19,7 @@ exit_code = 0
 
 [[case]]
 name = "quasiquote booleans and string return literal data"
-input = "(list (quasiquote true) (quasiquote false) (quasiquote \"qq\"))"
+input = '(list (quasiquote true) (quasiquote false) (quasiquote "qq"))'
 [case.expect]
 stdout = "(true false \"qq\")\n"
 stderr = ""
@@ -27,7 +27,7 @@ exit_code = 0
 
 [[case]]
 name = "quasiquote list without unquote stays data"
-input = "(quasiquote (+ 1 x))"
+input = '(quasiquote (+ 1 x))'
 [case.expect]
 stdout = "(+ 1 x)\n"
 stderr = ""
@@ -35,7 +35,7 @@ exit_code = 0
 
 [[case]]
 name = "top-level unquote evaluates scalar expression in quasiquote"
-input = "(quasiquote (unquote (add 1 2)))"
+input = '(quasiquote (unquote (add 1 2)))'
 [case.expect]
 stdout = "3\n"
 stderr = ""
@@ -43,7 +43,7 @@ exit_code = 0
 
 [[case]]
 name = "top-level unquote wrong arity in quasiquote"
-input = "(quasiquote (unquote 1 2))"
+input = '(quasiquote (unquote 1 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -51,7 +51,7 @@ exit_code = 2
 
 [[case]]
 name = "top-level empty unquote wrong arity in quasiquote"
-input = "(quasiquote (unquote))"
+input = '(quasiquote (unquote))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -59,7 +59,7 @@ exit_code = 2
 
 [[case]]
 name = "unquote evaluates scalar expression in quasiquote"
-input = "(quasiquote (+ 1 (unquote (add 1 2))))"
+input = '(quasiquote (+ 1 (unquote (add 1 2))))'
 [case.expect]
 stdout = "(+ 1 3)\n"
 stderr = ""
@@ -67,7 +67,7 @@ exit_code = 0
 
 [[case]]
 name = "unquote evaluates lexical name to symbol value"
-input = "(let ((x (quote foo))) (quasiquote (call (unquote x))))"
+input = '(let ((x (quote foo))) (quasiquote (call (unquote x))))'
 [case.expect]
 stdout = "(call foo)\n"
 stderr = ""
@@ -75,7 +75,7 @@ exit_code = 0
 
 [[case]]
 name = "unquote can insert dynamic list as one item"
-input = "(let ((xs (list 1 2))) (quasiquote (wrap (unquote xs) done)))"
+input = '(let ((xs (list 1 2))) (quasiquote (wrap (unquote xs) done)))'
 [case.expect]
 stdout = "(wrap (1 2) done)\n"
 stderr = ""
@@ -83,7 +83,7 @@ exit_code = 0
 
 [[case]]
 name = "splice inserts dynamic list elements in quasiquote"
-input = "(let ((xs (list 1 2))) (quasiquote (do (splice xs) 3)))"
+input = '(let ((xs (list 1 2))) (quasiquote (do (splice xs) 3)))'
 [case.expect]
 stdout = "(do 1 2 3)\n"
 stderr = ""
@@ -91,7 +91,7 @@ exit_code = 0
 
 [[case]]
 name = "splice supports empty list"
-input = "(let ((xs (list))) (quasiquote (do (splice xs) done)))"
+input = '(let ((xs (list))) (quasiquote (do (splice xs) done)))'
 [case.expect]
 stdout = "(do done)\n"
 stderr = ""
@@ -99,7 +99,7 @@ exit_code = 0
 
 [[case]]
 name = "splice supports expression producing list"
-input = "(quasiquote (a (splice (rest (list 0 1 2))) z))"
+input = '(quasiquote (a (splice (rest (list 0 1 2))) z))'
 [case.expect]
 stdout = "(a 1 2 z)\n"
 stderr = ""
@@ -107,7 +107,7 @@ exit_code = 0
 
 [[case]]
 name = "unquote inside quoted nested list evaluates"
-input = "(quasiquote (outer (inner (unquote (add 2 3)))))"
+input = '(quasiquote (outer (inner (unquote (add 2 3)))))'
 [case.expect]
 stdout = "(outer (inner 5))\n"
 stderr = ""
@@ -115,7 +115,7 @@ exit_code = 0
 
 [[case]]
 name = "splice inside quoted nested list inserts into that list"
-input = "(let ((xs (list (quote b) (quote c)))) (quasiquote (a (nested (splice xs) d))))"
+input = '(let ((xs (list (quote b) (quote c)))) (quasiquote (a (nested (splice xs) d))))'
 [case.expect]
 stdout = "(a (nested b c d))\n"
 stderr = ""
@@ -123,7 +123,7 @@ exit_code = 0
 
 [[case]]
 name = "bare unquote remains unsupported"
-input = "(unquote (add 1 2))"
+input = '(unquote (add 1 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "unsupported_form"
@@ -131,7 +131,7 @@ exit_code = 2
 
 [[case]]
 name = "bare splice remains unsupported"
-input = "(splice (list 1 2))"
+input = '(splice (list 1 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "unsupported_form"
@@ -139,7 +139,7 @@ exit_code = 2
 
 [[case]]
 name = "quasiquote no args wrong arity"
-input = "(quasiquote)"
+input = '(quasiquote)'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -147,7 +147,7 @@ exit_code = 2
 
 [[case]]
 name = "quasiquote too many args wrong arity"
-input = "(quasiquote 1 2)"
+input = '(quasiquote 1 2)'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -155,7 +155,7 @@ exit_code = 2
 
 [[case]]
 name = "unquote no args in quasiquote wrong arity"
-input = "(quasiquote (a (unquote)))"
+input = '(quasiquote (a (unquote)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -163,7 +163,7 @@ exit_code = 2
 
 [[case]]
 name = "unquote no args before later quasiquote item wrong arity"
-input = "(quasiquote ((unquote) a))"
+input = '(quasiquote ((unquote) a))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -171,7 +171,7 @@ exit_code = 2
 
 [[case]]
 name = "unquote too many args in quasiquote wrong arity"
-input = "(quasiquote (a (unquote 1 2)))"
+input = '(quasiquote (a (unquote 1 2)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -179,7 +179,7 @@ exit_code = 2
 
 [[case]]
 name = "splice no args in quasiquote wrong arity"
-input = "(quasiquote (a (splice)))"
+input = '(quasiquote (a (splice)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -187,7 +187,7 @@ exit_code = 2
 
 [[case]]
 name = "splice no args before later quasiquote item wrong arity"
-input = "(quasiquote ((splice) a))"
+input = '(quasiquote ((splice) a))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -195,7 +195,7 @@ exit_code = 2
 
 [[case]]
 name = "splice too many args in quasiquote wrong arity"
-input = "(quasiquote (a (splice (list 1) (list 2))))"
+input = '(quasiquote (a (splice (list 1) (list 2))))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -203,7 +203,7 @@ exit_code = 2
 
 [[case]]
 name = "splice non-list fails type error"
-input = "(quasiquote (a (splice 1)))"
+input = '(quasiquote (a (splice 1)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -211,7 +211,7 @@ exit_code = 2
 
 [[case]]
 name = "nested quasiquote rejected"
-input = "(quasiquote (outer (quasiquote inner)))"
+input = '(quasiquote (outer (quasiquote inner)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "unsupported_form"
@@ -219,7 +219,7 @@ exit_code = 2
 
 [[case]]
 name = "splice nth top quasiquote item rejected"
-input = "(quasiquote (splice (list 1 2)))"
+input = '(quasiquote (splice (list 1 2)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "unsupported_form"
@@ -227,7 +227,7 @@ exit_code = 2
 
 [[case]]
 name = "top-level nested quasiquote rejected"
-input = "(quasiquote (quasiquote inner))"
+input = '(quasiquote (quasiquote inner))'
 [case.expect]
 stdout = ""
 stderr_stripped = "unsupported_form"
@@ -235,7 +235,7 @@ exit_code = 2
 
 [[case]]
 name = "quasiquote wrong arity in lexical environment"
-input = "(let ((x 1)) (quasiquote 1 2))"
+input = '(let ((x 1)) (quasiquote 1 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -243,7 +243,7 @@ exit_code = 2
 
 [[case]]
 name = "unquote returning set-var value propagates env in list item"
-input = "(let ((x 1)) (do (quasiquote (a (unquote (set-var x 2)))) x))"
+input = '(let ((x 1)) (do (quasiquote (a (unquote (set-var x 2)))) x))'
 [case.expect]
 stdout = "2\n"
 stderr = ""
@@ -251,7 +251,7 @@ exit_code = 0
 
 [[case]]
 name = "splice returning set-var list propagates env"
-input = "(let ((xs (list 1)) (seen 0)) (do (quasiquote (a (splice (set-var xs (list 2 3))) z)) (count xs)))"
+input = '(let ((xs (list 1)) (seen 0)) (do (quasiquote (a (splice (set-var xs (list 2 3))) z)) (count xs)))'
 [case.expect]
 stdout = "2\n"
 stderr = ""
@@ -259,7 +259,7 @@ exit_code = 0
 
 [[case]]
 name = "splice returning set-var non-list fails type error"
-input = "(let ((x 1)) (quasiquote (a (splice (set-var x 2)))))"
+input = '(let ((x 1)) (quasiquote (a (splice (set-var x 2)))))'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"

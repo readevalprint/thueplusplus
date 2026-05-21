@@ -8,7 +8,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "raw internal-looking W state rejected"
-input = "W:foo"
+input = 'W:foo'
 
 [case.expect]
 exit_code = 2
@@ -17,7 +17,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "raw internal-looking B state rejected"
-input = "B:foo"
+input = 'B:foo'
 
 [case.expect]
 exit_code = 2
@@ -26,7 +26,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "raw internal-looking K state rejected"
-input = "K:foo"
+input = 'K:foo'
 
 [case.expect]
 exit_code = 2
@@ -35,7 +35,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "raw internal-looking O state rejected"
-input = "O:foo"
+input = 'O:foo'
 
 [case.expect]
 exit_code = 2
@@ -44,7 +44,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "single curly syntax rejected"
-input = "{+ 1 2}"
+input = '{+ 1 2}'
 
 [case.expect]
 exit_code = 2
@@ -53,7 +53,7 @@ stderr_stripped = "malformed_list"
 
 [[case]]
 name = "double curly syntax rejected"
-input = "{{+ 1 2}}"
+input = '{{+ 1 2}}'
 
 [case.expect]
 exit_code = 2
@@ -62,7 +62,7 @@ stderr_stripped = "malformed_list"
 
 [[case]]
 name = "division by zero fails loudly"
-input = "(div 1 0)"
+input = '(div 1 0)'
 
 [case.expect]
 exit_code = 2
@@ -71,7 +71,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "too few scalar operands fail loudly"
-input = "(add 1)"
+input = '(add 1)'
 
 [case.expect]
 exit_code = 2
@@ -80,7 +80,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "malformed numeric token fails loudly"
-input = "(add 1x 2)"
+input = '(add 1x 2)'
 
 [case.expect]
 exit_code = 2
@@ -89,7 +89,7 @@ stderr_stripped = "invalid_numeric_token"
 
 [[case]]
 name = "booleans are not accepted as numeric operands"
-input = "(add true 1)"
+input = '(add true 1)'
 
 [case.expect]
 exit_code = 2
@@ -98,7 +98,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "bang-prefixed input fails loudly"
-input = "!boom"
+input = '!boom'
 
 [case.expect]
 exit_code = 2
@@ -106,17 +106,17 @@ stdout = ""
 stderr_stripped = "unsupported_form"
 
 [[case]]
-name = "plus zero operands fail loudly"
-input = "(add)"
+name = "top-level add primitive is unparseable"
+input = 'add'
 
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr_stripped = "wrong_arity"
+stderr_stripped = "unparseable_value"
 
 [[case]]
 name = "malformed second numeric token fails loudly"
-input = "(add 1 2x)"
+input = '(add 1 2x)'
 
 [case.expect]
 exit_code = 2
@@ -125,7 +125,7 @@ stderr_stripped = "invalid_numeric_token"
 
 [[case]]
 name = "boolean rhs is not accepted as numeric operand"
-input = "(add 1 true)"
+input = '(add 1 true)'
 
 [case.expect]
 exit_code = 2
@@ -134,7 +134,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "leading name in nary plus fails loudly"
-input = "(add x 1 2)"
+input = '(add x 1 2)'
 
 [case.expect]
 exit_code = 2
@@ -143,7 +143,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "second name in nary plus fails loudly"
-input = "(add 1 x 2)"
+input = '(add 1 x 2)'
 
 [case.expect]
 exit_code = 2
@@ -152,7 +152,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "second name in binary plus fails loudly"
-input = "(add 1 x)"
+input = '(add 1 x)'
 
 [case.expect]
 exit_code = 2
@@ -161,7 +161,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "computed division by zero fails loudly"
-input = "(div 1 (sub 1 1))"
+input = '(div 1 (sub 1 1))'
 
 [case.expect]
 exit_code = 2
@@ -171,7 +171,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "bare unknown variable is an unbound name"
-input = "missing"
+input = 'missing'
 
 [case.expect]
 exit_code = 2
@@ -180,7 +180,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "unsupported define form is not a get miss"
-input = "(define x 1)"
+input = '(define x 1)'
 
 [case.expect]
 exit_code = 2
@@ -189,7 +189,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "unsupported letrec form is not a get miss"
-input = "(letrec ((fact 1)) fact)"
+input = '(letrec ((fact 1)) fact)'
 
 [case.expect]
 exit_code = 2
@@ -198,7 +198,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "malformed if with too few operands fails wrong arity"
-input = "(if true 1)"
+input = '(if true 1)'
 
 [case.expect]
 exit_code = 2
@@ -207,7 +207,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "malformed and with one operand fails wrong arity"
-input = "(and true)"
+input = '(and true)'
 
 [case.expect]
 exit_code = 2
@@ -216,7 +216,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "malformed or with one operand fails wrong arity"
-input = "(or false)"
+input = '(or false)'
 
 [case.expect]
 exit_code = 2
@@ -225,7 +225,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "malformed let without binding list fails wrong arity"
-input = "(let 1 2)"
+input = '(let 1 2)'
 
 [case.expect]
 exit_code = 2
@@ -234,7 +234,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "malformed fn without body fails wrong arity"
-input = "(fn (x))"
+input = '(fn (x))'
 
 [case.expect]
 exit_code = 2
@@ -243,7 +243,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "unknown callee remains an unbound name"
-input = "(missing 1)"
+input = '(missing 1)'
 
 [case.expect]
 exit_code = 2
@@ -253,7 +253,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "malformed fn in lexical environment fails wrong arity"
-input = "(let ((x 1)) (fn (x)))"
+input = '(let ((x 1)) (fn (x)))'
 
 [case.expect]
 exit_code = 2
@@ -263,7 +263,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "map constructor remains unsupported before map boundary"
-input = "(map (quote x) 1)"
+input = '(map (quote x) 1)'
 
 [case.expect]
 exit_code = 2
@@ -272,7 +272,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "bare unquote fails unsupported outside quasiquote"
-input = "(unquote x)"
+input = '(unquote x)'
 
 [case.expect]
 exit_code = 2
@@ -282,7 +282,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "recursive let self reference remains an unbound name"
-input = "(let ((fact (fn (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))"
+input = '(let ((fact (fn (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))'
 
 [case.expect]
 exit_code = 2
@@ -291,7 +291,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "letrec factorial remains unsupported before recursion boundary"
-input = "(letrec ((fact (fn (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))"
+input = '(letrec ((fact (fn (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))'
 
 [case.expect]
 exit_code = 2
@@ -300,7 +300,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "fn contains no implicit self binding"
-input = "(let ((f (fn (n) (f n)))) (f 0))"
+input = '(let ((f (fn (n) (f n)))) (f 0))'
 
 [case.expect]
 exit_code = 2

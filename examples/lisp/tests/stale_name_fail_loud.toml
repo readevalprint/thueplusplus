@@ -4,7 +4,7 @@ timeout = 10
 
 [[case]]
 name = "old lambda form is unbound"
-input = "(lambda (x) x)"
+input = '(lambda (x) x)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -12,7 +12,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old begin form is unbound"
-input = "(begin 1 2)"
+input = '(begin 1 2)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -20,7 +20,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old set form is unbound"
-input = "(set x 1)"
+input = '(set x 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -28,7 +28,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old head helper is unbound"
-input = "(head (list 1 2))"
+input = '(head (list 1 2))'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -36,7 +36,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old tail helper is unbound"
-input = "(tail (list 1 2))"
+input = '(tail (list 1 2))'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -44,7 +44,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old empty question helper is unbound"
-input = "(empty? (list))"
+input = '(empty? (list))'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -52,7 +52,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old push helper is unbound"
-input = "(push 0 (list 1))"
+input = '(push 0 (list 1))'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -60,7 +60,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old len helper is unbound"
-input = "(len (list 1))"
+input = '(len (list 1))'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -68,7 +68,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old at helper is unbound"
-input = "(at (list 1) 0)"
+input = '(at (list 1) 0)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -76,7 +76,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old lookup helper is unbound"
-input = "(lookup (dict) (quote x) 0)"
+input = '(lookup (dict) (quote x) 0)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -84,7 +84,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old has helper is unbound"
-input = "(has (dict) (quote x))"
+input = '(has (dict) (quote x))'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -92,7 +92,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old put helper is unbound"
-input = "(put (dict) (quote x) 1)"
+input = '(put (dict) (quote x) 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -100,7 +100,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "old del helper is unbound"
-input = "(del (dict) (quote x))"
+input = '(del (dict) (quote x))'
 [case.expect]
 exit_code = 2
 stdout = ""

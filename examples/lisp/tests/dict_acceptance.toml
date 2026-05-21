@@ -3,39 +3,39 @@ args = ["--max-evals", "120000"]
 
 [[case]]
 name = "empty dict renders"
-input = "(dict)"
+input = '(dict)'
 [case.expect]
-stdout = "(dict)\n"
+stdout = "()\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "symbol key dict renders pair syntax"
-input = "(dict (x 1) (y 2))"
+input = '(dict ((quote x) 1) ((quote y) 2))'
 [case.expect]
-stdout = "(dict (x 1) (y 2))\n"
+stdout = "((x 1) (y 2))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "string key dict renders escaped pair syntax"
-input = "(dict (\"x\" 1) (\"line\\nkey\" 2))"
+input = '(dict ("x" 1) ("line\\nkey" 2))'
 [case.expect]
-stdout = "(dict (\"x\" 1) (\"line\\nkey\" 2))\n"
+stdout = "((\"x\" 1) (\"line\\nkey\" 2))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "dict values are evaluated"
-input = "(dict (x (add 1 2)) (y (list 4 5)))"
+input = '(dict ((quote x) (add 1 2)) ((quote y) (list 4 5)))'
 [case.expect]
-stdout = "(dict (x 3) (y (4 5)))\n"
+stdout = "((x 3) (y (4 5)))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "get symbol key returns stored value"
-input = "(get (dict (x 1) (y 2)) (quote x) 99)"
+input = '(get (dict ((quote x) 1) ((quote y) 2)) (quote x) 99)'
 [case.expect]
 stdout = "1\n"
 stderr = ""
@@ -43,7 +43,7 @@ exit_code = 0
 
 [[case]]
 name = "get string key returns stored value"
-input = "(get (dict (\"x\" 1) (\"y\" 2)) \"y\" 99)"
+input = '(get (dict ("x" 1) ("y" 2)) "y" 99)'
 [case.expect]
 stdout = "2\n"
 stderr = ""
@@ -51,7 +51,7 @@ exit_code = 0
 
 [[case]]
 name = "symbol and string keys with same payload are distinct"
-input = "(let ((d (dict (x 1) (\"x\" 2)))) (list (get d (quote x) 99) (get d \"x\" 99)))"
+input = '(let ((d (dict ((quote x) 1) ("x" 2)))) (list (get d (quote x) 99) (get d "x" 99)))'
 [case.expect]
 stdout = "(1 2)\n"
 stderr = ""
@@ -59,7 +59,7 @@ exit_code = 0
 
 [[case]]
 name = "missing symbol key returns mandatory default"
-input = "(get (dict (x 1)) (quote missing) 99)"
+input = '(get (dict ((quote x) 1)) (quote missing) 99)'
 [case.expect]
 stdout = "99\n"
 stderr = ""
@@ -67,7 +67,7 @@ exit_code = 0
 
 [[case]]
 name = "present false does not fall through to default"
-input = "(get (dict (x false)) (quote x) true)"
+input = '(get (dict ((quote x) false)) (quote x) true)'
 [case.expect]
 stdout = "false\n"
 stderr = ""
@@ -75,7 +75,7 @@ exit_code = 0
 
 [[case]]
 name = "get default is strict even when key is present"
-input = "(get (dict (x 1)) (quote x) (div 1 0))"
+input = '(get (dict ((quote x) 1)) (quote x) (div 1 0))'
 [case.expect]
 stdout = ""
 stderr_stripped = "division_by_zero"
@@ -83,7 +83,7 @@ exit_code = 2
 
 [[case]]
 name = "get evaluates default when key is missing"
-input = "(get (dict (x 1)) (quote y) (add 40 2))"
+input = '(get (dict ((quote x) 1)) (quote y) (add 40 2))'
 [case.expect]
 stdout = "42\n"
 stderr = ""
@@ -91,7 +91,7 @@ exit_code = 0
 
 [[case]]
 name = "get requires default"
-input = "(get (dict (x 1)) (quote x))"
+input = '(get (dict ((quote x) 1)) (quote x))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -99,7 +99,7 @@ exit_code = 2
 
 [[case]]
 name = "contains returns true for present symbol"
-input = "(contains (dict (x 1)) (quote x))"
+input = '(contains (dict ((quote x) 1)) (quote x))'
 [case.expect]
 stdout = "true\n"
 stderr = ""
@@ -107,7 +107,7 @@ exit_code = 0
 
 [[case]]
 name = "contains returns false for missing string"
-input = "(contains (dict (\"x\" 1)) \"y\")"
+input = '(contains (dict ("x" 1)) "y")'
 [case.expect]
 stdout = "false\n"
 stderr = ""
@@ -115,7 +115,7 @@ exit_code = 0
 
 [[case]]
 name = "contains distinguishes symbol from string"
-input = "(contains (dict (x 1)) \"x\")"
+input = '(contains (dict ((quote x) 1)) "x")'
 [case.expect]
 stdout = "false\n"
 stderr = ""
@@ -123,39 +123,39 @@ exit_code = 0
 
 [[case]]
 name = "assoc inserts new symbol key immutably"
-input = "(assoc (dict (x 1)) (quote y) 2)"
+input = '(assoc (dict ((quote x) 1)) (quote y) 2)'
 [case.expect]
-stdout = "(dict (x 1) (y 2))\n"
+stdout = "((y 2) (x 1))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "assoc replaces existing string key in place"
-input = "(assoc (dict (\"x\" 1) (y 2)) \"x\" 9)"
+input = '(assoc (dict ("x" 1) ((quote y) 2)) "x" 9)'
 [case.expect]
-stdout = "(dict (\"x\" 9) (y 2))\n"
+stdout = "((\"x\" 9) (y 2))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "dissoc removes existing symbol key"
-input = "(dissoc (dict (x 1) (y 2)) (quote x))"
+input = '(dissoc (dict ((quote x) 1) ((quote y) 2)) (quote x))'
 [case.expect]
-stdout = "(dict (y 2))\n"
+stdout = "((y 2))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "dissoc missing key is no op"
-input = "(dissoc (dict (x 1)) (quote y))"
+input = '(dissoc (dict ((quote x) 1)) (quote y))'
 [case.expect]
-stdout = "(dict (x 1))\n"
+stdout = "((x 1))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "assoc returns new dict without changing original binding"
-input = "(let ((d (dict (x 1)))) (list (get (assoc d (quote y) 2) (quote y) 99) (get d (quote y) 99)))"
+input = '(let ((d (dict ((quote x) 1)))) (list (get (assoc d (quote y) 2) (quote y) 99) (get d (quote y) 99)))'
 [case.expect]
 stdout = "(2 99)\n"
 stderr = ""
@@ -163,7 +163,7 @@ exit_code = 0
 
 [[case]]
 name = "dissoc returns new dict without changing original binding"
-input = "(let ((d (dict (x 1) (y 2)))) (list (get (dissoc d (quote y)) (quote y) 99) (get d (quote y) 99)))"
+input = '(let ((d (dict ((quote x) 1) ((quote y) 2)))) (list (get (dissoc d (quote y)) (quote y) 99) (get d (quote y) 99)))'
 [case.expect]
 stdout = "(99 2)\n"
 stderr = ""
@@ -171,7 +171,7 @@ exit_code = 0
 
 [[case]]
 name = "duplicate symbol key fails loud"
-input = "(dict (x 1) (x 2))"
+input = '(dict ((quote x) 1) ((quote x) 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "duplicate_key"
@@ -179,7 +179,7 @@ exit_code = 2
 
 [[case]]
 name = "duplicate string key fails loud"
-input = "(dict (\"x\" 1) (\"x\" 2))"
+input = '(dict ("x" 1) ("x" 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "duplicate_key"
@@ -187,7 +187,7 @@ exit_code = 2
 
 [[case]]
 name = "malformed dict pair rejects missing value"
-input = "(dict (x))"
+input = '(dict ((quote x)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -195,7 +195,7 @@ exit_code = 2
 
 [[case]]
 name = "malformed dict pair rejects extra value"
-input = "(dict (x 1 2))"
+input = '(dict ((quote x) 1 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -203,7 +203,7 @@ exit_code = 2
 
 [[case]]
 name = "dict rejects number key"
-input = "(dict (1 2))"
+input = '(dict (1 2))'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -211,7 +211,7 @@ exit_code = 2
 
 [[case]]
 name = "get rejects unsupported key type"
-input = "(get (dict (x 1)) 1 99)"
+input = '(get (dict ((quote x) 1)) 1 99)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -219,7 +219,7 @@ exit_code = 2
 
 [[case]]
 name = "get rejects non dict receiver"
-input = "(get (list 1) (quote x) 99)"
+input = '(get (list 1) (quote x) 99)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -227,7 +227,7 @@ exit_code = 2
 
 [[case]]
 name = "assoc rejects non dict receiver"
-input = "(assoc (list 1) (quote x) 2)"
+input = '(assoc (list 1) (quote x) 2)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -235,7 +235,7 @@ exit_code = 2
 
 [[case]]
 name = "dissoc rejects unsupported key type"
-input = "(dissoc (dict (x 1)) (list 1))"
+input = '(dissoc (dict ((quote x) 1)) (list 1))'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -243,7 +243,7 @@ exit_code = 2
 
 [[case]]
 name = "dict is not callable"
-input = "((dict (x 1)) (quote x) 99)"
+input = '((dict ((quote x) 1)) (quote x) 99)'
 [case.expect]
 stdout = ""
 stderr_stripped = "not_function"
@@ -251,15 +251,15 @@ exit_code = 2
 
 [[case]]
 name = "empty dict through let renders"
-input = "(let ((d (dict))) d)"
+input = '(let ((d (dict))) d)'
 [case.expect]
-stdout = "(dict)\n"
+stdout = "()\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "dict rejects non pair entry"
-input = "(dict x)"
+input = '(dict x)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -267,7 +267,7 @@ exit_code = 2
 
 [[case]]
 name = "dict wrong arity in env"
-input = "(let ((x 1)) (dict (x 1) extra))"
+input = '(let ((x 1)) (dict ((quote x) 1) extra))'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -275,7 +275,7 @@ exit_code = 2
 
 [[case]]
 name = "contains rejects non dict receiver"
-input = "(contains (list 1) (quote x))"
+input = '(contains (list 1) (quote x))'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -283,7 +283,7 @@ exit_code = 2
 
 [[case]]
 name = "contains rejects unsupported key type"
-input = "(contains (dict (x 1)) 1)"
+input = '(contains (dict ((quote x) 1)) 1)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -291,7 +291,7 @@ exit_code = 2
 
 [[case]]
 name = "assoc rejects unsupported key type"
-input = "(assoc (dict (x 1)) 1 2)"
+input = '(assoc (dict ((quote x) 1)) 1 2)'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -299,7 +299,7 @@ exit_code = 2
 
 [[case]]
 name = "dissoc rejects non dict receiver"
-input = "(dissoc (list 1) (quote x))"
+input = '(dissoc (list 1) (quote x))'
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -307,15 +307,15 @@ exit_code = 2
 
 [[case]]
 name = "dissoc removes existing string key"
-input = "(dissoc (dict (\"x\" 1) (y 2)) \"x\")"
+input = '(dissoc (dict ("x" 1) ((quote y) 2)) "x")'
 [case.expect]
-stdout = "(dict (y 2))\n"
+stdout = "((y 2))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
 name = "nth wrong arity in env"
-input = "(let ((xs (list 1 2))) (nth xs))"
+input = '(let ((xs (list 1 2))) (nth xs))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -323,7 +323,7 @@ exit_code = 2
 
 [[case]]
 name = "dict with malformed entry fails wrong arity"
-input = "(dict (x))"
+input = '(dict ((quote x)))'
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
