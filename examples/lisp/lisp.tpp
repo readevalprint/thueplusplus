@@ -471,8 +471,6 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^RET<(?<v>$VAL)\|KLETN<(?<n>$NAME)\|(?<rest>[^|]*)\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
 ^RET<(?<v>$VAL)\|KLETLAST<(?<n>$NAME)\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
 
-# Single-item list: evaluate its only child. This keeps ("x") useful as a parser proof.
-
 # Generic numeric and comparison primitives used by named primitive callables.
 ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
 SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
