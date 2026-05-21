@@ -166,7 +166,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILEBODY<(?<cond>$PCT)\^(?<body>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} {{body|pctdec}}|{{env}}|{{k}}>
 
 ^EENV<set-var (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
-^EENV<set-var(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<set-var (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^RET<(?<v>$VAL)\|KSET<(?<name>$NAME)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SETENV<{{name}}|{{v}}|{{env}}|{{k}}|>
 ^SETENV<(?<name>$NAME)\|(?<v>$VAL)\|\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= ERR<unbound_name>
 ^SETENV<(?<want>$NAME)\|(?<v>$VAL)\|(?<got>$NAME)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQTEST<{{want}}|{{got}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
@@ -177,7 +177,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 # Quote/list code-as-data. VLIST stores pct-encoded VAL items; VSYM stores quoted symbols.
 # Public rendering hides these constructors and prints ordinary source-list syntax.
 ^EENV<quote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
-^EENV<quote(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<quote (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^QUOTE<true\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^QUOTE<false\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 ^QUOTE<(?<sym>$SYM)\|(?<k>.*)>$ ::= RET<VSYM<{{sym|pctenc}}>|{{k}}>
@@ -194,7 +194,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 # Nested quasiquote is deliberately rejected in this first slice to avoid implicit
 # depth accounting; bare unquote/splice stay unsupported outside this evaluator.
 ^EENV<quasiquote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQ<{{item}}|{{env}}|{{k}}>
-^EENV<quasiquote(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<quasiquote (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^QQ<(?<item>(?:$OPSYM|$NAME|$NUM|$VSTR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
 ^QQ<L<unquote>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQESC<unquote|top|||{{env}}|> {{k}}>
 ^QQ<L<unquote%20(?<args>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQESC<unquote|top|{{args}}||{{env}}|> {{k}}>
@@ -262,7 +262,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^CODEARGS<(?<arg>[^;]*);(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= CODEVAL<{{arg|pctdec}}|{{scopeenv}}|KCODEARG<{{rest}}|{{scopeenv}}|{{acc}}|{{fn}}> {{k}}>
 ^RET<(?<v>$VAL)\|KCODEARG<(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<fn>$VAL)> (?<k>.*)>$ ::= CODEARGS<{{rest}}|{{scopeenv}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}>
 ^CODEVAL<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
-^EENV<eval(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<eval (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
 # Association lists. `dict` is an evaluated helper that returns a normal list
 # of two-item key/value lists. Keys evaluate to symbols or strings; values evaluate normally.
@@ -324,11 +324,11 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
-^EENV<fn(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<if(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<and(?: (?<arg>$EXPR))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<or(?: (?<arg>$EXPR))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<let(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<fn (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<if (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<and (?<arg>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<or (?<arg>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<let (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 # Generic call: eval callee, eval args, then APPLY.
 # Unsupported future/reserved forms stay explicit so they fail with the public
 # unsupported_form contract instead of drifting into lookup/not_function errors.
@@ -337,7 +337,7 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 # - map: higher-order list API semantics are not in this greenfield slice.
 # - unquote/splice: only recognized in the quasiquote evaluator.
 ^EENV<(?:define|letrec)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
-^EENV<while(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<while (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:break|continue|map|unquote|splice)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<(?<callee>$NAME) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$NAME) (?<a>$EXPR) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>

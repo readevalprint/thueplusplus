@@ -1,0 +1,249 @@
+# Exact wrong-arity routing for special forms with early bare-form guards and
+# form-specific fallback catchers. These cases pin wrong_arity so arity cleanup
+# cannot drift into unbound_name, not_function, or unsupported_form.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "bare eval fails wrong arity"
+input = '(eval)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "eval with one operand fails wrong arity"
+input = '(eval (quote x))'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "eval with three operands fails wrong arity"
+input = '(eval (quote x) (list) 1)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare quote fails wrong arity"
+input = '(quote)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "quote with two operands fails wrong arity"
+input = '(quote x y)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare quasiquote fails wrong arity"
+input = '(quasiquote)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "quasiquote with two operands fails wrong arity"
+input = '(quasiquote x y)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare set-var fails wrong arity"
+input = '(set-var)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "set-var with one operand fails wrong arity"
+input = '(let ((x 1)) (set-var x))'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "set-var with three operands fails wrong arity"
+input = '(let ((x 1)) (set-var x 2 3))'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare fn fails wrong arity"
+input = '(fn)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "fn without body fails wrong arity"
+input = '(fn (x))'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "fn with extra body operands fails wrong arity"
+input = '(fn (x) x x)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare if fails wrong arity"
+input = '(if)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "if with two operands fails wrong arity"
+input = '(if true 1)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "if with four operands fails wrong arity"
+input = '(if true 1 2 3)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare and fails wrong arity"
+input = '(and)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "and with one operand fails wrong arity"
+input = '(and true)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare or fails wrong arity"
+input = '(or)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "or with one operand fails wrong arity"
+input = '(or false)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare let fails wrong arity"
+input = '(let)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "let without body fails wrong arity"
+input = '(let ((x 1)))'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "let with extra body operands fails wrong arity"
+input = '(let ((x 1)) x x)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare while fails wrong arity"
+input = '(while)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "while without body fails wrong arity"
+input = '(while true)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "while with extra body operands fails wrong arity"
+input = '(while true 1 2)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "bare do fails wrong arity"
+input = '(do)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
