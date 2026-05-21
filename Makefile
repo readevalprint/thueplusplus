@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test wasm wasm-smoke wasm-adapter-test demo-build
+.PHONY: test wasm wasm-smoke wasm-adapter-test demo-test demo-build
 
 # Runtime behavior is specified by executable example manifests, run against
 # both mandatory implementations with integrated rule coverage.
@@ -22,6 +22,11 @@ wasm-smoke: wasm
 wasm-adapter-test: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM adapter tests" >&2; exit 127; }
 	GOROOT="$$(go env GOROOT)" THUEPP_WASM="$$(pwd)/build/thuepp.wasm" node go/wasm/adapter_test.js
+
+demo-test:
+	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to run the browser demo tests" >&2; exit 127; }
+	npm --prefix demo install
+	npm --prefix demo test
 
 demo-build:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to build the browser demo" >&2; exit 127; }
