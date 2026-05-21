@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test wasm wasm-smoke
+.PHONY: test wasm wasm-smoke wasm-adapter-test
 
 # Runtime behavior is specified by executable example manifests, run against
 # both mandatory implementations with integrated rule coverage.
@@ -18,3 +18,7 @@ wasm:
 wasm-smoke: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM smoke tests" >&2; exit 127; }
 	GOROOT="$$(go env GOROOT)" THUEPP_WASM="$$(pwd)/build/thuepp.wasm" node go/wasm/smoke_test.js
+
+wasm-adapter-test: wasm
+	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM adapter tests" >&2; exit 127; }
+	GOROOT="$$(go env GOROOT)" THUEPP_WASM="$$(pwd)/build/thuepp.wasm" node go/wasm/adapter_test.js
