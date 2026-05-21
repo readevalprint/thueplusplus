@@ -1,0 +1,20 @@
+{
+  "name": "thuepp-wasm-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vue-tsc --noEmit && vite build",
+    "test": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "latest",
+    "@vue/tsconfig": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vue": "latest",
+    "vue-tsc": "latest"
+  },
+  "devDependencies": {}
+}

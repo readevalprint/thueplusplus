@@ -179,6 +179,14 @@ For Go-WASM adapter changes, also run the focused adapter target:
 make wasm-adapter-test
 ```
 
+For browser demo changes, run the additive demo build target:
+
+```bash
+make demo-build
+```
+
+`make demo-build` installs dependencies under `demo/` and runs the Vite/Vue production build. It is a browser-integration check only; it does not replace the native semantic truth engine.
+
 `make wasm-adapter-test` builds `build/thuepp.wasm` with `GOOS=js GOARCH=wasm` and runs the Node adapter tests in `go/wasm/adapter_test.js`. Those tests cover the JavaScript/WASM host boundary only: WASM loading, stdout buffering, stdin `readLine`, custom resource callbacks, missing-resource errors, callback timeout errors, include maps, coverage TSV return, and a worker smoke run. They intentionally do not run the full `examples/**/tests/*.toml` suite in JavaScript.
 
 JavaScript support is Go-WASM based. The Go interpreter remains the semantic implementation; the JavaScript files under `js/wasm/` only load the WASM artifact and adapt host resources for Node, browser, and worker environments. Full language conformance remains `make test` through the native Python/Go manifest runner.
