@@ -114,6 +114,24 @@ stderr = ""
 stdout_stripped = "6"
 
 [[case]]
+name = "direct lambda call"
+input = '((fn (x) x) 1)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "direct no arg lambda call"
+input = '((fn () 1))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
 name = "fn closure"
 input = '(((fn (x) (fn (y) (add x y))) 10) 5)'
 
