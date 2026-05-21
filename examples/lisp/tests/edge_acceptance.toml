@@ -5,30 +5,30 @@ timeout = 10
 args = ["--max-evals", "60000"]
 
 [[case]]
-name = "top-level empty array renders as reader syntax"
-input = "(array)"
+name = "top-level empty list renders as reader syntax"
+input = "(list)"
 
 [case.expect]
 exit_code = 0
-stdout_stripped = "(array)"
+stdout_stripped = "()"
 stderr = ""
 
 [[case]]
-name = "empty array head errors"
-input = "(head (array))"
+name = "empty list head errors"
+input = "(head (list))"
 
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr_stripped = "empty_array"
+stderr_stripped = "empty_list"
 
 [[case]]
-name = "singleton array rest is empty"
-input = "(rest (array 7))"
+name = "singleton list tail is empty"
+input = "(tail (list 7))"
 
 [case.expect]
 exit_code = 0
-stdout_stripped = "(array)"
+stdout_stripped = "()"
 stderr = ""
 
 [[case]]
@@ -50,8 +50,8 @@ stdout_stripped = "15"
 stderr = ""
 
 [[case]]
-name = "apply lambda from array head"
-input = "((head (array (lambda (x) (add x 10)))) 5)"
+name = "apply lambda from list head"
+input = "((head (list (lambda (x) (add x 10)))) 5)"
 
 [case.expect]
 exit_code = 0

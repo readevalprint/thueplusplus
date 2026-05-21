@@ -78,17 +78,17 @@ stderr = ""
 stdout_stripped = "true"
 
 [[case]]
-name = "array mixed"
-input = "(array 1 \"hi there\" false)"
+name = "list mixed"
+input = "(list 1 \"hi there\" false)"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 1 \"hi there\" false)"
+stdout_stripped = "(1 \"hi there\" false)"
 
 [[case]]
-name = "head array"
-input = "(head (array 8 9 10))"
+name = "head list"
+input = "(head (list 8 9 10))"
 
 [case.expect]
 exit_code = 0
@@ -96,13 +96,13 @@ stderr = ""
 stdout_stripped = "8"
 
 [[case]]
-name = "rest array"
-input = "(rest (array 8 \"x\" false))"
+name = "tail list"
+input = "(tail (list 8 \"x\" false))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array \"x\" false)"
+stdout_stripped = "(\"x\" false)"
 
 [[case]]
 name = "lambda nary"
@@ -186,11 +186,11 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "let array"
-input = "(let ((xs (array 1 \"hi there\" 2))) (rest xs))"
+name = "let list"
+input = "(let ((xs (list 1 \"hi there\" 2))) (tail xs))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array \"hi there\" 2)"
+stdout_stripped = "(\"hi there\" 2)"
 

@@ -1,14 +1,14 @@
 # Graduated deeply nested Lisp parser/runtime edge cases.
-# These cases stress greedy encoded-list capture, higher-order closures, arrays,
+# These cases stress greedy encoded-list capture, higher-order closures, lists,
 # and lexical lets together so future changes do not regress nested framing.
 program = "../lisp.tpp"
 timeout = 30
 args = ["--max-evals", "120000"]
 
 [[case]]
-name = "deeply nested let lambda array application preserves lexical values"
-input = "(let ((base 10)) (let ((mk (lambda (x) (lambda (y) (array base x y (array (add base x) (add x y))))))) (let ((base 99)) ((mk 2) 3))))"
+name = "deeply nested let lambda list application preserves lexical values"
+input = "(let ((base 10)) (let ((mk (lambda (x) (lambda (y) (list base x y (list (add base x) (add x y))))))) (let ((base 99)) ((mk 2) 3))))"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "(array 10 2 3 (array 12 5))"
+stdout_stripped = "(10 2 3 (12 5))"

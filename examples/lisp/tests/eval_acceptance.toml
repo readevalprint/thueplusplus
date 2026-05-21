@@ -112,15 +112,6 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
-name = "eval array value rejected"
-input = "(eval (array 1 2) (dict))"
-
-[case.expect]
-exit_code = 2
-stderr = "type_error"
-stdout_stripped = ""
-
-[[case]]
 name = "eval dict value rejected"
 input = "(eval (dict (x 1)) (dict))"
 

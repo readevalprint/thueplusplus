@@ -3,9 +3,9 @@ args = ["--max-evals", "120000"]
 
 [[case]]
 name = "expr alias accepts nested list forms in dict values and renders recursively"
-input = "(dict (outer (dict (inner (list (quote <=) (array 1 (lambda (x) x)))))))"
+input = "(dict (outer (dict (inner (list (quote <=) (list 1 (lambda (x) x)))))))"
 [case.expect]
-stdout = "(dict (outer (dict (inner (<= (array 1 <closure>))))))\n"
+stdout = "(dict (outer (dict (inner (<= (1 <closure>))))))\n"
 stderr = ""
 exit_code = 0
 
