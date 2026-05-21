@@ -130,6 +130,14 @@ stderr_stripped = "unsupported_form"
 exit_code = 2
 
 [[case]]
+name = "bare unquote scalar remains unsupported"
+input = '(unquote 1)'
+[case.expect]
+stdout = ""
+stderr_stripped = "unsupported_form"
+exit_code = 2
+
+[[case]]
 name = "bare splice remains unsupported"
 input = '(splice (list 1 2))'
 [case.expect]
