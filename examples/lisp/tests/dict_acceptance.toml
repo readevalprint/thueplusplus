@@ -74,12 +74,12 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "lookup default is lazy when key is present"
+name = "lookup default is strict even when key is present"
 input = "(lookup (dict (x 1)) (quote x) (div 1 0))"
 [case.expect]
-stdout = "1\n"
-stderr = ""
-exit_code = 0
+stdout = ""
+stderr_stripped = "division_by_zero"
+exit_code = 2
 
 [[case]]
 name = "lookup evaluates default when key is missing"
@@ -316,6 +316,14 @@ exit_code = 0
 [[case]]
 name = "at wrong arity in env"
 input = "(let ((xs (list 1 2))) (at xs))"
+[case.expect]
+stdout = ""
+stderr_stripped = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "dict with malformed entry fails wrong arity"
+input = "(dict (x))"
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
