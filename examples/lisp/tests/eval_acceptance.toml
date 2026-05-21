@@ -202,6 +202,15 @@ stderr = ""
 stdout_stripped = "13"
 
 [[case]]
+name = "eval generated list code with literal args"
+input = "(eval (list (quote add) 1 2) (dict (add add)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
 name = "eval direct generated list code keeps string data unparsed"
 input = "(eval (list (quote eq) \"(add 1 2)\" \"(add 1 2)\") (dict (eq eq)))"
 
