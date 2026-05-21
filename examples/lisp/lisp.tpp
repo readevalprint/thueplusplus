@@ -188,17 +188,14 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^QUOTELIST<(?<item>(?:$OPSYM|$EXPR))(?: (?<rest>[^|]*))?\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QUOTE<{{item}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
 ^RET<(?<v>$VAL)\|KQLIST<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QUOTELIST<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
 
-# Quasiquote expands code-as-data like quote, except `(unquote expr)` evaluates one
-# value and `(splice expr)` expands list elements into the current quasiquoted list.
+# Quasiquote routes scalar code-as-data through quote, except `(unquote expr)`
+# evaluates one value and `(splice expr)` expands list elements into the current
+# quasiquoted list.
 # Nested quasiquote is deliberately rejected in this first slice to avoid implicit
 # depth accounting; bare unquote/splice stay unsupported outside this evaluator.
 ^EENV<quasiquote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQ<{{item}}|{{env}}|{{k}}>
 ^EENV<quasiquote(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^QQ<true\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
-^QQ<false\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
-^QQ<(?<sym>$SYM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VSYM<{{sym|pctenc}}>|{{k}}>
-^QQ<(?<n>$NUM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
-^QQ<VSTR<(?<s>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+^QQ<(?<item>(?:$OPSYM|$NAME|$NUM|$VSTR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
 ^QQ<L<unquote>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQESC<unquote|top|||{{env}}|> {{k}}>
 ^QQ<L<unquote%20(?<args>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQESC<unquote|top|{{args}}||{{env}}|> {{k}}>
 ^QQ<L<splice(?:%20(?<args>$PCT))?>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQESC<splice|top|{{args}}||{{env}}|> {{k}}>

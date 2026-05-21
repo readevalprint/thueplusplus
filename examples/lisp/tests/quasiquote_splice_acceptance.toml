@@ -2,7 +2,7 @@ program = "../lisp.tpp"
 args = ["--max-evals", "120000"]
 
 [[case]]
-name = "quasiquote scalar returns scalar data"
+name = "quasiquote number scalar returns scalar data"
 input = '(quasiquote 7)'
 [case.expect]
 stdout = "7\n"
@@ -10,7 +10,15 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "quasiquote symbol returns symbol data"
+name = "quasiquote bool scalar returns scalar data"
+input = '(quasiquote true)'
+[case.expect]
+stdout = "true\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quasiquote symbol scalar returns symbol data"
 input = '(quasiquote alpha)'
 [case.expect]
 stdout = "alpha\n"
@@ -18,10 +26,18 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "quasiquote booleans and string return literal data"
-input = '(list (quasiquote true) (quasiquote false) (quasiquote "qq"))'
+name = "quasiquote operator symbol scalar returns symbol data"
+input = '(quasiquote +)'
 [case.expect]
-stdout = "(true false \"qq\")\n"
+stdout = "+\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quasiquote string scalar returns literal data"
+input = '(quasiquote "qq")'
+[case.expect]
+stdout = "\"qq\"\n"
 stderr = ""
 exit_code = 0
 
