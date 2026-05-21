@@ -191,3 +191,21 @@ input = "(eval (quote +) (dict))"
 exit_code = 2
 stderr = "type_error"
 stdout_stripped = ""
+
+[[case]]
+name = "eval directly evaluates nested list code without render reparse"
+input = "(eval (quote (add (add x 1) 2)) (dict (add add) (x 10)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "13"
+
+[[case]]
+name = "eval direct generated list code keeps string data unparsed"
+input = "(eval (list (quote eq) \"(add 1 2)\" \"(add 1 2)\") (dict (eq eq)))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
