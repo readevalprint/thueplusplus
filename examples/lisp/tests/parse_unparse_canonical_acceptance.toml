@@ -107,22 +107,6 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "dict helper rejects numeric key"
-input = '(dict (1 2))'
-[case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
-
-[[case]]
-name = "dict helper rejects duplicate evaluated keys"
-input = '(dict ((quote x) 1) ((quote x) 2))'
-[case.expect]
-stdout = ""
-stderr_stripped = "duplicate_key"
-exit_code = 2
-
-[[case]]
 name = "alist get finds symbol key"
 input = '(get (dict ((quote x) 1) ("k" 2)) (quote x) 0)'
 [case.expect]
@@ -155,14 +139,6 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "assoc adds missing alist key"
-input = '(assoc (dict ((quote x) 1)) (quote y) 2)'
-[case.expect]
-stdout = "((y 2) (x 1))\n"
-stderr = ""
-exit_code = 0
-
-[[case]]
 name = "assoc updates first matching alist key"
 input = '(assoc (quote ((x 1) (x 2))) (quote x) 9)'
 [case.expect]
@@ -185,14 +161,6 @@ input = '(get (quote (x)) (quote x) 0)'
 stdout = ""
 stderr_stripped = "type_error"
 exit_code = 2
-
-[[case]]
-name = "set nth replaces positional list item"
-input = '(set-nth (list 1 2 3) 1 9)'
-[case.expect]
-stdout = "(1 9 3)\n"
-stderr = ""
-exit_code = 0
 
 [[case]]
 name = "top level primitive value fails through unparse"

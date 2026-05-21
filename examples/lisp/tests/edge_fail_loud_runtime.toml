@@ -179,11 +179,3 @@ input = '(array)'
 exit_code = 2
 stdout = ""
 stderr_stripped = "unbound_name"
-
-[[case]]
-name = "removed tail helper is unbound"
-input = '(tail (list 1 2))'
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unbound_name"

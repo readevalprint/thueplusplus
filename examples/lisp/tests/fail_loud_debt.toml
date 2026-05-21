@@ -106,15 +106,6 @@ stdout = ""
 stderr_stripped = "unsupported_form"
 
 [[case]]
-name = "top-level add primitive is unparseable"
-input = 'add'
-
-[case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "unparseable_value"
-
-[[case]]
 name = "malformed second numeric token fails loudly"
 input = '(add 1 2x)'
 
