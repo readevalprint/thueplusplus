@@ -54,7 +54,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "subtraction rejects boolean lhs as type error"
-input = "(- true 1)"
+input = "(sub true 1)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -62,7 +62,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "multiplication rejects boolean lhs as type error"
-input = "(* true 1)"
+input = "(mul true 1)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -70,7 +70,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "division rejects boolean lhs as type error"
-input = "(/ true 1)"
+input = "(div true 1)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -78,7 +78,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "comparison rejects boolean lhs as type error"
-input = "(< true 1)"
+input = "(lt true 1)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -86,7 +86,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "subtraction rejects boolean rhs as type error"
-input = "(- 1 true)"
+input = "(sub 1 true)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -94,7 +94,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "multiplication rejects boolean rhs as type error"
-input = "(* 1 true)"
+input = "(mul 1 true)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -102,7 +102,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "division rejects boolean rhs as type error"
-input = "(/ 1 true)"
+input = "(div 1 true)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -110,7 +110,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "comparison rejects boolean rhs as type error"
-input = "(< 1 true)"
+input = "(lt 1 true)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -134,7 +134,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "decimal zero division is classified"
-input = "(/ 1 0.0)"
+input = "(div 1 0.0)"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -142,7 +142,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "rational zero division is classified"
-input = "(/ 1 0/1)"
+input = "(div 1 0/1)"
 [case.expect]
 exit_code = 2
 stdout = ""

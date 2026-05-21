@@ -11,7 +11,7 @@ exit_code = 0
 
 [[case]]
 name = "expr alias preserves evaluated index expressions for at"
-input = "(at (list 10 20 30 40) (+ 1 2))"
+input = "(at (list 10 20 30 40) (add 1 2))"
 [case.expect]
 stdout = "40\n"
 stderr = ""
@@ -43,7 +43,7 @@ exit_code = 0
 
 [[case]]
 name = "no space pct alias still detects extra unquote arguments"
-input = "(quasiquote (a (unquote (+ 1 2) 3)))"
+input = "(quasiquote (a (unquote (add 1 2) 3)))"
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"

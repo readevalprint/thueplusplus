@@ -1,0 +1,193 @@
+# Explicit-scope code-as-data eval acceptance.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "100000"]
+
+[[case]]
+name = "eval list code with explicit builtin and binding"
+input = "(eval (quote (add x 1)) (dict (add add) (x 10)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "11"
+
+[[case]]
+name = "eval generated list code"
+input = "(eval (list (quote add) (quote x) 2) (dict (add add) (x 5)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "eval has no hidden core env fallback"
+input = "(eval (quote (add x 1)) (dict (x 10)))"
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "eval has no ambient caller env"
+input = "(let ((x 99)) (eval (quote x) (dict)))"
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "eval symbol lookup from explicit scope"
+input = "(eval (quote x) (dict (x 42)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "eval scalar number self evaluates"
+input = "(eval (quote 7) (dict))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "eval scalar bool self evaluates"
+input = "(eval (quote true) (dict))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "eval string self evaluates not source"
+input = "(eval \"(add 1 2)\" (dict (add add)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "\"(add 1 2)\""
+
+[[case]]
+name = "eval wrong arity none"
+input = "(eval)"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "eval wrong arity one"
+input = "(eval (quote x))"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "eval wrong arity extra"
+input = "(eval (quote x) (dict (x 1)) (dict))"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "eval scope must be dict"
+input = "(eval (quote x) 7)"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "eval array value rejected"
+input = "(eval (array 1 2) (dict))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "eval dict value rejected"
+input = "(eval (dict (x 1)) (dict))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "eval closure value rejected"
+input = "(eval (lambda (x) x) (dict))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "exec remains unbound"
+input = "exec"
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "eval rejects string-key scope entries"
+input = "(eval (quote x) (dict (\"x\" 1)))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "eval empty list code fails wrong arity"
+input = "(eval (quote ()) (dict))"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "eval symbol can return explicit builtin value"
+input = "(eval (quote add) (dict (add add)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "<builtin>"
+
+[[case]]
+name = "eval rejects operator symbol scope key"
+input = "(eval (quote x) (put (dict) (quote +) 1))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "eval rejects operator symbol as code"
+input = "(eval (quote +) (dict))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""

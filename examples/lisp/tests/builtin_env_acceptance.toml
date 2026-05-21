@@ -1,0 +1,157 @@
+# Builtins are ordinary callable values resolved through the lexical environment.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "80000"]
+
+[[case]]
+name = "named add uses core env"
+input = "(add 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "named nested arithmetic"
+input = "(add 1 (mul 2 3))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "named comparisons"
+input = "(and (eq (add 1 2) 3) (lte 2 2) (gt 5 4))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "builtin wrong arity too few"
+input = "(add 1)"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin wrong arity too many"
+input = "(add 1 2 3)"
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin type error"
+input = "(add 1 true)"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin shadowed by number is not callable"
+input = "(let ((add 7)) (add 1 2))"
+
+[case.expect]
+exit_code = 2
+stderr = "not_function"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin shadowed by closure"
+input = "(let ((add (lambda (x y) 999))) (add 1 2))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "999"
+
+[[case]]
+name = "missing callee is lookup miss"
+input = "(missing 1 2)"
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "symbolic operator hard cutoff"
+input = "(+ 1 2)"
+
+[case.expect]
+exit_code = 2
+stderr = "unsupported_form"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin value renders opaquely inside list"
+input = "(list add)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(<builtin>)"
+
+[[case]]
+name = "builtin value rejected by head as non-list"
+input = "(head add)"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin value rejected by tail as non-list"
+input = "(tail add)"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin value rejected by len as non-list"
+input = "(len add)"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin value rejected by at as non-list"
+input = "(at add 0)"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin value rejected by push as non-list"
+input = "(push 1 add)"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "builtin value rejected by quasiquote splice as non-list"
+input = "(quasiquote (x (splice add)))"
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""

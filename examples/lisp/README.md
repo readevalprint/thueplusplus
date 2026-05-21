@@ -11,19 +11,19 @@ Atoms:
 - numbers matching the repository numeric literal contract: integers, decimals, and non-zero-denominator fractions;
 - booleans: `true`, `false`;
 - strings delimited by double quotes, with the supported escape set described below;
-- names bound by `let` or lambda parameters.
+- names bound by `let`, lambda parameters, or the initial core environment.
 
 Compound forms:
 
-- arithmetic: `+`, `-`, `*`, `/`;
-- numeric comparison/equality: `=`, `<`, `>`, `<=`, `>=`;
+- arithmetic builtins from the initial core environment: `add`, `sub`, `mul`, `div`;
+- numeric comparison/equality builtins from the initial core environment: `eq`, `lt`, `gt`, `lte`, `gte`;
 - boolean control: `if`, `and`, `or`;
 - sequencing: `begin`;
 - lexical binding: `let`;
 - bounded iteration/state update: `while` and `set`;
 - functions: `lambda` and direct application;
 - arrays: `array`, `head`, `rest`;
-- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `head`, `tail`, `empty?`, `push`, `len`, and `at`;
+- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `eval`, `head`, `tail`, `empty?`, `push`, `len`, and `at`;
 - dictionaries: `dict`, `lookup`, `has`, `put`, and `del`.
 
 ## Runtime values
@@ -36,7 +36,8 @@ The evaluator uses internal typed values while reducing:
 - arrays;
 - symbols and proper lists for code-as-data;
 - dictionaries with symbol or string keys;
-- closures.
+- closures;
+- opaque builtin callables from the initial core environment.
 
 Successful top-level output renders public values as reader syntax where the value has reader syntax:
 
@@ -46,9 +47,10 @@ Successful top-level output renders public values as reader syntax where the val
 - arrays recursively as `(array ...)`, for example `(array 1 (array 2 3))`;
 - quoted symbols as their source names and proper lists as ordinary parenthesized source lists, for example `x`, `(+ 1 x)`, or `(1 2)`;
 - dictionaries as pair-shaped `(dict (key value) ...)` syntax, for example `(dict (x 1) ("external key" 2))`;
-- closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core.
+- closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core;
+- builtin callables as `<builtin>` because builtin capability values are opaque runtime values with no reader syntax in this core.
 
-Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, array, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure output is the explicit non-round-trippable exception until a dedicated closure serialization design exists.
+Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, array, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and builtin output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
 
 ## Evaluation model
 
@@ -58,7 +60,8 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - Values are demanded lazily from encoded nodes.
 - `let` creates lexical bindings.
 - `lambda` captures the lexical environment in a closure.
-- Function application evaluates arguments according to the current evaluator rules and checks arity. Only closures are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
+- Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and builtin callable values are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
+- Normal top-level programs start with an explicit initial core environment containing named builtin callables (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`). These names are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -70,7 +73,27 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
   observed through bindings updated by `set`.
 - `(set name expr)` updates the nearest existing lexical binding and returns the
   assigned value; setting an unbound name fails with `unbound_name`.
-- Arithmetic and comparison forms are strict for the operands they require.
+- Arithmetic and comparison builtins are strict for the operands they require and currently accept exactly two numeric operands.
+
+## Explicit eval scope
+
+`eval` evaluates code-as-data using an explicit dictionary scope:
+
+```lisp
+(eval (quote (add x 1)) (dict (add add) (x 10)))
+```
+
+returns `11`.
+
+Contract:
+
+- `(eval expr scope)` first evaluates `expr` and `scope` normally.
+- `scope` must evaluate to a dictionary whose keys are symbols that are valid lexical names; string keys and operator-symbol keys fail with `type_error` because they cannot become lexical bindings.
+- The dictionary is converted to the entire environment for the evaluated code. There is no ambient caller environment and no hidden core-environment fallback.
+- Code values are quoted symbols and proper lists. Symbols are looked up in the explicit scope. Lists are rendered back to source-shaped code and evaluated in the explicit scope.
+- Scalars are self-evaluating under `eval`: numbers, booleans, and strings return themselves. Strings are data, not source text; `(eval "(add 1 2)" (dict (add add)))` returns the string rather than parsing or executing it.
+- Arrays, dictionaries, closures, and builtin values are not code and fail with `type_error` when used as the first evaluated value to `eval`.
+- `(eval)`, `(eval expr)`, and extra-argument forms fail with `wrong_arity`.
 
 ## Unsupported forms and fail-loud policy
 

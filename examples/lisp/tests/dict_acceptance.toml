@@ -27,7 +27,7 @@ exit_code = 0
 
 [[case]]
 name = "dict values are evaluated"
-input = "(dict (x (+ 1 2)) (y (list 4 5)))"
+input = "(dict (x (add 1 2)) (y (list 4 5)))"
 [case.expect]
 stdout = "(dict (x 3) (y (4 5)))\n"
 stderr = ""
@@ -75,7 +75,7 @@ exit_code = 0
 
 [[case]]
 name = "lookup default is lazy when key is present"
-input = "(lookup (dict (x 1)) (quote x) (/ 1 0))"
+input = "(lookup (dict (x 1)) (quote x) (div 1 0))"
 [case.expect]
 stdout = "1\n"
 stderr = ""
@@ -83,7 +83,7 @@ exit_code = 0
 
 [[case]]
 name = "lookup evaluates default when key is missing"
-input = "(lookup (dict (x 1)) (quote y) (+ 40 2))"
+input = "(lookup (dict (x 1)) (quote y) (add 40 2))"
 [case.expect]
 stdout = "42\n"
 stderr = ""

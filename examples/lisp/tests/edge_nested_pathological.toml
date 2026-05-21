@@ -7,7 +7,7 @@ args = ["--max-evals", "120000"]
 
 [[case]]
 name = "deeply nested let lambda array application preserves lexical values"
-input = "(let ((base 10)) (let ((mk (lambda (x) (lambda (y) (array base x y (array (+ base x) (+ x y))))))) (let ((base 99)) ((mk 2) 3))))"
+input = "(let ((base 10)) (let ((mk (lambda (x) (lambda (y) (array base x y (array (add base x) (add x y))))))) (let ((base 99)) ((mk 2) 3))))"
 [case.expect]
 exit_code = 0
 stderr = ""

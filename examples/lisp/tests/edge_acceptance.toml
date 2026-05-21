@@ -42,7 +42,7 @@ stderr = ""
 
 [[case]]
 name = "closure captures outer binding after later shadow"
-input = "(let ((x 10)) (let ((f (lambda (y) (+ x y)))) (let ((x 99)) (f 5))))"
+input = "(let ((x 10)) (let ((f (lambda (y) (add x y)))) (let ((x 99)) (f 5))))"
 
 [case.expect]
 exit_code = 0
@@ -51,7 +51,7 @@ stderr = ""
 
 [[case]]
 name = "apply lambda from array head"
-input = "((head (array (lambda (x) (+ x 10)))) 5)"
+input = "((head (array (lambda (x) (add x 10)))) 5)"
 
 [case.expect]
 exit_code = 0
@@ -60,7 +60,7 @@ stderr = ""
 
 [[case]]
 name = "nary and short circuits after false"
-input = "(and true false (/ 1 0))"
+input = "(and true false (div 1 0))"
 
 [case.expect]
 exit_code = 0
@@ -78,7 +78,7 @@ stderr = ""
 
 [[case]]
 name = "lazy if string protects syntax"
-input = "(if true \"not (code) [x]\" (/ 1 0))"
+input = "(if true \"not (code) [x]\" (div 1 0))"
 
 [case.expect]
 exit_code = 0
@@ -87,7 +87,7 @@ stderr = ""
 
 [[case]]
 name = "rational addition"
-input = "(+ 1/2 1/3)"
+input = "(add 1/2 1/3)"
 
 [case.expect]
 exit_code = 0
@@ -96,7 +96,7 @@ stderr = ""
 
 [[case]]
 name = "unbound name inside addition errors"
-input = "(+ x 1)"
+input = "(add x 1)"
 
 [case.expect]
 exit_code = 2
