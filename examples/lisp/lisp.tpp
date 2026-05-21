@@ -8,6 +8,10 @@ PCTSTR <- (?:[A-Za-z0-9_.-]|%0[0-79BCEF]|%1[0-9A-F]|%2[0-13-9A-F]|%[3-4][0-9A-F]
 PCT_NO_SPACE <- (?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[1-9A-F]|%[3-9A-F][0-9A-F])*
 LET_VALUE_PCT <- (?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
+NAT <- [0-9]+
+POS <- [1-9][0-9]*
+NEGINT <- -[0-9]+
+NONINTNUM <- -?(?:[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 NAME <- [A-Za-z_][A-Za-z0-9_-]*\??
 OPSYM <- \+|\*|/|<=|>=|<|>|=
 SYM <- $OPSYM|$NAME
@@ -335,7 +339,9 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<type>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTYPE {{k}}>
 ^APPLY<VPRIM<push>\|(?<item>[^;]*);(?<lst>[^;]*);\|(?<k>.*)>$ ::= RET<{{lst|pctdec}}|KPUSH2<{{item|pctdec}}> {{k}}>
 ^APPLY<VPRIM<at>\|(?<lst>[^;]*);(?<idx>[^;]*);\|(?<k>.*)>$ ::= BAT<{{lst|pctdec}}|{{idx|pctdec}}|{{k}}>
-^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NUM)>\|(?<k>.*)>$ ::= RET<{{lst}}|KAT2<{{idx}}> {{k}}>
+^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NAT)>\|(?<k>.*)>$ ::= RET<{{lst}}|KAT2<{{idx}}> {{k}}>
+^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NEGINT)>\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^BAT<(?<lst>$VAL)\|VNUM<(?<bad>$NONINTNUM)>\|(?<k>.*)>$ ::= ERR<type_error>
 ^BAT<(?<lst>$VAL)\|(?<bad>$NONNUM)\|(?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VPRIM<has>\|(?<dict>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BHAS<{{dict|pctdec}}|{{key|pctdec}}|{{k}}>
 ^BHAS<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KHASKEY<{{entries}}> {{k}}>
@@ -428,17 +434,13 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<VLIST<(?<first>[^;]*);(?<rest>.*)>\|KTAIL (?<k>.*)>$ ::= RET<VLIST<{{rest}}>|{{k}}>
 ^RET<VLIST<>\|KEMPTY (?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VLIST<(?<items>(?:[^;>]*;)+)>\|KEMPTY (?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
-^RET<VLIST<>\|KLEN (?<k>.*)>$ ::= RET<VNUM<0>|{{k}}>
-^RET<VLIST<[^;]*;>\|KLEN (?<k>.*)>$ ::= RET<VNUM<1>|{{k}}>
-^RET<VLIST<[^;]*;[^;]*;>\|KLEN (?<k>.*)>$ ::= RET<VNUM<2>|{{k}}>
-^RET<VLIST<[^;]*;[^;]*;[^;]*;>\|KLEN (?<k>.*)>$ ::= RET<VNUM<3>|{{k}}>
-^RET<VLIST<[^;]*;[^;]*;[^;]*;[^;]*;>\|KLEN (?<k>.*)>$ ::= RET<VNUM<4>|{{k}}>
-^RET<VLIST<(?<items>(?:[^;]*;){5,})>\|KLEN (?<k>.*)>$ ::= ERR<unsupported_form>
-^RET<VLIST<(?<v0>[^;]*);(?<rest>.*)>\|KAT2<0> (?<k>.*)>$ ::= RET<{{v0|pctdec}}|{{k}}>
-^RET<VLIST<[^;]*;(?<v1>[^;]*);(?<rest>.*)>\|KAT2<1> (?<k>.*)>$ ::= RET<{{v1|pctdec}}|{{k}}>
-^RET<VLIST<[^;]*;[^;]*;(?<v2>[^;]*);(?<rest>.*)>\|KAT2<2> (?<k>.*)>$ ::= RET<{{v2|pctdec}}|{{k}}>
-^RET<VLIST<[^;]*;[^;]*;[^;]*;(?<v3>[^;]*);(?<rest>.*)>\|KAT2<3> (?<k>.*)>$ ::= RET<{{v3|pctdec}}|{{k}}>
-^RET<VLIST<(?<items>$ITEMS)>\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^RET<VLIST<(?<items>$ITEMS)>\|KLEN (?<k>.*)>$ ::= LENWALK<{{items}}|0|{{k}}>
+^LENWALK<\|(?<n>$NAT)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^LENWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<n>$NAT)\|(?<k>.*)>$ ::= LENWALK<{{rest}}|ADD<{{n}},1>|{{k}}>
+^RET<VLIST<(?<items>$ITEMS)>\|KAT2<(?<idx>$NAT)> (?<k>.*)>$ ::= ATWALK<{{items}}|{{idx}}|{{k}}>
+^ATWALK<\|(?<idx>$NAT)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^ATWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|0\|(?<k>.*)>$ ::= RET<{{item|pctdec}}|{{k}}>
+^ATWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<idx>$POS)\|(?<k>.*)>$ ::= ATWALK<{{rest}}|SUB<{{idx}},1>|{{k}}>
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KHEAD (?<k>.*)>$ ::= ERR<type_error>
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KTAIL (?<k>.*)>$ ::= ERR<type_error>
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
