@@ -179,7 +179,7 @@ stdout = ""
 stderr_stripped = "unbound_name"
 
 [[case]]
-name = "unsupported define form is not a lookup miss"
+name = "unsupported define form is not a get miss"
 input = "(define x 1)"
 
 [case.expect]
@@ -188,7 +188,7 @@ stdout = ""
 stderr_stripped = "unsupported_form"
 
 [[case]]
-name = "unsupported letrec form is not a lookup miss"
+name = "unsupported letrec form is not a get miss"
 input = "(letrec ((fact 1)) fact)"
 
 [case.expect]
@@ -233,8 +233,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "malformed lambda without body fails wrong arity"
-input = "(lambda (x))"
+name = "malformed fn without body fails wrong arity"
+input = "(fn (x))"
 
 [case.expect]
 exit_code = 2
@@ -252,8 +252,8 @@ stderr_stripped = "unbound_name"
 
 
 [[case]]
-name = "malformed lambda in lexical environment fails wrong arity"
-input = "(let ((x 1)) (lambda (x)))"
+name = "malformed fn in lexical environment fails wrong arity"
+input = "(let ((x 1)) (fn (x)))"
 
 [case.expect]
 exit_code = 2
@@ -282,7 +282,7 @@ stderr_stripped = "unsupported_form"
 
 [[case]]
 name = "recursive let self reference remains an unbound name"
-input = "(let ((fact (lambda (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))"
+input = "(let ((fact (fn (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))"
 
 [case.expect]
 exit_code = 2
@@ -291,7 +291,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "letrec factorial remains unsupported before recursion boundary"
-input = "(letrec ((fact (lambda (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))"
+input = "(letrec ((fact (fn (n) (if (eq n 0) 1 (mul n (fact (sub n 1))))))) (fact 5))"
 
 [case.expect]
 exit_code = 2
@@ -299,8 +299,8 @@ stdout = ""
 stderr_stripped = "unsupported_form"
 
 [[case]]
-name = "lambda has no implicit self binding"
-input = "(let ((f (lambda (n) (f n)))) (f 0))"
+name = "fn contains no implicit self binding"
+input = "(let ((f (fn (n) (f n)))) (f 0))"
 
 [case.expect]
 exit_code = 2

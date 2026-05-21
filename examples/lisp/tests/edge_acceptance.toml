@@ -14,8 +14,8 @@ stdout_stripped = "()"
 stderr = ""
 
 [[case]]
-name = "empty list head errors"
-input = "(head (list))"
+name = "empty list first errors"
+input = "(first (list))"
 
 [case.expect]
 exit_code = 2
@@ -23,8 +23,8 @@ stdout = ""
 stderr_stripped = "empty_list"
 
 [[case]]
-name = "singleton list tail is empty"
-input = "(tail (list 7))"
+name = "singleton list rest is empty"
+input = "(rest (list 7))"
 
 [case.expect]
 exit_code = 0
@@ -42,7 +42,7 @@ stderr = ""
 
 [[case]]
 name = "closure captures outer binding after later shadow"
-input = "(let ((x 10)) (let ((f (lambda (y) (add x y)))) (let ((x 99)) (f 5))))"
+input = "(let ((x 10)) (let ((f (fn (y) (add x y)))) (let ((x 99)) (f 5))))"
 
 [case.expect]
 exit_code = 0
@@ -50,8 +50,8 @@ stdout_stripped = "15"
 stderr = ""
 
 [[case]]
-name = "apply lambda from list head"
-input = "((head (list (lambda (x) (add x 10)))) 5)"
+name = "apply fn from list first"
+input = "((first (list (fn (x) (add x 10)))) 5)"
 
 [case.expect]
 exit_code = 0

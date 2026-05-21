@@ -13,7 +13,7 @@ stdout_stripped = "()"
 
 [[case]]
 name = "while single body updates existing binding"
-input = "(let ((i 0)) (begin (while (lt i 3) (set i (add i 1))) i))"
+input = "(let ((i 0)) (do (while (lt i 3) (set-var i (add i 1))) i))"
 
 [case.expect]
 exit_code = 0
@@ -21,8 +21,8 @@ stderr = ""
 stdout_stripped = "3"
 
 [[case]]
-name = "while begin body sums numbers"
-input = "(let ((i 0) (sum 0)) (begin (while (lt i 4) (begin (set sum (add sum i)) (set i (add i 1)))) sum))"
+name = "while do body sums numbers"
+input = "(let ((i 0) (sum 0)) (do (while (lt i 4) (do (set-var sum (add sum i)) (set-var i (add i 1)))) sum))"
 
 [case.expect]
 exit_code = 0
@@ -30,8 +30,8 @@ stderr = ""
 stdout_stripped = "6"
 
 [[case]]
-name = "while begin body traverses list value"
-input = "(let ((xs (list 1 2 3)) (acc (list))) (begin (while (lt 0 (len xs)) (begin (set acc (push (head xs) acc)) (set xs (tail xs)))) acc))"
+name = "while do body traverses list value"
+input = "(let ((xs (list 1 2 3)) (acc (list))) (do (while (lt 0 (count xs)) (do (set-var acc (cons (first xs) acc)) (set-var xs (rest xs)))) acc))"
 
 [case.expect]
 exit_code = 0
@@ -57,8 +57,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "set requires existing binding"
-input = "(set i 1)"
+name = "set-var requires existing binding"
+input = "(set-var i 1)"
 
 [case.expect]
 exit_code = 2
@@ -94,8 +94,8 @@ stdout = ""
 stderr_contains = ["Rule probe limit (200) exceeded"]
 
 [[case]]
-name = "while begin condition must be boolean"
-input = "(while 1 (begin 1 2))"
+name = "while do condition must be boolean"
+input = "(while 1 (do 1 2))"
 
 [case.expect]
 exit_code = 2
@@ -103,8 +103,8 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "while begin body preserves plain first expression before set"
-input = "(let ((i 0)) (begin (while (lt i 1) (begin 1 (set i (add i 1)))) i))"
+name = "while do body preserves plain first expression before set-var"
+input = "(let ((i 0)) (do (while (lt i 1) (do 1 (set-var i (add i 1)))) i))"
 
 [case.expect]
 exit_code = 0
@@ -112,8 +112,8 @@ stderr = ""
 stdout_stripped = "1"
 
 [[case]]
-name = "while begin body preserves plain final expression after set"
-input = "(let ((i 0)) (begin (while (lt i 1) (begin (set i (add i 1)) 99)) i))"
+name = "while do body preserves plain final expression after set-var"
+input = "(let ((i 0)) (do (while (lt i 1) (do (set-var i (add i 1)) 99)) i))"
 
 [case.expect]
 exit_code = 0
@@ -131,8 +131,8 @@ stdout = ""
 stderr_contains = ["Rule probe limit (200) exceeded"]
 
 [[case]]
-name = "set without args fails wrong arity"
-input = "(set)"
+name = "set-var without args fails wrong arity"
+input = "(set-var)"
 
 [case.expect]
 exit_code = 2
@@ -140,8 +140,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "set missing value in lexical environment fails wrong arity"
-input = "(let ((x 1)) (set x))"
+name = "set-var missing value in lexical environment fails wrong arity"
+input = "(let ((x 1)) (set-var x))"
 
 [case.expect]
 exit_code = 2
@@ -158,8 +158,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "set can return numeric value"
-input = "(let ((x 1)) (set x 2))"
+name = "set-var can return numeric value"
+input = "(let ((x 1)) (set-var x 2))"
 
 [case.expect]
 exit_code = 0
@@ -167,8 +167,8 @@ stderr = ""
 stdout_stripped = "2"
 
 [[case]]
-name = "set can return boolean value"
-input = "(let ((x false)) (set x true))"
+name = "set-var can return boolean value"
+input = "(let ((x false)) (set-var x true))"
 
 [case.expect]
 exit_code = 0
@@ -176,8 +176,8 @@ stderr = ""
 stdout_stripped = "true"
 
 [[case]]
-name = "set can return string value"
-input = "(let ((x \"a\")) (set x \"b\"))"
+name = "set-var can return string value"
+input = "(let ((x \"a\")) (set-var x \"b\"))"
 
 [case.expect]
 exit_code = 0
@@ -185,8 +185,8 @@ stderr = ""
 stdout_stripped = '"b"'
 
 [[case]]
-name = "set can return closure value"
-input = "(let ((x 0)) (set x (lambda (y) y)))"
+name = "set-var can return closure value"
+input = "(let ((x 0)) (set-var x (fn (y) y)))"
 
 [case.expect]
 exit_code = 0
@@ -194,8 +194,8 @@ stderr = ""
 stdout_stripped = "<closure>"
 
 [[case]]
-name = "set can return symbol value"
-input = "(let ((x 0)) (set x (quote name)))"
+name = "set-var can return symbol value"
+input = "(let ((x 0)) (set-var x (quote name)))"
 
 [case.expect]
 exit_code = 0
@@ -203,8 +203,8 @@ stderr = ""
 stdout_stripped = "name"
 
 [[case]]
-name = "set can return list value"
-input = "(let ((x (list))) (set x (list 1)))"
+name = "set-var can return list value"
+input = "(let ((x (list))) (set-var x (list 1)))"
 
 [case.expect]
 exit_code = 0

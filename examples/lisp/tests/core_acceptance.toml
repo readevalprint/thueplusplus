@@ -87,8 +87,8 @@ stderr = ""
 stdout_stripped = "(1 \"hi there\" false)"
 
 [[case]]
-name = "head list"
-input = "(head (list 8 9 10))"
+name = "first list"
+input = "(first (list 8 9 10))"
 
 [case.expect]
 exit_code = 0
@@ -96,8 +96,8 @@ stderr = ""
 stdout_stripped = "8"
 
 [[case]]
-name = "tail list"
-input = "(tail (list 8 \"x\" false))"
+name = "rest list"
+input = "(rest (list 8 \"x\" false))"
 
 [case.expect]
 exit_code = 0
@@ -105,8 +105,8 @@ stderr = ""
 stdout_stripped = "(\"x\" false)"
 
 [[case]]
-name = "lambda nary"
-input = "((lambda (x y z) (add (add x y) z)) 1 2 3)"
+name = "fn nary"
+input = "((fn (x y z) (add (add x y) z)) 1 2 3)"
 
 [case.expect]
 exit_code = 0
@@ -114,8 +114,8 @@ stderr = ""
 stdout_stripped = "6"
 
 [[case]]
-name = "lambda closure"
-input = "(((lambda (x) (lambda (y) (add x y))) 10) 5)"
+name = "fn closure"
+input = "(((fn (x) (fn (y) (add x y))) 10) 5)"
 
 [case.expect]
 exit_code = 0
@@ -123,8 +123,8 @@ stderr = ""
 stdout_stripped = "15"
 
 [[case]]
-name = "lambda shadow"
-input = "((lambda (x) ((lambda (x) x) 2)) 1)"
+name = "fn shadow"
+input = "((fn (x) ((fn (x) x) 2)) 1)"
 
 [case.expect]
 exit_code = 0
@@ -132,8 +132,8 @@ stderr = ""
 stdout_stripped = "2"
 
 [[case]]
-name = "lambda partial renders closure"
-input = "((lambda (x y) (add x y)) 1)"
+name = "fn partial renders closure"
+input = "((fn (x y) (add x y)) 1)"
 
 [case.expect]
 exit_code = 0
@@ -141,8 +141,8 @@ stderr = ""
 stdout_stripped = "<closure>"
 
 [[case]]
-name = "lambda partial application completes"
-input = "(((lambda (x y) (add x y)) 1) 2)"
+name = "fn partial application completes"
+input = "(((fn (x y) (add x y)) 1) 2)"
 
 [case.expect]
 exit_code = 0
@@ -150,8 +150,8 @@ stderr = ""
 stdout_stripped = "3"
 
 [[case]]
-name = "lambda partial preserves lexical capture"
-input = "(let ((a 10)) (((lambda (x y) (add (add a x) y)) 1) 2))"
+name = "fn partial preserves lexical capture"
+input = "(let ((a 10)) (((fn (x y) (add (add a x) y)) 1) 2))"
 
 [case.expect]
 exit_code = 0
@@ -159,8 +159,8 @@ stderr = ""
 stdout_stripped = "13"
 
 [[case]]
-name = "lambda partial preserves shadowing"
-input = "(let ((x 100)) (((lambda (x y) (add x y)) 1) 2))"
+name = "fn partial preserves shadowing"
+input = "(let ((x 100)) (((fn (x y) (add x y)) 1) 2))"
 
 [case.expect]
 exit_code = 0
@@ -168,8 +168,8 @@ stderr = ""
 stdout_stripped = "3"
 
 [[case]]
-name = "lambda partial too many args rejects"
-input = "((lambda (x y) (add x y)) 1 2 3)"
+name = "fn partial too many args rejects"
+input = "((fn (x y) (add x y)) 1 2 3)"
 
 [case.expect]
 exit_code = 2
@@ -177,8 +177,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "lambda partial zero arg rejects"
-input = "((lambda (x) x))"
+name = "fn partial zero arg rejects"
+input = "((fn (x) x))"
 
 [case.expect]
 exit_code = 2
@@ -187,7 +187,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "let list"
-input = "(let ((xs (list 1 \"hi there\" 2))) (tail xs))"
+input = "(let ((xs (list 1 \"hi there\" 2))) (rest xs))"
 
 [case.expect]
 exit_code = 0

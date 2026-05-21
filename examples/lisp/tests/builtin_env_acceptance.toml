@@ -68,7 +68,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable shadowed by closure"
-input = "(let ((add (lambda (x y) 999))) (add 1 2))"
+input = "(let ((add (fn (x y) 999))) (add 1 2))"
 
 [case.expect]
 exit_code = 0
@@ -76,7 +76,7 @@ stderr = ""
 stdout_stripped = "999"
 
 [[case]]
-name = "missing callee is lookup miss"
+name = "missing callee is get miss"
 input = "(missing 1 2)"
 
 [case.expect]
@@ -103,8 +103,8 @@ stderr = ""
 stdout_stripped = "(<primitive>)"
 
 [[case]]
-name = "primitive callable value rejected by head as non-list"
-input = "(head add)"
+name = "primitive callable value rejected by first as non-list"
+input = "(first add)"
 
 [case.expect]
 exit_code = 2
@@ -112,8 +112,8 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
-name = "primitive callable value rejected by tail as non-list"
-input = "(tail add)"
+name = "primitive callable value rejected by rest as non-list"
+input = "(rest add)"
 
 [case.expect]
 exit_code = 2
@@ -121,8 +121,8 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
-name = "primitive callable value rejected by len as non-list"
-input = "(len add)"
+name = "primitive callable value rejected by count as non-list"
+input = "(count add)"
 
 [case.expect]
 exit_code = 2
@@ -130,8 +130,8 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
-name = "primitive callable value rejected by at as non-list"
-input = "(at add 0)"
+name = "primitive callable value rejected by nth as non-list"
+input = "(nth add 0)"
 
 [case.expect]
 exit_code = 2
@@ -139,8 +139,8 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
-name = "primitive callable value rejected by push as non-list"
-input = "(push 1 add)"
+name = "primitive callable value rejected by cons as non-list"
+input = "(cons 1 add)"
 
 [case.expect]
 exit_code = 2
@@ -157,8 +157,8 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
-name = "collection len is env callable"
-input = "(len (list 1 2))"
+name = "collection count is env callable"
+input = "(count (list 1 2))"
 
 [case.expect]
 exit_code = 0
@@ -166,8 +166,8 @@ stderr = ""
 stdout_stripped = "2"
 
 [[case]]
-name = "collection len shadowed by number is not callable"
-input = "(let ((len 7)) (len (list 1)))"
+name = "collection count shadowed by number is not callable"
+input = "(let ((count 7)) (count (list 1)))"
 
 [case.expect]
 exit_code = 2
@@ -175,8 +175,8 @@ stderr = "not_function"
 stdout_stripped = ""
 
 [[case]]
-name = "eval receives len as explicit capability"
-input = "(eval (quote (len xs)) (dict (len len) (xs (list 1 2))))"
+name = "eval receives count as explicit capability"
+input = "(eval (quote (count xs)) (dict (count count) (xs (list 1 2))))"
 
 [case.expect]
 exit_code = 0
@@ -184,8 +184,8 @@ stderr = ""
 stdout_stripped = "2"
 
 [[case]]
-name = "eval receives len as explicit capability for long list"
-input = "(eval (quote (len xs)) (dict (len len) (xs (list 1 2 3 4 5 6))))"
+name = "eval receives count as explicit capability for long list"
+input = "(eval (quote (count xs)) (dict (count count) (xs (list 1 2 3 4 5 6))))"
 
 [case.expect]
 exit_code = 0
@@ -193,8 +193,8 @@ stderr = ""
 stdout_stripped = "6"
 
 [[case]]
-name = "eval receives at as explicit capability for arbitrary index"
-input = "(eval (quote (at xs i)) (dict (at at) (xs (list 9 8 7 6 5)) (i 4)))"
+name = "eval receives nth as explicit capability for arbitrary index"
+input = "(eval (quote (nth xs i)) (dict (nth nth) (xs (list 9 8 7 6 5)) (i 4)))"
 
 [case.expect]
 exit_code = 0
@@ -202,8 +202,8 @@ stderr = ""
 stdout_stripped = "5"
 
 [[case]]
-name = "eval without len capability fails unbound"
-input = "(eval (quote (len xs)) (dict (xs (list 1 2))))"
+name = "eval without count capability fails unbound"
+input = "(eval (quote (count xs)) (dict (xs (list 1 2))))"
 
 [case.expect]
 exit_code = 2
@@ -211,8 +211,8 @@ stderr = "unbound_name"
 stdout_stripped = ""
 
 [[case]]
-name = "eval receives has as explicit capability"
-input = "(eval (quote (has d k)) (dict (has has) (d (dict (a 42))) (k (quote a))))"
+name = "eval receives contains as explicit capability"
+input = "(eval (quote (contains d k)) (dict (contains contains) (d (dict (a 42))) (k (quote a))))"
 
 [case.expect]
 exit_code = 0
@@ -221,7 +221,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "callable empty predicate remains public"
-input = "(empty? (list))"
+input = "(is-empty (list))"
 
 [case.expect]
 exit_code = 0
@@ -229,8 +229,8 @@ stderr = ""
 stdout_stripped = "true"
 
 [[case]]
-name = "callable at remains public"
-input = "(at (list 7 8) 1)"
+name = "callable nth remains public"
+input = "(nth (list 7 8) 1)"
 
 [case.expect]
 exit_code = 0
@@ -238,8 +238,8 @@ stderr = ""
 stdout_stripped = "8"
 
 [[case]]
-name = "callable push remains public"
-input = "(push 0 (list 1 2))"
+name = "callable cons remains public"
+input = "(cons 0 (list 1 2))"
 
 [case.expect]
 exit_code = 0
@@ -247,8 +247,8 @@ stderr = ""
 stdout_stripped = "(0 1 2)"
 
 [[case]]
-name = "callable lookup too few args fails wrong arity"
-input = "(lookup (dict) (quote a))"
+name = "callable get too few args fails wrong arity"
+input = "(get (dict) (quote a))"
 
 [case.expect]
 exit_code = 2
@@ -256,8 +256,8 @@ stderr = "wrong_arity"
 stdout_stripped = ""
 
 [[case]]
-name = "callable len too many args fails wrong arity"
-input = "(len (list 1) (list 2))"
+name = "callable count too many args fails wrong arity"
+input = "(count (list 1) (list 2))"
 
 [case.expect]
 exit_code = 2
@@ -265,8 +265,8 @@ stderr = "wrong_arity"
 stdout_stripped = ""
 
 [[case]]
-name = "eval receives lookup as explicit capability"
-input = "(eval (quote (lookup d k z)) (dict (lookup lookup) (d (dict (a 42))) (k (quote a)) (z 0)))"
+name = "eval receives get as explicit capability"
+input = "(eval (quote (get d k z)) (dict (get get) (d (dict (a 42))) (k (quote a)) (z 0)))"
 
 [case.expect]
 exit_code = 0
@@ -274,8 +274,8 @@ stderr = ""
 stdout_stripped = "42"
 
 [[case]]
-name = "callable head no args fails wrong arity"
-input = "(head)"
+name = "callable first no args fails wrong arity"
+input = "(first)"
 
 [case.expect]
 exit_code = 2
@@ -283,8 +283,8 @@ stderr = "wrong_arity"
 stdout_stripped = ""
 
 [[case]]
-name = "callable push too many args fails wrong arity"
-input = "(push 0 (list 1) 2)"
+name = "callable cons too many args fails wrong arity"
+input = "(cons 0 (list 1) 2)"
 
 [case.expect]
 exit_code = 2
@@ -292,8 +292,8 @@ stderr = "wrong_arity"
 stdout_stripped = ""
 
 [[case]]
-name = "callable lookup too many args fails wrong arity"
-input = "(lookup (dict) (quote a) 0 1)"
+name = "callable get too many args fails wrong arity"
+input = "(get (dict) (quote a) 0 1)"
 
 [case.expect]
 exit_code = 2

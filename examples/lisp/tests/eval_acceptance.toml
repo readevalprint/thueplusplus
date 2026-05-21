@@ -22,7 +22,7 @@ stderr = ""
 stdout_stripped = "7"
 
 [[case]]
-name = "eval has no hidden core env fallback"
+name = "eval contains no hidden core env fallback"
 input = "(eval (quote (add x 1)) (dict (x 10)))"
 
 [case.expect]
@@ -31,7 +31,7 @@ stderr = "unbound_name"
 stdout_stripped = ""
 
 [[case]]
-name = "eval has no ambient caller env"
+name = "eval contains no ambient caller env"
 input = "(let ((x 99)) (eval (quote x) (dict)))"
 
 [case.expect]
@@ -40,7 +40,7 @@ stderr = "unbound_name"
 stdout_stripped = ""
 
 [[case]]
-name = "eval symbol lookup from explicit scope"
+name = "eval symbol get from explicit scope"
 input = "(eval (quote x) (dict (x 42)))"
 
 [case.expect]
@@ -122,7 +122,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval closure value rejected"
-input = "(eval (lambda (x) x) (dict))"
+input = "(eval (fn (x) x) (dict))"
 
 [case.expect]
 exit_code = 2
@@ -167,7 +167,7 @@ stdout_stripped = "<primitive>"
 
 [[case]]
 name = "eval rejects operator symbol scope key"
-input = "(eval (quote x) (put (dict) (quote +) 1))"
+input = "(eval (quote x) (assoc (dict) (quote +) 1))"
 
 [case.expect]
 exit_code = 2

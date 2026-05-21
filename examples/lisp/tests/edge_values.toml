@@ -53,8 +53,8 @@ stderr = ""
 stdout_stripped = "(1 (2 3))"
 
 [[case]]
-name = "tail preserves nested list element"
-input = "(tail (list 0 (list 1 2) 3))"
+name = "rest preserves nested list element"
+input = "(rest (list 0 (list 1 2) 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -62,7 +62,7 @@ stdout_stripped = "((1 2) 3)"
 
 [[case]]
 name = "list can render stored closure"
-input = "(let ((f (lambda (x) x))) (list f))"
+input = "(let ((f (fn (x) x))) (list f))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -70,15 +70,15 @@ stdout_stripped = "(<closure>)"
 
 [[case]]
 name = "list can render stored closure after scalar"
-input = "(let ((f (lambda (x) x))) (list 1 f))"
+input = "(let ((f (fn (x) x))) (list 1 f))"
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "(1 <closure>)"
 
 [[case]]
-name = "lambda argument closure can be stored in list"
-input = "((lambda (x) (list x)) (lambda (y) y))"
+name = "fn argument closure can be stored in list"
+input = "((fn (x) (list x)) (fn (y) y))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -86,15 +86,15 @@ stdout_stripped = "(<closure>)"
 
 [[case]]
 name = "higher order closure stored in let can be applied later"
-input = "(let ((mk (lambda (x) (lambda (y) (add x y))))) ((mk 10) 5))"
+input = "(let ((mk (fn (x) (fn (y) (add x y))))) ((mk 10) 5))"
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "15"
 
 [[case]]
-name = "returning closure from lambda preserves captured env"
-input = "(((lambda (mk) (mk 10)) (lambda (x) (lambda (y) (add x y)))) 5)"
+name = "returning closure from fn preserves captured env"
+input = "(((fn (mk) (mk 10)) (fn (x) (fn (y) (add x y)))) 5)"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -133,8 +133,8 @@ stderr = ""
 stdout_stripped = '(1 "a\"b")'
 
 [[case]]
-name = "lambda argument preserves computed list"
-input = "((lambda (x) x) (list 1 2))"
+name = "fn argument preserves computed list"
+input = "((fn (x) x) (list 1 2))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -190,7 +190,7 @@ stdout_stripped = "(((\"x\")))"
 
 [[case]]
 name = "deep nested list can render closure first"
-input = "(list (list (list (lambda (x) x))))"
+input = "(list (list (list (fn (x) x))))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -222,7 +222,7 @@ stdout_stripped = "(((0 \"x\")))"
 
 [[case]]
 name = "deep nested list can render closure second"
-input = "(list (list (list 0 (lambda (x) x))))"
+input = "(list (list (list 0 (fn (x) x))))"
 [case.expect]
 exit_code = 0
 stderr = ""

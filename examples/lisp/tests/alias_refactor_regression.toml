@@ -3,15 +3,15 @@ args = ["--max-evals", "120000"]
 
 [[case]]
 name = "expr alias accepts nested list forms in dict values and renders recursively"
-input = "(dict (outer (dict (inner (list (quote <=) (list 1 (lambda (x) x)))))))"
+input = "(dict (outer (dict (inner (list (quote <=) (list 1 (fn (x) x)))))))"
 [case.expect]
 stdout = "(dict (outer (dict (inner (<= (1 <closure>))))))\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "expr alias preserves evaluated index expressions for at"
-input = "(at (list 10 20 30 40) (add 1 2))"
+name = "expr alias preserves evaluated index expressions for nth"
+input = "(nth (list 10 20 30 40) (add 1 2))"
 [case.expect]
 stdout = "40\n"
 stderr = ""
@@ -35,7 +35,7 @@ exit_code = 0
 
 [[case]]
 name = "dict key aliases keep string and symbol payloads distinct under update and delete"
-input = "(let ((d (put (dict (x 1) (\"x\" 2)) (quote x) 3))) (list (lookup d (quote x) 0) (lookup d \"x\" 0) (has (del d \"x\") (quote x)) (has (del d \"x\") \"x\")))"
+input = "(let ((d (assoc (dict (x 1) (\"x\" 2)) (quote x) 3))) (list (get d (quote x) 0) (get d \"x\" 0) (contains (dissoc d \"x\") (quote x)) (contains (dissoc d \"x\") \"x\")))"
 [case.expect]
 stdout = "(3 2 true false)\n"
 stderr = ""
@@ -51,7 +51,7 @@ exit_code = 2
 
 [[case]]
 name = "let value pct alias still preserves nested list binding values"
-input = "(let ((f (lambda (x) (list x (quote ok))))) (f (list 1 2)))"
+input = "(let ((f (fn (x) (list x (quote ok))))) (f (list 1 2)))"
 [case.expect]
 stdout = "((1 2) ok)\n"
 stderr = ""

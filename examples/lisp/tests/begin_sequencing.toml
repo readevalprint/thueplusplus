@@ -3,8 +3,8 @@ timeout = 10
 args = ["--max-evals", "60000"]
 
 [[case]]
-name = "begin single expression returns value"
-input = "(begin (add 1 2))"
+name = "do single expression returns value"
+input = "(do (add 1 2))"
 
 [case.expect]
 exit_code = 0
@@ -12,8 +12,8 @@ stderr = ""
 stdout_stripped = "3"
 
 [[case]]
-name = "begin returns final expression"
-input = "(begin (add 1 2) (add 3 4) 9)"
+name = "do returns final expression"
+input = "(do (add 1 2) (add 3 4) 9)"
 
 [case.expect]
 exit_code = 0
@@ -21,8 +21,8 @@ stderr = ""
 stdout_stripped = "9"
 
 [[case]]
-name = "begin evaluates earlier expressions before final"
-input = "(begin (div 1 0) 9)"
+name = "do evaluates earlier expressions before final"
+input = "(do (div 1 0) 9)"
 
 [case.expect]
 exit_code = 2
@@ -30,8 +30,8 @@ stderr = "division_by_zero"
 stdout = ""
 
 [[case]]
-name = "begin preserves lexical environment across sequence"
-input = "(let ((x 4)) (begin (add x 1) (add x 2)))"
+name = "do preserves lexical environment across sequence"
+input = "(let ((x 4)) (do (add x 1) (add x 2)))"
 
 [case.expect]
 exit_code = 0
@@ -39,8 +39,8 @@ stderr = ""
 stdout_stripped = "6"
 
 [[case]]
-name = "begin selected by lazy if"
-input = "(if true (begin (add 1 2) (add 3 4)) (div 1 0))"
+name = "do selected by lazy if"
+input = "(if true (do (add 1 2) (add 3 4)) (div 1 0))"
 
 [case.expect]
 exit_code = 0
@@ -48,8 +48,8 @@ stderr = ""
 stdout_stripped = "7"
 
 [[case]]
-name = "empty begin fails wrong arity"
-input = "(begin)"
+name = "empty do fails wrong arity"
+input = "(do)"
 
 [case.expect]
 exit_code = 2
@@ -57,8 +57,8 @@ stderr = "wrong_arity"
 stdout = ""
 
 [[case]]
-name = "empty begin in lexical environment fails wrong arity"
-input = "(let ((x 1)) (begin))"
+name = "empty do in lexical environment fails wrong arity"
+input = "(let ((x 1)) (do))"
 
 [case.expect]
 exit_code = 2

@@ -43,7 +43,7 @@ exit_code = 0
 
 [[case]]
 name = "assoc replacement can be string symbol list dict closure and primitive"
-input = "(list (assoc (list 1 2) 0 \"x\") (assoc (list 1 2) 0 (quote sym)) (assoc (list 1 2) 0 (list 8 9)) (assoc (list 1 2) 0 (dict (k 7))) (type (at (assoc (list 1 2) 0 (lambda (x) x)) 0)) (type (at (assoc (list 1 2) 0 add) 0)))"
+input = "(list (assoc (list 1 2) 0 \"x\") (assoc (list 1 2) 0 (quote sym)) (assoc (list 1 2) 0 (list 8 9)) (assoc (list 1 2) 0 (dict (k 7))) (type (nth (assoc (list 1 2) 0 (fn (x) x)) 0)) (type (nth (assoc (list 1 2) 0 add) 0)))"
 [case.expect]
 stdout = "((\"x\" 2) (sym 2) ((8 9) 2) ((dict (k 7)) 2) function builtin)\n"
 stderr = ""
@@ -147,15 +147,15 @@ exit_code = 2
 
 [[case]]
 name = "assoc does not mutate existing list binding"
-input = "(let ((xs (list 1 2 3))) (begin (assoc xs 1 9) xs))"
+input = "(let ((xs (list 1 2 3))) (do (assoc xs 1 9) xs))"
 [case.expect]
 stdout = "(1 2 3)\n"
 stderr = ""
 exit_code = 0
 
 [[case]]
-name = "assoc result can be assigned with set"
-input = "(let ((xs (list 1 2 3))) (begin (set xs (assoc xs 1 9)) xs))"
+name = "assoc result can be assigned with set-var"
+input = "(let ((xs (list 1 2 3))) (do (set-var xs (assoc xs 1 9)) xs))"
 [case.expect]
 stdout = "(1 9 3)\n"
 stderr = ""
@@ -163,7 +163,7 @@ exit_code = 0
 
 [[case]]
 name = "assoc preserves aliased old list value"
-input = "(let ((xs (list 1 2))) (let ((ys xs)) (begin (set xs (assoc xs 0 9)) ys)))"
+input = "(let ((xs (list 1 2))) (let ((ys xs)) (do (set-var xs (assoc xs 0 9)) ys)))"
 [case.expect]
 stdout = "(1 2)\n"
 stderr = ""
@@ -179,7 +179,7 @@ exit_code = 0
 
 [[case]]
 name = "assoc composes for nested quoted code"
-input = "(let ((code (quote (add 1 (mul 2 3))))) (assoc code 2 (assoc (at code 2) 2 10)))"
+input = "(let ((code (quote (add 1 (mul 2 3))))) (assoc code 2 (assoc (nth code 2) 2 10)))"
 [case.expect]
 stdout = "(add 1 (mul 2 10))\n"
 stderr = ""

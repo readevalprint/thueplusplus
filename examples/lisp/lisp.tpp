@@ -55,7 +55,7 @@ UNESC<(?<s>$PCT)> ::= {{s}}
 ^C<L<(?<payload>$PCT)>>$ ::= CBOOT<{{payload|pctdec}}|KDONE>
 ^C<(?<atom>$NUM|true|false|VSTR<$PCT>)>$ ::= ARG<{{atom}}|KDONE>
 ^C<(?<name>$NAME)>$ ::= CBOOT<{{name}}|KDONE>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;head=VPRIM%3Chead%3E;tail=VPRIM%3Ctail%3E;empty?=VPRIM%3Cempty%3F%3E;push=VPRIM%3Cpush%3E;len=VPRIM%3Clen%3E;at=VPRIM%3Cat%3E;assoc=VPRIM%3Cassoc%3E;lookup=VPRIM%3Clookup%3E;has=VPRIM%3Chas%3E;put=VPRIM%3Cput%3E;del=VPRIM%3Cdel%3E;type=VPRIM%3Ctype%3E;|{{k}}>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;|{{k}}>
 
 # Demand a node: literals return; encoded lists decode only when demanded.
 ^ARG<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
@@ -73,9 +73,9 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^LOOKEQ<1\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
 ^LOOKEQ<0\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{want}}|{{rest}}|{{k}}>
 
-# Top-level and env-aware lambda expression creates closure.
-^EENV<lambda L<(?<params>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
-^EENV<lambda L<(?<params>$PCT)> (?<body>$NODE|$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
+# Top-level and env-aware fn expression creates closure.
+^EENV<fn L<(?<params>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
+^EENV<fn L<(?<params>$PCT)> (?<body>$NODE|$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
 
 # Env-aware demand/eval. L<...> before generic node to preserve env.
 ^ARGENV<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|{{k}}>
@@ -85,24 +85,24 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^ARGENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
 # Env-preserving expression demand: plain value returns keep the original env;
 # env-aware returns propagate the updated env. While bodies use this so generic
-# `begin` sequencing can own body ordering without a custom loop sequencer.
+# `do` sequencing can own body ordering without a custom loop sequencer.
 ^EENVKEEP<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
 ^EENVKEEP<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
 ^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^EENV<list\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
 ^EENV<dict\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VDICT<>|{{k}}>
-^EENV<begin\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<do\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<eval\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<quote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<quasiquote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:set|lambda|if|and|or|let|while)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:add|sub|mul|div|eq|lt|lte|gt|gte|head|tail|empty\?|push|len|at|assoc|has|put|del|type)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<(?:set-var|fn|if|and|or|let|while)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<(?:add|sub|mul|div|eq|lt|lte|gt|gte|first|rest|is-empty|cons|count|nth|assoc|contains|dissoc|type)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:break|continue|map|unquote|splice|define|letrec)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<L<lambda%20L%3C%3E%20(?<body>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<lambda L<> {{body|pctdec}}|{{env}}|KCALLNOARGS {{k}}>
+^EENV<L<fn%20L%3C%3E%20(?<body>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<fn L<> {{body|pctdec}}|{{env}}|KCALLNOARGS {{k}}>
 ^RET<(?<fn>$VAL)\|KCALLNOARGS (?<k>.*)>$ ::= APPLY<{{fn}}||{{k}}>
-^EENV<L<lambda%20L%3C(?<params>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})+)%3E(?<payload>$PCT)>\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
+^EENV<L<fn%20L%3C(?<params>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})+)%3E(?<payload>$PCT)>\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
 
 ^EENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^EENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node}}|{{env}}|{{k}}>
@@ -130,13 +130,13 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RET<VBOOL<true>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<false>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{rhs}}|{{env}}|{{k}}>
 ^RET<(?<bad>$NONBOOL)\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^EENV<begin (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
-^EENV<begin (?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
-^RET<(?<ignored>$VAL)\|KENBEGIN<(?<rest>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<begin {{rest|pctdec}}|{{env}}|{{k}}>
-^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KENBEGIN<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= EENV<begin {{rest|pctdec}}|{{env}}|{{k}}>
+^EENV<do (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
+^EENV<do (?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
+^RET<(?<ignored>$VAL)\|KENBEGIN<(?<rest>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<do {{rest|pctdec}}|{{env}}|{{k}}>
+^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KENBEGIN<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= EENV<do {{rest|pctdec}}|{{env}}|{{k}}>
 
 # Minimal bounded loop/mutation slice for #108. `(while cond body)` repeats one
-# body expression; use `(begin ...)` in that body slot for sequencing. `set`
+# body expression; use `(do ...)` in that body slot for sequencing. `set-var`
 # updates the nearest existing lexical binding and returns the assigned value.
 ^EENV<while (?<cond>$EXPR) (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILECOND<{{cond|pctenc}}^{{body|pctenc}}^{{env}}> {{k}}>
 ^RET<VBOOL<false>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<VLIST<>|{{env}}|{{k}}>
@@ -144,8 +144,8 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RET<(?<bad>$NONBOOL)\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILEBODY<(?<cond>$PCT)\^(?<body>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} {{body|pctdec}}|{{env}}|{{k}}>
 
-^EENV<set (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
-^EENV<set(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<set-var (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
+^EENV<set-var(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^RET<(?<v>$VAL)\|KSET<(?<name>$NAME)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SETENV<{{name}}|{{v}}|{{env}}|{{k}}|>
 ^SETENV<(?<name>$NAME)\|(?<v>$VAL)\|\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= ERR<unbound_name>
 ^SETENV<(?<want>$NAME)\|(?<v>$VAL)\|(?<got>$NAME)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQTEST<{{want}}|{{got}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
@@ -285,7 +285,7 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
-^EENV<lambda(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<fn(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<if(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<and(?: (?<arg>$EXPR))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<or(?: (?<arg>$EXPR))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -327,31 +327,33 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<gte>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGE<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 
 ^APPLY<VPRIM<type>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>head|tail|empty\?|len|type)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>push|at|has|del)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>push|at|has|del)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>assoc|lookup|put)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>assoc|lookup|put)>\|(?<a>[^;]*);(?<b>[^;]*);(?<c>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<head>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
-^APPLY<VPRIM<tail>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTAIL {{k}}>
-^APPLY<VPRIM<empty\?>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KEMPTY {{k}}>
-^APPLY<VPRIM<len>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KLEN {{k}}>
+^APPLY<VPRIM<(?<op>first|rest|is-empty|count|type)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>assoc|get)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>assoc|get)>\|(?<a>[^;]*);(?<b>[^;]*);(?<c>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
+^APPLY<VPRIM<rest>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTAIL {{k}}>
+^APPLY<VPRIM<is-empty>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KEMPTY {{k}}>
+^APPLY<VPRIM<count>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KLEN {{k}}>
 ^APPLY<VPRIM<type>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTYPE {{k}}>
-^APPLY<VPRIM<push>\|(?<item>[^;]*);(?<lst>[^;]*);\|(?<k>.*)>$ ::= RET<{{lst|pctdec}}|KPUSH2<{{item|pctdec}}> {{k}}>
-^APPLY<VPRIM<at>\|(?<lst>[^;]*);(?<idx>[^;]*);\|(?<k>.*)>$ ::= BAT<{{lst|pctdec}}|{{idx|pctdec}}|{{k}}>
+^APPLY<VPRIM<cons>\|(?<item>[^;]*);(?<lst>[^;]*);\|(?<k>.*)>$ ::= RET<{{lst|pctdec}}|KPUSH2<{{item|pctdec}}> {{k}}>
+^APPLY<VPRIM<nth>\|(?<lst>[^;]*);(?<idx>[^;]*);\|(?<k>.*)>$ ::= BAT<{{lst|pctdec}}|{{idx|pctdec}}|{{k}}>
 ^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NAT)>\|(?<k>.*)>$ ::= RET<{{lst}}|KAT2<{{idx}}> {{k}}>
 ^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NEGINT)>\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
 ^BAT<(?<lst>$VAL)\|VNUM<(?<bad>$NONINTNUM)>\|(?<k>.*)>$ ::= ERR<type_error>
 ^BAT<(?<lst>$VAL)\|(?<bad>$NONNUM)\|(?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VPRIM<assoc>\|(?<lst>[^;]*);(?<idx>[^;]*);(?<val>[^;]*);\|(?<k>.*)>$ ::= BASSOC<{{lst|pctdec}}|{{idx|pctdec}}|{{val|pctdec}}|{{k}}>
-^BASSOC<(?<lst>$VAL)\|VNUM<(?<idx>$NAT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<{{lst}}|KASSOC2<{{idx}}|{{val|pctenc}}> {{k}}>
-^BASSOC<(?<lst>$VAL)\|VNUM<(?<idx>$NEGINT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<{{lst}}|KASSOC2<{{idx}}|{{val|pctenc}}> {{k}}>
-^BASSOC<(?<lst>$VAL)\|VNUM<(?<bad>$NONINTNUM)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^BASSOC<(?<lst>$VAL)\|(?<bad>$NONNUM)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<has>\|(?<dict>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BHAS<{{dict|pctdec}}|{{key|pctdec}}|{{k}}>
+^BASSOC<VLIST<(?<items>$ITEMS)>\|VNUM<(?<idx>$NAT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<VLIST<{{items}}>|KASSOC2<{{idx}}|{{val|pctenc}}> {{k}}>
+^BASSOC<VLIST<(?<items>$ITEMS)>\|VNUM<(?<idx>$NEGINT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^BASSOC<VLIST<(?<items>$ITEMS)>\|VNUM<(?<bad>$NONINTNUM)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BASSOC<VLIST<(?<items>$ITEMS)>\|(?<bad>$NONNUM)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BASSOC<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KPUTKEYV<{{entries}}^{{val|pctenc}}> {{k}}>
+^BASSOC<(?<bad>$VNUM|$VBOOL|$VSTR|$VSYM|$VCLOS|$VPRIM)\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^APPLY<VPRIM<contains>\|(?<dict>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BHAS<{{dict|pctdec}}|{{key|pctdec}}|{{k}}>
 ^BHAS<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KHASKEY<{{entries}}> {{k}}>
 ^BHAS<(?<bad>$NONDICT)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<lookup>\|(?<dict>[^;]*);(?<key>[^;]*);(?<default>[^;]*);\|(?<k>.*)>$ ::= BLOOKUP<{{dict|pctdec}}|{{key|pctdec}}|{{default|pctdec}}|{{k}}>
+^APPLY<VPRIM<get>\|(?<dict>[^;]*);(?<key>[^;]*);(?<default>[^;]*);\|(?<k>.*)>$ ::= BLOOKUP<{{dict|pctdec}}|{{key|pctdec}}|{{default|pctdec}}|{{k}}>
 ^BLOOKUP<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KLOOKUPKEYV<{{entries}}^{{default|pctenc}}> {{k}}>
 ^BLOOKUP<(?<bad>$NONDICT)\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^RET<VSYM<(?<s>$PCT)>\|KLOOKUPKEYV<(?<entries>[^\^]*)\^(?<default>[^>]*)> (?<k>.*)>$ ::= DLOOKV<S{{s}}|{{entries}}|{{default}}|{{k}}>
@@ -361,13 +363,10 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^DLOOKV<(?<want>$DICTKEY)\|(?<got>$DICTKEY)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<default>[^|]*)\|(?<k>.*)>$ ::= DLOOKVEQ<PCTEQ<{{want}},{{got}}>|{{want}}|{{val}}|{{rest}}|{{default}}|{{k}}>
 ^DLOOKVEQ<1\|(?<want>$DICTKEY)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<default>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
 ^DLOOKVEQ<0\|(?<want>$DICTKEY)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<default>[^|]*)\|(?<k>.*)>$ ::= DLOOKV<{{want}}|{{rest}}|{{default}}|{{k}}>
-^APPLY<VPRIM<put>\|(?<dict>[^;]*);(?<key>[^;]*);(?<val>[^;]*);\|(?<k>.*)>$ ::= BPUT<{{dict|pctdec}}|{{key|pctdec}}|{{val|pctdec}}|{{k}}>
-^BPUT<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KPUTKEYV<{{entries}}^{{val|pctenc}}> {{k}}>
-^BPUT<(?<bad>$NONDICT)\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^RET<VSYM<(?<s>$PCT)>\|KPUTKEYV<(?<entries>[^\^]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= DPUT<S{{s}}|{{val}}|{{entries}}||{{k}}>
 ^RET<VSTR<(?<s>$PCT)>\|KPUTKEYV<(?<entries>[^\^]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= DPUT<T{{s}}|{{val}}|{{entries}}||{{k}}>
 ^RET<(?<bad>$NONKEY)\|KPUTKEYV<(?<entries>[^\^]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<del>\|(?<dict>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BDEL<{{dict|pctdec}}|{{key|pctdec}}|{{k}}>
+^APPLY<VPRIM<dissoc>\|(?<dict>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BDEL<{{dict|pctdec}}|{{key|pctdec}}|{{k}}>
 ^BDEL<VDICT<(?<entries>$DICTENTRIES)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KDELKEY<{{entries}}> {{k}}>
 ^BDEL<(?<bad>$NONDICT)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^BADD<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
@@ -447,7 +446,6 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^ATWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|0\|(?<k>.*)>$ ::= RET<{{item|pctdec}}|{{k}}>
 ^ATWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<idx>$POS)\|(?<k>.*)>$ ::= ATWALK<{{rest}}|SUB<{{idx}},1>|{{k}}>
 ^RET<VLIST<(?<items>$ITEMS)>\|KASSOC2<(?<idx>$NAT)\|(?<val>[^>]*)> (?<k>.*)>$ ::= ASSOCWALK<{{items}}|{{idx}}|{{val}}||{{k}}>
-^RET<VLIST<(?<items>$ITEMS)>\|KASSOC2<(?<idx>$NEGINT)\|(?<val>[^>]*)> (?<k>.*)>$ ::= ERR<index_out_of_bounds>
 ^ASSOCWALK<\|(?<idx>$NAT)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
 ^ASSOCWALK<(?<old>[^;]*);(?<rest>$ITEMS)\|0\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{acc}}{{val}};{{rest}}>|{{k}}>
 ^ASSOCWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<idx>$POS)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ASSOCWALK<{{rest}}|SUB<{{idx}},1>|{{val}}|{{acc}}{{item}};|{{k}}>
@@ -456,7 +454,6 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
 ^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VDICT<$DICTENTRIES>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KASSOC2<(?<idx>$NUM)\|(?<val>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
 
 # Render final values. Public render output is recursive Lisp syntax for values that
 # have reader syntax.
