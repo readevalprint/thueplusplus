@@ -27,6 +27,22 @@ stderr = ""
 exit_code = 0
 
 [[case]]
+name = "quoted primitive name remains symbol data"
+input = '(quote add)'
+[case.expect]
+stdout = "add\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "unparse quoted primitive name returns source string"
+input = '(unparse (quote add))'
+[case.expect]
+stdout = "\"add\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
 name = "unparse quoted list returns parenthesized source string"
 input = '(unparse (quote (add 1 2)))'
 [case.expect]
