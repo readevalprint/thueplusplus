@@ -1,6 +1,10 @@
 export class ThuePPWorker {
   constructor(workerURL, initOptions = {}) {
-    this.worker = new Worker(workerURL, { type: 'module' });
+    // browser-worker.js deliberately stays a classic worker because Go's
+    // wasm_exec.js is a classic script loaded with importScripts(). Module
+    // workers do not expose importScripts(), so using one here makes the real
+    // browser demo fail before the Go-WASM interpreter registers ThuePP.run.
+    this.worker = new Worker(workerURL);
     this.nextId = 1;
     this.pending = new Map();
     this.worker.onmessage = (event) => this.handleMessage(event.data || {});
