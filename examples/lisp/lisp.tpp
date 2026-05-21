@@ -34,11 +34,15 @@ EXPR <- $NAME|$NODE
 READER_DATUM <- (?:\([^()]*\)|$OPSYM|$EXPR)
 
 ^\([^)]*$ ::= ERR<malformed_list>
-^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)$ ::= C<{{input}}>
+^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)$ ::= READ<{{input}}> KTOP
+
+# Shared source reader/freezer. Top-level input and `(parse string)` both enter
+# READ<source> with different continuations, so string escape handling,
+# quote-family expansion, and inside-out list freezing cannot drift.
 # Phase A: protect quoted strings before paren framing.
-^C<(?<pre>[\s\S]*)\\@(?<post>[\s\S]*)>$ ::= ERR<invalid_string_escape>
-^C<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)>$ ::= C<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}>
-^C<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)>$ ::= C<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}>
+^READ<(?<pre>[\s\S]*)\\@(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<invalid_string_escape>
+^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
+^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}> {{k}}
 UNESC<(?<pre>$PCT)%5C%5C(?<post>$PCT)> ::= UNESC<{{pre}}%5C{{post}}>
 UNESC<(?<pre>$PCT)%5C%22(?<post>$PCT)> ::= UNESC<{{pre}}%22{{post}}>
 UNESC<(?<pre>$PCT)%5Cn(?<post>$PCT)> ::= UNESC<{{pre}}%0A{{post}}>
@@ -51,32 +55,22 @@ UNESC<(?<s>$PCT)> ::= {{s}}
 # Reader quote-family shorthand. Strings are already protected as VSTR<...>,
 # and list freezing may expose nested list datums as L<...>; expand to the
 # existing long-form source before evaluation or parse-result quoting.
-^C<(?<pre>[\s\S]*),@(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(splice {{datum}}){{post}}>
-^C<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(unquote {{datum}}){{post}}>
-^C<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(quasiquote {{datum}}){{post}}>
-^C<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)>$ ::= C<{{pre}}(quote {{datum}}){{post}}>
-
+^READ<(?<pre>[\s\S]*),@(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(splice {{datum}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(unquote {{datum}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quasiquote {{datum}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quote {{datum}}){{post}}> {{k}}
 
 # Phase B: inside-out list freezing.
-^C<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)>$ ::= C<{{pre}}L<{{inner|pctenc}}>{{post}}>
-^C<L<(?<payload>$PCT)>>$ ::= CBOOT<{{payload|pctdec}}|KDONE>
-^C<(?<atom>$NUM|true|false|VSTR<$PCT>)>$ ::= ARG<{{atom}}|KDONE>
-^C<(?<name>$NAME)>$ ::= CBOOT<{{name}}|KDONE>
+^READ<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}L<{{inner|pctenc}}>{{post}}> {{k}}
+^READ<\([^)]*> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<malformed_list>
+^READ<L<(?<payload>$PCT)>> KTOP$ ::= CBOOT<{{payload|pctdec}}|KDONE>
+^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KTOP$ ::= ARG<{{atom}}|KDONE>
+^READ<(?<name>$NAME)> KTOP$ ::= CBOOT<{{name}}|KDONE>
+^READ<L<(?<payload>$PCT)>> KPARSE<(?<k>.*)>$ ::= QUOTE<L<{{payload}}>|{{k}}>
+^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
+^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
+^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
 ^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;|{{k}}>
-
-# Parse source strings into values without evaluation. Mirrors C framing but exits through QUOTE.
-^P<(?<pre>[\s\S]*),@(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(splice {{datum}}){{post}}> KPARSE<{{k}}>
-^P<(?<pre>[\s\S]*)\@(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^P<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\")*)"(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}> KPARSE<{{k}}>
-
-^P<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(unquote {{datum}}){{post}}> KPARSE<{{k}}>
-^P<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(quasiquote {{datum}}){{post}}> KPARSE<{{k}}>
-^P<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}(quote {{datum}}){{post}}> KPARSE<{{k}}>
-
-^P<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= P<{{pre}}L<{{inner|pctenc}}>{{post}}> KPARSE<{{k}}>
-^P<L<(?<payload>$PCT)>> KPARSE<(?<k>.*)>$ ::= QUOTE<L<{{payload}}>|{{k}}>
-^P<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
-^P<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 
 
 # Demand a node: literals return; encoded lists decode only when demanded.
@@ -366,7 +360,7 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 
 ^APPLY<VPRIM<parse>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<parse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARSE<{{a|pctdec}}|{{k}}>
-^BPARSE<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= P<{{s|pctdec}}> KPARSE<{{k}}>
+^BPARSE<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= READ<{{s|pctdec}}> KPARSE<{{k}}>
 ^BPARSE<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VPRIM<unparse>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<unparse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= RENDER<{{a|pctdec}}|KUNPARSE<{{k}}>>

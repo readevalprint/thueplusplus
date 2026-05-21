@@ -99,6 +99,62 @@ stderr_stripped = "wrong_arity"
 exit_code = 2
 
 [[case]]
+name = "parse source escaped newline matches top-level reader"
+input = '(parse "\"a\\n\"")'
+[case.expect]
+stdout = "\"a\\n\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse source escaped tab matches top-level reader"
+input = '(parse "\"a\\t\"")'
+[case.expect]
+stdout = "\"a\\t\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse source escaped backslash matches top-level reader"
+input = '(parse "\"a\\\\b\"")'
+[case.expect]
+stdout = "\"a\\b\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse source list returns canonical data"
+input = '(parse "(add 1 2)")'
+[case.expect]
+stdout = "(add 1 2)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse source malformed list fails loudly"
+input = '(parse "(add 1")'
+[case.expect]
+stdout = ""
+stderr_stripped = "malformed_list"
+exit_code = 2
+
+[[case]]
+name = "top-level malformed list fails loudly"
+input = '(add 1'
+[case.expect]
+stdout = ""
+stderr_stripped = "malformed_list"
+exit_code = 2
+
+[[case]]
+name = "parse source invalid string escape fails sharply"
+input = '(parse "\"a\\q\"")'
+[case.expect]
+stdout = ""
+stderr_stripped = "invalid_string_escape"
+exit_code = 2
+
+[[case]]
 name = "contains rejects non-list receiver"
 input = '(contains 1 (quote x))'
 [case.expect]
