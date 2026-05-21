@@ -2,7 +2,6 @@ package thuepp
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"math"
 	"math/big"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -57,15 +55,8 @@ type Rule struct {
 
 type Binding struct {
 	Name          string
-	IsProcess     bool
 	PathOrCommand string
-	cmd           *exec.Cmd
-	stdin         io.WriteCloser
-	stdout        io.ReadCloser
-	stderr        bytes.Buffer
-	outCh         chan string
-	exitCh        chan error
-	inputReader   *bufio.Reader
+	Resource      runtimeResource
 }
 
 type Interpreter struct {
@@ -84,15 +75,19 @@ type Interpreter struct {
 }
 
 func New() *Interpreter {
-	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: os.Stdout, Stderr: os.Stderr, RuleCoverageCounts: map[string]int{}}
-	i.Bindings["stdin"] = &Binding{Name: "stdin", PathOrCommand: "stdin", inputReader: bufio.NewReader(os.Stdin)}
-	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout"}
-	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr"}
+	return NewWithHostResources(NativeHostResources())
+}
+
+func NewWithHostResources(host HostResources) *Interpreter {
+	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: host.Stdout, Stderr: host.Stderr, RuleCoverageCounts: map[string]int{}}
+	i.Bindings["stdin"] = &Binding{Name: "stdin", PathOrCommand: "stdin", Resource: newStdinResource("stdin", host.Stdin)}
+	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout", Resource: &outputResource{writer: &i.Stdout}}
+	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr", Resource: &outputResource{writer: &i.Stderr}}
 	return i
 }
 
 func (i *Interpreter) AddProcBinding(name, command string) {
-	i.Bindings[name] = &Binding{Name: name, IsProcess: true, PathOrCommand: command}
+	i.Bindings[name] = &Binding{Name: name, PathOrCommand: command, Resource: newProcessResource(name, command)}
 }
 
 func (i *Interpreter) LoadProgram(programPath string) error {
@@ -811,107 +806,22 @@ func (i *Interpreter) expandDataTemplate(template string, groups map[string]stri
 	return pctEncode(out.String()), nil
 }
 
-func (i *Interpreter) ensureProcess(b *Binding) error {
-	if !b.IsProcess || b.cmd != nil {
-		return nil
+func (i *Interpreter) readAll(b *Binding) (string, string) {
+	if b.Resource == nil {
+		return "", fmt.Sprintf("ERR:resource:%s:missing host resource", b.Name)
 	}
-	b.cmd = exec.Command("/bin/sh", "-c", "stdbuf -oL "+b.PathOrCommand)
-	b.cmd.Stderr = &b.stderr
-	var err error
-	b.stdin, err = b.cmd.StdinPipe()
+	content, err := b.Resource.ReadAll()
 	if err != nil {
-		return err
+		return "", formatResourceError(b.Name, err)
 	}
-	b.stdout, err = b.cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	b.outCh = make(chan string, 1024)
-	b.exitCh = make(chan error, 1)
-	if err := b.cmd.Start(); err != nil {
-		return err
-	}
-	go func() {
-		reader := bufio.NewReader(b.stdout)
-		for {
-			line, err := reader.ReadString('\n')
-			if line != "" {
-				b.outCh <- line
-			}
-			if err != nil {
-				close(b.outCh)
-				return
-			}
-		}
-	}()
-	go func() { b.exitCh <- b.cmd.Wait() }()
-	return nil
+	return content, ""
 }
 
-func (i *Interpreter) readAll(b *Binding) (string, string) {
-	if b.Name == "stdin" {
-		data, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return "", fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-		}
-		return string(data), ""
+func formatResourceError(name string, err error) string {
+	if resourceErr, ok := err.(resourceError); ok && resourceErr.omitName {
+		return fmt.Sprintf("ERR:resource:%v", err)
 	}
-	if b.Name == "stdout" || b.Name == "stderr" {
-		return "", "ERR:resource:cannot_read_output_stream"
-	}
-	if b.IsProcess {
-		if err := i.ensureProcess(b); err != nil {
-			return "", fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-		}
-		var out strings.Builder
-		deadline := time.After(100 * time.Millisecond)
-		for {
-			select {
-			case s, ok := <-b.outCh:
-				if ok {
-					out.WriteString(s)
-					deadline = time.After(100 * time.Millisecond)
-					continue
-				}
-				return out.String(), ""
-			case <-deadline:
-				if out.Len() > 0 {
-					return out.String(), ""
-				}
-				goto waitFirst
-			case err := <-b.exitCh:
-				if err != nil {
-					msg := strings.TrimSpace(b.stderr.String())
-					if msg == "" {
-						msg = fmt.Sprintf("process exited %d", b.cmd.ProcessState.ExitCode())
-					}
-					return "", fmt.Sprintf("ERR:resource:%s:%s", b.Name, msg)
-				}
-				return out.String(), ""
-			}
-		}
-	waitFirst:
-		select {
-		case s, ok := <-b.outCh:
-			if ok {
-				out.WriteString(s)
-				return out.String(), ""
-			}
-			return "", ""
-		case <-time.After(5 * time.Second):
-			return "", ""
-		case err := <-b.exitCh:
-			if err != nil {
-				msg := strings.TrimSpace(b.stderr.String())
-				if msg == "" {
-					msg = fmt.Sprintf("process exited %d", b.cmd.ProcessState.ExitCode())
-				}
-				return "", fmt.Sprintf("ERR:resource:%s:%s", b.Name, msg)
-			}
-			return "", ""
-		}
-	}
-	return "", fmt.Sprintf("ERR:resource:%s:bulk read requires process or stdin binding", b.Name)
+	return fmt.Sprintf("ERR:resource:%s:%v", name, err)
 }
 
 func stripLineTerminator(line string) (string, bool) {
@@ -924,90 +834,24 @@ func stripLineTerminator(line string) (string, bool) {
 }
 
 func (i *Interpreter) readLine(b *Binding, timeout time.Duration) (string, string) {
-	if b.Name == "stdout" || b.Name == "stderr" {
-		return "", "ERR:resource:cannot_read_output_stream"
+	if b.Resource == nil {
+		return "", fmt.Sprintf("ERR:resource:%s:missing host resource", b.Name)
 	}
-	if b.Name == "stdin" {
-		if b.inputReader == nil {
-			b.inputReader = bufio.NewReader(os.Stdin)
-		}
-		line, err := b.inputReader.ReadString('\n')
-		if err != nil {
-			return "", "ERR:resource:stdin:EOF before newline"
-		}
-		stripped, ok := stripLineTerminator(line)
-		if !ok {
-			return "", "ERR:resource:stdin:EOF before newline"
-		}
-		return stripped, ""
+	content, err := b.Resource.ReadLine(timeout)
+	if err != nil {
+		return "", formatResourceError(b.Name, err)
 	}
-	if b.IsProcess {
-		if err := i.ensureProcess(b); err != nil {
-			return "", fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-		}
-		select {
-		case line, ok := <-b.outCh:
-			if !ok {
-				return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
-			}
-			stripped, complete := stripLineTerminator(line)
-			if !complete {
-				return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
-			}
-			return stripped, ""
-		case <-time.After(timeout):
-			return "", fmt.Sprintf("ERR:resource:%s:timeout", b.Name)
-		case err := <-b.exitCh:
-			select {
-			case line, ok := <-b.outCh:
-				if ok {
-					stripped, complete := stripLineTerminator(line)
-					if !complete {
-						return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
-					}
-					return stripped, ""
-				}
-			default:
-			}
-			if err != nil {
-				msg := strings.TrimSpace(b.stderr.String())
-				if msg == "" {
-					msg = fmt.Sprintf("process exited %d", b.cmd.ProcessState.ExitCode())
-				}
-				return "", fmt.Sprintf("ERR:resource:%s:%s", b.Name, msg)
-			}
-			return "", fmt.Sprintf("ERR:resource:%s:EOF before newline", b.Name)
-		}
-	}
-	return "", fmt.Sprintf("ERR:resource:%s:line read requires process or stdin binding", b.Name)
+	return content, ""
 }
 
 func (i *Interpreter) writeString(b *Binding, content string) string {
-	if b.Name == "stdout" {
-		_, err := io.WriteString(i.Stdout, content)
-		if err != nil {
-			return fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-		}
-		return ""
+	if b.Resource == nil {
+		return fmt.Sprintf("ERR:resource:%s:missing host resource", b.Name)
 	}
-	if b.Name == "stderr" {
-		_, err := io.WriteString(i.Stderr, content)
-		if err != nil {
-			return fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-		}
-		return ""
+	if err := b.Resource.WriteString(content); err != nil {
+		return formatResourceError(b.Name, err)
 	}
-	if b.IsProcess {
-		if err := i.ensureProcess(b); err != nil {
-			return fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-		}
-		_, err := io.WriteString(b.stdin, content)
-		if err != nil {
-			return fmt.Sprintf("ERR:resource:%s:%v", b.Name, err)
-		}
-		return ""
-	}
-	return fmt.Sprintf("ERR:resource:%s:write requires process or output stream binding", b.Name)
+	return ""
 }
 
 func (i *Interpreter) setState(s string) error {
@@ -1315,9 +1159,8 @@ func splitResource(expanded string) (string, string) {
 
 func (i *Interpreter) Cleanup() {
 	for _, b := range i.Bindings {
-		if b.cmd != nil && b.cmd.Process != nil {
-			_ = b.cmd.Process.Kill()
-			_, _ = b.cmd.Process.Wait()
+		if b.Resource != nil {
+			b.Resource.Cleanup()
 		}
 	}
 }
