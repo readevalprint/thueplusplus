@@ -71,6 +71,38 @@ Hello, World!
 
 All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`.
 
+A minimal interactive stdin example can prompt for a line and echo it back. `::< 30 stdin` reads one newline-delimited message from the predefined `stdin` binding, waits up to 30 seconds, strips the line terminator, and stores the payload as PCT data.
+
+```thuepp
+PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
+
+^START$ ::= @PROMPT@NAME<@READ@>
+@PROMPT@ ::> stdout What is your name?\n
+@READ@ ::< 30 stdin
+^NAME<(?<name>$PCT)>$ ::> stdout hello {{name|pctdec}}!\n
+START
+```
+
+Run it:
+
+```bash
+./python/thuepp.py hello-name.tpp
+```
+
+Example interaction:
+
+```text
+What is your name?
+Ada
+hello Ada!
+```
+
+For non-interactive testing, pipe stdin into the same program:
+
+```bash
+printf 'Ada\n' | ./python/thuepp.py hello-name.tpp
+```
+
 The guess-number example demonstrates process bindings, stdin reads, validation, and numeric builtins. Run it interactively with a real random-number proc:
 
 ```bash
