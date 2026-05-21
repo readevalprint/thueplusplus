@@ -449,14 +449,7 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 # have reader syntax.
 
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KDONE>$ ::= RET<{{v}}|KDONE>
-^RET<VNUM<(?<n>$NUM)>\|KDONE>$ ::= RENDER<VNUM<{{n}}>|KOUT>
-^RET<VBOOL<(?<b>true|false)>\|KDONE>$ ::= RENDER<VBOOL<{{b}}>|KOUT>
-^RET<VSTR<(?<s>$PCT)>\|KDONE>$ ::= RENDER<VSTR<{{s}}>|KOUT>
-^RET<VCLOS<(?<c>[^>]*)>\|KDONE>$ ::= RENDER<VCLOS<{{c}}>|KOUT>
-^RET<VBUILTIN<(?<name>$NAME)>\|KDONE>$ ::= RENDER<VBUILTIN<{{name}}>|KOUT>
-^RET<VSYM<(?<name>$PCT)>\|KDONE>$ ::= RENDER<VSYM<{{name}}>|KOUT>
-^RET<VLIST<(?<items>$ITEMS)>\|KDONE>$ ::= RENDER<VLIST<{{items}}>|KOUT>
-^RET<VDICT<(?<entries>$DICTENTRIES)>\|KDONE>$ ::= RENDER<VDICT<{{entries}}>|KOUT>
+^RET<(?<v>$VAL)\|KDONE>$ ::= RENDER<{{v}}|KOUT>
 
 ^RENDER<VNUM<(?<n>$NUM)>\|(?<k>.*)>$ ::= RRET<{{n|pctenc}}|{{k}}>
 ^RENDER<VBOOL<(?<b>true|false)>\|(?<k>.*)>$ ::= RRET<{{b|pctenc}}|{{k}}>
