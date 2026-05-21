@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vue-tsc --noEmit && vite build",
-    "test": "vue-tsc --noEmit"
+    "test": "vue-tsc --noEmit && vitest run",
+    "test:ui": "vitest run"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "latest",
@@ -16,5 +17,9 @@
     "vue": "latest",
     "vue-tsc": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@vue/test-utils": "latest",
+    "jsdom": "latest",
+    "vitest": "latest"
+  }
 }
