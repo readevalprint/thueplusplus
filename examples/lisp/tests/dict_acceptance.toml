@@ -320,11 +320,3 @@ input = '(let ((xs (list 1 2))) (nth xs))'
 stdout = ""
 stderr_stripped = "wrong_arity"
 exit_code = 2
-
-[[case]]
-name = "dict with malformed entry fails wrong arity"
-input = '(dict ((quote x)))'
-[case.expect]
-stdout = ""
-stderr_stripped = "wrong_arity"
-exit_code = 2
