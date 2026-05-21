@@ -55,9 +55,25 @@ def expected_stdout(root: Path, config_path: Path) -> str:
     raise ValueError(f"{config_path}: expected output must define expect.stdout or expect.stdout_stripped")
 
 
+def shell_single_quote_escaped(value: str) -> str:
+    escaped = value.encode("unicode_escape").decode("ascii").replace("'", "'\"'\"'")
+    return f"'{escaped}'"
+
+
+def readme_example_command(root: Path, source_path: str, expected_output_path: str) -> str:
+    config = load_toml(root / expected_output_path)
+    command = f"./python/thuepp.py {source_path}"
+    for name, proc_command in config.get("bindings", {}).get("procs", {}).items():
+        command += f" --proc:{name} {shell_single_quote_escaped(proc_command)}"
+    if "stdin" in config:
+        command = f"printf {shell_single_quote_escaped(config['stdin'])} | {command}"
+    return command
+
+
 def render_readme_example(root: Path, source_path: str, expected_output_path: str) -> str:
     source = read(root / source_path)
     stdout = expected_stdout(root, Path(expected_output_path))
+    command = readme_example_command(root, source_path, expected_output_path)
     return (
         f"Example source (`{source_path}`):\n\n"
         "```thuepp\n"
@@ -65,7 +81,7 @@ def render_readme_example(root: Path, source_path: str, expected_output_path: st
         "```\n\n"
         "Run it:\n\n"
         "```bash\n"
-        f"./python/thuepp.py {source_path}\n"
+        f"{command}\n"
         "```\n\n"
         "Expected output:\n\n"
         "```text\n"
@@ -77,18 +93,25 @@ def render_readme_example(root: Path, source_path: str, expected_output_path: st
 def updated_readme(root: Path) -> str:
     readme = root / "README.md"
     text = read(readme)
-    marker = README_MARKER_RE.search(text)
-    if marker is None:
+    matches = list(README_MARKER_RE.finditer(text))
+    if not matches:
         raise ValueError("README marker not found: <!-- thuepp-readme-example: source=... expected-output=... -->")
-    start = text.find(README_START, marker.end())
-    if start == -1:
-        raise ValueError(f"README marker block start not found: {README_START}")
-    content_start = start + len(README_START)
-    end = text.find(README_END, content_start)
-    if end == -1:
-        raise ValueError(f"README marker block end not found: {README_END}")
-    generated = render_readme_example(root, marker.group("source"), marker.group("expected_output"))
-    return text[:content_start] + "\n" + generated + "\n" + text[end:]
+    pieces: list[str] = []
+    pos = 0
+    for marker in matches:
+        start = text.find(README_START, marker.end())
+        if start == -1:
+            raise ValueError(f"README marker block start not found after marker for {marker.group('source')}: {README_START}")
+        content_start = start + len(README_START)
+        end = text.find(README_END, content_start)
+        if end == -1:
+            raise ValueError(f"README marker block end not found after marker for {marker.group('source')}: {README_END}")
+        generated = render_readme_example(root, marker.group("source"), marker.group("expected_output"))
+        pieces.append(text[pos:content_start])
+        pieces.append("\n" + generated + "\n")
+        pos = end
+    pieces.append(text[pos:])
+    return "".join(pieces)
 
 
 def check_makefile(root: Path) -> list[Failure]:

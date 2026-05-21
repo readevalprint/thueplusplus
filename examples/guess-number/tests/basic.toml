@@ -1,0 +1,12 @@
+name = "guess number with validation and high low hints"
+program = "../guess-number.tpp"
+stdin = "x\n3\n8\n7\n"
+timeout = 10
+
+[bindings.procs]
+random = "printf 7; echo"
+
+[expect]
+stdout = "Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n"
+stderr = ""
+exit_code = 0
