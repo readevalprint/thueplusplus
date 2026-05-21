@@ -119,8 +119,6 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^EENV<quasiquote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:set-var|fn|if|and|or|let|while)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:symbol|name)\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
-^EENV<(?<prim>add|sub|mul|div|eq|lt|lte|gt|gte|first|rest|is-empty|cons|count|nth|get|contains|assoc|dissoc|type|parse|unparse|set-nth|symbol|name)\|(?<env>[^|]*)\|KDONE>$ ::= LOOK<{{prim}}|{{env}}|KDONE>
-
 ^EENV<(?:break|continue|map|unquote|splice|define|letrec)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<L<fn%20L%3C%3E%20(?<body>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<fn L<> {{body|pctdec}}|{{env}}|KCALLNOARGS {{k}}>

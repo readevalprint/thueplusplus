@@ -67,6 +67,15 @@ stderr = "not_function"
 stdout_stripped = ""
 
 [[case]]
+name = "primitive name shadowed by number evaluates binding"
+input = '(let ((add 1)) add)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
 name = "primitive callable shadowed by closure"
 input = '(let ((add (fn (x y) 999))) (add 1 2))'
 
