@@ -15,8 +15,8 @@ Atoms:
 
 Compound forms:
 
-- arithmetic builtins from the initial core environment: `add`, `sub`, `mul`, `div`;
-- numeric comparison/equality builtins from the initial core environment: `eq`, `lt`, `gt`, `lte`, `gte`;
+- arithmetic primitive callables from the initial core environment: `add`, `sub`, `mul`, `div`;
+- numeric comparison/equality primitive callables from the initial core environment: `eq`, `lt`, `gt`, `lte`, `gte`;
 - boolean control: `if`, `and`, `or`;
 - sequencing: `begin`;
 - lexical binding: `let`;
@@ -38,7 +38,7 @@ The evaluator uses internal typed values while reducing:
 - symbols and proper lists for code-as-data;
 - dictionaries with symbol or string keys;
 - closures;
-- opaque builtin callables from the initial core environment.
+- opaque primitive callables from the initial core environment.
 
 Successful top-level output renders public values as reader syntax where the value has reader syntax:
 
@@ -49,9 +49,9 @@ Successful top-level output renders public values as reader syntax where the val
 - quoted symbols as their source names, for example `x`;
 - dictionaries as pair-shaped `(dict (key value) ...)` syntax, for example `(dict (x 1) ("external key" 2))`;
 - closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core;
-- builtin callables as `<builtin>` because builtin capability values are opaque runtime values with no reader syntax in this core.
+- primitive callables as `<primitive>` because primitive capability values are opaque runtime values with no reader syntax in this core.
 
-Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, list, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and builtin output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
+Reader-backed outputs are intended to round trip where the reader has a direct value syntax. Feeding a rendered number, boolean, string, list, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and primitive-callable output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
 
 ## Evaluation model
 
@@ -61,8 +61,8 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - Values are demanded lazily from encoded nodes.
 - `let` creates lexical bindings.
 - `lambda` captures the lexical environment in a closure.
-- Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and builtin callable values are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named builtin callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`head`, `tail`, `empty?`, `push`, `len`, `at`, `lookup`, `has`, `put`, `del`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `lambda`, `let`, `begin`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable builtin values.
+- Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`head`, `tail`, `empty?`, `push`, `len`, `at`, `lookup`, `has`, `put`, `del`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `lambda`, `let`, `begin`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -74,7 +74,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
   observed through bindings updated by `set`.
 - `(set name expr)` updates the nearest existing lexical binding and returns the
   assigned value; setting an unbound name fails with `unbound_name`.
-- Arithmetic, comparison, collection, dictionary, and type-inspection builtins are strict for the operands they require and have exact arity.
+- Arithmetic, comparison, collection, dictionary, and type-inspection primitive callables are strict for the operands they require and have exact arity.
 
 ## Explicit eval scope
 
@@ -93,7 +93,7 @@ Contract:
 - The dictionary is converted to the entire environment for the evaluated code. There is no ambient caller environment and no hidden core-environment fallback.
 - Code values are quoted symbols and proper lists. Symbols are looked up in the explicit scope. Lists are evaluated directly as code values: the first item resolves to a callable, remaining items are recursively evaluated as code-value arguments, and the callable is applied. This path does not render lists to public source text or reparse them.
 - Scalars are self-evaluating under `eval`: numbers, booleans, and strings return themselves. Strings are data, not source text; `(eval "(add 1 2)" (dict (add add)))` returns the string rather than parsing or executing it.
-- Dictionaries, closures, and builtin values are not code and fail with `type_error` when used as the first evaluated value to `eval`.
+- Dictionaries, closures, and primitive callable values are not code and fail with `type_error` when used as the first evaluated value to `eval`.
 - `(eval)`, `(eval expr)`, and extra-argument forms fail with `wrong_arity`.
 
 ## Unsupported forms and fail-loud policy
@@ -172,7 +172,7 @@ Dictionary operations are explicit:
 
 ## Runtime type inspection
 
-`type` is an ordinary strict builtin that evaluates exactly one argument and returns a symbol naming the resulting runtime value family:
+`type` is an ordinary strict primitive callable that evaluates exactly one argument and returns a symbol naming the resulting runtime value family:
 
 ```lisp
 (type 1)              ; number
@@ -186,7 +186,7 @@ Dictionary operations are explicit:
 (type type)           ; builtin
 ```
 
-`type` reports the evaluated value, not source syntax: `(type (add 1 2))` returns `number`, `(type (quote add))` returns `symbol`, and `(type missing)` fails through ordinary name lookup with `unbound_name`. Explicit `eval` scopes get `type` only when the scope dictionary provides it, for example `(dict (type type) ...)`.
+`type` reports the evaluated value, not source syntax: `(type (add 1 2))` returns `number`, `(type (quote add))` returns `symbol`, and `(type missing)` fails through ordinary name lookup with `unbound_name`. For existing compatibility, opaque primitive callables report the type symbol `builtin`; that symbol names the primitive-callable value family and does not imply reader syntax or a user-definable builtin mechanism. Explicit `eval` scopes get `type` only when the scope dictionary provides it, for example `(dict (type type) ...)`.
 
 ## Recursion and loop boundary
 
