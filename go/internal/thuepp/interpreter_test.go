@@ -53,3 +53,42 @@ func TestMissingResourceReadFailsLoud(t *testing.T) {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
+
+func TestLoadProgramTextPreservesSourceAndCoverageTSV(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	if err := interp.LoadProgramText("virtual/main.tpp", "foo ::= bar\nbar ::- 0\nfoo"); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := interp.ProgramPath, "virtual/main.tpp"; got != want {
+		t.Fatalf("ProgramPath = %q, want %q", got, want)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if got, want := interp.RuleCoverageTSV(), "virtual/main.tpp:1\t1\nvirtual/main.tpp:2\t1\n"; got != want {
+		t.Fatalf("RuleCoverageTSV() = %q, want %q", got, want)
+	}
+}
+
+func TestLoadProgramTextRejectsIncludes(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	err := interp.LoadProgramText("virtual/main.tpp", "@include other.tpp\n")
+	if err == nil {
+		t.Fatal("LoadProgramText succeeded, want include error")
+	}
+	if got, want := err.Error(), "Line 1: @include is not supported when loading source text"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
