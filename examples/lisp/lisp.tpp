@@ -29,6 +29,7 @@ VAL <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONNUM <- (?:$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONBOOL <- (?:$VNUM|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONKEY <- (?:$VNUM|$VBOOL|$VLIST|$VCLOS|$VPRIM)
+NONLIST <- (?:$VNUM|$VBOOL|$VSTR|$VSYM|$VCLOS|$VPRIM)
 EXPR <- $NAME|$NODE
 READER_DATUM <- (?:\([^()]*\)|$OPSYM|$EXPR)
 
@@ -224,8 +225,8 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KQQITEM<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};>
 ^RET<VLIST<(?<items>$ITEMS)>\|KQQSPLICE<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{items}}>
 ^RETENV<VLIST<(?<items>$ITEMS)>\|(?<env>[^|]*)\|KQQSPLICE<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{items}}>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KQQSPLICE<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<type_error>
-^RETENV<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<env>[^|]*)\|KQQSPLICE<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KQQSPLICE<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<type_error>
+^RETENV<(?<bad>$NONLIST)\|(?<env>[^|]*)\|KQQSPLICE<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<type_error>
 
 ^EENV<list (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKLISTENV<{{items}}|{{env}}|{{k}}|>
 ^PACKLISTENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
@@ -241,7 +242,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
 ^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
 ^RET<VLIST<(?<items>$ITEMS)>\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ALIST2ENV<{{items}}|{{code}}|{{k}}|>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^ALIST2ENV<\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= CODEVAL<{{code}}|{{acc}}|{{k}}>
 ^ALIST2ENV<(?<pair>[^;]*);(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ALIST2ENVPAIR<{{pair|pctdec}}|{{rest}}|{{code}}|{{k}}|{{acc}}>
 ^ALIST2ENVPAIR<VLIST<(?<key>[^;]*);(?<val>[^;]*);>\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ALIST2ENVKEY<{{key|pctdec}}|{{val}}|{{rest}}|{{code}}|{{k}}|{{acc}}>
@@ -321,7 +322,7 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^ALISTDELEQ<0\|(?<rawitem>[^|]*)\|(?<want>$DICTKEY)\|(?<rest>$ITEMS)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTDEL<{{want}}|{{rest}}|{{acc}}{{rawitem}};|{{k}}>
 
 ^RET<VLIST<(?<items>$ITEMS)>\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= RET<VLIST<{{item|pctenc}};{{items}}>|{{k}}>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
 ^EENV<fn (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -395,22 +396,22 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^BSETNTH<VLIST<(?<items>$ITEMS)>\|VNUM<(?<idx>$NEGINT)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
 ^BSETNTH<VLIST<(?<items>$ITEMS)>\|VNUM<(?<bad>$NONINTNUM)>\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^BSETNTH<VLIST<(?<items>$ITEMS)>\|(?<bad>$NONNUM)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^BSETNTH<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<idx>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BSETNTH<(?<bad>$NONLIST)\|(?<idx>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VPRIM<contains>\|(?<alist>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BALISTHAS<{{alist|pctdec}}|{{key|pctdec}}|{{k}}>
 ^BALISTHAS<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTKEY<HAS|{{items}}^> {{k}}>
-^BALISTHAS<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BALISTHAS<(?<bad>$NONLIST)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VPRIM<get>\|(?<alist>[^;]*);(?<key>[^;]*);(?<default>[^;]*);\|(?<k>.*)>$ ::= BALISTGET<{{alist|pctdec}}|{{key|pctdec}}|{{default|pctdec}}|{{k}}>
 ^BALISTGET<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTKEY<GET|{{items}}^{{default|pctenc}}> {{k}}>
-^BALISTGET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BALISTGET<(?<bad>$NONLIST)\|(?<key>$VAL)\|(?<default>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^BALISTPUT<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTPUTKEY<{{items}}^{{val|pctenc}}> {{k}}>
-^BALISTPUT<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BALISTPUT<(?<bad>$NONLIST)\|(?<key>$VAL)\|(?<val>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^RET<VSYM<(?<s>$PCT)>\|KALISTPUTKEY<(?<items>[^\^>]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= BUILDPUTPAIR<VLIST<VSYM%3C{{s}}%3E;{{val}};>|S{{s}}|{{items}}|{{k}}>
 ^RET<VSTR<(?<s>$PCT)>\|KALISTPUTKEY<(?<items>[^\^>]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= BUILDPUTPAIR<VLIST<VSTR%3C{{s}}%3E;{{val}};>|T{{s}}|{{items}}|{{k}}>
 ^BUILDPUTPAIR<(?<pair>$VLIST)\|(?<key>$DICTKEY)\|(?<items>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUT<{{key}}|{{items}}|{{pair|pctenc}}^{{items}}^|{{k}}>
 ^RET<(?<bad>$NONKEY)\|KALISTPUTKEY<(?<items>[^\^>]*)\^(?<val>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VPRIM<dissoc>\|(?<alist>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BALISTDEL<{{alist|pctdec}}|{{key|pctdec}}|{{k}}>
 ^BALISTDEL<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= RET<{{key}}|KALISTKEY<DEL|{{items}}^> {{k}}>
-^BALISTDEL<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BALISTDEL<(?<bad>$NONLIST)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 
 # Symbol/name conversion. `symbol` accepts existing symbols idempotently or
 # strings whose rendered spelling would parse back as a symbol, not a boolean
@@ -500,11 +501,11 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^SETNTHWALK<\|(?<idx>$NAT)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
 ^SETNTHWALK<(?<old>[^;]*);(?<rest>$ITEMS)\|0\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{acc}}{{val}};{{rest}}>|{{k}}>
 ^SETNTHWALK<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<idx>$POS)\|(?<val>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= SETNTHWALK<{{rest}}|SUB<{{idx}},1>|{{val}}|{{acc}}{{item}};|{{k}}>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KHEAD (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KTAIL (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
-^RET<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VSYM<(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*?>|VCLOS<[^>]*>|VPRIM<$NAME>)\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KHEAD (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KTAIL (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KEMPTY (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
+^RET<(?<bad>$NONLIST)\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
 
 # Render final values. Public render output is recursive Lisp syntax for values that
 # have reader syntax.
