@@ -48,8 +48,8 @@ def load_toml(path: Path) -> dict:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
-TOP_LEVEL_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout", "case"}
-CASE_KEYS = {"name", "program", "input", "args", "bindings", "expect", "timeout"}
+TOP_LEVEL_KEYS = {"name", "program", "input", "stdin", "args", "bindings", "expect", "timeout", "case"}
+CASE_KEYS = {"name", "program", "input", "stdin", "args", "bindings", "expect", "timeout"}
 EXPECT_KEYS = {
     "exit_code",
     "stdout",
@@ -101,6 +101,8 @@ def validate_manifest(config_path: Path, config: dict) -> None:
     validate_manifest_program(config_path, config)
     if "args" in config and not (isinstance(config["args"], list) and all(isinstance(arg, str) for arg in config["args"])):
         raise RuntimeError(f"{config_path}: args must be a list of strings")
+    if "stdin" in config and not isinstance(config["stdin"], str):
+        raise RuntimeError(f"{config_path}: stdin must be a string")
     if "bindings" in config:
         validate_bindings(config_path, "manifest", config["bindings"])
     cases = config.get("case")
@@ -120,6 +122,8 @@ def validate_manifest(config_path: Path, config: dict) -> None:
             raise RuntimeError(f"{config_path} {scope}: program is only allowed at manifest top level")
         if "args" in case and not (isinstance(case["args"], list) and all(isinstance(arg, str) for arg in case["args"])):
             raise RuntimeError(f"{config_path} {scope}: args must be a list of strings")
+        if "stdin" in case and not isinstance(case["stdin"], str):
+            raise RuntimeError(f"{config_path} {scope}: stdin must be a string")
         if "bindings" in case:
             validate_bindings(config_path, scope, case["bindings"])
         validate_expect(config_path, scope, case.get("expect"))
@@ -154,6 +158,8 @@ def validate_case_metadata(config_path: Path, case: dict) -> None:
         isinstance(case["args"], list) and all(isinstance(arg, str) for arg in case["args"])
     ):
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: args must be a list of strings")
+    if "stdin" in case and not isinstance(case["stdin"], str):
+        raise RuntimeError(f"{config_path} {case_name(config_path, case)}: stdin must be a string")
 
 
 def has_max_evals_arg(args: list[str]) -> bool:
@@ -205,6 +211,7 @@ def run_case(
         result = subprocess.run(
             [*interpreter.argv, *args],
             cwd=ROOT,
+            input=case.get("stdin"),
             capture_output=True,
             text=True,
             timeout=timeout,
