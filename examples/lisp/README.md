@@ -24,7 +24,8 @@ Compound forms:
 - functions: `lambda` and direct application;
 - lists: `list`, `head`, `tail`;
 - code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `eval`, `head`, `tail`, `empty?`, `push`, `len`, and `at`;
-- dictionaries: `dict`, `lookup`, `has`, `put`, and `del`.
+- dictionaries: `dict`, `lookup`, `has`, `put`, and `del`;
+- runtime type inspection: `type`.
 
 ## Runtime values
 
@@ -61,7 +62,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `lambda` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and builtin callable values are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named builtin callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`) and strict collection helpers (`head`, `tail`, `empty?`, `push`, `len`, `at`, `lookup`, `has`, `put`, `del`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `lambda`, `let`, `begin`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable builtin values.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named builtin callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`head`, `tail`, `empty?`, `push`, `len`, `at`, `lookup`, `has`, `put`, `del`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `lambda`, `let`, `begin`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable builtin values.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -73,7 +74,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
   observed through bindings updated by `set`.
 - `(set name expr)` updates the nearest existing lexical binding and returns the
   assigned value; setting an unbound name fails with `unbound_name`.
-- Arithmetic and comparison builtins are strict for the operands they require and currently accept exactly two numeric operands.
+- Arithmetic, comparison, collection, dictionary, and type-inspection builtins are strict for the operands they require and have exact arity.
 
 ## Explicit eval scope
 
@@ -168,6 +169,24 @@ Dictionary operations are explicit:
 ```
 
 `lookup` always requires a default. A present key returns its stored value even when that value is `false` or `()`. A missing key evaluates and returns the default. `put` and `del` return new dictionary values and leave existing bindings unchanged; deleting a missing key is a no-op that returns an equivalent dictionary. Applying a dictionary as a function fails with `not_function`.
+
+## Runtime type inspection
+
+`type` is an ordinary strict builtin that evaluates exactly one argument and returns a symbol naming the resulting runtime value family:
+
+```lisp
+(type 1)              ; number
+(type true)           ; boolean
+(type "hi")           ; string
+(type (quote hello))  ; symbol
+(type (list 1 2))     ; list
+(type (dict (x 1)))   ; dict
+(type (lambda (x) x)) ; function
+(type add)            ; builtin
+(type type)           ; builtin
+```
+
+`type` reports the evaluated value, not source syntax: `(type (add 1 2))` returns `number`, `(type (quote add))` returns `symbol`, and `(type missing)` fails through ordinary name lookup with `unbound_name`. Explicit `eval` scopes get `type` only when the scope dictionary provides it, for example `(dict (type type) ...)`.
 
 ## Recursion and loop boundary
 

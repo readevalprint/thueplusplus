@@ -1,0 +1,162 @@
+program = "../lisp.tpp"
+args = ["--max-evals", "120000"]
+
+[[case]]
+name = "type reports number integer"
+input = "(type 1)"
+[case.expect]
+stdout = "number\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports number rational"
+input = "(type 1/2)"
+[case.expect]
+stdout = "number\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports booleans"
+input = "(list (type true) (type false))"
+[case.expect]
+stdout = "(boolean boolean)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports string"
+input = "(type \"hi\")"
+[case.expect]
+stdout = "string\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports quoted symbol"
+input = "(type (quote hello))"
+[case.expect]
+stdout = "symbol\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports quoted list"
+input = "(type (quote (1 2)))"
+[case.expect]
+stdout = "list\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports constructed list"
+input = "(type (list 1 2))"
+[case.expect]
+stdout = "list\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports dict"
+input = "(type (dict (\"a\" 1)))"
+[case.expect]
+stdout = "dict\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports closure as function"
+input = "(type (lambda (x) x))"
+[case.expect]
+stdout = "function\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports existing builtin"
+input = "(type add)"
+[case.expect]
+stdout = "builtin\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type reports itself as builtin"
+input = "(type type)"
+[case.expect]
+stdout = "builtin\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type evaluates bound variables"
+input = "(let ((x \"hi\")) (type x))"
+[case.expect]
+stdout = "string\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type evaluates computed values"
+input = "(type (add 1 2))"
+[case.expect]
+stdout = "number\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type of quoted builtin name is symbol"
+input = "(type (quote add))"
+[case.expect]
+stdout = "symbol\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type missing fails through lookup"
+input = "(type missing)"
+[case.expect]
+stdout = ""
+stderr = "unbound_name"
+exit_code = 2
+
+[[case]]
+name = "type requires one argument when nullary"
+input = "(type)"
+[case.expect]
+stdout = ""
+stderr = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "type requires one argument when extra arguments supplied"
+input = "(type 1 2)"
+[case.expect]
+stdout = ""
+stderr = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "type requires one argument through explicit eval apply"
+input = "(eval (quote (type)) (dict (type type)))"
+[case.expect]
+stdout = ""
+stderr = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "type works through explicit eval scope when provided"
+input = "(eval (quote (type xs)) (dict (type type) (xs (list 1 2))))"
+[case.expect]
+stdout = "list\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "type absent from explicit eval scope is unbound"
+input = "(eval (quote (type xs)) (dict (xs (list 1 2))))"
+[case.expect]
+stdout = ""
+stderr = "unbound_name"
+exit_code = 2
