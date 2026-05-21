@@ -298,6 +298,15 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
         failures.append(Failure(path, "Lisp final KDONE rendering must not enumerate per-value tag fanout rules"))
     if "|KDONE>>$ ::= RET<" in text:
         failures.append(Failure(path, "stale extra-angle RET<...|KDONE>> final rendering shim remains"))
+    if "VBUILTIN" in text:
+        failures.append(Failure(path, "primitive callables must use the internal VPRIM tag; stale VBUILTIN reference remains"))
+    if "VPRIM <- VPRIM<$NAME>" not in text or "APPLY<VPRIM<" not in text:
+        failures.append(Failure(path, "primitive callable internals must keep an explicit VPRIM value tag and APPLY dispatch"))
+    readme = read(root / "examples" / "lisp" / "README.md")
+    stale_public_builtin_terms = ["opaque builtin callables", "builtin callable values", "named builtin callables", "<builtin>"]
+    for snippet in stale_public_builtin_terms:
+        if snippet in readme:
+            failures.append(Failure(root / "examples" / "lisp" / "README.md", f"public docs must describe primitive callables, not builtin callables: {snippet}"))
     return failures
 
 

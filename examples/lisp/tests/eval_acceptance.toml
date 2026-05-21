@@ -4,7 +4,7 @@ timeout = 10
 args = ["--max-evals", "100000"]
 
 [[case]]
-name = "eval list code with explicit builtin and binding"
+name = "eval list code with explicit primitive callable and binding"
 input = "(eval (quote (add x 1)) (dict (add add) (x 10)))"
 
 [case.expect]
@@ -157,13 +157,13 @@ stderr = "wrong_arity"
 stdout_stripped = ""
 
 [[case]]
-name = "eval symbol can return explicit builtin value"
+name = "eval symbol can return explicit primitive callable value"
 input = "(eval (quote add) (dict (add add)))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "<builtin>"
+stdout_stripped = "<primitive>"
 
 [[case]]
 name = "eval rejects operator symbol scope key"
