@@ -23,8 +23,8 @@ Compound forms:
 - bounded iteration/state update: `while` and `set-var`;
 - functions: `fn` and direct application;
 - lists: `list`, `first`, `rest`;
-- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, and `nth`;
-- dictionaries: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
+- code-as-data lists: `quote`, `quasiquote`, `unquote`, `splice`, `parse`, `unparse`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth`;
+- association-list helpers: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
 - runtime type inspection: `type`.
 
 ## Runtime values
@@ -36,7 +36,7 @@ The evaluator uses internal typed values while reducing:
 - strings;
 - lists;
 - symbols and proper lists for code-as-data;
-- dictionaries with symbol or string keys;
+- association lists: ordinary lists whose entries are two-item key/value lists;
 - closures;
 - opaque primitive callables from the initial core environment.
 
@@ -47,11 +47,10 @@ Successful top-level output renders public values as reader syntax where the val
 - strings as quoted string syntax, preserving supported normal escapes;
 - proper lists as ordinary parenthesized source-list syntax, for example `()`, `(1 2)`, or `(1 (2 3))`;
 - quoted symbols as their source names, for example `x`;
-- dictionaries as pair-shaped `(dict (key value) ...)` syntax, for example `(dict (x 1) ("external key" 2))`;
-- closures as `<closure>` because closures are opaque runtime values with no reader syntax in this core;
-- primitive callables as `<primitive>` because primitive capability values are opaque runtime values with no reader syntax in this core.
+- association lists as ordinary list syntax, for example `((x 1) ("external key" 2))`;
+- closures and primitive callables are not renderable values. If a successful result contains either directly or nested inside another value, rendering fails with `unparseable_value`.
 
-Reader-backed outputs are intended to round trip where the reader contains a direct value syntax. Feeding a rendered number, boolean, string, list, or dictionary back into the evaluator should recreate the same public value. Proper lists are source-shaped code/data values; use `(quote (...))` or `(list ...)` when the value must be reconstructed rather than evaluated as a call. Closure and primitive-callable output are explicit non-round-trippable exceptions until a dedicated serialization design exists.
+Reader-backed outputs are intended to round trip where the reader contains a direct value syntax. Feeding a rendered number, boolean, string, or list back through `parse`/`eval` should recreate equivalent public data, except when any nested value is a closure or primitive callable. Association lists use only ordinary list syntax; there is no separate dictionary reader syntax. Proper lists are source-shaped code/data values, so use `(quote (...))`, `(parse "...")`, or `(list ...)` when the value must be reconstructed rather than evaluated as a call.
 
 ## Evaluation model
 
@@ -61,8 +60,8 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - Values are demanded lazily from encoded nodes.
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
-- Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists and dictionaries are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns an opaque residual closure, while too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `get`, `contains`, `assoc`, `dissoc`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set-var`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
+- Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set-var`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -74,14 +73,14 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
   observed through bindings updated by `set-var`.
 - `(set-var name expr)` updates the nearest existing lexical binding and returns the
   assigned value; setting an unbound name fails with `unbound_name`.
-- Arithmetic, comparison, collection, dictionary, and type-inspection primitive callables are strict for the operands they require and have exact arity.
+- Arithmetic, comparison, collection, alist, and type-inspection primitive callables are strict for the operands they require and have exact arity.
 
 ## Explicit eval scope
 
-`eval` evaluates code-as-data using an explicit dictionary scope:
+`eval` evaluates code-as-data using an explicit association-list scope:
 
 ```lisp
-(eval (quote (add x 1)) (dict (add add) (x 10)))
+(eval (quote (add x 1)) (dict ((quote add) add) ((quote x) 10)))
 ```
 
 returns `11`.
@@ -89,11 +88,11 @@ returns `11`.
 Contract:
 
 - `(eval expr scope)` first evaluates `expr` and `scope` normally.
-- `scope` must evaluate to a dictionary whose keys are symbols that are valid lexical names; string keys and operator-symbol keys fail with `type_error` because they cannot become lexical bindings.
-- The dictionary is converted to the entire environment for the evaluated code. There is no ambient caller environment and no hidden core-environment fallback.
+- `scope` must evaluate to an association list. Each entry must be a two-item list whose key is a symbol that is also a valid lexical name. String keys, operator-symbol keys, malformed entries, and non-list scopes fail with `type_error` because they cannot become lexical bindings.
+- The association list is converted to the entire environment for the evaluated code. There is no ambient caller environment and no hidden core-environment fallback.
 - Code values are quoted symbols and proper lists. Symbols are looked up in the explicit scope. Lists are evaluated directly as code values: the first item resolves to a callable, remaining items are recursively evaluated as code-value arguments, and the callable is applied. This path does not render lists to public source text or reparse them.
-- Scalars are self-evaluating under `eval`: numbers, booleans, and strings return themselves. Strings are data, not source text; `(eval "(add 1 2)" (dict (add add)))` returns the string rather than parsing or executing it.
-- Dictionaries, closures, and primitive callable values are not code and fail with `type_error` when used as the first evaluated value to `eval`.
+- Scalars are self-evaluating under `eval`: numbers, booleans, and strings return themselves. Strings are data, not source text; `(eval "(add 1 2)" (dict ((quote add) add)))` returns the string rather than parsing or executing it.
+- Closures and primitive callable values are not code and fail with `type_error` when used as the first evaluated value to `eval`. Association lists are just lists: if used as code, they evaluate as list-shaped code rather than as a distinct dictionary type.
 - `(eval)`, `(eval expr)`, and extra-argument forms fail with `wrong_arity`.
 
 ## Unsupported forms and fail-loud policy
@@ -135,7 +134,7 @@ Implementation contract:
 - `(splice expr)` at the top-level quasiquoted expression, bare `splice`, and bare `unquote` fail with `unsupported_form`; malformed `unquote`/`splice` escape forms fail with `wrong_arity`; splicing a non-list fails with `type_error`.
 - Nested `(quasiquote ...)` is deliberately rejected with `unsupported_form` in this first slice; there is no implicit quasiquote-depth accounting yet.
 - Internally, quoted symbols use `VSYM<...>` and proper lists use `VLIST<...>` with pct-encoded item payloads. These constructors are implementation details and must not leak to successful stdout.
-- `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `assoc` operate on proper lists and fail loudly for invalid type or access cases.
+- `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth` operate on proper lists and fail loudly for invalid type or access cases. `assoc` is reserved for association-list key updates.
 
 `nth` is the supported positional list get form:
 
@@ -145,10 +144,10 @@ Implementation contract:
 
 returns `8`. `nth` accepts non-negative integer indices. Negative integer indices fail with `index_out_of_bounds`; decimal or fractional numeric indices fail with `type_error`; non-numeric indices fail with `type_error`; out-of-bounds non-negative integer indices fail with `index_out_of_bounds`; malformed arity fails with `wrong_arity`. The old `at` name is not part of this greenfield slice.
 
-`assoc` is the value-returning positional list update form:
+`set-nth` is the value-returning positional list update form:
 
 ```lisp
-(assoc (list 1 2 3) 1 9)
+(set-nth (list 1 2 3) 1 9)
 ```
 
 returns `(1 9 3)`. It replaces the item at a zero-based integer index and returns a new list value. It does not insert, delete, or mutate an existing list object.
@@ -158,36 +157,58 @@ To update a variable, explicitly rebind it with `set-var`:
 ```lisp
 (let ((xs (list 1 2 3)))
   (do
-    (set-var xs (assoc xs 1 9))
+    (set-var xs (set-nth xs 1 9))
     xs))
 ```
 
-returns `(1 9 3)`. Without the `set-var`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(assoc (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
+returns `(1 9 3)`. Without the `set-var`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(set-nth (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
 
 Reader shorthand such as `'x`, backtick, comma, and comma-splice is still deferred; this core uses keyword forms only.
 
-## Dictionary boundary
+## Parse/unparse round trip
 
-`dict` constructs an explicit dictionary value. It is not an association-list convention and not an overloaded function call target.
-
-Construction and rendering use pair-shaped entries:
+`parse` reads a source string into the same code-as-data values produced by `quote`. It does not evaluate the result:
 
 ```lisp
-(dict (x 1) ("external key" 2))
+(parse "(add 1 2)")
 ```
 
-Keys may be symbols or strings only. Key equality is typed and non-coercive: symbol `x` and string `"x"` are distinct keys, and there is no string-to-symbol conversion in this slice. Duplicate keys in one constructor fail with `duplicate_key`; malformed entries fail with `wrong_arity`; unsupported key types fail with `type_error`.
-
-Dictionary operations are explicit:
+returns the list value `(add 1 2)`. To execute parsed code, pass that value to `eval` with an explicit alist scope:
 
 ```lisp
-(contains d key)
-(get d key default)
-(assoc d key value)
-(dissoc d key)
+(eval (parse "(add 1 2)") (dict ((quote add) add)))
 ```
 
-`get` always requires a default. A present key returns its stored value even when that value is `false` or `()`. A missing key evaluates and returns the default. `assoc` and `dissoc` return new dictionary values and leave existing bindings unchanged; deleting a missing key is a no-op that returns an equivalent dictionary. Applying a dictionary as a function fails with `not_function`.
+`unparse` converts a renderable value back to a source string that `parse` can read again. Numbers, booleans, strings, symbols, and lists unparse; closures and primitive callables fail with `unparseable_value`, including when nested inside a list or alist. `parse` and `unparse` are exact-arity primitive callables.
+
+## Association-list boundary
+
+There is no distinct public dictionary/hash value type. Map-like data is represented as an ordinary association list: a proper list whose items are two-item key/value lists. The `dict` form is only an evaluated helper that validates entries and constructs that ordinary list.
+
+Construction evaluates both key and value expressions:
+
+```lisp
+(dict ((quote x) 1) ("external key" 2))
+```
+
+renders as:
+
+```lisp
+((x 1) ("external key" 2))
+```
+
+Keys may evaluate only to symbols or strings. Key equality is typed and non-coercive: symbol `x` and string `"x"` are distinct keys. Duplicate evaluated keys in one `dict` constructor fail with `duplicate_key`; malformed constructor entries fail with `wrong_arity`; unsupported key types fail with `type_error`.
+
+Alist operations are explicit:
+
+```lisp
+(contains alist key)
+(get alist key default)
+(assoc alist key value)
+(dissoc alist key)
+```
+
+`get` always requires a default. A present key returns its stored value even when that value is `false` or `()`. A missing key evaluates and returns the default. `assoc` replaces the first matching key; if no key matches, it prepends a new pair. `dissoc` removes all matching keys. All alist operations validate that the receiver is a proper list of two-item lists and that each entry key is a symbol or string; malformed alists fail with `type_error`. Applying an alist as a function fails with `not_function` because lists are not callable.
 
 ## Runtime type inspection
 
@@ -199,13 +220,13 @@ Dictionary operations are explicit:
 (type "hi")           ; string
 (type (quote hello))  ; symbol
 (type (list 1 2))     ; list
-(type (dict (x 1)))   ; dict
+(type (dict ((quote x) 1))) ; list
 (type (fn (x) x)) ; function
 (type add)            ; builtin
 (type type)           ; builtin
 ```
 
-`type` reports the evaluated value, not source syntax: `(type (add 1 2))` returns `number`, `(type (quote add))` returns `symbol`, and `(type missing)` fails through ordinary name lookup with `unbound_name`. For existing compatibility, opaque primitive callables report the type symbol `builtin`; that symbol names the primitive-callable value family and does not imply reader syntax or a user-definable builtin mechanism. Explicit `eval` scopes get `type` only when the scope dictionary provides it, for example `(dict (type type) ...)`.
+`type` reports the evaluated value, not source syntax: `(type (add 1 2))` returns `number`, `(type (quote add))` returns `symbol`, and `(type missing)` fails through ordinary name lookup with `unbound_name`. For existing compatibility, opaque primitive callables report the type symbol `builtin`; that symbol names the primitive-callable value family and does not imply reader syntax or a user-definable builtin mechanism. Explicit `eval` scopes get `type` only when the scope alist provides it, for example `(dict ((quote type) type) ...)`.
 
 ## Recursion and loop boundary
 
@@ -232,7 +253,7 @@ The evaluator exits non-zero and writes one named error symbol on stderr for rej
 - `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `do`, `and`, `or`, `let`, and `fn` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual name-lookup miss for a bare variable or callee name;
-- `not_function`: attempting to apply a non-closure value, including lists and dictionaries;
+- `not_function`: attempting to apply a non-closure value, including lists;
 - `type_error`: an operand value contains the wrong runtime type for the requested operation;
 - `division_by_zero`: division by zero, including computed zero denominators;
 - `invalid_numeric_token`: numeric-looking tokens that do not satisfy the numeric literal contract;

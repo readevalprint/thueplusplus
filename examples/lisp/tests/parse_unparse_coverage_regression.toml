@@ -1,0 +1,131 @@
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "200000"]
+
+[[case]]
+name = "parse rejects at sign as invalid string escape"
+input = '(parse "@")'
+[case.expect]
+stdout = ""
+stderr_stripped = "invalid_string_escape"
+exit_code = 2
+
+[[case]]
+name = "parse preserves quoted string source"
+input = '(parse "\"a\"")'
+[case.expect]
+stdout = "\"a\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse string source can unparse again"
+input = '(unparse (parse "\"a\""))'
+[case.expect]
+stdout = "\"\\\"a\\\"\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "do can ignore unrendered primitive before scalar"
+input = '(do add 1)'
+[case.expect]
+stdout = "1\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "eval scope rejects malformed alist entry"
+input = '(eval (quote x) (quote (x)))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "eval scope rejects operator symbol key"
+input = '(eval (quote +) (quote ((+ 1))))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "eval scope rejects number key"
+input = '(eval (quote x) (quote ((1 2))))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "get rejects malformed alist key value"
+input = '(get (quote ((1 2))) (quote x) 0)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "assoc rejects malformed alist key value"
+input = '(assoc (quote ((1 2))) (quote x) 9)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "dissoc rejects malformed alist key value"
+input = '(dissoc (quote ((1 2))) (quote x))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "parse rejects extra args"
+input = '(parse "1" "2")'
+[case.expect]
+stdout = ""
+stderr_stripped = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "unparse rejects extra args"
+input = '(unparse 1 2)'
+[case.expect]
+stdout = ""
+stderr_stripped = "wrong_arity"
+exit_code = 2
+
+[[case]]
+name = "contains rejects non-list receiver"
+input = '(contains 1 (quote x))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "get rejects non-list receiver"
+input = '(get 1 (quote x) 0)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "assoc rejects non-list receiver"
+input = '(assoc 1 (quote x) 2)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "dissoc rejects non-list receiver"
+input = '(dissoc 1 (quote x))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2

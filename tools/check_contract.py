@@ -333,8 +333,6 @@ def check_lisp_nested_alias_cleanup(root: Path) -> list[Failure]:
         "DICTKEY <-",
         "DICTENTRIES <-",
         "VNUM <-",
-        "VDICT <-",
-        "NONDICT <-",
         "NONKEY <-",
         "OPSYM <-",
         "SYM <-",

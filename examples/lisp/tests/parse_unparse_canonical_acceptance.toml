@@ -1,0 +1,211 @@
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "200000"]
+
+[[case]]
+name = "unparse scalar number returns source string"
+input = '(unparse 42)'
+[case.expect]
+stdout = "\"42\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse scalar number returns number"
+input = '(parse "42")'
+[case.expect]
+stdout = "42\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse symbol returns symbol data"
+input = '(type (parse "add"))'
+[case.expect]
+stdout = "symbol\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "unparse quoted list returns parenthesized source string"
+input = '(unparse (quote (add 1 2)))'
+[case.expect]
+stdout = "\"(add 1 2)\"\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse list source returns list data without evaluation"
+input = '(first (parse "(add 1 (div 1 0))"))'
+[case.expect]
+stdout = "add\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parse plus list can eval with explicit alist scope"
+input = '(eval (parse "(add 1 2)") (dict ((quote add) add)))'
+[case.expect]
+stdout = "3\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "list helper output is canonical list syntax"
+input = '(list 1 2 3)'
+[case.expect]
+stdout = "(1 2 3)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict helper returns ordinary alist with evaluated keys"
+input = '(dict ((quote x) 1) ("k" 2))'
+[case.expect]
+stdout = "((x 1) (\"k\" 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict helper type is list"
+input = '(type (dict ((quote x) 1)))'
+[case.expect]
+stdout = "list\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict helper evaluates value side"
+input = '(dict ((quote x) (add 1 2)))'
+[case.expect]
+stdout = "((x 3))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict helper evaluates key side to string"
+input = '(let ((k "dyn")) (dict (k 7)))'
+[case.expect]
+stdout = "((\"dyn\" 7))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict helper rejects numeric key"
+input = '(dict (1 2))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "dict helper rejects duplicate evaluated keys"
+input = '(dict ((quote x) 1) ((quote x) 2))'
+[case.expect]
+stdout = ""
+stderr_stripped = "duplicate_key"
+exit_code = 2
+
+[[case]]
+name = "alist get finds symbol key"
+input = '(get (dict ((quote x) 1) ("k" 2)) (quote x) 0)'
+[case.expect]
+stdout = "1\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "alist get finds string key"
+input = '(get (dict ((quote x) 1) ("k" 2)) "k" 0)'
+[case.expect]
+stdout = "2\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "alist get missing returns default"
+input = '(get (dict ((quote x) 1)) (quote y) 99)'
+[case.expect]
+stdout = "99\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "alist contains reports present and missing"
+input = '(list (contains (dict ((quote x) 1)) (quote x)) (contains (dict ((quote x) 1)) (quote y)))'
+[case.expect]
+stdout = "(true false)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "assoc adds missing alist key"
+input = '(assoc (dict ((quote x) 1)) (quote y) 2)'
+[case.expect]
+stdout = "((y 2) (x 1))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "assoc updates first matching alist key"
+input = '(assoc (quote ((x 1) (x 2))) (quote x) 9)'
+[case.expect]
+stdout = "((x 9) (x 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dissoc removes all matching alist keys"
+input = '(dissoc (quote ((x 1) (y 2) (x 3))) (quote x))'
+[case.expect]
+stdout = "((y 2))\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "invalid alist shape fails in get"
+input = '(get (quote (x)) (quote x) 0)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "set nth replaces positional list item"
+input = '(set-nth (list 1 2 3) 1 9)'
+[case.expect]
+stdout = "(1 9 3)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "top level primitive value fails through unparse"
+input = 'add'
+[case.expect]
+stdout = ""
+stderr_stripped = "unparseable_value"
+exit_code = 2
+
+[[case]]
+name = "top level closure value fails through unparse"
+input = '(fn (x) x)'
+[case.expect]
+stdout = ""
+stderr_stripped = "unparseable_value"
+exit_code = 2
+
+[[case]]
+name = "unparse primitive value fails"
+input = '(unparse add)'
+[case.expect]
+stdout = ""
+stderr_stripped = "unparseable_value"
+exit_code = 2
+
+[[case]]
+name = "parse wrong type fails"
+input = '(parse 1)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2

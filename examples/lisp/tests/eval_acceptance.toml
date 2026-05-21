@@ -5,7 +5,7 @@ args = ["--max-evals", "100000"]
 
 [[case]]
 name = "eval list code with explicit primitive callable and binding"
-input = "(eval (quote (add x 1)) (dict (add add) (x 10)))"
+input = '(eval (quote (add x 1)) (dict ((quote add) add) ((quote x) 10)))'
 
 [case.expect]
 exit_code = 0
@@ -14,7 +14,7 @@ stdout_stripped = "11"
 
 [[case]]
 name = "eval generated list code"
-input = "(eval (list (quote add) (quote x) 2) (dict (add add) (x 5)))"
+input = '(eval (list (quote add) (quote x) 2) (dict ((quote add) add) ((quote x) 5)))'
 
 [case.expect]
 exit_code = 0
@@ -23,7 +23,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "eval contains no hidden core env fallback"
-input = "(eval (quote (add x 1)) (dict (x 10)))"
+input = '(eval (quote (add x 1)) (dict ((quote x) 10)))'
 
 [case.expect]
 exit_code = 2
@@ -32,7 +32,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval contains no ambient caller env"
-input = "(let ((x 99)) (eval (quote x) (dict)))"
+input = '(let ((x 99)) (eval (quote x) (dict)))'
 
 [case.expect]
 exit_code = 2
@@ -41,7 +41,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval symbol get from explicit scope"
-input = "(eval (quote x) (dict (x 42)))"
+input = '(eval (quote x) (dict ((quote x) 42)))'
 
 [case.expect]
 exit_code = 0
@@ -50,7 +50,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "eval scalar number self evaluates"
-input = "(eval (quote 7) (dict))"
+input = '(eval (quote 7) (dict))'
 
 [case.expect]
 exit_code = 0
@@ -59,7 +59,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "eval scalar bool self evaluates"
-input = "(eval (quote true) (dict))"
+input = '(eval (quote true) (dict))'
 
 [case.expect]
 exit_code = 0
@@ -68,7 +68,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "eval string self evaluates not source"
-input = "(eval \"(add 1 2)\" (dict (add add)))"
+input = '(eval "(add 1 2)" (dict ((quote add) add)))'
 
 [case.expect]
 exit_code = 0
@@ -77,7 +77,7 @@ stdout_stripped = "\"(add 1 2)\""
 
 [[case]]
 name = "eval wrong arity none"
-input = "(eval)"
+input = '(eval)'
 
 [case.expect]
 exit_code = 2
@@ -86,7 +86,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval wrong arity one"
-input = "(eval (quote x))"
+input = '(eval (quote x))'
 
 [case.expect]
 exit_code = 2
@@ -95,7 +95,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval wrong arity extra"
-input = "(eval (quote x) (dict (x 1)) (dict))"
+input = '(eval (quote x) (dict ((quote x) 1)) (dict))'
 
 [case.expect]
 exit_code = 2
@@ -104,7 +104,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval scope must be dict"
-input = "(eval (quote x) 7)"
+input = '(eval (quote x) 7)'
 
 [case.expect]
 exit_code = 2
@@ -112,17 +112,17 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
-name = "eval dict value rejected"
-input = "(eval (dict (x 1)) (dict))"
+name = "eval alist code does not receive hidden scope"
+input = '(eval (dict ((quote x) 1)) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "unbound_name"
 stdout_stripped = ""
 
 [[case]]
 name = "eval closure value rejected"
-input = "(eval (fn (x) x) (dict))"
+input = '(eval (fn (x) x) (dict))'
 
 [case.expect]
 exit_code = 2
@@ -131,7 +131,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "exec remains unbound"
-input = "exec"
+input = 'exec'
 
 [case.expect]
 exit_code = 2
@@ -140,7 +140,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval rejects string-key scope entries"
-input = "(eval (quote x) (dict (\"x\" 1)))"
+input = '(eval (quote x) (dict ("x" 1)))'
 
 [case.expect]
 exit_code = 2
@@ -149,7 +149,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval empty list code fails wrong arity"
-input = "(eval (quote ()) (dict))"
+input = '(eval (quote ()) (dict))'
 
 [case.expect]
 exit_code = 2
@@ -157,26 +157,26 @@ stderr = "wrong_arity"
 stdout_stripped = ""
 
 [[case]]
-name = "eval symbol can return explicit primitive callable value"
-input = "(eval (quote add) (dict (add add)))"
-
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "<primitive>"
-
-[[case]]
-name = "eval rejects operator symbol scope key"
-input = "(eval (quote x) (assoc (dict) (quote +) 1))"
+name = "eval symbol returning explicit primitive is unparseable at top level"
+input = '(eval (quote add) (dict ((quote add) add)))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "unparseable_value"
+stdout_stripped = ""
+
+[[case]]
+name = "eval rejects operator symbol scope key"
+input = '(eval (quote x) (assoc (dict) (quote +) 1))'
+
+[case.expect]
+exit_code = 2
+stderr = "unsupported_form"
 stdout_stripped = ""
 
 [[case]]
 name = "eval rejects operator symbol as code"
-input = "(eval (quote +) (dict))"
+input = '(eval (quote +) (dict))'
 
 [case.expect]
 exit_code = 2
@@ -185,7 +185,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval directly evaluates nested list code without render reparse"
-input = "(eval (quote (add (add x 1) 2)) (dict (add add) (x 10)))"
+input = '(eval (quote (add (add x 1) 2)) (dict ((quote add) add) ((quote x) 10)))'
 
 [case.expect]
 exit_code = 0
@@ -194,7 +194,7 @@ stdout_stripped = "13"
 
 [[case]]
 name = "eval generated list code with literal args"
-input = "(eval (list (quote add) 1 2) (dict (add add)))"
+input = '(eval (list (quote add) 1 2) (dict ((quote add) add)))'
 
 [case.expect]
 exit_code = 0
@@ -203,7 +203,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "eval direct generated list code keeps string data unparsed"
-input = "(eval (list (quote eq) \"(add 1 2)\" \"(add 1 2)\") (dict (eq eq)))"
+input = '(eval (list (quote eq) "(add 1 2)" "(add 1 2)") (dict ((quote eq) eq)))'
 
 [case.expect]
 exit_code = 2

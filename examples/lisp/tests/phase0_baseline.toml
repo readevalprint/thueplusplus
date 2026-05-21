@@ -8,7 +8,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "top level number"
-input = "42"
+input = '42'
 
 [case.expect]
 exit_code = 0
@@ -17,7 +17,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "top level rational number"
-input = "1/2"
+input = '1/2'
 
 [case.expect]
 exit_code = 0
@@ -26,7 +26,7 @@ stdout_stripped = "1/2"
 
 [[case]]
 name = "top level true"
-input = "true"
+input = 'true'
 
 [case.expect]
 exit_code = 0
@@ -35,7 +35,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "top level false"
-input = "false"
+input = 'false'
 
 [case.expect]
 exit_code = 0
@@ -44,7 +44,7 @@ stdout_stripped = "false"
 
 [[case]]
 name = "top level string"
-input = "\"hello world\""
+input = '"hello world"'
 
 [case.expect]
 exit_code = 0
