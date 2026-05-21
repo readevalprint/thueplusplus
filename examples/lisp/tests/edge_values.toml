@@ -22,7 +22,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "or rejects numeric lhs"
-input = "(or 0 (/ 1 0))"
+input = "(or 0 (div 1 0))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -86,7 +86,7 @@ stdout_stripped = "(array <closure>)"
 
 [[case]]
 name = "higher order closure stored in let can be applied later"
-input = "(let ((mk (lambda (x) (lambda (y) (+ x y))))) ((mk 10) 5))"
+input = "(let ((mk (lambda (x) (lambda (y) (add x y))))) ((mk 10) 5))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -94,7 +94,7 @@ stdout_stripped = "15"
 
 [[case]]
 name = "returning closure from lambda preserves captured env"
-input = "(((lambda (mk) (mk 10)) (lambda (x) (lambda (y) (+ x y)))) 5)"
+input = "(((lambda (mk) (mk 10)) (lambda (x) (lambda (y) (add x y)))) 5)"
 [case.expect]
 exit_code = 0
 stderr = ""

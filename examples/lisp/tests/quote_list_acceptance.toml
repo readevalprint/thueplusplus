@@ -75,7 +75,7 @@ exit_code = 2
 
 [[case]]
 name = "dynamic list evaluates children"
-input = "(list 1 (+ 1 2) \"x\")"
+input = "(list 1 (add 1 2) \"x\")"
 [case.expect]
 stdout = "(1 3 \"x\")\n"
 stderr = ""

@@ -4,7 +4,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "begin single expression returns value"
-input = "(begin (+ 1 2))"
+input = "(begin (add 1 2))"
 
 [case.expect]
 exit_code = 0
@@ -13,7 +13,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "begin returns final expression"
-input = "(begin (+ 1 2) (+ 3 4) 9)"
+input = "(begin (add 1 2) (add 3 4) 9)"
 
 [case.expect]
 exit_code = 0
@@ -22,7 +22,7 @@ stdout_stripped = "9"
 
 [[case]]
 name = "begin evaluates earlier expressions before final"
-input = "(begin (/ 1 0) 9)"
+input = "(begin (div 1 0) 9)"
 
 [case.expect]
 exit_code = 2
@@ -31,7 +31,7 @@ stdout = ""
 
 [[case]]
 name = "begin preserves lexical environment across sequence"
-input = "(let ((x 4)) (begin (+ x 1) (+ x 2)))"
+input = "(let ((x 4)) (begin (add x 1) (add x 2)))"
 
 [case.expect]
 exit_code = 0
@@ -40,7 +40,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "begin selected by lazy if"
-input = "(if true (begin (+ 1 2) (+ 3 4)) (/ 1 0))"
+input = "(if true (begin (add 1 2) (add 3 4)) (div 1 0))"
 
 [case.expect]
 exit_code = 0

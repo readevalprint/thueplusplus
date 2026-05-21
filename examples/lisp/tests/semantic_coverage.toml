@@ -7,7 +7,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "let subtraction uses lexical env"
-input = "(let ((x 10)) (- x 3))"
+input = "(let ((x 10)) (sub x 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -15,7 +15,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "let multiplication uses lexical env"
-input = "(let ((x 6)) (* x 7))"
+input = "(let ((x 6)) (mul x 7))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -23,7 +23,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "let multiplication nary uses lexical env"
-input = "(let ((x 2)) (* x 3 4))"
+input = "(let ((x 2)) (mul (mul x 3) 4))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -31,7 +31,7 @@ stdout_stripped = "24"
 
 [[case]]
 name = "let division uses lexical env"
-input = "(let ((x 8)) (/ x 2))"
+input = "(let ((x 8)) (div x 2))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -39,7 +39,7 @@ stdout_stripped = "4"
 
 [[case]]
 name = "let division literal zero fails loudly"
-input = "(let ((x 8)) (/ x 0))"
+input = "(let ((x 8)) (div x 0))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -47,7 +47,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "let division bound zero fails loudly"
-input = "(let ((x 8) (z 0)) (/ x z))"
+input = "(let ((x 8) (z 0)) (div x z))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -55,7 +55,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "let numeric equality uses lexical env"
-input = "(let ((x 2)) (= x 2.0))"
+input = "(let ((x 2)) (eq x 2.0))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -63,7 +63,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let less-than uses lexical env"
-input = "(let ((x 2)) (< x 3))"
+input = "(let ((x 2)) (lt x 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -71,7 +71,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let less-or-equal uses lexical env"
-input = "(let ((x 2)) (<= x 2))"
+input = "(let ((x 2)) (lte x 2))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -79,7 +79,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let greater-than uses lexical env"
-input = "(let ((x 3)) (> x 2))"
+input = "(let ((x 3)) (gt x 2))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -87,7 +87,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let greater-or-equal uses lexical env"
-input = "(let ((x 3)) (>= x 3))"
+input = "(let ((x 3)) (gte x 3))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -95,7 +95,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "env if true skips division by zero"
-input = "(let ((x 1)) (if true x (/ 1 0)))"
+input = "(let ((x 1)) (if true x (div 1 0)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -103,7 +103,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "env if false skips division by zero"
-input = "(let ((x 1)) (if false (/ 1 0) x))"
+input = "(let ((x 1)) (if false (div 1 0) x))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -119,7 +119,7 @@ stdout_stripped = "9"
 
 [[case]]
 name = "env and false skips division by zero"
-input = "(let ((x false)) (and x (/ 1 0)))"
+input = "(let ((x false)) (and x (div 1 0)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -127,7 +127,7 @@ stdout_stripped = "false"
 
 [[case]]
 name = "env or true skips division by zero"
-input = "(let ((x true)) (or x (/ 1 0)))"
+input = "(let ((x true)) (or x (div 1 0)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -191,7 +191,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "env and literal false shortcut skips rhs"
-input = "(let ((x 1)) (and false (/ 1 0)))"
+input = "(let ((x 1)) (and false (div 1 0)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -207,7 +207,7 @@ stdout_stripped = "9"
 
 [[case]]
 name = "env or literal true shortcut skips rhs"
-input = "(let ((x 1)) (or true (/ 1 0)))"
+input = "(let ((x 1)) (or true (div 1 0)))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -239,7 +239,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "top-level nary multiplication folds"
-input = "(* 2 3 4)"
+input = "(mul (mul 2 3) 4)"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -255,7 +255,7 @@ stdout_stripped = "(array)"
 
 [[case]]
 name = "top-level computed and true returns rhs"
-input = "(and (= 1 1) 9)"
+input = "(and (eq 1 1) 9)"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -263,7 +263,7 @@ stdout_stripped = "9"
 
 [[case]]
 name = "top-level computed or true skips rhs"
-input = "(or (= 1 1) (/ 1 0))"
+input = "(or (eq 1 1) (div 1 0))"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -289,7 +289,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "env subtraction rejects boolean lhs"
-input = "(let ((x true)) (- x 1))"
+input = "(let ((x true)) (sub x 1))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -297,7 +297,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env subtraction rejects boolean rhs"
-input = "(let ((x true)) (- 1 x))"
+input = "(let ((x true)) (sub 1 x))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -305,7 +305,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env multiplication rejects boolean lhs"
-input = "(let ((x true)) (* x 1))"
+input = "(let ((x true)) (mul x 1))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -313,7 +313,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env multiplication rejects boolean rhs"
-input = "(let ((x true)) (* 1 x))"
+input = "(let ((x true)) (mul 1 x))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -321,7 +321,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env division rejects boolean lhs"
-input = "(let ((x true)) (/ x 1))"
+input = "(let ((x true)) (div x 1))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -329,7 +329,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env division rejects boolean rhs"
-input = "(let ((x true)) (/ 1 x))"
+input = "(let ((x true)) (div 1 x))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -337,7 +337,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env division rational zero fails loudly"
-input = "(let ((z 0/1)) (/ 1 z))"
+input = "(let ((z 0/1)) (div 1 z))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -345,7 +345,7 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "env less-than rejects boolean lhs"
-input = "(let ((x true)) (< x 1))"
+input = "(let ((x true)) (lt x 1))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -353,7 +353,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env less-than rejects boolean rhs"
-input = "(let ((x true)) (< 1 x))"
+input = "(let ((x true)) (lt 1 x))"
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -385,7 +385,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "empty let with nested body"
-input = "(let () (+ 1 2))"
+input = "(let () (add 1 2))"
 [case.expect]
 exit_code = 0
 stderr = ""

@@ -34,7 +34,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "nested math"
-input = "(+ 1 (* 2 3) (+ 4 5))"
+input = "(add (add 1 (mul 2 3)) (add 4 5))"
 
 [case.expect]
 exit_code = 0
@@ -43,7 +43,7 @@ stdout_stripped = "16"
 
 [[case]]
 name = "compare"
-input = "(= (+ 1 2) 3)"
+input = "(eq (add 1 2) 3)"
 
 [case.expect]
 exit_code = 0
@@ -52,7 +52,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "if lazy"
-input = "(if (= (+ 1 2) 4) (/ 1 0) 12)"
+input = "(if (eq (add 1 2) 4) (div 1 0) 12)"
 
 [case.expect]
 exit_code = 0
@@ -61,7 +61,7 @@ stdout_stripped = "12"
 
 [[case]]
 name = "and lazy"
-input = "(and false (/ 1 0))"
+input = "(and false (div 1 0))"
 
 [case.expect]
 exit_code = 0
@@ -70,7 +70,7 @@ stdout_stripped = "false"
 
 [[case]]
 name = "or lazy"
-input = "(or true (/ 1 0))"
+input = "(or true (div 1 0))"
 
 [case.expect]
 exit_code = 0
@@ -106,7 +106,7 @@ stdout_stripped = "(array \"x\" false)"
 
 [[case]]
 name = "lambda nary"
-input = "((lambda (x y z) (+ x y z)) 1 2 3)"
+input = "((lambda (x y z) (add (add x y) z)) 1 2 3)"
 
 [case.expect]
 exit_code = 0
@@ -115,7 +115,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "lambda closure"
-input = "(((lambda (x) (lambda (y) (+ x y))) 10) 5)"
+input = "(((lambda (x) (lambda (y) (add x y))) 10) 5)"
 
 [case.expect]
 exit_code = 0
@@ -133,7 +133,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "lambda partial renders closure"
-input = "((lambda (x y) (+ x y)) 1)"
+input = "((lambda (x y) (add x y)) 1)"
 
 [case.expect]
 exit_code = 0
@@ -142,7 +142,7 @@ stdout_stripped = "<closure>"
 
 [[case]]
 name = "lambda partial application completes"
-input = "(((lambda (x y) (+ x y)) 1) 2)"
+input = "(((lambda (x y) (add x y)) 1) 2)"
 
 [case.expect]
 exit_code = 0
@@ -151,7 +151,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "lambda partial preserves lexical capture"
-input = "(let ((a 10)) (((lambda (x y) (+ (+ a x) y)) 1) 2))"
+input = "(let ((a 10)) (((lambda (x y) (add (add a x) y)) 1) 2))"
 
 [case.expect]
 exit_code = 0
@@ -160,7 +160,7 @@ stdout_stripped = "13"
 
 [[case]]
 name = "lambda partial preserves shadowing"
-input = "(let ((x 100)) (((lambda (x y) (+ x y)) 1) 2))"
+input = "(let ((x 100)) (((lambda (x y) (add x y)) 1) 2))"
 
 [case.expect]
 exit_code = 0
@@ -169,7 +169,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "lambda partial too many args rejects"
-input = "((lambda (x y) (+ x y)) 1 2 3)"
+input = "((lambda (x y) (add x y)) 1 2 3)"
 
 [case.expect]
 exit_code = 2
