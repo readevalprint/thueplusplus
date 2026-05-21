@@ -51,7 +51,7 @@ UNESC<(?<s>$PCT)> ::= {{s}}
 ^C<L<(?<payload>$PCT)>>$ ::= CBOOT<{{payload|pctdec}}|KDONE>
 ^C<(?<atom>$NUM|true|false|VSTR<$PCT>)>$ ::= ARG<{{atom}}|KDONE>
 ^C<(?<name>$NAME)>$ ::= CBOOT<{{name}}|KDONE>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VBUILTIN%3Cadd%3E;sub=VBUILTIN%3Csub%3E;mul=VBUILTIN%3Cmul%3E;div=VBUILTIN%3Cdiv%3E;eq=VBUILTIN%3Ceq%3E;lt=VBUILTIN%3Clt%3E;lte=VBUILTIN%3Clte%3E;gt=VBUILTIN%3Cgt%3E;gte=VBUILTIN%3Cgte%3E;head=VBUILTIN%3Chead%3E;tail=VBUILTIN%3Ctail%3E;empty?=VBUILTIN%3Cempty%3F%3E;push=VBUILTIN%3Cpush%3E;len=VBUILTIN%3Clen%3E;at=VBUILTIN%3Cat%3E;lookup=VBUILTIN%3Clookup%3E;has=VBUILTIN%3Chas%3E;put=VBUILTIN%3Cput%3E;del=VBUILTIN%3Cdel%3E;|{{k}}>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VBUILTIN%3Cadd%3E;sub=VBUILTIN%3Csub%3E;mul=VBUILTIN%3Cmul%3E;div=VBUILTIN%3Cdiv%3E;eq=VBUILTIN%3Ceq%3E;lt=VBUILTIN%3Clt%3E;lte=VBUILTIN%3Clte%3E;gt=VBUILTIN%3Cgt%3E;gte=VBUILTIN%3Cgte%3E;head=VBUILTIN%3Chead%3E;tail=VBUILTIN%3Ctail%3E;empty?=VBUILTIN%3Cempty%3F%3E;push=VBUILTIN%3Cpush%3E;len=VBUILTIN%3Clen%3E;at=VBUILTIN%3Cat%3E;lookup=VBUILTIN%3Clookup%3E;has=VBUILTIN%3Chas%3E;put=VBUILTIN%3Cput%3E;del=VBUILTIN%3Cdel%3E;type=VBUILTIN%3Ctype%3E;|{{k}}>
 
 # Demand a node: literals return; encoded lists decode only when demanded.
 ^ARG<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
@@ -93,7 +93,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^EENV<quote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<quasiquote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:set|lambda|if|and|or|let|while)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:add|sub|mul|div|eq|lt|lte|gt|gte|head|tail|empty\?|push|len|at|has|put|del)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<(?:add|sub|mul|div|eq|lt|lte|gt|gte|head|tail|empty\?|push|len|at|has|put|del|type)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:break|continue|map|unquote|splice|define|letrec)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<L<lambda%20L%3C%3E%20(?<body>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<lambda L<> {{body|pctdec}}|{{env}}|KCALLNOARGS {{k}}>
@@ -322,7 +322,8 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VBUILTIN<gt>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGT<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 ^APPLY<VBUILTIN<gte>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGE<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 
-^APPLY<VBUILTIN<(?<op>head|tail|empty\?|len)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VBUILTIN<type>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VBUILTIN<(?<op>head|tail|empty\?|len|type)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VBUILTIN<(?<op>push|at|has|del)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VBUILTIN<(?<op>push|at|has|del)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VBUILTIN<(?<op>lookup|put)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -331,6 +332,7 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VBUILTIN<tail>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTAIL {{k}}>
 ^APPLY<VBUILTIN<empty\?>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KEMPTY {{k}}>
 ^APPLY<VBUILTIN<len>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KLEN {{k}}>
+^APPLY<VBUILTIN<type>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTYPE {{k}}>
 ^APPLY<VBUILTIN<push>\|(?<item>[^;]*);(?<lst>[^;]*);\|(?<k>.*)>$ ::= RET<{{lst|pctdec}}|KPUSH2<{{item|pctdec}}> {{k}}>
 ^APPLY<VBUILTIN<at>\|(?<lst>[^;]*);(?<idx>[^;]*);\|(?<k>.*)>$ ::= BAT<{{lst|pctdec}}|{{idx|pctdec}}|{{k}}>
 ^BAT<(?<lst>$VAL)\|VNUM<(?<idx>$NUM)>\|(?<k>.*)>$ ::= RET<{{lst}}|KAT2<{{idx}}> {{k}}>
@@ -412,6 +414,14 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<VBOOL<1>\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<0>\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 
+^RET<VNUM<$NUM>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<number>|{{k}}>
+^RET<VBOOL<(?:true|false)>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<boolean>|{{k}}>
+^RET<VSTR<$PCT>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<string>|{{k}}>
+^RET<VLIST<$ITEMS>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<list>|{{k}}>
+^RET<VDICT<$DICTENTRIES>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<dict>|{{k}}>
+^RET<VSYM<$PCT>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<symbol>|{{k}}>
+^RET<VCLOS<[^>]*>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<function>|{{k}}>
+^RET<VBUILTIN<$NAME>\|KTYPE (?<k>.*)>$ ::= RET<VSYM<builtin>|{{k}}>
 ^RET<VLIST<>\|KHEAD (?<k>.*)>$ ::= ERR<empty_list>
 ^RET<VLIST<(?<first>[^;]*);(?<rest>.*)>\|KHEAD (?<k>.*)>$ ::= RET<{{first|pctdec}}|{{k}}>
 ^RET<VLIST<>\|KTAIL (?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
