@@ -56,3 +56,99 @@ input = '(let ((f (fn (x) (list x (quote ok))))) (f (list 1 2)))'
 stdout = "((1 2) ok)\n"
 stderr = ""
 exit_code = 0
+
+[[case]]
+name = "nonlist alias keeps first receiver type error"
+input = '(first 1)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps rest receiver type error"
+input = '(rest 1)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps is-empty receiver type error"
+input = '(is-empty 1)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps count receiver type error"
+input = '(count 1)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps nth receiver type error"
+input = '(nth 1 0)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps set-nth receiver type error"
+input = '(set-nth 1 0 9)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps cons receiver type error"
+input = '(cons 0 1)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps get receiver type error"
+input = '(get 1 (quote k) 0)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps contains receiver type error"
+input = '(contains 1 (quote k))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps assoc receiver type error"
+input = '(assoc 1 (quote k) 2)'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps dissoc receiver type error"
+input = '(dissoc 1 (quote k))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
+
+[[case]]
+name = "nonlist alias keeps quasiquote splice type error"
+input = '(quasiquote (a (splice 1)))'
+[case.expect]
+stdout = ""
+stderr_stripped = "type_error"
+exit_code = 2
