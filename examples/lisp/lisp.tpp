@@ -49,9 +49,10 @@ UNESC<(?<s>$PCT)> ::= {{s}}
 
 # Phase B: inside-out list freezing.
 ^C<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)>$ ::= C<{{pre}}L<{{inner|pctenc}}>{{post}}>
-^C<L<(?<payload>$PCT)>>$ ::= EENV<{{payload|pctdec}}|add=VBUILTIN%3Cadd%3E;sub=VBUILTIN%3Csub%3E;mul=VBUILTIN%3Cmul%3E;div=VBUILTIN%3Cdiv%3E;eq=VBUILTIN%3Ceq%3E;lt=VBUILTIN%3Clt%3E;lte=VBUILTIN%3Clte%3E;gt=VBUILTIN%3Cgt%3E;gte=VBUILTIN%3Cgte%3E;|KDONE>
+^C<L<(?<payload>$PCT)>>$ ::= CBOOT<{{payload|pctdec}}|KDONE>
 ^C<(?<atom>$NUM|true|false|VSTR<$PCT>)>$ ::= ARG<{{atom}}|KDONE>
-^C<(?<name>$NAME)>$ ::= EENV<{{name}}|add=VBUILTIN%3Cadd%3E;sub=VBUILTIN%3Csub%3E;mul=VBUILTIN%3Cmul%3E;div=VBUILTIN%3Cdiv%3E;eq=VBUILTIN%3Ceq%3E;lt=VBUILTIN%3Clt%3E;lte=VBUILTIN%3Clte%3E;gt=VBUILTIN%3Cgt%3E;gte=VBUILTIN%3Cgte%3E;|KDONE>
+^C<(?<name>$NAME)>$ ::= CBOOT<{{name}}|KDONE>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VBUILTIN%3Cadd%3E;sub=VBUILTIN%3Csub%3E;mul=VBUILTIN%3Cmul%3E;div=VBUILTIN%3Cdiv%3E;eq=VBUILTIN%3Ceq%3E;lt=VBUILTIN%3Clt%3E;lte=VBUILTIN%3Clte%3E;gt=VBUILTIN%3Cgt%3E;gte=VBUILTIN%3Cgte%3E;|{{k}}>
 
 # Demand a node: literals return; encoded lists decode only when demanded.
 ^ARG<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
