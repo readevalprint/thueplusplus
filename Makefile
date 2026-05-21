@@ -14,6 +14,7 @@ wasm:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to build WASM" >&2; exit 127; }
 	mkdir -p build
 	cd go && GOOS=js GOARCH=wasm go build -o ../build/thuepp.wasm ./cmd/thuepp-wasm
+	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" build/wasm_exec.js
 
 wasm-smoke: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM smoke tests" >&2; exit 127; }

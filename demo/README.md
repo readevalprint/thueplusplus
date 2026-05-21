@@ -24,7 +24,7 @@ npm run test:ui      # focused Vitest UI tests only
 npm run build        # production build
 ```
 
-Before serving the demo, build the WASM artifact and make `build/thuepp.wasm` plus Go's `wasm_exec.js` available to the Vite dev server/static host paths expected by `src/wasm.ts` (`/thuepp.wasm` and `/wasm_exec.js`). `make demo-build` validates the production TypeScript/Vite bundle; it does not execute the full examples manifest suite.
+Before serving the demo, run `make wasm` once from the repository root. That target writes both browser-served runtime assets into the ignored `build/` directory: `build/thuepp.wasm` and `build/wasm_exec.js`. Vite serves that directory as the demo public asset root, so the worker can load `/thuepp.wasm` and `/wasm_exec.js`. `make demo-build` validates the production TypeScript/Vite bundle; it does not execute the full examples manifest suite.
 
 ## What the demo tests cover
 
