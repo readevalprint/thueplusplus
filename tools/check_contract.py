@@ -282,6 +282,10 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     runner = read(root / "tools" / "example_runner.py")
     if "check_rule_coverage" not in runner or "--rule-coverage" not in runner:
         failures.append(Failure(root / "tools" / "example_runner.py", "make test must include integrated manifest-declared rule coverage gate"))
+    forbidden_eval_render_bridges = ["KEVALRENDER", "KEVALCODE", "RENDER<VLIST<{{items}}>|KEVAL"]
+    for snippet in forbidden_eval_render_bridges:
+        if snippet in text:
+            failures.append(Failure(path, f"explicit eval must evaluate code values directly, not through render/reparse bridge: {snippet}"))
     return failures
 
 

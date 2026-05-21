@@ -215,25 +215,31 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RET<(?<v>$VAL)\|KENLIST<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= PACKLISTENV<{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};>
 
 # Explicit code-as-data eval: evaluate the code value and scope map normally,
-# then evaluate only symbol/list code values inside the map-derived env. Scalar
-# values are self-evaluating. There is no ambient-env or core-env fallback.
+# then evaluate code values directly inside the map-derived env. Scalar values
+# are self-evaluating. Symbols resolve in the explicit scope. Lists evaluate by
+# evaluating the first code value to a callable, evaluating remaining code values
+# as arguments, and applying the callable. There is no ambient-env, core-env, or
+# public render/reparse fallback.
 ^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
 ^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
-^RET<VDICT<(?<entries>$DICTENTRIES)>\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= D2ENV<{{entries}}|KEVALCODE<{{code}}> {{k}}>|>
+^RET<VDICT<(?<entries>$DICTENTRIES)>\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= D2ENV<{{entries}}|{{code}}|{{k}}|>
 ^RET<(?<bad>$NONDICT)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
-^D2ENV<\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= RETENV<VLIST<>|{{acc}}|{{k}}>
-^D2ENV<S(?<key>$NAME)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= D2ENV<{{rest}}|{{k}}|{{acc}}{{key}}={{val}};>
-^D2ENV<S(?<key>$PCT)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
-^D2ENV<T(?<key>$PCT)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
-^RETENV<VLIST<>\|(?<scopeenv>[^|]*)\|KEVALCODE<VNUM<(?<n>$NUM)>> (?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
-^RETENV<VLIST<>\|(?<scopeenv>[^|]*)\|KEVALCODE<VBOOL<(?<b>true|false)>> (?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
-^RETENV<VLIST<>\|(?<scopeenv>[^|]*)\|KEVALCODE<VSTR<(?<s>$PCT)>> (?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
-^RETENV<VLIST<>\|(?<scopeenv>[^|]*)\|KEVALCODE<VSYM<(?<name>$NAME)>> (?<k>.*)>$ ::= LOOK<{{name}}|{{scopeenv}}|{{k}}>
-^RETENV<VLIST<>\|(?<scopeenv>[^|]*)\|KEVALCODE<VSYM<(?<bad>$PCT)>> (?<k>.*)>$ ::= ERR<type_error>
-^RETENV<VLIST<>\|(?<scopeenv>[^|]*)\|KEVALCODE<VLIST<(?<items>$ITEMS)>> (?<k>.*)>$ ::= RENDER<VLIST<{{items}}>|KEVALRENDER<{{scopeenv}}> {{k}}>
-^RRET<%28%29\|KEVALRENDER<(?<scopeenv>[^>]*)> (?<k>.*)>$ ::= ERR<wrong_arity>
-^RRET<%28(?<body>$PCT)%29\|KEVALRENDER<(?<scopeenv>[^>]*)> (?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{scopeenv}}|{{k}}>
-^RETENV<VLIST<>\|(?<scopeenv>[^|]*)\|KEVALCODE<(?<bad>VARR<$ITEMS>|VDICT<$DICTENTRIES>|VCLOS<[^>]*>|VBUILTIN<$NAME>)> (?<k>.*)>$ ::= ERR<type_error>
+^D2ENV<\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= CODEVAL<{{code}}|{{acc}}|{{k}}>
+^D2ENV<S(?<key>$NAME)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= D2ENV<{{rest}}|{{code}}|{{k}}|{{acc}}{{key}}={{val}};>
+^D2ENV<S(?<key>$PCT)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
+^D2ENV<T(?<key>$PCT)=(?<val>[^;]*);(?<rest>$DICTENTRIES)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ERR<type_error>
+^CODEVAL<VNUM<(?<n>$NUM)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^CODEVAL<VBOOL<(?<b>true|false)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
+^CODEVAL<VSTR<(?<s>$PCT)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+^CODEVAL<VSYM<(?<name>$NAME)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{scopeenv}}|{{k}}>
+^CODEVAL<VSYM<(?<bad>$PCT)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
+^CODEVAL<VLIST<>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^CODEVAL<VLIST<(?<callee>[^;]*);(?<args>$ITEMS)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= CODEVAL<{{callee|pctdec}}|{{scopeenv}}|KCODECALL<{{args}}^{{scopeenv}}> {{k}}>
+^RET<(?<fn>$VAL)\|KCODECALL<(?<args>$ITEMS)\^(?<scopeenv>[^>]*)> (?<k>.*)>$ ::= CODEARGS<{{args}}|{{scopeenv}}||{{k}}|{{fn}}>
+^CODEARGS<\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= APPLY<{{fn}}|{{acc}}|{{k}}>
+^CODEARGS<(?<arg>[^;]*);(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= CODEVAL<{{arg|pctdec}}|{{scopeenv}}|KCODEARG<{{rest}}|{{scopeenv}}|{{acc}}|{{fn}}> {{k}}>
+^RET<(?<v>$VAL)\|KCODEARG<(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<fn>$VAL)> (?<k>.*)>$ ::= CODEARGS<{{rest}}|{{scopeenv}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}>
+^CODEVAL<(?<bad>VARR<$ITEMS>|VDICT<$DICTENTRIES>|VCLOS<[^>]*>|VBUILTIN<$NAME>)\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
 ^EENV<eval(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
 # Explicit dictionary values for #110. VDICT stores typed keys (`S` symbol, `T`
@@ -450,7 +456,6 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 # display-only bracket form.
 
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KDONE>$ ::= RET<{{v}}|KDONE>
-^RET<(?<v>$VAL)\|KDONE>>$ ::= RET<{{v}}|KDONE>
 ^RET<VNUM<(?<n>$NUM)>\|KDONE>$ ::= RENDER<VNUM<{{n}}>|KOUT>
 ^RET<VBOOL<(?<b>true|false)>\|KDONE>$ ::= RENDER<VBOOL<{{b}}>|KOUT>
 ^RET<VSTR<(?<s>$PCT)>\|KDONE>$ ::= RENDER<VSTR<{{s}}>|KOUT>

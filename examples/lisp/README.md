@@ -90,7 +90,7 @@ Contract:
 - `(eval expr scope)` first evaluates `expr` and `scope` normally.
 - `scope` must evaluate to a dictionary whose keys are symbols that are valid lexical names; string keys and operator-symbol keys fail with `type_error` because they cannot become lexical bindings.
 - The dictionary is converted to the entire environment for the evaluated code. There is no ambient caller environment and no hidden core-environment fallback.
-- Code values are quoted symbols and proper lists. Symbols are looked up in the explicit scope. Lists are rendered back to source-shaped code and evaluated in the explicit scope.
+- Code values are quoted symbols and proper lists. Symbols are looked up in the explicit scope. Lists are evaluated directly as code values: the first item resolves to a callable, remaining items are recursively evaluated as code-value arguments, and the callable is applied. This path does not render lists to public source text or reparse them.
 - Scalars are self-evaluating under `eval`: numbers, booleans, and strings return themselves. Strings are data, not source text; `(eval "(add 1 2)" (dict (add add)))` returns the string rather than parsing or executing it.
 - Arrays, dictionaries, closures, and builtin values are not code and fail with `type_error` when used as the first evaluated value to `eval`.
 - `(eval)`, `(eval expr)`, and extra-argument forms fail with `wrong_arity`.
