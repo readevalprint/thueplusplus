@@ -184,6 +184,24 @@ stderr = ""
 stdout_stripped = "2"
 
 [[case]]
+name = "eval receives len as explicit capability for long list"
+input = "(eval (quote (len xs)) (dict (len len) (xs (list 1 2 3 4 5 6))))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
+
+[[case]]
+name = "eval receives at as explicit capability for arbitrary index"
+input = "(eval (quote (at xs i)) (dict (at at) (xs (list 9 8 7 6 5)) (i 4)))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5"
+
+[[case]]
 name = "eval without len capability fails unbound"
 input = "(eval (quote (len xs)) (dict (xs (list 1 2))))"
 
