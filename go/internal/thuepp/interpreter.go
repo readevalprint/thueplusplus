@@ -103,6 +103,39 @@ func (i *Interpreter) LoadProgram(programPath string) error {
 	return i.parseProgram(content)
 }
 
+// LoadProgramText loads a program from in-memory source text. sourcePath is
+// used for diagnostics and rule coverage IDs; it is not opened as a file.
+func (i *Interpreter) LoadProgramText(sourcePath, content string) error {
+	if strings.TrimSpace(sourcePath) == "" {
+		return fmt.Errorf("source path is required")
+	}
+	i.ProgramPath = sourcePath
+	annotated, err := annotateSourceText(sourcePath, content)
+	if err != nil {
+		return err
+	}
+	return i.parseProgram(annotated)
+}
+
+func annotateSourceText(sourcePath, content string) (string, error) {
+	var b strings.Builder
+	s := bufio.NewScanner(strings.NewReader(content))
+	// allow long example lines
+	s.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+	lineNumber := 0
+	for s.Scan() {
+		lineNumber++
+		line := s.Text() + "\n"
+		stripped := strings.TrimSpace(line)
+		if strings.HasPrefix(stripped, "@include ") {
+			return "", fmt.Errorf("Line %d: @include is not supported when loading source text", lineNumber)
+		}
+		b.WriteString(fmt.Sprintf("# thuepp-source: %s:%d\n", sourcePath, lineNumber))
+		b.WriteString(line)
+	}
+	return b.String(), s.Err()
+}
+
 func (i *Interpreter) loadWithIncludes(filePath string, included map[string]bool) (string, error) {
 	if included[filePath] {
 		return "", fmt.Errorf("Cyclic include detected: %s", filePath)
@@ -882,22 +915,15 @@ func (i *Interpreter) ruleID(rule Rule) string {
 }
 
 func (i *Interpreter) recordRuleCoverage(rule Rule) {
-	if i.RuleCoveragePath == "" {
-		return
-	}
 	if i.RuleCoverageCounts == nil {
 		i.RuleCoverageCounts = map[string]int{}
 	}
 	i.RuleCoverageCounts[i.ruleID(rule)]++
 }
 
-func (i *Interpreter) WriteRuleCoverage() error {
-	if i.RuleCoveragePath == "" {
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(i.RuleCoveragePath), 0755); err != nil {
-		return err
-	}
+// RuleCoverageTSV returns applied rule coverage as sorted TSV rows in the same
+// format written by --rule-coverage: rule-id<TAB>count<LF>.
+func (i *Interpreter) RuleCoverageTSV() string {
 	ids := make([]string, 0, len(i.RuleCoverageCounts))
 	for id := range i.RuleCoverageCounts {
 		ids = append(ids, id)
@@ -907,7 +933,17 @@ func (i *Interpreter) WriteRuleCoverage() error {
 	for _, id := range ids {
 		fmt.Fprintf(&b, "%s\t%d\n", id, i.RuleCoverageCounts[id])
 	}
-	return os.WriteFile(i.RuleCoveragePath, []byte(b.String()), 0644)
+	return b.String()
+}
+
+func (i *Interpreter) WriteRuleCoverage() error {
+	if i.RuleCoveragePath == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(i.RuleCoveragePath), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(i.RuleCoveragePath, []byte(i.RuleCoverageTSV()), 0644)
 }
 
 func formatDebugGroups(groups map[string]string) string {
