@@ -135,15 +135,34 @@ Implementation contract:
 - `(splice expr)` at the top-level quasiquoted expression, bare `splice`, and bare `unquote` fail with `unsupported_form`; malformed `unquote`/`splice` escape forms fail with `wrong_arity`; splicing a non-list fails with `type_error`.
 - Nested `(quasiquote ...)` is deliberately rejected with `unsupported_form` in this first slice; there is no implicit quasiquote-depth accounting yet.
 - Internally, quoted symbols use `VSYM<...>` and proper lists use `VLIST<...>` with pct-encoded item payloads. These constructors are implementation details and must not leak to successful stdout.
-- `head`, `tail`, `empty?`, `push`, `len`, and `at` operate on proper lists and fail loudly for invalid type or access cases.
+- `head`, `tail`, `empty?`, `push`, `len`, `at`, and `assoc` operate on proper lists and fail loudly for invalid type or access cases.
 
-`at` is the only supported positional list lookup form:
+`at` is the supported positional list lookup form:
 
 ```lisp
 (at (list 7 8 9) 1)
 ```
 
 returns `8`. `at` accepts non-negative integer indices. Negative integer indices fail with `index_out_of_bounds`; decimal or fractional numeric indices fail with `type_error`; non-numeric indices fail with `type_error`; out-of-bounds non-negative integer indices fail with `index_out_of_bounds`; malformed arity fails with `wrong_arity`. The old `get` name is not part of this greenfield slice.
+
+`assoc` is the value-returning positional list update form:
+
+```lisp
+(assoc (list 1 2 3) 1 9)
+```
+
+returns `(1 9 3)`. It replaces the item at a zero-based integer index and returns a new list value. It does not insert, delete, or mutate an existing list object.
+
+To update a variable, explicitly rebind it with `set`:
+
+```lisp
+(let ((xs (list 1 2 3)))
+  (begin
+    (set xs (assoc xs 1 9))
+    xs))
+```
+
+returns `(1 9 3)`. Without the `set`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(assoc (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
 
 Reader shorthand such as `'x`, backtick, comma, and comma-at is still deferred; this core uses keyword forms only.
 
