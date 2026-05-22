@@ -41,14 +41,18 @@ interface WorkerClient {
 
 declare const ThuePPWorker: new (workerURL: string, initOptions: { wasmURL: string; wasmExecURL: string }) => WorkerClient
 
+function publicAssetURL(fileName: string): string {
+  return new URL(`${import.meta.env.BASE_URL}${fileName}`, window.location.href).toString()
+}
+
 export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunResult> {
   const { ThuePPWorker: Client } = await import('../../js/wasm/worker-client.js') as unknown as {
     ThuePPWorker: typeof ThuePPWorker
   }
 
   const client = new Client(new URL('../../js/wasm/browser-worker.js', import.meta.url).toString(), {
-    wasmURL: '/thuepp.wasm',
-    wasmExecURL: '/wasm_exec.js',
+    wasmURL: publicAssetURL('thuepp.wasm'),
+    wasmExecURL: publicAssetURL('wasm_exec.js'),
   })
 
   try {

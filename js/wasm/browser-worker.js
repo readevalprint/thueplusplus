@@ -7,7 +7,11 @@ async function init(options = {}) {
     importScripts(options.wasmExecURL);
   }
   const go = new globalThis.Go();
-  const response = await fetch(options.wasmURL || 'thuepp.wasm');
+  const wasmURL = options.wasmURL || 'thuepp.wasm';
+  const response = await fetch(wasmURL);
+  if (!response.ok) {
+    throw new Error(`failed to fetch ${wasmURL}: HTTP ${response.status}`);
+  }
   const bytes = await response.arrayBuffer();
   const { instance } = await WebAssembly.instantiate(bytes, go.importObject);
   go.run(instance).catch((err) => postMessage({ type: 'runtime-error', error: String(err && err.stack || err) }));
@@ -28,20 +32,34 @@ function splitLines(text) {
   return String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((line, index, lines) => line !== '' || index < lines.length - 1);
 }
 
+function shiftLine(buffer) {
+  if (!buffer.text) return '';
+  const newline = buffer.text.indexOf('\n');
+  if (newline < 0) {
+    const line = buffer.text;
+    buffer.text = '';
+    return line.endsWith('\r') ? line.slice(0, -1) : line;
+  }
+  const line = buffer.text.slice(0, newline);
+  buffer.text = buffer.text.slice(newline + 1);
+  return line.endsWith('\r') ? line.slice(0, -1) : line;
+}
+
 function buildResources(options) {
   const logs = [];
   const resources = {};
 
-  const stdinQueue = splitLines(options.input || '');
+  const stdinBuffer = { text: String(options.input || '') };
   logs.push({ name: 'stdin', reads: [], writes: [], errors: [] });
   resources.stdin = {
     readLine() {
-      const line = stdinQueue.shift() || '';
+      const line = shiftLine(stdinBuffer);
       logs[0].reads.push(line);
       return line;
     },
     readAll() {
-      const text = stdinQueue.splice(0).join('\n');
+      const text = stdinBuffer.text;
+      stdinBuffer.text = '';
       logs[0].reads.push(text);
       return text;
     },
@@ -57,7 +75,7 @@ function buildResources(options) {
     if (!name) continue;
     const log = { name, reads: [], writes: [], errors: [] };
     const readQueue = Array.isArray(config.readLines) ? [...config.readLines] : splitLines(config.readLines || '');
-    const echoQueue = [];
+    const echoBuffer = { text: '' };
     logs.push(log);
     resources[name] = {
       readLine() {
@@ -65,7 +83,7 @@ function buildResources(options) {
           log.errors.push(String(config.readError));
           return { error: String(config.readError) };
         }
-        const value = readQueue.length > 0 ? readQueue.shift() : echoQueue.shift();
+        const value = readQueue.length > 0 ? readQueue.shift() : (echoBuffer.text ? shiftLine(echoBuffer) : undefined);
         if (value === undefined) {
           log.errors.push('timeout');
           return { error: 'timeout' };
@@ -78,14 +96,17 @@ function buildResources(options) {
           log.errors.push(String(config.readError));
           return { error: String(config.readError) };
         }
-        const all = [...readQueue.splice(0), ...echoQueue.splice(0)].join('\n');
+        const queued = readQueue.splice(0).join('\n');
+        const echoText = echoBuffer.text;
+        echoBuffer.text = '';
+        const all = queued && echoText ? `${queued}\n${echoText}` : queued || echoText;
         log.reads.push(all);
         return all;
       },
       write(text) {
         const value = String(text);
         log.writes.push(value);
-        if (config.echoWrites) echoQueue.push(value.trim());
+        if (config.echoWrites) echoBuffer.text += value;
         return '';
       },
       close() {},

@@ -185,7 +185,7 @@ For browser demo changes, run the additive demo build target:
 make demo-build
 ```
 
-`make demo-build` installs dependencies under `demo/` and runs the Vite/Vue production build. It is a browser-integration check only; it does not replace the native semantic truth engine.
+`make demo-build` builds the Go-WASM browser assets, installs locked dependencies under `demo/`, runs the Vite/Vue production build, and smoke-checks that the production bundle contains non-empty WASM runtime assets with base-relative URLs. It is a browser-integration check only; it does not replace the native semantic truth engine.
 
 `make wasm-adapter-test` builds `build/thuepp.wasm` with `GOOS=js GOARCH=wasm` and runs the Node adapter tests in `go/wasm/adapter_test.js`. Those tests cover the JavaScript/WASM host boundary only: WASM loading, stdout buffering, stdin `readLine`, custom resource callbacks, missing-resource errors, callback timeout errors, include maps, coverage TSV return, and a worker smoke run. They intentionally do not run the full `examples/**/tests/*.toml` suite in JavaScript.
 
