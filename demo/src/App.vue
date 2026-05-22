@@ -1,144 +1,191 @@
 <template>
   <main class="shell">
-    <header>
-      <p class="eyebrow">thue++ Go-WASM demo</p>
-      <h1>Browser shell backed by the real Go interpreter</h1>
-      <p>
-        This demo runs in a Web Worker against the Go-WASM adapter from <code>js/wasm/</code>.
-        JavaScript only provides callback resources, stdin buffers, and include text; it does not evaluate thue++ rules or emulate subprocesses.
-      </p>
+    <header class="hero panel hero-panel">
+      <div>
+        <p class="eyebrow">thue++ Go-WASM workbench</p>
+        <h1>Run thue++ in your browser</h1>
+        <p class="hero-copy">
+          Real Go-WASM interpreter execution in a Web Worker. The browser shell supplies stdin,
+          include text, and callback resources; it does not run a JavaScript rule evaluator or emulate subprocesses.
+        </p>
+      </div>
+      <aside class="proof-card" aria-label="what this demo proves">
+        <span>What this proves</span>
+        <strong>No JavaScript rule evaluator</strong>
+        <p>Rules execute in the compiled Go runtime; JavaScript only owns host-resource callbacks and UI state.</p>
+      </aside>
     </header>
 
-    <section class="panel controls">
-      <label>
-        Example
-        <select v-model="selectedId" @change="loadSelectedExample">
-          <option v-for="example in examples" :key="example.id" :value="example.id">
-            {{ example.name }}
-          </option>
-        </select>
-      </label>
-      <p class="description">{{ selectedExample.description }}</p>
-      <label>
-        Max evals
-        <input v-model.number="maxEvals" type="number" min="1" />
-      </label>
-      <label>
-        Max state bytes
-        <input v-model.number="maxStateBytes" type="number" min="1" />
-      </label>
-      <label class="check">
-        <input v-model="coverage" type="checkbox" />
-        return coverage TSV
-      </label>
-      <button :disabled="running" @click="runDemo">
-        {{ running ? 'Running...' : 'Run in worker' }}
-      </button>
-      <button type="button" class="secondary" @click="clearOutput">Clear output</button>
+    <section class="status-strip" aria-label="runtime status">
+      <div class="status-chip" data-test="status-runtime"><span>Runtime</span><strong>Go-WASM</strong></div>
+      <div class="status-chip"><span>Worker</span><strong>Web Worker</strong></div>
+      <div class="status-chip" data-test="status-coverage"><span>Coverage</span><strong>{{ coverage ? 'on' : 'off' }}</strong></div>
+      <div class="status-chip" data-test="status-exit-code"><span>Exit code</span><strong>{{ result.exitCode ?? 'not run' }}</strong></div>
+      <div class="status-chip" data-test="run-state"><span>State</span><strong>{{ runState }}</strong></div>
+      <div class="status-chip"><span>Last run</span><strong>{{ lastRunMs === null ? 'not run' : `${lastRunMs}ms` }}</strong></div>
     </section>
 
-    <section class="grid">
-      <label class="panel span">
-        Source (.tpp)
-        <input v-model="sourcePath" aria-label="source path" placeholder="source path used for coverage/source map" />
-        <textarea v-model="sourceText" spellcheck="false" />
-      </label>
-
-      <section class="panel">
-        <h2>Buffered stdin</h2>
-        <p class="hint">Lines are exposed as the <code>stdin</code> callback resource.</p>
-        <textarea v-model="input" spellcheck="false" />
-      </section>
-
-      <section class="panel">
-        <h2>Run result</h2>
-        <dl class="kv">
-          <dt>Worker</dt><dd>enabled</dd>
-          <dt>Exit code</dt><dd>{{ result.exitCode ?? 'not run' }}</dd>
-        </dl>
-        <p v-if="result.error" class="error">{{ result.error }}</p>
-      </section>
-
-      <section class="panel span">
+    <section class="workbench">
+      <aside class="panel example-rail" aria-label="examples">
         <div class="section-title">
-          <h2>Named resources</h2>
-          <button type="button" class="secondary" @click="addResource">Add resource</button>
+          <div>
+            <p class="eyebrow compact">scenarios</p>
+            <h2>Example navigator</h2>
+          </div>
         </div>
-        <p class="hint">Resource reads/writes are callback functions created inside the worker. Empty queues return <code>ERR:resource:&lt;name&gt;:timeout</code>.</p>
-        <div v-if="resources.length === 0" class="empty">No custom resources configured.</div>
-        <div v-for="(resource, index) in resources" :key="resource.key" class="resource-row">
+        <p class="hint">Each scenario demonstrates one browser-adapter boundary.</p>
+        <button
+          v-for="example in examples"
+          :key="example.id"
+          type="button"
+          class="example-card"
+          :class="{ active: example.id === selectedId }"
+          data-test="example-card"
+          :data-example-id="example.id"
+          @click="selectExample(example.id)"
+        >
+          <span>{{ example.name }}</span>
+          <strong>{{ exampleFeature(example.id) }}</strong>
+          <small>{{ example.description }}</small>
+        </button>
+      </aside>
+
+      <section class="input-stack">
+        <section class="panel controls">
+          <div>
+            <p class="eyebrow compact">selected</p>
+            <h2>{{ selectedExample.name }}</h2>
+            <p class="description" data-test="selected-example-summary">{{ selectedExample.description }}</p>
+          </div>
           <label>
-            Name
-            <input v-model="resource.name" placeholder="echo" />
+            Max evals
+            <input v-model.number="maxEvals" type="number" min="1" />
           </label>
           <label>
-            Queued read lines
-            <textarea v-model="resource.readLines" spellcheck="false" />
+            Max state bytes
+            <input v-model.number="maxStateBytes" type="number" min="1" />
           </label>
-          <label class="check inline-check">
-            <input v-model="resource.echoWrites" type="checkbox" />
-            echo writes into read queue
+          <label class="check">
+            <input v-model="coverage" type="checkbox" />
+            return coverage TSV
           </label>
-          <label>
-            Read error
-            <input v-model="resource.readError" placeholder="optional, e.g. timeout" />
-          </label>
-          <button type="button" class="secondary danger" @click="removeResource(index)">Remove</button>
-          <pre class="log">{{ resourceLog(resource.name) || 'write log appears here after a run' }}</pre>
-        </div>
+          <div class="control-actions">
+            <button data-test="run-demo" :disabled="running" @click="runDemo">
+              {{ running ? 'Running...' : 'Run in worker' }}
+            </button>
+            <button type="button" class="secondary" @click="clearOutput">Clear output</button>
+          </div>
+        </section>
+
+        <label class="panel editor-panel">
+          <span>Source (.tpp)</span>
+          <input v-model="sourcePath" aria-label="source path" placeholder="source path used for coverage/source map" />
+          <textarea v-model="sourceText" spellcheck="false" />
+        </label>
+
+        <section class="input-grid">
+          <section class="panel">
+            <h2>Buffered stdin</h2>
+            <p class="hint">Lines are exposed as the <code>stdin</code> callback resource.</p>
+            <textarea v-model="input" spellcheck="false" />
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <h2>Named resources</h2>
+              <button type="button" class="secondary" @click="addResource">Add resource</button>
+            </div>
+            <p class="hint">Resource reads/writes are callback functions created inside the worker. Empty queues return <code>ERR:resource:&lt;name&gt;:timeout</code>.</p>
+            <div v-if="resources.length === 0" class="empty">No custom resources configured.</div>
+            <div v-for="(resource, index) in resources" :key="resource.key" class="resource-row">
+              <label>
+                Name
+                <input v-model="resource.name" placeholder="echo" />
+              </label>
+              <label>
+                Queued read lines
+                <textarea v-model="resource.readLines" spellcheck="false" />
+              </label>
+              <label class="check inline-check">
+                <input v-model="resource.echoWrites" type="checkbox" />
+                echo writes into read queue
+              </label>
+              <label>
+                Read error
+                <input v-model="resource.readError" placeholder="optional, e.g. timeout" />
+              </label>
+              <button type="button" class="secondary danger" @click="removeResource(index)">Remove</button>
+              <pre class="log">{{ resourceLog(resource.name) || 'write log appears here after a run' }}</pre>
+            </div>
+          </section>
+
+          <section class="panel span">
+            <div class="section-title">
+              <h2>Include map / source map</h2>
+              <button type="button" class="secondary" @click="addInclude">Add include</button>
+            </div>
+            <p class="hint">The source path above is passed to Go for diagnostics and coverage. Include entries are passed as the adapter include map.</p>
+            <div v-if="includes.length === 0" class="empty">No include files configured.</div>
+            <div v-for="(include, index) in includes" :key="include.key" class="include-row">
+              <label>
+                Include path
+                <input v-model="include.path" placeholder="lib.tpp" />
+              </label>
+              <label>
+                Include source
+                <textarea v-model="include.sourceText" spellcheck="false" />
+              </label>
+              <button type="button" class="secondary danger" @click="removeInclude(index)">Remove</button>
+            </div>
+          </section>
+        </section>
       </section>
 
-      <section class="panel span">
+      <aside class="panel output-panel" aria-label="run observability">
         <div class="section-title">
-          <h2>Include map / source map</h2>
-          <button type="button" class="secondary" @click="addInclude">Add include</button>
+          <div>
+            <p class="eyebrow compact">observability</p>
+            <h2>Run output</h2>
+          </div>
+          <button v-if="activeTab === 'stdout'" type="button" class="secondary" data-copy="stdout" @click="copyText('stdout', result.stdout || '')">Copy stdout</button>
+          <button v-else-if="activeTab === 'coverage'" type="button" class="secondary" data-copy="coverage" @click="copyText('coverage TSV', coverageText)">Copy coverage</button>
         </div>
-        <p class="hint">The source path above is passed to Go for diagnostics and coverage. Include entries are passed as the adapter include map.</p>
-        <div v-if="includes.length === 0" class="empty">No include files configured.</div>
-        <div v-for="(include, index) in includes" :key="include.key" class="include-row">
-          <label>
-            Include path
-            <input v-model="include.path" placeholder="lib.tpp" />
-          </label>
-          <label>
-            Include source
-            <textarea v-model="include.sourceText" spellcheck="false" />
-          </label>
-          <button type="button" class="secondary danger" @click="removeInclude(index)">Remove</button>
-        </div>
-      </section>
+        <p class="hint">Raw adapter data stays available; tabs reduce visual overload while preserving diagnostics.</p>
+        <nav class="tabs" aria-label="result tabs">
+          <button v-for="tab in resultTabs" :key="tab.id" type="button" :class="{ active: activeTab === tab.id }" :data-result-tab="tab.id" @click="activeTab = tab.id">
+            {{ tab.label }}
+          </button>
+        </nav>
+        <p v-if="copyNotice" class="copy-notice">{{ copyNotice }}</p>
 
-      <section class="panel">
-        <h2>stdout</h2>
-        <pre>{{ result.stdout }}</pre>
-      </section>
-      <section class="panel">
-        <h2>stderr</h2>
-        <pre>{{ result.stderr }}</pre>
-      </section>
-      <section class="panel span">
-        <h2>error</h2>
-        <pre class="error-text">{{ result.error || result.errors }}</pre>
-      </section>
-      <section class="panel span">
-        <h2>Resource callback log</h2>
-        <pre>{{ formattedResourceLogs }}</pre>
-      </section>
-      <section class="panel span">
-        <h2>coverage TSV raw</h2>
-        <pre>{{ coverageText }}</pre>
-        <table v-if="coverageRows.length" class="coverage-table">
-          <thead><tr><th>Source</th><th>Line</th><th>Hits</th><th>Rule</th></tr></thead>
-          <tbody>
-            <tr v-for="row in coverageRows" :key="`${row.source}:${row.line}:${row.rule}`">
-              <td>{{ row.source }}</td>
-              <td>{{ row.line }}</td>
-              <td>{{ row.hits }}</td>
-              <td><code>{{ row.rule }}</code></td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+        <section v-if="activeTab === 'stdout'" class="tab-panel">
+          <pre>{{ result.stdout || 'stdout appears here after a run' }}</pre>
+        </section>
+        <section v-else-if="activeTab === 'stderr'" class="tab-panel">
+          <pre>{{ result.stderr || 'stderr appears here after a run' }}</pre>
+        </section>
+        <section v-else-if="activeTab === 'errors'" class="tab-panel">
+          <pre class="error-text">{{ result.error || result.errors || 'errors appear here after a run' }}</pre>
+          <pre v-if="formattedResourceLogs">{{ formattedResourceLogs }}</pre>
+        </section>
+        <section v-else-if="activeTab === 'resources'" class="tab-panel">
+          <pre>{{ formattedResourceLogs || 'callback resource reads/writes appear here after a run' }}</pre>
+        </section>
+        <section v-else class="tab-panel">
+          <pre>{{ coverageText || 'coverage TSV appears here when enabled' }}</pre>
+          <table v-if="coverageRows.length" class="coverage-table">
+            <thead><tr><th>Source</th><th>Line</th><th>Hits</th><th>Rule</th></tr></thead>
+            <tbody>
+              <tr v-for="row in coverageRows" :key="`${row.source}:${row.line}:${row.rule}`">
+                <td>{{ row.source }}</td>
+                <td>{{ row.line }}</td>
+                <td>{{ row.hits }}</td>
+                <td><code>{{ row.rule }}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </aside>
     </section>
   </main>
 </template>
@@ -150,6 +197,15 @@ import { runWithWorker, type DemoRunResult } from './wasm'
 
 interface ResourceState extends DemoResourceExample { key: number }
 interface IncludeState extends DemoIncludeExample { key: number }
+type ResultTabId = 'stdout' | 'stderr' | 'errors' | 'resources' | 'coverage'
+
+const resultTabs: Array<{ id: ResultTabId; label: string }> = [
+  { id: 'stdout', label: 'stdout' },
+  { id: 'stderr', label: 'stderr' },
+  { id: 'errors', label: 'errors' },
+  { id: 'resources', label: 'resources' },
+  { id: 'coverage', label: 'coverage' },
+]
 
 const selectedId = ref(examples[0].id)
 const sourcePath = ref(examples[0].sourcePath)
@@ -159,6 +215,10 @@ const maxEvals = ref(examples[0].maxEvals ?? 10_000)
 const maxStateBytes = ref(examples[0].maxStateBytes ?? 1_000_000)
 const coverage = ref(examples[0].coverage ?? true)
 const running = ref(false)
+const runState = ref<'not run' | 'running' | 'done' | 'error'>('not run')
+const lastRunMs = ref<number | null>(null)
+const copyNotice = ref('')
+const activeTab = ref<ResultTabId>('stdout')
 const result = reactive<DemoRunResult>({ stdout: '', stderr: '', coverage: '', coverageTSV: '', resourceLogs: [] })
 const resources = ref<ResourceState[]>([])
 const includes = ref<IncludeState[]>([])
@@ -195,6 +255,24 @@ function cloneIncludes(items: DemoIncludeExample[]): IncludeState[] {
   return items.map(item => ({ ...item, key: nextKey++ }))
 }
 
+function exampleFeature(id: string): string {
+  const features: Record<string, string> = {
+    hello: 'stdout adapter',
+    stdin: 'stdin buffer',
+    'resource-echo': 'Callback resource',
+    include: 'Include map',
+    coverage: 'Coverage TSV',
+    error: 'resource error',
+    timeout: 'timeout surface',
+  }
+  return features[id] ?? 'adapter scenario'
+}
+
+function selectExample(id: string): void {
+  selectedId.value = id
+  loadSelectedExample()
+}
+
 function loadSelectedExample(): void {
   const example = selectedExample.value
   sourcePath.value = example.sourcePath
@@ -205,6 +283,7 @@ function loadSelectedExample(): void {
   coverage.value = example.coverage ?? false
   resources.value = cloneResources(example.resources)
   includes.value = cloneIncludes(example.includes)
+  activeTab.value = 'stdout'
   clearOutput()
 }
 
@@ -217,6 +296,9 @@ function clearOutput(): void {
   result.error = ''
   result.errors = ''
   result.resourceLogs = []
+  lastRunMs.value = null
+  runState.value = 'not run'
+  copyNotice.value = ''
 }
 
 function addResource(): void {
@@ -246,9 +328,21 @@ function resourceLog(name: string): string {
   return `reads: ${JSON.stringify(log.reads)}\nwrites: ${JSON.stringify(log.writes)}\nerrors: ${JSON.stringify(log.errors)}`
 }
 
+async function copyText(label: string, text: string): Promise<void> {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
+    await navigator.clipboard.writeText(text)
+    copyNotice.value = `Copied ${label}`
+  } catch (error) {
+    copyNotice.value = `Could not copy ${label}: ${error instanceof Error ? error.message : String(error)}`
+  }
+}
+
 async function runDemo(): Promise<void> {
   clearOutput()
   running.value = true
+  runState.value = 'running'
+  const started = performance.now()
   try {
     Object.assign(result, await runWithWorker({
       sourceText: sourceText.value,
@@ -265,10 +359,16 @@ async function runDemo(): Promise<void> {
         readError: item.readError?.trim() || undefined,
       })),
     }))
+    runState.value = result.exitCode && result.exitCode !== 0 || result.error || result.errors ? 'error' : 'done'
+    if (result.error || result.errors) activeTab.value = 'errors'
+    else activeTab.value = 'stdout'
   } catch (error) {
     result.exitCode = 1
     result.error = error instanceof Error ? error.message : String(error)
+    runState.value = 'error'
+    activeTab.value = 'errors'
   } finally {
+    lastRunMs.value = Math.max(0, Math.round(performance.now() - started))
     running.value = false
   }
 }
