@@ -26,10 +26,11 @@ wasm-adapter-test: wasm
 
 demo-test:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to run the browser demo tests" >&2; exit 127; }
-	npm --prefix demo install
+	npm --prefix demo ci
 	npm --prefix demo test
+	node js/wasm/browser_adapter_unit_test.cjs
 
-demo-build:
+demo-build: wasm
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to build the browser demo" >&2; exit 127; }
-	npm --prefix demo install
+	npm --prefix demo ci
 	npm --prefix demo run build

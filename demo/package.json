@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --noEmit && vite build && node scripts/check-dist.mjs",
     "test": "vue-tsc --noEmit && vitest run",
-    "test:ui": "vitest run"
+    "test:ui": "vitest run",
+    "smoke:dist": "node scripts/check-dist.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "latest",

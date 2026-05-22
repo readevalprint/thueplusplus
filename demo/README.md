@@ -9,9 +9,9 @@ The demo is intentionally not a JavaScript implementation of thue++. It imports 
 From the repository root:
 
 ```bash
-make wasm            # build build/thuepp.wasm
-make demo-test       # run focused Vitest/Vue demo tests only
-make demo-build      # type-check and build the production demo bundle
+make wasm            # build build/thuepp.wasm and build/wasm_exec.js
+make demo-test       # run focused Vitest/Vue plus browser adapter unit tests
+make demo-build      # build WASM, type-check, build, and smoke-check production dist
 ```
 
 Or from this directory:
@@ -24,11 +24,11 @@ npm run test:ui      # focused Vitest UI tests only
 npm run build        # production build
 ```
 
-Before serving the demo, run `make wasm` once from the repository root. That target writes both browser-served runtime assets into the ignored `build/` directory: `build/thuepp.wasm` and `build/wasm_exec.js`. Vite serves that directory as the demo public asset root, so the worker can load `/thuepp.wasm` and `/wasm_exec.js`. `make demo-build` validates the production TypeScript/Vite bundle; it does not execute the full examples manifest suite.
+Before serving the demo, run `make demo-build` from the repository root. That target builds both browser-served runtime assets into the ignored `build/` directory (`build/thuepp.wasm` and `build/wasm_exec.js`), runs the Vite production build, and verifies that `demo/dist/` contains non-empty runtime assets with base-relative URLs. Vite serves the generated runtime assets as the demo public asset root, so the worker loads `thuepp.wasm` and `wasm_exec.js` relative to the deployed demo page instead of assuming origin-root hosting. `make demo-build` is still an additive browser integration check; it does not execute the full examples manifest suite.
 
 ## What the demo tests cover
 
-The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, and production-build compatibility through `npm run build`/`make demo-build` validation.
+The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/wasm/browser_adapter_unit_test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker.
 
 These tests intentionally do not run `examples/**/tests/*.toml`. The semantic conformance suite remains `make test` at the repository root.
 
