@@ -38,7 +38,7 @@ The evaluator uses internal typed values while reducing:
 - strings;
 - lists;
 - symbols and proper lists for code-as-data;
-- association lists: ordinary lists whose entries are two-item key/value lists;
+- association lists: ordinary lists interpreted by matching entry heads;
 - closures;
 - opaque primitive callables from the initial core environment.
 
@@ -56,7 +56,7 @@ Reader-backed outputs are intended to round trip where the reader contains a dir
 
 ## Evaluation model
 
-Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusable lexical and runtime-value shapes (`NAME`, `EXPR`, `VAL`, `DICTENTRIES`, and related aliases). These aliases are documentation as well as parser input: they keep type sets such as dict receivers and dict keys visibly distinct while avoiding duplicated hand-expanded regex bodies.
+Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusable lexical and runtime-value shapes (`NAME`, `EXPR`, `VAL`, and related aliases). These aliases are documentation as well as parser input: they keep evaluator type sets visible while avoiding duplicated hand-expanded regex bodies.
 
 - Lists are frozen inside-out as encoded payloads before evaluation.
 - Values are demanded lazily from encoded nodes.
@@ -198,7 +198,7 @@ returns the list value `(add 1 2)`. To execute parsed code, pass that value to `
 
 ## Association-list boundary
 
-There is no distinct public dictionary/hash value type. Map-like data is represented as an ordinary association list: a proper list whose items are two-item key/value lists. The `dict` form is only an evaluated helper that validates entries and constructs that ordinary list.
+There is no distinct public dictionary/hash value type. Map-like data is represented as an ordinary association list: a proper list whose list entries are interpreted by matching their first item. The `dict` form is only an evaluated helper that constructs ordinary `(key value)` entries.
 
 Construction evaluates both key and value expressions:
 
@@ -212,7 +212,7 @@ renders as:
 ((x 1) ("external key" 2))
 ```
 
-Keys may evaluate only to symbols or strings. Key equality is typed and non-coercive: symbol `x` and string `"x"` are distinct keys. Duplicate evaluated keys in one `dict` constructor fail with `duplicate_key`; malformed constructor entries fail with `wrong_arity`; unsupported key types fail with `type_error`.
+Keys may evaluate to any runtime value, including numbers, booleans, strings, symbols, and lists. Key equality is exact encoded runtime-value equality: symbol `x` and string `"x"` are distinct keys, number `1` and string `"1"` are distinct keys, and list keys compare by their exact list value. Duplicate evaluated keys are allowed; lookups use the first matching valued entry. Malformed `dict` constructor entries still fail with `wrong_arity`.
 
 Alist operations are explicit:
 
@@ -223,7 +223,7 @@ Alist operations are explicit:
 (dissoc alist key)
 ```
 
-`get` always requires a default. A present key returns its stored value even when that value is `false` or `()`. A missing key evaluates and returns the default. `assoc` replaces the first matching key; if no key matches, it prepends a new pair. `dissoc` removes all matching keys. All alist operations validate that the receiver is a proper list of two-item lists and that each entry key is a symbol or string; malformed alists fail with `type_error`. Applying an alist as a function fails with `not_function` because lists are not callable.
+`get` always requires a default. A matching entry returns the first value after the matching head, even when that value is `false` or `()`. Key-only matching entries have no value slot, so `get` skips them and returns the default if no later valued match exists. A missing key evaluates and returns the default. `contains` reports true for any matching list entry, including key-only entries. `assoc` replaces or fills the second item of the first matching list entry while preserving extra tail items; if no key matches, it prepends a new pair. `dissoc` removes all matching list entries. Non-list entries and empty list entries are ignored by matching operations and preserved by `assoc`/`dissoc` when they are unrelated. The receiver itself must still be a proper list; non-list receivers fail with `type_error`. Applying an alist as a function fails with `not_function` because lists are not callable.
 
 ## Runtime type inspection
 

@@ -155,12 +155,116 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "invalid alist shape fails in get"
+name = "loose alist get skips non-list entries"
 input = '(get (quote (x)) (quote x) 0)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "0\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose alist get skips empty list entries"
+input = '(get (quote (() (k v))) (quote k) (quote missing))'
+[case.expect]
+stdout = "v\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose alist get reads second item and ignores extra tail"
+input = '(get (quote ((k v1 v2) foo)) (quote k) (quote missing))'
+[case.expect]
+stdout = "v1\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose alist get skips key-only entries until value exists"
+input = '(get (quote ((k) (k v1))) (quote k) (quote missing))'
+[case.expect]
+stdout = "v1\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose alist get defaults for key-only entry"
+input = '(get (quote ((k))) (quote k) (quote missing))'
+[case.expect]
+stdout = "missing\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose alist contains sees key-only entry"
+input = '(contains (quote ((k))) (quote k))'
+[case.expect]
+stdout = "true\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose assoc preserves extra entry tail"
+input = '(assoc (quote ((k v1 v2) foo)) (quote k) (quote new))'
+[case.expect]
+stdout = "((k new v2) foo)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose assoc fills key-only entry"
+input = '(assoc (quote ((k) foo)) (quote k) (quote new))'
+[case.expect]
+stdout = "((k new) foo)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose assoc prepends on miss and preserves atoms"
+input = '(assoc (quote (foo)) (quote k) (quote v))'
+[case.expect]
+stdout = "((k v) foo)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "loose dissoc removes all matches and preserves atoms"
+input = '(dissoc (quote ((k v1) foo (k v2))) (quote k))'
+[case.expect]
+stdout = "(foo)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict allows duplicate keys and get uses first match"
+input = '(list (dict ((quote k) 1) ((quote k) 2)) (get (dict ((quote k) 1) ((quote k) 2)) (quote k) 0))'
+[case.expect]
+stdout = "(((k 1) (k 2)) 1)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "alist allows number and list keys"
+input = '(list (get (quote ((1 one))) 1 (quote missing)) (get (quote (((a) nested))) (quote (a)) (quote missing)))'
+[case.expect]
+stdout = "(one nested)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "dict allows number and list keys"
+input = '(list (get (dict (1 (quote one))) 1 (quote missing)) (get (dict ((quote (a)) (quote nested))) (quote (a)) (quote missing)))'
+[case.expect]
+stdout = "(one nested)\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "alist exact key comparison keeps public values distinct"
+input = '(list (get (quote ((x sym) ("x" str))) (quote x) (quote missing)) (get (quote ((x sym) ("x" str))) "x" (quote missing)) (get (quote ((1 int) (1.0 decimal) ("1" string))) 1 (quote missing)) (get (quote ((1 int) (1.0 decimal) ("1" string))) 1.0 (quote missing)) (get (quote ((((a)) nested2) ((a) nested1))) (quote (a)) (quote missing)))'
+[case.expect]
+stdout = "(sym str int decimal nested1)\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
 name = "top level primitive value fails through unparse"
