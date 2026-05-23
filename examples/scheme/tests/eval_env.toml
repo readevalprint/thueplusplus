@@ -457,3 +457,83 @@ input = "((lambda (a b c) (+ a b c)) 1 2 3 4)"
 exit_code = 2
 stdout = ""
 stderr = "wrong_arity"
+
+[[case]]
+name = "n-ary lambda rejects too few arguments through shared walker"
+input = "((lambda (a b c) (+ a b c)) 1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "n-ary lambda accepts unused trailing formal after used prefix"
+input = "((lambda (a b c d) (+ a b c)) 1 2 3 4)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
+
+[[case]]
+name = "n-ary lambda rejects missing trailing argument after used prefix"
+input = "((lambda (a b c d) (+ a b c)) 1 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "two-argument lambda addition uses shared n-ary walker"
+input = "((lambda (left right) (+ left right)) 4 5)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "two-argument procedure addition uses shared n-ary walker"
+input = "(define (add2 left right) (+ left right))\n(add2 4 5)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "n-ary lambda rejects extra body identifier after formals exhausted"
+input = "((lambda (a b c) (+ a b c missing)) 1 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "n-ary lambda checks too many arguments before extra body identifier"
+input = "((lambda (a b c) (+ a b c missing)) 1 2 3 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "n-ary lambda accepts two unused trailing formals through arity drain"
+input = "((lambda (a b c d e) (+ a b c)) 1 2 3 4 5)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
+
+[[case]]
+name = "n-ary lambda rejects missing argument across arity drain"
+input = "((lambda (a b c d e) (+ a b c)) 1 2 3 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "n-ary lambda rejects extra argument across arity drain"
+input = "((lambda (a b c d) (+ a b c)) 1 2 3 4 5)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
