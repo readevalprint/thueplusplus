@@ -1,0 +1,84 @@
+# Focused safety cases for primitive arity group aliases and canonical guards.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "prim1 explicit apply rejects zero args"
+input = '(eval (quote (first)) (dict ((quote first) first)))'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "prim1 rejects extra args"
+input = '(first (list 1) 2)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "parse remains one arg and rejects extra args"
+input = '(parse "x" "y")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "unparse remains one arg and rejects extra args"
+input = '(unparse (quote x) (quote y))'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "prim2 rejects one arg before type checks"
+input = '(add 1)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "prim2 rejects extra args before type checks"
+input = '(add 1 2 "not-a-number")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "prim2 list op rejects one arg"
+input = '(cons 1)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "prim3 rejects two args"
+input = '(assoc (list) (quote x))'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "prim3 rejects extra args"
+input = '(assoc (list) (quote x) 1 2)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "valid primitive calls are not shadowed by grouped guards"
+input = '(list (first (list 8 9)) (add 1 2) (get (dict ((quote x) 3)) (quote x) 0))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(8 3 3)"
