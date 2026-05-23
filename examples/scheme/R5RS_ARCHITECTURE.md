@@ -168,6 +168,8 @@ Strict application flow:
 
 N-arity is a first-class requirement. Use the `examples/lisp/lisp.tpp` `SRCEVALARGS` / `APPLY` / `BINDCLOS` / `LETBINDRAW` shape as the reference for arbitrary argument, formal, and binding-stream iteration, while preserving Scheme semantics: fixed-formal Scheme procedures report `wrong_arity` for too few or too many arguments and must not inherit Lisp partial-application behavior by accident.
 
+The current transitional numeric-`+` lambda walker already centralizes the two-argument and 3+ aligned paths and includes a fixed-formal arity drain for unused trailing formals. Treat that as a migration foothold only: the final architecture is still the `EV`/`APPLY`/store path above, and exact public lambda/define regex entries should keep shrinking into thin adapters or disappear.
+
 Special forms are syntax dispatchers, not public full-form regex shortcuts:
 
 - `quote`

@@ -46,7 +46,7 @@ Literals:
 Scheme-shaped forms/operators in this scaffold:
 
 - `(lambda () 42)` and `(lambda (x) x)` render as the opaque procedure marker `#<procedure>`
-- simple zero-, one-, and two-argument lambda application shapes, plus the first shared-walker n-ary numeric `+` lambda/procedure-definition slice for three or more aligned formals/uses/arguments; supported shapes include one-argument identity, alpha-renamed parameter lookup checks, and typed wrong-arity failures where covered
+- simple zero-, one-, and two-argument lambda application shapes, plus the first shared-walker n-ary numeric `+` lambda/procedure-definition slice; the two-argument numeric `+` path now enters the same walker as the 3+ path, and the walker has a fixed-formal arity drain for unused trailing formals, too-few arguments, and too-many arguments
 - `(begin a b)` returns the final supported atom, plus the first `set!` sequencing slice
 - `if` with Scheme truthiness: only `#f` is false; numbers, strings, symbols, and lists are true where supported
 - the first nested lambda body branch slice: `((lambda (x) (if #t x 0)) 9)`
@@ -80,7 +80,7 @@ This scaffold does not claim full R5RS/R7RS Scheme. Deferred features include:
 
 - full reader support for comments and all datum abbreviation forms inside nested datums
 - full datum-level sharing/cycles and complete improper-list mutation behavior
-- fully general lambda application and lexical closure evaluation; this slice now tests alpha-renamed `let`/`let*`/lambda lookup and rejects mismatched identifiers/arity/non-procedure application for the supported zero-, one-, two-, and first n-ary numeric `+` shared-walker shapes, but still does not implement a complete datum-level evaluator
+- fully general lambda application and lexical closure evaluation; this slice now tests alpha-renamed `let`/`let*`/lambda lookup and rejects mismatched identifiers/arity/non-procedure application for the supported zero-, one-, two-, and first n-ary numeric `+` shared-walker shapes, including a fixed-formal arity drain for unused trailing formals, but still does not implement a complete datum-level evaluator
 - fully general `define`, `set!`, `let`, `let*`; `letrec` remains unsupported and fails loudly
 - macros / `syntax-rules`
 - `call/cc`
