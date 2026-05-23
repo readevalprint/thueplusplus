@@ -1,0 +1,246 @@
+program = "../forth.tpp"
+timeout = 10
+args = ["--max-evals", "20000"]
+
+[[case]]
+name = "push integers renders top first"
+input = "1 2 3"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3 2 1"
+
+[[case]]
+name = "booleans render"
+input = "true false"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false true"
+
+[[case]]
+name = "addition"
+input = "1 2 +"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "subtraction uses second minus top"
+input = "7 2 -"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5"
+
+[[case]]
+name = "multiplication"
+input = "3 4 *"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "12"
+
+[[case]]
+name = "division"
+input = "8 2 /"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "negative arithmetic"
+input = "-3 5 +"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "equality true"
+input = "3 3 ="
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "equality false"
+input = "3 4 ="
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "false"
+
+[[case]]
+name = "less than"
+input = "2 5 <"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "greater than"
+input = "9 5 >"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "comparison normalizes before remaining words"
+input = "2 2 = drop 7"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "dup"
+input = "4 dup +"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "8"
+
+[[case]]
+name = "drop"
+input = "1 2 drop"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "drop last item renders empty stack"
+input = "1 drop"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "\n"
+
+[[case]]
+name = "swap"
+input = "1 2 swap"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1 2"
+
+[[case]]
+name = "over"
+input = "1 2 over"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1 2 1"
+
+[[case]]
+name = "chained expression"
+input = "1 2 + 3 * 4 -"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5"
+
+[[case]]
+name = "division by zero"
+input = "1 0 /"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "division_by_zero"
+
+[[case]]
+name = "binary underflow empty"
+input = "+"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "stack_underflow"
+
+[[case]]
+name = "binary underflow one item"
+input = "1 +"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "stack_underflow"
+
+[[case]]
+name = "binary type error"
+input = "true 1 +"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "dup underflow"
+input = "dup"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "stack_underflow"
+
+[[case]]
+name = "swap underflow empty"
+input = "swap"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "stack_underflow"
+
+[[case]]
+name = "swap underflow one item"
+input = "1 swap"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "stack_underflow"
+
+[[case]]
+name = "unknown word"
+input = "1 square"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unknown_word"
+
+[[case]]
+name = "malformed token"
+input = "1 : 2"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_form"
