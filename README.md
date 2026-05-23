@@ -71,6 +71,12 @@ Hello, World!
 
 All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`. The `examples/forth/` directory contains a compact stack-language example with its own README documenting supported words, stack rendering, and fail-loud errors.
 
+The `examples/scheme/` directory contains a separate Scheme-shaped target-language example implemented entirely as Thue++ rules. It is intentionally distinct from `examples/lisp/`: Scheme uses `#t`/`#f`, `()`, quote shorthand, proper-list operations, selected lexical forms, and Scheme truthiness. Run a quick Scheme smoke test with:
+
+```bash
+uv run python python/thuepp.py examples/scheme/scheme.tpp --input '(if #f 1 2)'
+```
+
 The guess-number example demonstrates process bindings, stdin reads, validation, and numeric builtins. Run it interactively with a real random-number proc:
 
 ```bash
