@@ -473,3 +473,115 @@ input = "(map (lambda (x) x) '(1))"
 exit_code = 2
 stdout = ""
 stderr = "unsupported_form"
+
+[[case]]
+name = "lambda mismatched body identifier fails loud"
+input = "((lambda (x) (+ y 1)) 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "top-level define mismatched use fails loud"
+input = "(define x 2)\n(+ y 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "decimal division by zero fails Scheme-level loud"
+input = "(/ 1 0.0)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "division_by_zero"
+
+[[case]]
+name = "rational zero division by zero fails Scheme-level loud"
+input = "(/ 1 0/2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "division_by_zero"
+
+[[case]]
+name = "subtraction type error"
+input = "(- 1 #t)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "begin can return character atom"
+input = "(begin #f #\\a)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#\\a"
+
+[[case]]
+name = "begin can return space character atom"
+input = "(begin #f #\\space)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#\\space"
+
+[[case]]
+name = "begin can return newline character atom"
+input = "(begin #f #\\newline)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#\\newline"
+
+[[case]]
+name = "multiplication type error"
+input = "(* 1 #f)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "division type error"
+input = "(/ 1 #f)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "numeric comparison type error"
+input = "(< 1 #f)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "internal recursive list renderer"
+input = "RENDER<VLIST<VCHAR%3Ca%3E;>|KOUT>"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(#\\a)"
+
+[[case]]
+name = "internal recursive pair renderer"
+input = "RENDER<VPAIR<VNUM%3C1%3E^VCHAR%3Ca%3E>|KOUT>"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 . #\\a)"
+
+[[case]]
+name = "internal recursive vector renderer"
+input = "RENDER<VVEC<VCHAR%3Ca%3E;>|KOUT>"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#(#\\a)"

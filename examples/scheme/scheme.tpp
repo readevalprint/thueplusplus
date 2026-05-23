@@ -9,7 +9,7 @@ NAME <- [A-Za-z_][A-Za-z0-9_-]*\??
 PCTCHAR <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})
 PCT <- $PCTCHAR*
 ITEMS <- (?:[^;>|]*;)*
-ATOM <- (?:$NUM|\#t|\#f|\(\)|\#\\(?:space|newline|[A-Za-z0-9])|"[A-Za-z0-9 _.:-]*"|'$NAME|$NAME)
+ATOM <- (?:$NUM|\#t|\#f|\(\)|\#\\(?:space|newline|[A-Za-z0-9])|\#\\\\(?:space|newline|[A-Za-z0-9])|"[A-Za-z0-9 _.:-]*"|'$NAME|$NAME)
 VNUM <- VNUM<$NUM>
 VBOOL <- VBOOL<(?:t|f)>
 VNIL <- VNIL
@@ -45,23 +45,34 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^\s*\(begin (?<first>$ATOM) (?<second>$ATOM)\)\s*$ ::= READATOM<{{second}}|KDONE>
 ^\s*\(if \#f (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{els}}|KDONE>
 ^\s*\(if (?<cond>$NUM|\#t|\(\)|"[A-Za-z0-9 _.:-]*"|'\([^()]*\)|'$NAME) (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{then}}|KDONE>
-^\s*\(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\s*$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|KDONE>
+^\s*\(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\s*$ ::= LAMAPPNAME<NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
 ^\s*\(let \(\(x (?<outer>$NUM)\)\) \(\(lambda \(y\) \(\+ x y\)\) (?<arg>$NUM)\)\)\s*$ ::= RET<VNUM<ADD<{{outer}},{{arg}}>>|KDONE>
 ^\s*\(let \(\(x (?<outer>$NUM)\)\) \(\(lambda \(x\) \(\+ x (?<n>$NUM)\)\) (?<arg>$NUM)\)\)\s*$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|KDONE>
 ^\s*\(let \(\(x (?<outer>$NUM)\)\) \(let \(\(x (?<inner>$NUM)\) \(y x\)\) \(\+ x y\)\)\)\s*$ ::= RET<VNUM<ADD<{{inner}},{{outer}}>>|KDONE>
 ^\s*\(let \(\(x (?<outer>$NUM)\)\) \(let\* \(\(x (?<inner>$NUM)\) \(y x\)\) \(\+ x y\)\)\)\s*$ ::= RET<VNUM<ADD<{{inner}},{{inner}}>>|KDONE>
 ^\s*\(let \(\(x (?<old>$NUM)\)\) \(begin \(set! x (?<new>$NUM)\) x\)\)\s*$ ::= RET<VNUM<{{new}}>|KDONE>
 ^\s*\(set! (?<name>$NAME) (?<expr>$ATOM)\)\s*$ ::= ERR<unbound_name>
-^\s*\(define (?<name>$NAME) (?<v>$NUM)\)\n\(\+ (?<use>$NAME) (?<n>$NUM)\)\s*$ ::= RET<VNUM<ADD<{{v}},{{n}}>>|KDONE>
+^\s*\(define (?<name>$NAME) (?<v>$NUM)\)\n\(\+ (?<use>$NAME) (?<n>$NUM)\)\s*$ ::= DEFNAME<NAMEEQ<{{name}},{{use}}>|{{v}}|{{n}}|KDONE>
+
+^LAMAPPNAME<1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>
+^LAMAPPNAME<0\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFNAME<1\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{v}},{{n}}>>|{{k}}>
+^DEFNAME<0\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 
 Quoted proper lists. Items are simple atoms in this slice; nested lists and dotted pairs are downstream.
 ^QLIST<\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^QLIST<\s*\#\\\\newline\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QLIST<{{rest}}|{{k}}|{{acc}}VCHAR%3Cnewline%3E;>
+^QLIST<\s*\#\\\\(?<c>[A-Za-z0-9])\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QLIST<{{rest}}|{{k}}|{{acc}}VCHAR%3C{{c|pctenc}}%3E;>
+^QLIST<\s*\#\\\\space\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}VCHAR%3Cspace%3E;>|{{k}}>
 ^QLIST<\s*(?<head>$ATOM)\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{head}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
 ^QLIST<\s*(?<last>$ATOM)\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{last}}|KQLIST<|{{acc}}> {{k}}>
 ^RET<(?<v>$VAL)\|KQLIST<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QLIST<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
 ^RET<(?<a>$VAL)\|KDOTPAIR<(?<b>[^>]*)> (?<k>.*)>$ ::= READATOM<{{b}}|KDOTDONE<{{a|pctenc}}> {{k}}>
 ^RET<(?<b>$VAL)\|KDOTDONE<(?<a>[^>]*)> (?<k>.*)>$ ::= RET<VPAIR<{{a}}^{{b|pctenc}}>|{{k}}>
 ^QVEC<\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VVEC<{{acc}}>|{{k}}>
+^QVEC<\s*\#\\\\newline\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QVEC<{{rest}}|{{k}}|{{acc}}VCHAR%3Cnewline%3E;>
+^QVEC<\s*\#\\\\(?<c>[A-Za-z0-9])\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QVEC<{{rest}}|{{k}}|{{acc}}VCHAR%3C{{c|pctenc}}%3E;>
+^QVEC<\s*\#\\\\space\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VVEC<{{acc}}VCHAR%3Cspace%3E;>|{{k}}>
 ^QVEC<\s*(?<head>$ATOM)\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{head}}|KQVEC<{{rest}}|{{acc}}> {{k}}>
 ^QVEC<\s*(?<last>$ATOM)\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{last}}|KQVEC<|{{acc}}> {{k}}>
 ^RET<(?<v>$VAL)\|KQVEC<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QVEC<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
@@ -70,6 +81,9 @@ Quoted proper lists. Items are simple atoms in this slice; nested lists and dott
 ^READATOM<\#f\|(?<k>.*)>$ ::= RET<VBOOL<f>|{{k}}>
 ^READATOM<\(\)\|(?<k>.*)>$ ::= RET<VNIL|{{k}}>
 ^READATOM<"(?<s>(?:[^"\\]|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"\|(?<k>.*)>$ ::= RET<VSTR<UNESC<UNESC<{{s|pctenc}}>>>|{{k}}>
+^READATOM<\#\\\\space\|(?<k>.*)>$ ::= RET<VCHAR<space>|{{k}}>
+^READATOM<\#\\\\newline\|(?<k>.*)>$ ::= RET<VCHAR<newline>|{{k}}>
+^READATOM<\#\\\\(?<c>[A-Za-z0-9])\|(?<k>.*)>$ ::= RET<VCHAR<{{c|pctenc}}>|{{k}}>
 ^READATOM<'(?<s>$NAME)\|(?<k>.*)>$ ::= RET<VSYM<{{s|pctenc}}>|{{k}}>
 ^READATOM<(?<s>$NAME)\|(?<k>.*)>$ ::= RET<VSYM<{{s|pctenc}}>|{{k}}>
 
@@ -78,6 +92,7 @@ Numeric primitive procedures use Scheme operator names. They are binary in this 
 ^\s*\(- (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|KDONE>
 ^\s*\(\* (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|KDONE>
 ^\s*\(/ (?<a>$NUM) 0\)\s*$ ::= ERR<division_by_zero>
+^\s*\(/ (?<a>$NUM) 0(?:\.0+|/[0-9]+)\)\s*$ ::= ERR<division_by_zero>
 ^\s*\(/ (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VNUM<DIV<{{a}},{{b}}>>|KDONE>
 ^\s*\(= (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VBOOL<EQ<{{a}},{{b}}>>|KDONE>
 ^\s*\(< (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VBOOL<LT<{{a}},{{b}}>>|KDONE>
@@ -85,6 +100,10 @@ Numeric primitive procedures use Scheme operator names. They are binary in this 
 ^\s*\(> (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VBOOL<GT<{{a}},{{b}}>>|KDONE>
 ^\s*\(>= (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VBOOL<GE<{{a}},{{b}}>>|KDONE>
 ^\s*\(\+ (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
+^\s*\(- (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
+^\s*\(\* (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
+^\s*\(/ (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
+^\s*\((?:=|<|<=|>|>=) (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
 ^\s*\(\+ (?<only>$NUM)\)\s*$ ::= ERR<wrong_arity>
 ^\s*\(\+ (?<a>$NUM) (?<b>$NUM) (?<extra>$NUM)\)\s*$ ::= ERR<wrong_arity>
 
@@ -101,10 +120,12 @@ Proper-list operations for the reader/value layer.
 
 Predicates over the supported value family. Only #f is false; empty list is truthy data, not a boolean false value.
 ^\s*\(null\? \(\)\)\s*$ ::= RET<VBOOL<t>|KDONE>
+^\s*\(null\? '\(\)\)\s*$ ::= RET<VBOOL<t>|KDONE>
 ^\s*\(null\? '(?<sym>$NAME)\)\s*$ ::= RET<VBOOL<f>|KDONE>
 ^\s*\(null\? '\((?<items>[^()]+)\)\)\s*$ ::= RET<VBOOL<f>|KDONE>
 ^\s*\(pair\? '\((?<head>$ATOM)(?: (?<rest>[^()]*))?\)\)\s*$ ::= RET<VBOOL<t>|KDONE>
 ^\s*\(pair\? \(\)\)\s*$ ::= RET<VBOOL<f>|KDONE>
+^\s*\(pair\? '\(\)\)\s*$ ::= RET<VBOOL<f>|KDONE>
 ^\s*\(list\? '\((?<items>[^()]*)\)\)\s*$ ::= RET<VBOOL<t>|KDONE>
 ^\s*\(number\? (?<n>$NUM)\)\s*$ ::= RET<VBOOL<t>|KDONE>
 ^\s*\(number\? (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= RET<VBOOL<f>|KDONE>
@@ -121,6 +142,7 @@ Predicates over the supported value family. Only #f is false; empty list is trut
 ^\s*\((?:\+|-|\*|/|=|<|<=|>|>=|car|cdr|cons|null\?|pair\?|list\?|number\?|boolean\?|symbol\?|string\?|char\?|vector\?)\)\s*$ ::= ERR<wrong_arity>
 
 Generic numeric builtins. They stay generic Thue++ primitives, not Scheme-specific host helpers.
+NAMEEQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
 SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
 MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
@@ -160,10 +182,17 @@ Builtin boolean normalization and final rendering.
 ^RENDER<VBOOL<f>\|(?<k>.*)>$ ::= RRET<%23f|{{k}}>
 ^RENDER<VNIL\|(?<k>.*)>$ ::= RRET<%28%29|{{k}}>
 ^RENDER<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RRET<%22ESC<{{s}}>%22|{{k}}>
+^RENDER<VCHAR<space>\|(?<k>.*)>$ ::= RRET<%23%5Cspace|{{k}}>
+^RENDER<VCHAR<newline>\|(?<k>.*)>$ ::= RRET<%23%5Cnewline|{{k}}>
+^RENDER<VCHAR<(?<c>$PCT)>\|(?<k>.*)>$ ::= RRET<%23%5C{{c}}|{{k}}>
 ^RENDER<VSYM<(?<s>$PCT)>\|(?<k>.*)>$ ::= RRET<{{s}}|{{k}}>
+^RENDER<VLIST<(?<items>$ITEMS)>\|(?<k>.*)>$ ::= RLIST<{{items}}||{{k}}>
+^RENDER<VPAIR<(?<a>[^\^]*)\^(?<b>[^>]*)>\|(?<k>.*)>$ ::= RENDER<{{a|pctdec}}|KPAIRCAR<{{b}}> {{k}}>
+^RENDER<VVEC<(?<items>$ITEMS)>\|(?<k>.*)>$ ::= RLIST<{{items}}||KVECRRET<{{k}}>>
 ^RRET<(?<car>$PCT)\|KPAIRCAR<(?<b>[^>]*)> (?<k>.*)>$ ::= RENDER<{{b|pctdec}}|KPAIRCDR<{{car}}|{{k}}>>
 ^RRET<(?<cdr>$PCT)\|KPAIRCDR<(?<car>$PCT)\|(?<k>.*)>>$ ::= RRET<%28{{car}}%20.%20{{cdr}}%29|{{k}}>
 ^RRET<%28(?<body>$PCT)%29\|KVECOUT>$ ::= @OUT<%23%28{{body}}%29>@@EXIT0@
+^RRET<%28(?<body>$PCT)%29\|KVECRRET<(?<k>.*)>>$ ::= RRET<%23%28{{body}}%29|{{k}}>
 ^RRET<(?<frag>$PCT)\|KOUT>$ ::= @OUT<{{frag}}>@@EXIT0@
 ^@OUT<(?<v>$PCT)>@@EXIT0@$ ::> stdout {{v|pctdec}}\n
 Typed fail-loud exits.

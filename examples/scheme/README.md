@@ -2,7 +2,7 @@
 
 `scheme.tpp` is a new greenfield Scheme-shaped target-language example implemented entirely as Thue++ rewrite rules. It is separate from `examples/lisp/lisp.tpp`; the Lisp example remains the canonical mini-Lisp core and is not being renamed or repurposed.
 
-This slice establishes the Scheme reader/value/primitives layer and the first evaluator semantics for the workstream. It is still intentionally smaller than full Scheme, but it now covers Scheme-shaped booleans, characters, escaped strings, quoted data, proper and simple dotted lists, simple vectors, primitive list operations, predicates, arithmetic/comparison primitives, selected lexical forms, typed errors, and full rule coverage.
+This slice establishes the Scheme reader/value/primitives layer and the first evaluator semantics for the workstream. It is still intentionally smaller than full Scheme, but it now covers Scheme-shaped booleans, characters, escaped strings, quoted data, proper and simple dotted lists, simple vectors including character elements, primitive list operations, predicates, arithmetic/comparison primitives, selected lexical forms, typed errors, and full rule coverage.
 
 The full R5RS target is defined in [`R5RS_CONTRACT.md`](R5RS_CONTRACT.md). That contract supersedes any scaffold behavior that currently contradicts R5RS. The implementation design gate is [`R5RS_ARCHITECTURE.md`](R5RS_ARCHITECTURE.md).
 
@@ -39,9 +39,9 @@ Literals:
 - plain strings with generic Scheme-level escape rendering for `\"`, `\n`, `\t`, `\r`, `\b`, `\f`, and `\\`
 - character literals: `#\a`, `#\space`, `#\newline`
 - quoted symbols such as `'alpha`
-- quoted proper lists such as `'(1 #t alpha "x")`
+- quoted proper lists such as `'(1 #t alpha "x")`, including character elements
 - simple quoted dotted pairs such as `'(1 . 2)`
-- simple vector literals such as `#(1 2 #t)`
+- simple vector literals such as `#(1 2 #t #\a)`
 
 Scheme-shaped forms/operators in this scaffold:
 
@@ -77,20 +77,20 @@ This scaffold does not claim full R5RS/R7RS Scheme. Deferred features include:
 
 - general nested list parsing and arbitrary dotted-pair placement
 - full recursive reader/freezer machinery for quote-family datums
-- fully general lambda application and lexical closure evaluation
+- fully general lambda application and lexical closure evaluation; the current direct lambda/define probes now at least reject mismatched identifiers instead of capturing them accidentally
 - fully general `define`, `set!`, `let`, `let*`; `letrec` remains unsupported and fails loudly
 - macros / `syntax-rules`
 - `call/cc`
-- vectors, ports, modules, and the full numeric tower
+- full vector operations/mutation, ports, modules, and the full numeric tower
 
 Unsupported input fails loudly with a typed error instead of silently degrading.
 
 ## Tests and coverage
 
-The executable green manifest is:
+The executable green manifests are:
 
 ```bash
-uv run python tools/example_runner.py examples/scheme/tests/core.toml
+uv run python tools/example_runner.py examples/scheme/tests/*.toml
 ```
 
 The R5RS RED-debt gate is:
