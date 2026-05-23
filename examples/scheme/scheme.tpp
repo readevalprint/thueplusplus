@@ -22,6 +22,7 @@ VVEC <- VVEC<$ITEMS>
 VPROC <- VPROC
 VPRIM <- VPRIM<[A-Za-z0-9_]+>
 VAL <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC|$VPRIM)
+DITEM <- (?:$VAL|$ATOM)
 NONNUM <- (?:$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC|$VPRIM)
 NONLIST <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VPAIR|$VVEC|$VPROC|$VPRIM)
 
@@ -37,9 +38,8 @@ Surface reader for self-evaluating values and quote shorthand.
 ^\s*\#\\newline\s*$ ::= RET<VCHAR<newline>|KDONE>
 ^\s*\#\\(?<c>[A-Za-z0-9])\s*$ ::= RET<VCHAR<{{c|pctenc}}>|KDONE>
 ^\s*'(?<s>$NAME)\s*$ ::= RET<VSYM<{{s|pctenc}}>|KDONE>
-^\s*'\((?<a>$ATOM) \. (?<b>$ATOM)\)\s*$ ::= READATOM<{{a}}|KDOTPAIR<{{b}}> KDONE>
-^\s*'\((?<items>[^()]*)\)\s*$ ::= QLIST<{{items}}|KDONE|>
-^\s*\#\((?<items>[^()]*)\)\s*$ ::= QVEC<{{items}}|KDONE|>
+^\s*'(?<src>\([\s\S]*\))\s*$ ::= READDATUM<{{src}}|KDONE>
+^\s*(?<src>\#\([\s\S]*\))\s*$ ::= READDATUM<{{src}}|KDONE>
 
 Scheme-shaped public forms whose fuller eval/apply semantics are being grown in GLKB #246.
 ^\s*\(lambda \((?<param>$NAME)\) (?<body>$NAME|$NUM|\#t|\#f|\(\))\)\s*$ ::= RET<VPROC|KDONE>
@@ -73,23 +73,28 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^LETSET<1\|1\|(?<new>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{new}}>|{{k}}>
 ^LETSET<(?:0|1)\|(?:0|1)\|(?<new>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_name>
 
-Quoted proper lists. Items are simple atoms in this slice; nested lists and dotted pairs are downstream.
-^QLIST<\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
-^QLIST<\s*\#\\\\newline\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QLIST<{{rest}}|{{k}}|{{acc}}VCHAR%3Cnewline%3E;>
-^QLIST<\s*\#\\\\(?<c>[A-Za-z0-9])\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QLIST<{{rest}}|{{k}}|{{acc}}VCHAR%3C{{c|pctenc}}%3E;>
-^QLIST<\s*\#\\\\space\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}VCHAR%3Cspace%3E;>|{{k}}>
-^QLIST<\s*(?<head>$ATOM)\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{head}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
-^QLIST<\s*(?<last>$ATOM)\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{last}}|KQLIST<|{{acc}}> {{k}}>
-^RET<(?<v>$VAL)\|KQLIST<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QLIST<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
-^RET<(?<a>$VAL)\|KDOTPAIR<(?<b>[^>]*)> (?<k>.*)>$ ::= READATOM<{{b}}|KDOTDONE<{{a|pctenc}}> {{k}}>
+Recursive quoted datum/vector reader. It freezes innermost datums into typed values, then uses one shared sequence walker for proper lists and vectors; older QLIST/QVEC entry names remain only as bridges for list procedures.
+^READDATUM<(?<a>$ATOM)\|(?<k>.*)>$ ::= READATOM<{{a}}|{{k}}>
+^READDATUM<\((?<a>$DITEM) \. (?<b>$DITEM)\)\|(?<k>.*)>$ ::= READITEM<{{a}}|KDOTITEM<{{b}}> {{k}}>
+^READDATUM<\((?<items>[^()]*)\)\|(?<k>.*)>$ ::= RSEQ<{{items}}|list|{{k}}|>
+^READDATUM<\#\((?<items>[^()]*)\)\|(?<k>.*)>$ ::= RSEQ<{{items}}|vec|{{k}}|>
+^READDATUM<(?<pre>[\s\S]*)\((?<a>$DITEM) \. (?<b>$DITEM)\)(?<post>[\s\S]*)\|(?<k>.*)>$ ::= READITEM<{{a}}|KDOTITEM<{{b}}> KFREEZE<{{pre}}|{{post}}> {{k}}>
+^READDATUM<(?<pre>[\s\S]*)\#\((?<items>[^()]*)\)(?<post>[\s\S]*)\|(?<k>.*)>$ ::= RSEQ<{{items}}|vec|KFREEZE<{{pre}}|{{post}}> {{k}}|>
+^READDATUM<(?<pre>[\s\S]*)\((?<items>[^()]*)\)(?<post>[\s\S]*)\|(?<k>.*)>$ ::= RSEQ<{{items}}|list|KFREEZE<{{pre}}|{{post}}> {{k}}|>
+^RET<(?<v>$VAL)\|KFREEZE<(?<pre>[^|]*)\|(?<post>[^>]*)> (?<k>.*)>$ ::= READDATUM<{{pre}}{{v}}{{post}}|{{k}}>
+^READITEM<(?<v>$VAL)\|(?<k>.*)>$ ::= RET<{{v}}|{{k}}>
+^READITEM<(?<a>$ATOM)\|(?<k>.*)>$ ::= READATOM<{{a}}|{{k}}>
+^QLIST<(?<items>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RSEQ<{{items}}|list|{{k}}|{{acc}}>
+^RSEQ<\s*\|list\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^RSEQ<\s*\|vec\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VVEC<{{acc}}>|{{k}}>
+^RSEQ<\s*\#\\\\\\\\newline\s+(?<rest>[^|]*)\|(?<kind>list|vec)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RSEQ<{{rest}}|{{kind}}|{{k}}|{{acc}}VCHAR%3Cnewline%3E;>
+^RSEQ<\s*\#\\\\\\\\(?<c>[A-Za-z0-9])\s+(?<rest>[^|]*)\|(?<kind>list|vec)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RSEQ<{{rest}}|{{kind}}|{{k}}|{{acc}}VCHAR%3C{{c|pctenc}}%3E;>
+^RSEQ<\s*\#\\\\\\\\space\s*\|(?<kind>list|vec)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RSEQ<|{{kind}}|{{k}}|{{acc}}VCHAR%3Cspace%3E;>
+^RSEQ<\s*(?<head>$DITEM)\s+(?<rest>[^|]*)\|(?<kind>list|vec)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READITEM<{{head}}|KSEQ<{{kind}}|{{rest}}|{{acc}}> {{k}}>
+^RSEQ<\s*(?<last>$DITEM)\s*\|(?<kind>list|vec)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READITEM<{{last}}|KSEQ<{{kind}}||{{acc}}> {{k}}>
+^RET<(?<v>$VAL)\|KSEQ<(?<kind>list|vec)\|(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= RSEQ<{{rest}}|{{kind}}|{{k}}|{{acc}}{{v|pctenc}};>
+^RET<(?<a>$VAL)\|KDOTITEM<(?<b>[^>]*)> (?<k>.*)>$ ::= READITEM<{{b}}|KDOTDONE<{{a|pctenc}}> {{k}}>
 ^RET<(?<b>$VAL)\|KDOTDONE<(?<a>[^>]*)> (?<k>.*)>$ ::= RET<VPAIR<{{a}}^{{b|pctenc}}>|{{k}}>
-^QVEC<\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VVEC<{{acc}}>|{{k}}>
-^QVEC<\s*\#\\\\newline\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QVEC<{{rest}}|{{k}}|{{acc}}VCHAR%3Cnewline%3E;>
-^QVEC<\s*\#\\\\(?<c>[A-Za-z0-9])\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QVEC<{{rest}}|{{k}}|{{acc}}VCHAR%3C{{c|pctenc}}%3E;>
-^QVEC<\s*\#\\\\space\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VVEC<{{acc}}VCHAR%3Cspace%3E;>|{{k}}>
-^QVEC<\s*(?<head>$ATOM)\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{head}}|KQVEC<{{rest}}|{{acc}}> {{k}}>
-^QVEC<\s*(?<last>$ATOM)\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{last}}|KQVEC<|{{acc}}> {{k}}>
-^RET<(?<v>$VAL)\|KQVEC<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QVEC<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
 ^READATOM<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
 ^READATOM<\#t\|(?<k>.*)>$ ::= RET<VBOOL<t>|{{k}}>
 ^READATOM<\#f\|(?<k>.*)>$ ::= RET<VBOOL<f>|{{k}}>
