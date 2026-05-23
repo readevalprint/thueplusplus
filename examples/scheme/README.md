@@ -18,6 +18,15 @@ Expected output:
 3
 ```
 
+Additional smoke examples:
+
+```bash
+uv run python python/thuepp.py examples/scheme/scheme.tpp --input "'(1 #t hello)"
+uv run python python/thuepp.py examples/scheme/scheme.tpp --input "(cons 0 '(1 2))"
+uv run python python/thuepp.py examples/scheme/scheme.tpp --input '(if #f 1 2)'
+uv run python python/thuepp.py examples/scheme/scheme.tpp --input '((lambda (x) (+ x 1)) 4)'
+```
+
 ## Current supported subset
 
 Literals:
@@ -76,7 +85,7 @@ The executable manifest is:
 uv run python tools/example_runner.py examples/scheme/tests/core.toml
 ```
 
-It checks Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. The repository truth engine remains:
+It checks Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. The manifest covers reader/literals, quote, lists/pairs, arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
 
 ```bash
 make test
