@@ -161,3 +161,107 @@ input = "(define (add1 x) (+ x 1))\n(inc)"
 exit_code = 2
 stdout = ""
 stderr = "unbound_identifier"
+
+[[case]]
+name = "two-argument lambda adds alpha-renamed parameters"
+input = "((lambda (left right) (+ left right)) 2 3)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5"
+
+[[case]]
+name = "two-argument lambda mismatched first parameter fails"
+input = "((lambda (left right) (+ other right)) 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "two-argument lambda mismatched second parameter fails"
+input = "((lambda (left right) (+ left other)) 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "two-argument lambda too few arguments fails as wrong arity"
+input = "((lambda (left right) (+ left right)) 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "two-argument lambda no arguments fails as wrong arity"
+input = "((lambda (left right) (+ left right)))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "two-argument lambda too many arguments fails as wrong arity"
+input = "((lambda (left right) (+ left right)) 2 3 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "two-argument procedure definition applies numeric arguments"
+input = "(define (add2 left right) (+ left right))\n(add2 4 5)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "two-argument procedure definition rejects wrong call name"
+input = "(define (add2 left right) (+ left right))\n(sum2 4 5)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "two-argument procedure definition rejects zero-arg wrong call name through lookup"
+input = "(define (add2 left right) (+ left right))\n(sum2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "two-argument procedure definition rejects mismatched body name"
+input = "(define (add2 left right) (+ left missing))\n(add2 4 5)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "two-argument procedure definition rejects too few arguments"
+input = "(define (add2 left right) (+ left right))\n(add2 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "two-argument procedure definition rejects zero arguments"
+input = "(define (add2 left right) (+ left right))\n(add2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "two-argument procedure definition rejects too many arguments"
+input = "(define (add2 left right) (+ left right))\n(add2 4 5 6)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
