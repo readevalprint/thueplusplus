@@ -433,7 +433,7 @@ Release/conformance validation for the current C workstream:
 uv run python tools/example_runner.py examples/c/tests/conformance.toml
 ```
 
-The conformance manifest is the checklist gate for this example. It is expected to maintain Python/Go parity and 100% rule coverage for `examples/c/c.tpp`.
+The conformance manifest is the checklist gate for this example. It is expected to maintain Python/Go parity and 100% rule coverage for `examples/c/c.tpp`. It also carries adversarial acceptance probes for source-admission overclaiming, malformed framed records, fixture quarantine, mismatched bindings, unsupported `if` conditions, and public-looking `pp:` / `exec:` / `lib:` forms that must fail loudly unless they are documented real semantics.
 
 ## Running preprocessing, linkage, and library fixtures
 
