@@ -325,6 +325,37 @@ exit_code = 2
 stdout = ""
 stderr_stripped = "invalid_string_escape"
 
+[[case]]
+name = "top-level unsupported string escape is rejected"
+input = '"a\xb"'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "invalid_string_escape"
+
+[[case]]
+name = "parse unsupported string escape is rejected"
+input = '(parse "\"a\\xb\"")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "invalid_string_escape"
+
+[[case]]
+name = "parse and unparse escaped newline remains round-trippable"
+input = '(unparse (parse "\"a\\nb\""))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"\"a\\nb\""'
+
+[[case]]
+name = "strings with parentheses are protected before list freezing"
+input = '(list "a)b" "c(d")'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '("a)b" "c(d")'
 
 [[case]]
 name = "escaped backslash before ordinary character renders round-trippable"

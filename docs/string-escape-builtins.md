@@ -57,4 +57,4 @@ Invalid input PCT payloads fail through the existing canonical PCT decoder error
 
 Target-language examples decide where string literals start and end, which escapes are part of that language's public contract, and how generic builtin errors map to language-level errors.
 
-For example, `examples/lisp/lisp.tpp` protects quoted strings before list framing and pct-encodes raw string bodies into internal `VSTR<...>` payloads. Rendering calls `escape` before adding quotes around a string value.
+For example, `examples/lisp/lisp.tpp` protects quoted strings before list framing and pct-encodes raw string bodies into internal `VSTR<...>` payloads. Rendering calls `escape` before adding quotes around a string value. Reading validates Lisp-supported escape spellings first, then calls the generic `unescape` builtin at the reader boundary so Lisp does not maintain a separate per-escape rewrite ladder.
