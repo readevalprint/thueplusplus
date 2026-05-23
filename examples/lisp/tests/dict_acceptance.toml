@@ -170,20 +170,20 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "duplicate symbol key fails loud"
+name = "duplicate symbol key is preserved"
 input = '(dict ((quote x) 1) ((quote x) 2))'
 [case.expect]
-stdout = ""
-stderr_stripped = "duplicate_key"
-exit_code = 2
+stdout = "((x 1) (x 2))\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "duplicate string key fails loud"
+name = "duplicate string key is preserved"
 input = '(dict ("x" 1) ("x" 2))'
 [case.expect]
-stdout = ""
-stderr_stripped = "duplicate_key"
-exit_code = 2
+stdout = "((\"x\" 1) (\"x\" 2))\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
 name = "malformed dict pair rejects missing value"
@@ -202,44 +202,44 @@ stderr_stripped = "wrong_arity"
 exit_code = 2
 
 [[case]]
-name = "dict rejects number key"
+name = "dict accepts number key"
 input = '(dict (1 2))'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "((1 2))\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "get rejects unsupported key type"
+name = "get accepts number key and returns default on miss"
 input = '(get (dict ((quote x) 1)) 1 99)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "99\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "get rejects non dict receiver"
+name = "get skips non-list alist entry"
 input = '(get (list 1) (quote x) 99)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "99\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "assoc rejects non dict receiver"
+name = "assoc preserves non-list alist entries"
 input = '(assoc (list 1) (quote x) 2)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "((x 2) 1)\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "dissoc rejects unsupported key type"
+name = "dissoc accepts list key and no-ops on miss"
 input = '(dissoc (dict ((quote x) 1)) (list 1))'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "((x 1))\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
 name = "dict is not callable"
@@ -274,36 +274,36 @@ stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "contains rejects non dict receiver"
+name = "contains skips non-list alist entry"
 input = '(contains (list 1) (quote x))'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "false\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "contains rejects unsupported key type"
+name = "contains accepts number key and reports miss"
 input = '(contains (dict ((quote x) 1)) 1)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "false\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "assoc rejects unsupported key type"
+name = "assoc accepts number key"
 input = '(assoc (dict ((quote x) 1)) 1 2)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "((1 2) (x 1))\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "dissoc rejects non dict receiver"
+name = "dissoc preserves non-list alist entries"
 input = '(dissoc (list 1) (quote x))'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "(1)\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
 name = "dissoc removes existing string key"

@@ -59,28 +59,28 @@ stderr_stripped = "type_error"
 exit_code = 2
 
 [[case]]
-name = "get rejects malformed alist key value"
+name = "get treats number-key alist entry as ordinary entry"
 input = '(get (quote ((1 2))) (quote x) 0)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "0\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "assoc rejects malformed alist key value"
+name = "assoc preserves unrelated number-key alist entry"
 input = '(assoc (quote ((1 2))) (quote x) 9)'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "((x 9) (1 2))\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
-name = "dissoc rejects malformed alist key value"
+name = "dissoc preserves unrelated number-key alist entry"
 input = '(dissoc (quote ((1 2))) (quote x))'
 [case.expect]
-stdout = ""
-stderr_stripped = "type_error"
-exit_code = 2
+stdout = "((1 2))\n"
+stderr = ""
+exit_code = 0
 
 [[case]]
 name = "parse rejects extra args"

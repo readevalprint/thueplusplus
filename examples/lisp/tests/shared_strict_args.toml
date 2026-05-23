@@ -68,9 +68,9 @@ stderr = ""
 stdout_stripped = "((fn (x) x) (first 1))"
 
 [[case]]
-name = "dict still evaluates entry keys and values with its own duplicate-key path"
+name = "dict still evaluates entry keys and values while preserving duplicates"
 input = '(dict ((quote a) 1) ((quote a) 2))'
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "duplicate_key"
+exit_code = 0
+stderr = ""
+stdout_stripped = "((a 1) (a 2))"
