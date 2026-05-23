@@ -88,6 +88,22 @@ ADD<ID<a>;|MUL<ID<b>;|ICON<3>;>>
 
 The phase-2 AST contract is deliberately framed text for later rewrite phases: `TU`, `FN`, `DECL`, `TYPEDEF`, `RETURN`, `IF`, `WHILE`, `FOR`, `ASSIGN`, `ADD`, `MUL`, `EQ`, `LT`, `CALL`, and primary nodes preserve token payloads without decoding arbitrary source text.
 
+## Running semantic analysis
+
+The semantic analyzer consumes framed AST records and emits typed AST records:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'sema:TU<DECL<VAR<int|x>>>'
+```
+
+Expected output:
+
+```text
+TU<SCOPE<file|BIND<x|object|int>>|DECL<LVAL<int|x>>>
+```
+
+Semantic output introduces explicit `SCOPE`, `BIND`, `TYPE`, `LVAL`, and `RVAL` records. It keeps C namespaces explicit by distinguishing ordinary object/function bindings, typedef bindings, and tag bindings.
+
 ## Target standard and mode
 
 The workstream target is ISO C, progressing toward C17 semantics. The first complete milestone should be freestanding C. Hosted-library behavior is a later, explicitly documented boundary.
@@ -201,6 +217,15 @@ Use parser states over token streams. Do not grow a rule per C surface spelling.
 
 ### Phase 3: semantic analysis and types
 
+Implemented now:
+
+- `sema:<AST>` consumes framed parser output or equivalent AST fixtures;
+- file-scope bindings distinguish objects, functions, typedef names, and tags;
+- scalar `int`, pointer, array, function, struct, union, enum, and typedef-name type records are represented explicitly;
+- declarations produce `LVAL<type|name>` records while expression values produce `RVAL<type|value-or-load>` records;
+- assignment and arithmetic examples annotate lvalue/rvalue boundaries and integer conversions;
+- fail-loud diagnostics cover duplicate/invalid declarations, undefined identifiers, type errors, invalid lvalues, unsupported constructs, and malformed AST.
+
 Required coverage:
 
 - scalar types;
@@ -259,12 +284,13 @@ Diagnostics are stable stderr strings with exit code 2 for language-level failur
 - `unterminated_char`
 - `invalid_escape`
 - `syntax_error`
+- `invalid_declaration`
+- `undefined_identifier`
+- `type_error`
+- `invalid_lvalue`
 
 Later phases should add precise diagnostics such as:
 
-- `undefined_identifier`
-- `invalid_lvalue`
-- `type_error`
 - `division_by_zero`
 - `unsupported_c_construct`
 
@@ -286,6 +312,12 @@ Focused parser validation:
 
 ```bash
 uv run python tools/example_runner.py examples/c/tests/parser.toml
+```
+
+Focused semantic/type validation:
+
+```bash
+uv run python tools/example_runner.py examples/c/tests/sema.toml
 ```
 
 Full repository validation before any C MR is marked review-ready/done:
