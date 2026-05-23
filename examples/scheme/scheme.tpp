@@ -55,6 +55,9 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^\s*\(let \(\((?<name>$NAME) (?<old>$NUM)\)\) \(begin \(set! (?<set_name>$NAME) (?<new>$NUM)\) (?<use>$NAME)\)\)\s*$ ::= LETSET<NAMEEQ<{{name}},{{set_name}}>|NAMEEQ<{{name}},{{use}}>|{{new}}|KDONE>
 ^\s*\(set! (?<name>$NAME) (?<expr>$ATOM)\)\s*$ ::= ERR<unbound_name>
 ^\s*\(define (?<name>$NAME) (?<v>$NUM)\)\n\(\+ (?<use>$NAME) (?<n>$NUM)\)\s*$ ::= DEFNAME<NAMEEQ<{{name}},{{use}}>|{{v}}|{{n}}|KDONE>
+^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME) (?<arg>$NUM)\)\s*$ ::= DEFPROC1<NAMEEQ<{{fname}},{{call}}>|NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
+^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME)\)\s*$ ::= DEFPROC1ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
+^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME) (?<arg>$NUM) (?<extra>$NUM)\)\s*$ ::= DEFPROC1ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(\(lambda \((?<param>$NAME)\) (?<body>[\s\S]+)\)\)\s*$ ::= ERR<wrong_arity>
 ^\s*\(\(lambda \((?<param>$NAME)\) (?<body>[\s\S]+)\) (?<first>$ATOM) (?<extra>[\s\S]+)\)\s*$ ::= ERR<wrong_arity>
 ^\s*\((?<notproc>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)(?: (?<args>[^()]*))?\)\s*$ ::= ERR<type_error>
@@ -65,6 +68,11 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^LAMIFTRUE<0\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFNAME<1\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{v}},{{n}}>>|{{k}}>
 ^DEFNAME<0\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC1<1\|1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>
+^DEFPROC1<0\|(?:0|1)\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC1<1\|0\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC1ARITY<1\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^DEFPROC1ARITY<0\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^LETLAMCAP<1\|1\|(?<outer>$NUM)\|(?<arg>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{outer}},{{arg}}>>|{{k}}>
 ^LETLAMCAP<(?:0|1)\|(?:0|1)\|(?<outer>$NUM)\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^LETLAMSHADOW<1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>

@@ -50,7 +50,7 @@ Scheme-shaped forms/operators in this scaffold:
 - `(begin a b)` returns the final supported atom, plus the first `set!` sequencing slice
 - `if` with Scheme truthiness: only `#f` is false; numbers, strings, symbols, and lists are true where supported
 - the first nested lambda body branch slice: `((lambda (x) (if #t x 0)) 9)`
-- top-level two-form variable `define` followed by a numeric expression
+- top-level two-form variable `define` followed by a numeric expression, plus first one-argument procedure-definition sugar over numeric `+` bodies
 - `set!` inside the supported lexical slice, with unbound names failing loudly
 - `let` and `let*` coverage for the first lexical-binding slice, including alpha-renamed binding names and the Scheme distinction between outer-env and sequential initializer lookup
 - `+` as the first primitive-apply fold, including zero-, one-, two-, and n-ary numeric addition with symmetric type errors
