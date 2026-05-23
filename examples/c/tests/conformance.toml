@@ -1096,8 +1096,8 @@ stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|voi
 stderr = ""
 
 [[case]]
-name = "exec rejects initialized local return with mismatched main binding"
-input = "EXECMAIN_LOCAL_INIT<main|main|x|y|7|1|0>"
+name = "exec rejects initialized local return with mismatched local binding"
+input = "EXEC_LOCAL_RETURN<x|y|7|0>"
 
 [case.expect]
 exit_code = 2
@@ -1206,8 +1206,8 @@ stdout = ""
 stderr = "undefined_identifier"
 
 [[case]]
-name = "exec rejects assigned local return with mismatched helper state"
-input = "EXECMAIN_LOCAL_ASSIGN<main|main|x|y|x|9|1|0|1>"
+name = "exec rejects assigned local return with mismatched block state"
+input = "EXEC_LOCAL_ASSIGN_RETURN<x|y|x|9|0|1>"
 
 [case.expect]
 exit_code = 2
@@ -1271,8 +1271,18 @@ stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|voi
 stderr = ""
 
 [[case]]
-name = "exec rejects constant if with mismatched main binding"
-input = "EXECMAIN_IF<notmain|main|1|7|8|0>"
+name = "exec rejects block body with mismatched main binding"
+input = "EXEC_MAIN<notmain|main|RETURN<RVAL<int|7>>|0>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+
+[[case]]
+name = "exec rejects if body with unsupported condition value"
+input = "EXEC_BODY<IF<RVAL<int|2>|RETURN<RVAL<int|7>>|RETURN<RVAL<int|8>>>>"
 
 [case.expect]
 exit_code = 2

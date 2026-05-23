@@ -173,7 +173,7 @@ Expected output:
 STATE<MEM<OBJ<x|int|7|auto>>>
 ```
 
-Executable `main`-style typed AST records print their integer return value to stdout, preserving the early scaffold result contract. Non-final memory probes render explicit `STATE`, `OBJ`, `PTR`, `LVAL`, `RVAL`, and `CTRL` records so downstream manifests can assert abstract-machine state without host-side C helpers.
+Executable `main`-style typed AST records print their integer return value to stdout, preserving the early scaffold result contract. The main entry now routes through a single `EXEC_MAIN` guard and `EXEC_BODY` block dispatcher instead of per-feature `EXECMAIN_*` helpers, so declaration-only, initialized-local, assignment, and constant `if/else` bodies share one execution surface. Non-final memory probes render explicit `STATE`, `OBJ`, `PTR`, `LVAL`, `RVAL`, and `CTRL` records so downstream manifests can assert abstract-machine state without host-side C helpers.
 
 ## Target standard and mode
 
