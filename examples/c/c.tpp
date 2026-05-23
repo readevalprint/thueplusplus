@@ -106,7 +106,7 @@ ERRNAME <- [A-Za-z0-9_]+
 # attach explicit type, scope, namespace, and lvalue/rvalue annotations for the
 # later abstract-machine card.
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
-^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ID<(?<id>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|LOAD<LVAL<int|{{id}}>>>>>>>>
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ID<(?<id>$PCT)>>>>>$ ::= ERR<undefined_identifier>
 ^SEMA<TU<DECL<VAR<int\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|int>>|DECL<LVAL<int|{{name}}>>>>
 ^SEMA<TU<TYPEDEF<int\|(?<alias>$PCT)>\|DECL<VAR<TYPEDEFNAME<(?<type>$PCT)>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{alias}}|typedef|int>|BIND<{{name}}|object|TYPEDEFNAME<{{type}}>>>|TYPEDEF<int|{{alias}}>|DECL<LVAL<TYPEDEFNAME<{{type}}>|{{name}}>>>>
 ^SEMA<TU<DECL<VAR<PTR<int>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|PTR<int>>>|DECL<LVAL<PTR<int>|{{name}}>>>>
@@ -126,7 +126,9 @@ ERRNAME <- [A-Za-z0-9_]+
 # Phase-4 abstract execution and memory-machine states. These consume typed AST
 # records from semantic analysis and produce concrete stdout or explicit machine
 # state records.
-^EXEC<(?<pre>[\s\S]*)FN<(?<fn>[\s\S]*)RETURN<RVAL<int\|(?<n>$PCT)>>(?<post>>*)>$ ::= @OUT<{{n}}>
+^EXEC<TU<SCOPE<file\|BIND<(?<bind>$PCT)\|function\|FUNC<int\|void>>>\|FN<TYPE<FUNC<int\|void>>\|NAME<(?<name>$PCT)>\|BODY<RETURN<RVAL<int\|(?<n>$PCT)>>>>>>$ ::= EXECMAIN<{{bind}}|{{name}}|{{n}}|@EQ[{{bind}}|{{name}}]@>
+^EXECMAIN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<n>$PCT)\|1>$ ::= @OUT<{{n}}>
+^EXECMAIN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<n>$PCT)\|0>$ ::= ERR<unsupported_c_construct>
 ^EXEC<DECL<LVAL<int\|(?<name>$PCT)>>>$ ::= @MACHINE<STATE<MEM<OBJ<{{name}}|int|0|auto>>>>
 ^EXEC<ASSIGN<LVAL<int\|(?<name>$PCT)>\|RVAL<int\|(?<n>$PCT)>>>$ ::= @MACHINE<STATE<MEM<OBJ<{{name}}|int|{{n}}|auto>>>>
 ^EXEC<ADDR<LVAL<int\|(?<name>$PCT)>>>$ ::= @MACHINE<RVAL<PTR<int>|PTR<{{name}}|0|int>>>

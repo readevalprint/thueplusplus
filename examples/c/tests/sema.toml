@@ -364,13 +364,23 @@ stderr = ""
 stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|42>>>>>\n"
 
 [[case]]
-name = "sema annotates loaded identifier return"
+name = "sema function return of undefined identifier fails loudly"
 input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<RETURN<ID<x>>>>"
 
 [case.expect]
-exit_code = 0
-stderr = ""
-stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|LOAD<LVAL<int|x>>>>>>>\n"
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
+
+[[case]]
+name = "sema missing identifier hidden in function return fails loudly"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<RETURN<ID<missing>>>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
 
 [[case]]
 name = "sema annotates scalar object declaration"

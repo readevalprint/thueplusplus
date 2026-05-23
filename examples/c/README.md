@@ -240,7 +240,7 @@ Implemented now:
 - scalar `int`, pointer, array, function, struct, union, enum, and typedef-name type records are represented explicitly;
 - declarations produce `LVAL<type|name>` records while expression values produce `RVAL<type|value-or-load>` records;
 - assignment and arithmetic examples annotate lvalue/rvalue boundaries and integer conversions;
-- fail-loud diagnostics cover duplicate/invalid declarations, undefined identifiers, type errors, invalid lvalues, unsupported constructs, and malformed AST.
+- fail-loud diagnostics cover duplicate/invalid declarations, undefined identifiers including identifier returns hidden inside function ASTs, type errors, invalid lvalues, unsupported constructs, and malformed AST.
 
 Required coverage:
 
@@ -262,7 +262,8 @@ Implemented now:
 - assignment through lvalues mutates explicit memory records;
 - address-of, dereference, array decay, and aggregate field selection produce pointer/lvalue records;
 - `if`, `while`, `for`, `break`, `continue`, compound block, function call, and recursion fixtures establish control-flow/call-frame contracts;
-- typed `main` return records print the integer return value to stdout;
+- typed `main` return records print the integer return value to stdout only when the surrounding typed-AST frame is exact and the function binding/name agree;
+- malformed function-shaped frames with garbage prefixes or junk `RETURN` substrings fail loudly instead of executing a valid-looking substring;
 - fail-loud diagnostics cover division by zero, invalid lvalue assignment, and unsupported machine forms.
 
 Required coverage:
