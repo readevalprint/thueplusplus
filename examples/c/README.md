@@ -94,7 +94,20 @@ Expected output:
 7
 ```
 
-Any C construct outside this scaffold fails loudly. The raw smoke accepts only integer constants (`ICON`: decimal or hexadecimal), not fractions or decimals. The local-declaration slice accepts `int <identifier>;` before an integer return, `int <identifier> = <ICON>; return <same-identifier>;`, and `int <identifier>; <same-identifier> = <ICON>; return <same-identifier>;`; multiple declarations, multiple assignments, non-constant initializers/assignments, `if` without `else`, non-constant `if` conditions, and returning or assigning a different local name are not yet source-driven. Supported raw source reaches output through the lexer-backed public parser/sema/exec pipeline rather than a direct raw-source success rule; the source-pipeline parser canonicalizes both `main(void)` and `main()` to the same internal `PARAMS<void>` function type before semantic lowering. Downstream cards must extend the staged C pipeline described below, not widen raw regex over source text.
+It also accepts a narrow decimal integer arithmetic return with `*` binding
+more tightly than `+`:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'int main(void) { return 1 + 2 * 3; }'
+```
+
+Expected output:
+
+```text
+7
+```
+
+Any C construct outside this scaffold fails loudly. The raw smoke accepts bare integer constants (`ICON`: decimal or hexadecimal) and the narrow decimal expression shape `<DEC> + <DEC> * <DEC>`, not fractions, decimals, parentheses, division, subtraction, or identifier operands. The local-declaration slice accepts `int <identifier>;` before an integer return, `int <identifier> = <ICON>; return <same-identifier>;`, and `int <identifier>; <same-identifier> = <ICON>; return <same-identifier>;`; multiple declarations, multiple assignments, non-constant initializers/assignments, `if` without `else`, non-constant `if` conditions, and returning or assigning a different local name are not yet source-driven. Supported raw source reaches output through the lexer-backed public parser/sema/exec pipeline rather than a direct raw-source success rule; the source-pipeline parser canonicalizes both `main(void)` and `main()` to the same internal `PARAMS<void>` function type before semantic lowering. Downstream cards must extend the staged C pipeline described below, not widen raw regex over source text.
 
 
 The raw `int main` smoke is source-driven: supported source first tokenizes through the shared lexer, then flows through the public `PARSE_TU` / `PARSE_RETURN_FN` / `PARSE_EXPR` parser and `SEMA` rules using a narrow `@@CPIPE` continuation, and finally the normal `EXEC` state. `CPIPE_TOKENS` is now only a lexer-to-parser routing adapter for this narrow slice, with source-pipeline parameter spellings normalized before sema; the duplicate `CPIPE_AST`/`CPIPE_TAST` parser/sema bridge has been deleted.
