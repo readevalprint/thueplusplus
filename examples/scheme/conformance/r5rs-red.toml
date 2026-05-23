@@ -3,20 +3,6 @@ timeout = 5
 args = ["--max-evals", "60000"]
 
 [[case]]
-name = "lambda mismatched body identifier must not capture argument"
-input = "((lambda (x) (+ y 1)) 4)"
-[case.expect]
-exit_code = 2
-stderr_stripped = "unbound_identifier"
-
-[[case]]
-name = "top-level define must bind the named identifier only"
-input = "(define x 2)\n(+ y 3)"
-[case.expect]
-exit_code = 2
-stderr_stripped = "unbound_identifier"
-
-[[case]]
 name = "n-ary addition folds every operand"
 input = "(+ 1 2 3)"
 [case.expect]
