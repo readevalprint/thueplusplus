@@ -28,6 +28,8 @@ PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse
 PRIM2 <- cons|nth|contains|dissoc|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
+SPECIAL_WRONG_ARITY <- do|eval|quote|quasiquote|set-var|fn|if|and|or|let|while
+UNSUPPORTED_FORM <- break|continue|map|unquote|splice|define|letrec
 NODE <- (?:$NUM|true|false|$VSTR|$VLIST|$VSYM|L<$PCT>)
 VAL <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONNUM <- (?:$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
@@ -112,13 +114,12 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^EENV<list\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
 ^EENV<dict\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
-^EENV<do\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<eval\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<quote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<quasiquote\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:set-var|fn|if|and|or|let|while)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+# Bare special forms need an early owner because zero-operand forms have no
+# generic-call shape. Non-bare arity catchers are centralized immediately before
+# generic call lookup.
+^EENV<(?<form>$SPECIAL_WRONG_ARITY)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:symbol|name)\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
-^EENV<(?:break|continue|map|unquote|splice|define|letrec)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
+^EENV<(?<form>$UNSUPPORTED_FORM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<L<fn%20L%3C%3E%20(?<body>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<fn L<> {{body|pctdec}}|{{env}}|KCALLNOARGS {{k}}>
 ^RET<(?<fn>$VAL)\|KCALLNOARGS (?<k>.*)>$ ::= APPLY<{{fn}}||{{k}}>
@@ -320,21 +321,16 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^RET<(?<bad>$NONLIST)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
-^EENV<fn (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<if (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<and (?<arg>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<or (?<arg>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<let (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-# Generic call: eval callee, eval args, then APPLY.
-# Unsupported future/reserved forms stay explicit so they fail with the public
-# unsupported_form contract instead of drifting into lookup/not_function errors.
+# Canonical non-bare special-form catchers. Keep this section immediately before
+# generic call lookup so supported forms above win first while reserved forms do
+# not drift into lookup/not_function errors.
 # - define/letrec: binding and recursion boundaries are deliberately absent.
 # - break/continue: while has no non-local loop-control channel.
 # - map: higher-order list API semantics are not in this greenfield slice.
 # - unquote/splice: only recognized in the quasiquote evaluator.
-^EENV<(?:define|letrec)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
-^EENV<while (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:break|continue|map|unquote|splice)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
+^EENV<(?<form>$SPECIAL_WRONG_ARITY) (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<(?<form>$UNSUPPORTED_FORM)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
+# Generic call: eval callee, eval args, then APPLY.
 ^EENV<(?<callee>$NAME) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$NAME) (?<a>$EXPR) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$EXPR) (?<args>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{callee}}|{{env}}|KENVCALL<{{args|pctenc}}|{{env}}> {{k}}>

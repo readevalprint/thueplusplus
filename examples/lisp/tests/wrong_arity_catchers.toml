@@ -1,6 +1,6 @@
-# Exact wrong-arity routing for special forms with early bare-form guards and
-# form-specific fallback catchers. These cases pin wrong_arity so arity cleanup
-# cannot drift into unbound_name, not_function, or unsupported_form.
+# Exact routing for special-form arity and unsupported-form catchers. These
+# cases pin public errors so cleanup cannot drift into unbound_name,
+# not_function, or the wrong fail-loud class.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--max-evals", "60000"]
