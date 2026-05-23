@@ -177,3 +177,11 @@ input = "#(#\\newline 1)"
 exit_code = 0
 stderr = ""
 stdout_stripped = "#(#\\newline 1)"
+
+[[case]]
+name = "nested quoted list remains unsupported loudly until recursive reader"
+input = "'((1) 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_form"

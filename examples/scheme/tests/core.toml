@@ -435,28 +435,36 @@ stdout = ""
 stderr = "type_error"
 
 [[case]]
-name = "primitive too few args"
+name = "numeric type error on first addition operand"
+input = "(+ #t 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "addition primitive zero args returns identity"
 input = "(+)"
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
 
 [[case]]
-name = "numeric primitive one arg wrong arity"
+name = "addition primitive one arg returns argument"
 input = "(+ 1)"
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
 
 [[case]]
-name = "numeric primitive too many args wrong arity"
+name = "addition primitive n-ary folds all operands"
 input = "(+ 1 2 3)"
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
 
 [[case]]
 name = "car empty errors"
