@@ -45,6 +45,8 @@ ERRNAME <- [A-Za-z0-9_]+
 # states. This replaces the old direct raw-source success shortcut.
 ^$WS(?<src>int$IWS+main$WS\($WSvoid$WS\)$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 ^$WS(?<src>int$IWS+main$WS\($WS\)$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+^$WS(?<src>int$IWS+main$WS\($WSvoid$WS\)$WS\{$WSint$IWS+$ID$WS;$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+^$WS(?<src>int$IWS+main$WS\($WS\)$WS\{$WSint$IWS+$ID$WS;$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 
 # Skip insignificant preprocessing-token separators.
 ^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}|{{mode}}>
@@ -84,9 +86,13 @@ ERRNAME <- [A-Za-z0-9_]+
 # explicit framed AST nodes; they do not match raw C source.
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<void>|{{expr}}>@@CPIPE
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<>|{{expr}}>@@CPIPE
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= PARSE_LOCAL_RETURN_FN<int|{{name}}|PARAMS<void>|{{local}}|{{expr}}>@@CPIPE
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= PARSE_LOCAL_RETURN_FN<int|{{name}}|PARAMS<>|{{local}}|{{expr}}>@@CPIPE
 ^PARSE_TU<(?<bad>$TOKSTREAM)>@@CPIPE$ ::= ERR<syntax_error>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<void>|{{expr}}>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<>|{{expr}}>
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_LOCAL_RETURN_FN<int|{{name}}|PARAMS<void>|{{local}}|{{expr}}>
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_LOCAL_RETURN_FN<int|{{name}}|PARAMS<>|{{local}}|{{expr}}>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<int>;ID<(?<param>$PCT)>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<int>|NAME<{{name}}>|PARAMS<PARAM<int|{{param}}>>|BODY<DECL<VAR<int|{{local}}>>|RETURN<@@>>>>
 ^PARSE_TU<KW<typedef>;KW<int>;ID<(?<alias>$PCT)>;PUNC<%3B>;ID<(?<type>$PCT)>;ID<(?<name>$PCT)>;PUNC<%3B>;EOF<>;>$ ::= @AST<TU<TYPEDEF<int|{{alias}}>|DECL<VAR<TYPEDEFNAME<{{type}}>|{{name}}>>>>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%3B>;EOF<>;>$ ::= @AST<TU<DECL<VAR<int|{{name}}>>>>
@@ -97,6 +103,8 @@ ERRNAME <- [A-Za-z0-9_]+
 
 ^PARSE_RETURN_FN<(?<ret>$PCT)\|(?<name>$PCT)\|(?<params>[A-Z<>,|%A-Za-z0-9_.-]*)\|(?<expr>$EXPRTOKS)>@@CPIPE$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<{{ret}}>|NAME<{{name}}>|{{params}}|BODY<RETURN<@@>>>>@@CPIPE
 ^PARSE_RETURN_FN<(?<ret>$PCT)\|(?<name>$PCT)\|(?<params>[A-Z<>,|%A-Za-z0-9_.-]*)\|(?<expr>$EXPRTOKS)>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<{{ret}}>|NAME<{{name}}>|{{params}}|BODY<RETURN<@@>>>>
+^PARSE_LOCAL_RETURN_FN<(?<ret>$PCT)\|(?<name>$PCT)\|(?<params>[A-Z<>,|%A-Za-z0-9_.-]*)\|(?<local>$PCT)\|(?<expr>$EXPRTOKS)>@@CPIPE$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<{{ret}}>|NAME<{{name}}>|{{params}}|BODY<DECL<VAR<int|{{local}}>>|RETURN<@@>>>>@@CPIPE
+^PARSE_LOCAL_RETURN_FN<(?<ret>$PCT)\|(?<name>$PCT)\|(?<params>[A-Z<>,|%A-Za-z0-9_.-]*)\|(?<local>$PCT)\|(?<expr>$EXPRTOKS)>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<{{ret}}>|NAME<{{name}}>|{{params}}|BODY<DECL<VAR<int|{{local}}>>|RETURN<@@>>>>
 ^PARSE_IF<(?<cond>$EXPRTOKS)\|(?<then>$EXPRTOKS)\|(?<otherwise>$EXPRTOKS)>$ ::= PARSE_EXPR<{{cond}}@@TU<IF<COND<@@>|THEN<{{then}}>|ELSE<{{otherwise}}>>>
 
 # Expression parser states. Order encodes precedence: assignment, equality,
@@ -126,8 +134,12 @@ ERRNAME <- [A-Za-z0-9_]+
 # later abstract-machine card.
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ID<(?<id>$PCT)>>>>>$ ::= ERR<undefined_identifier>
 ^SEMA<TU<DECL<VAR<int\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|int>>|DECL<LVAL<int|{{name}}>>>>
 ^SEMA<TU<TYPEDEF<int\|(?<alias>$PCT)>\|DECL<VAR<TYPEDEFNAME<(?<type>$PCT)>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{alias}}|typedef|int>|BIND<{{name}}|object|TYPEDEFNAME<{{type}}>>>|TYPEDEF<int|{{alias}}>|DECL<LVAL<TYPEDEFNAME<{{type}}>|{{name}}>>>>
@@ -151,6 +163,7 @@ ERRNAME <- [A-Za-z0-9_]+
 # records from semantic analysis and produce concrete stdout or explicit machine
 # state records.
 ^EXEC<TU<SCOPE<file\|BIND<(?<bind>$PCT)\|function\|FUNC<int\|void>>>\|FN<TYPE<FUNC<int\|void>>\|NAME<(?<name>$PCT)>\|BODY<RETURN<RVAL<int\|(?<n>$PCT)>>>>>>$ ::= EXECMAIN<{{bind}}|{{name}}|{{n}}|@EQ[{{bind}}|{{name}}]@>
+^EXEC<TU<SCOPE<file\|BIND<(?<bind>$PCT)\|function\|FUNC<int\|void>>>\|FN<TYPE<FUNC<int\|void>>\|NAME<(?<name>$PCT)>\|BODY<COMPOUND<DECL<LVAL<int\|(?<local>$PCT)>>\|RETURN<RVAL<int\|(?<n>$PCT)>>>>>>$ ::= EXECMAIN<{{bind}}|{{name}}|{{n}}|@EQ[{{bind}}|{{name}}]@>
 ^EXECMAIN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<n>$PCT)\|1>$ ::= @OUT<{{n}}>
 ^EXECMAIN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<n>$PCT)\|0>$ ::= ERR<unsupported_c_construct>
 ^EXEC<DECL<LVAL<int\|(?<name>$PCT)>>>$ ::= @MACHINE<STATE<MEM<OBJ<{{name}}|int|0|auto>>>>
