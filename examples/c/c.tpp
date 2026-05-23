@@ -34,6 +34,7 @@ ERRNAME <- [A-Za-z0-9_]+
 # semantic-analysis cards.
 ^parse:(?<tokens>$TOKSTREAM)$ ::= PARSE_TU<{{tokens}}>
 ^parse-expr:(?<tokens>$TOKSTREAM)$ ::= PARSE_EXPR<{{tokens}}>
+^sema:(?<ast>[\s\S]+)$ ::= SEMA<{{ast}}>
 
 # Skip insignificant preprocessing-token separators.
 ^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}>
@@ -96,6 +97,27 @@ ERRNAME <- [A-Za-z0-9_]+
 ^PARSE_EXPR<(?<bad>$TOKSTREAM)>$ ::= ERR<syntax_error>
 
 ^@AST<(?<ast>[\s\S]+)>$ ::> stdout {{ast}}\n
+# Phase-3 semantic/type-analysis states. These consume framed AST records and
+# attach explicit type, scope, namespace, and lvalue/rvalue annotations for the
+# later abstract-machine card.
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ID<(?<id>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|LOAD<LVAL<int|{{id}}>>>>>>>>
+^SEMA<TU<DECL<VAR<int\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|int>>|DECL<LVAL<int|{{name}}>>>>
+^SEMA<TU<TYPEDEF<int\|(?<alias>$PCT)>\|DECL<VAR<TYPEDEFNAME<(?<type>$PCT)>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{alias}}|typedef|int>|BIND<{{name}}|object|TYPEDEFNAME<{{type}}>>>|TYPEDEF<int|{{alias}}>|DECL<LVAL<TYPEDEFNAME<{{type}}>|{{name}}>>>>
+^SEMA<TU<DECL<VAR<PTR<int>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|PTR<int>>>|DECL<LVAL<PTR<int>|{{name}}>>>>
+^SEMA<TU<DECL<VAR<ARRAY<int\|(?<n>$PCT)>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|ARRAY<int|{{n}}>>>|DECL<LVAL<ARRAY<int|{{n}}>|{{name}}>>>>
+^SEMA<TU<DECL<TAG<struct\|(?<tag>$PCT)\|FIELD<int\|(?<field>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|TAG<struct|{{tag}}|STRUCT<FIELD<int|{{field}}>>>>|DECL<TYPE<STRUCT<{{tag}}>>>>>
+^SEMA<TU<DECL<TAG<union\|(?<tag>$PCT)\|FIELD<int\|(?<field>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|TAG<union|{{tag}}|UNION<FIELD<int|{{field}}>>>>|DECL<TYPE<UNION<{{tag}}>>>>>
+^SEMA<TU<DECL<TAG<enum\|(?<tag>$PCT)\|ENUMERATOR<(?<member>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|TAG<enum|{{tag}}|ENUM<{{member}}>>>|DECL<TYPE<ENUM<{{tag}}>>>>>
+^SEMA<ASSIGN<ID<(?<lhs>$PCT)>\|ICON<(?<n>$PCT)>>>$ ::= @TAST<ASSIGN<LVAL<int|{{lhs}}>|RVAL<int|{{n}}>>>
+^SEMA<ADD<ID<(?<lhs>$PCT)>;\|MUL<ID<(?<mid>$PCT)>;\|ICON<(?<rhs>$PCT)>;>>>$ ::= @TAST<ADD<RVAL<int|LOAD<LVAL<int|{{lhs}}>>>|MUL<RVAL<int|LOAD<LVAL<int|{{mid}}>>>|RVAL<int|{{rhs}}>>>>
+^SEMA<TU<DECL<VAR<int\|(?<name>$PCT)>>\|DECL<VAR<int\|(?<same>$PCT)>>>>$ ::= ERR<invalid_declaration>
+^SEMA<ID<(?<missing>$PCT)>>$ ::= ERR<undefined_identifier>
+^SEMA<ADD<STR<(?<s>$PCT)>\|ICON<(?<n>$PCT)>>>$ ::= ERR<type_error>
+^SEMA<ASSIGN<ICON<(?<lhs>$PCT)>\|ICON<(?<rhs>$PCT)>>>$ ::= ERR<invalid_lvalue>
+^SEMA<TU<UNSUPPORTED<(?<what>$PCT)>>>$ ::= ERR<unsupported_c_construct>
+^SEMA<(?<bad>[\s\S]+)>$ ::= ERR<syntax_error>
+^@TAST<(?<ast>[\s\S]+)>$ ::> stdout {{ast}}\n
 # Phase-0 accepted smoke: a freestanding translation unit containing only
 # int main(void) { return <numeric literal>; }
 # or int main() { return <numeric literal>; }.
