@@ -265,3 +265,75 @@ input = "(define (add2 left right) (+ left right))\n(add2 4 5 6)"
 exit_code = 2
 stdout = ""
 stderr = "wrong_arity"
+
+[[case]]
+name = "zero-argument lambda applies constant numeric body"
+input = "((lambda () 42))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "zero-argument lambda applies constant quoted symbol body"
+input = "((lambda () 'ready))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "ready"
+
+[[case]]
+name = "zero-argument lambda rejects supplied argument"
+input = "((lambda () 42) 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "zero-argument procedure definition applies constant numeric body"
+input = "(define (answer) 42)\n(answer)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "zero-argument procedure definition applies constant boolean body"
+input = "(define (truth) #t)\n(truth)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "zero-argument procedure definition rejects wrong call name"
+input = "(define (answer) 42)\n(other)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "zero-argument procedure definition rejects supplied argument"
+input = "(define (answer) 42)\n(answer 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "zero-argument procedure definition rejects supplied argument to wrong call name"
+input = "(define (answer) 42)\n(other 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "zero-argument lambda renders opaque procedure"
+input = "(lambda () 42)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#<procedure>"
