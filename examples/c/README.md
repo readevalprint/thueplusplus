@@ -359,6 +359,14 @@ Focused preprocessing/linkage/library validation:
 uv run python tools/example_runner.py examples/c/tests/preprocessor_linkage.toml
 ```
 
+Release/conformance validation for the complete C-ish example:
+
+```bash
+uv run python tools/example_runner.py examples/c/tests/conformance.toml
+```
+
+The conformance manifest is the checklist gate for this example. It is expected to maintain Python/Go parity and 100% rule coverage for `examples/c/c.tpp`.
+
 ## Running preprocessing, linkage, and library fixtures
 
 Phase 5 adds three explicit entry points:
@@ -380,6 +388,18 @@ TOKENS<ICON<7>;>
 ```
 
 Implemented coverage includes object/function-like macro fixtures, `#undef`, `#ifdef`/`#ifndef`, includes, stringify, token paste, `__LINE__`, external/internal/tentative linkage, and `putchar`/`puts`/single-integer `printf` boundary records.
+
+## Completion checklist
+
+Before marking the C-ish example complete:
+
+- `uv run python tools/example_runner.py examples/c/tests/conformance.toml` passes;
+- `uv run python tools/example_runner.py` passes;
+- `uv run python tools/check_contract.py` passes;
+- `make test` passes;
+- `git diff --check` passes;
+- the C example reports 100% rule coverage for both Python and Go;
+- the merge request pipeline and post-merge target-branch pipeline both pass.
 
 Full repository validation before any C MR is marked review-ready/done:
 
