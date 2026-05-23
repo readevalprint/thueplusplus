@@ -1,0 +1,57 @@
+program = "../c.tpp"
+timeout = 10
+args = ["--max-evals", "20000"]
+
+[[case]]
+name = "phase0 main void return zero"
+input = "int main(void) { return 0; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "0\n"
+
+[[case]]
+name = "phase0 main empty params return number"
+input = "int main() { return 42; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "42\n"
+
+[[case]]
+name = "phase0 whitespace tolerant return fraction"
+input = "\n\t int   main ( void ) {\n return 7/2 ;\n}\n"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "7/2\n"
+
+[[case]]
+name = "empty translation unit fails loudly"
+input = "   \n\t"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "empty_translation_unit"
+
+[[case]]
+name = "unsupported C construct fails loudly"
+input = "char main(void) { return 0; }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "generic unsupported input fails loudly"
+input = "int main(void) { return 0 }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"

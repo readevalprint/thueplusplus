@@ -1,0 +1,223 @@
+# C example contract
+
+`examples/c/c.tpp` is the full-C workstream for this repository. The target end state is a C implementation written in Thue++ rewrite rules, with Python and Go providing only the generic Thue++ interpreter, resources, and builtins.
+
+This is not a C-ish command language. The implementation is expected to grow as a real language pipeline:
+
+1. preprocessing-token lexer;
+2. preprocessor;
+3. parser and AST construction;
+4. semantic analysis and type construction;
+5. lvalue/rvalue and abstract memory model;
+6. statement/function execution;
+7. translation-unit/linkage handling;
+8. freestanding or documented hosted-library boundary;
+9. conformance manifests, documentation sync, full rule coverage, and pipeline merge gate.
+
+The current file is the phase-0 scaffold. It establishes the directory, executable manifest shape, fail-loud behavior, and coverage gate for later GLKB child issues.
+
+## Running the scaffold
+
+From the repository root:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'int main(void) { return 0; }'
+```
+
+Expected output:
+
+```text
+0
+```
+
+The scaffold also accepts the empty-parameter spelling:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'int main() { return 42; }'
+```
+
+Expected output:
+
+```text
+42
+```
+
+Any C construct outside this scaffold fails loudly. Downstream cards must replace the scaffold with the staged C pipeline described below, not widen it into ad hoc C-ish regex cases.
+
+## Target standard and mode
+
+The workstream target is ISO C, progressing toward C17 semantics. The first complete milestone should be freestanding C. Hosted-library behavior is a later, explicitly documented boundary.
+
+Initial exclusions unless a later GLKB card explicitly changes them:
+
+- GNU/Clang/MSVC extensions;
+- inline assembly;
+- implementation-specific pragmas;
+- threads and atomics before the core abstract machine is stable;
+- floating point before integer, pointer, aggregate, and call semantics are covered;
+- silent fallback for unsupported syntax.
+
+Unsupported input must produce typed diagnostics rather than being ignored, accepted as partial C, or left as a no-match success.
+
+## Execution contract
+
+The mature implementation should model C as a translation unit with an explicit abstract machine:
+
+- `main` is the entry point for executable manifests.
+- `return` from `main` is the program result. During the early scaffold this result is printed to stdout to keep manifest expectations simple. A later integration card may document and migrate to dynamic exit-code behavior if the interpreter substrate supports it cleanly.
+- stdout-producing library functions such as `putchar`, `puts`, or a documented `printf` subset belong to the library-boundary phase.
+- Undefined or unsupported behavior must be documented and fail loudly in manifests until a specific semantic choice is implemented.
+
+## Required internal architecture
+
+Full C support must not be implemented as direct regex matching over raw C source. The sustainable architecture is:
+
+```text
+SOURCE
+  -> preprocessing tokens
+  -> preprocessor token stream
+  -> AST
+  -> typed AST / symbols
+  -> abstract machine state
+  -> stdout/stderr/result
+```
+
+Recommended internal families include:
+
+```text
+TOK<kind|payload>
+AST<id|kind|fields>
+TYPE<...>
+SCOPE<...>
+BIND<name|kind|type|addr-or-value>
+LVAL<addr|type>
+RVAL<type|value>
+OBJ<addr|type|storage|lifetime>
+PTR<addr|offset|type>
+FRAME<...>
+K<...>
+ERR<typed_error>
+```
+
+Arbitrary source text, identifiers, string/char payloads, and nested AST fields must be safely framed, preferably using percent-encoding or another explicit length/value representation. Do not separate arbitrary source payloads with raw delimiters that can appear in user code.
+
+## Feature roadmap
+
+### Phase 0: scaffold
+
+Implemented now:
+
+- `int main(void) { return <number>; }`
+- `int main() { return <number>; }`
+- typed diagnostics for empty input, preprocessor input, and unsupported C constructs.
+
+### Phase 1: preprocessing-token lexer
+
+Required coverage:
+
+- whitespace and comments;
+- identifiers and keywords;
+- integer constants;
+- string literals and char literals;
+- all C punctuators/operators needed by later parser phases;
+- EOF marker;
+- fail-loud unterminated comments/strings, invalid escapes, and invalid tokens.
+
+### Phase 2: parser and AST
+
+Required coverage:
+
+- expression precedence and associativity;
+- declarations, declarators, and function definitions;
+- compound statements and control-flow statements;
+- translation-unit structure;
+- typed syntax errors.
+
+Use parser states over token streams. Do not grow a rule per C surface spelling.
+
+### Phase 3: semantic analysis and types
+
+Required coverage:
+
+- scalar types;
+- pointers and arrays;
+- functions and prototypes;
+- structs, unions, and enums;
+- typedef names;
+- block/file scopes and C namespaces;
+- conversions and compatibility checks;
+- lvalue/rvalue classification.
+
+### Phase 4: abstract memory and execution
+
+Required coverage:
+
+- object storage and lifetimes;
+- addresses, pointers, offsets, dereference, address-of, pointer arithmetic;
+- array decay;
+- assignment through lvalues;
+- control flow: if/else, while, do/while, for, break, continue, return;
+- functions, parameters, recursion, and call frames;
+- aggregate field access with `.` and `->`.
+
+### Phase 5: preprocessor, linkage, and library boundary
+
+Required coverage:
+
+- object-like and function-like macros;
+- `#define`, `#undef`, conditionals, and include contract;
+- stringification and token paste;
+- predefined macro decisions;
+- file-scope declarations, linkage, tentative definitions, and global initialization;
+- documented freestanding/hosted library surface.
+
+### Phase 6: conformance and closeout
+
+Required coverage:
+
+- executable TOML manifests for every accepted feature;
+- fail-loud diagnostic cases;
+- Python/Go parity;
+- full rule coverage for `examples/c/c.tpp`;
+- documentation synchronized with executable fixtures where examples are shown;
+- full repository pipeline passing;
+- all GLKB child MRs merged before the umbrella closes.
+
+## Error behavior
+
+Diagnostics are stable stderr strings with exit code 2 for language-level failures. Current scaffold diagnostics:
+
+- `empty_translation_unit`
+- `unsupported_c_construct`
+
+Later phases should add precise diagnostics such as:
+
+- `invalid_token`
+- `unterminated_comment`
+- `unterminated_string`
+- `invalid_escape`
+- `syntax_error`
+- `undefined_identifier`
+- `invalid_lvalue`
+- `type_error`
+- `division_by_zero`
+- `unsupported_c_construct`
+
+## Validation
+
+Focused scaffold validation:
+
+```bash
+uv run python tools/example_runner.py examples/c/tests/scaffold.toml
+```
+
+Full repository validation before any C MR is marked review-ready/done:
+
+```bash
+uv run python tools/example_runner.py
+uv run python tools/check_contract.py
+make test
+git diff --check
+```
+
+Every downstream card must use a dedicated worktree named like `../thuepp-glkb-<iid>-<slug>` and must include validation and merge evidence in its GLKB completion note.
