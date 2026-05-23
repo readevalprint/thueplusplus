@@ -46,12 +46,13 @@ Literals:
 Scheme-shaped forms/operators in this scaffold:
 
 - `(lambda (x) x)` renders as the opaque procedure marker `#<procedure>`
-- simple lambda application over numeric bodies
+- simple lambda application over numeric bodies, including alpha-renamed parameter lookup checks
 - `(begin a b)` returns the final supported atom, plus the first `set!` sequencing slice
 - `if` with Scheme truthiness: only `#f` is false; numbers, strings, symbols, and lists are true where supported
+- the first nested lambda body branch slice: `((lambda (x) (if #t x 0)) 9)`
 - top-level two-form variable `define` followed by a numeric expression
 - `set!` inside the supported lexical slice, with unbound names failing loudly
-- `let` and `let*` coverage for the first lexical-binding slice, including the Scheme distinction between outer-env and sequential initializer lookup
+- `let` and `let*` coverage for the first lexical-binding slice, including alpha-renamed binding names and the Scheme distinction between outer-env and sequential initializer lookup
 - binary numeric operators: `+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`
 - proper-list operations over quoted lists: `cons`, `car`, `cdr`
 - predicates: `null?`, `pair?`, `list?`, `number?`, `boolean?`, `symbol?`, `string?`, `char?`, `vector?`
@@ -69,7 +70,7 @@ The internal value direction is deliberately Scheme-shaped:
 - `VVEC<...>` for the first vector slice
 - `VPROC` as the first opaque procedure marker
 
-Downstream cards will broaden the evaluator beyond this first lexical slice, especially recursive forms, more general nested source parsing, and more complete pair/list parsing.
+Downstream cards will broaden the evaluator beyond this first lexical slice, especially recursive forms, more general nested source parsing, environment-bound primitive procedures, and more complete pair/list parsing.
 
 ## Deliberately deferred
 
@@ -77,7 +78,7 @@ This scaffold does not claim full R5RS/R7RS Scheme. Deferred features include:
 
 - general nested list parsing and arbitrary dotted-pair placement
 - full recursive reader/freezer machinery for quote-family datums
-- fully general lambda application and lexical closure evaluation; the current direct lambda/define probes now at least reject mismatched identifiers instead of capturing them accidentally
+- fully general lambda application and lexical closure evaluation; this slice now tests alpha-renamed `let`/`let*`/lambda lookup and rejects mismatched identifiers, but still does not implement a complete datum-level evaluator
 - fully general `define`, `set!`, `let`, `let*`; `letrec` remains unsupported and fails loudly
 - macros / `syntax-rules`
 - `call/cc`
