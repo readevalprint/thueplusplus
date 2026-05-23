@@ -36,6 +36,9 @@ ERRNAME <- [A-Za-z0-9_]+
 ^parse-expr:(?<tokens>$TOKSTREAM)$ ::= PARSE_EXPR<{{tokens}}>
 ^sema:(?<ast>[\s\S]+)$ ::= SEMA<{{ast}}>
 ^exec:(?<tast>[\s\S]+)$ ::= EXEC<{{tast}}>
+^pp:(?<form>[\s\S]+)$ ::= PP<{{form}}>
+^link:(?<form>[\s\S]+)$ ::= LINK<{{form}}>
+^lib:(?<form>[\s\S]+)$ ::= LIB<{{form}}>
 
 # Skip insignificant preprocessing-token separators.
 ^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}>
@@ -142,6 +145,27 @@ ERRNAME <- [A-Za-z0-9_]+
 ^EXEC<ASSIGN<RVAL<int\|(?<lhs>$PCT)>\|RVAL<int\|(?<rhs>$PCT)>>>$ ::= ERR<invalid_lvalue>
 ^EXEC<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
 ^@MACHINE<(?<state>[\s\S]+)>$ ::> stdout {{state}}\n
+# Phase-5 preprocessing, linkage, and minimal library-boundary states.
+^PP<DEFINE<(?<name>$PCT)\|(?<body>$TOKSTREAM)>\|USE<(?<use>$PCT)>>$ ::= @PP<TOKENS<{{body}}>>
+^PP<FNADD1<(?<actual>$PCT)>>$ ::= @PP<TOKENS<ID<{{actual}}>;PUNC<%2B>;ICON<1>;>>
+^PP<UNDEF<(?<name>$PCT)>\|USE<(?<use>$PCT)>>$ ::= ERR<undefined_identifier>
+^PP<IFDEF<(?<name>$PCT)>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{then}}>>
+^PP<IFNDEF<(?<name>$PCT)>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{elsev}}>>
+^PP<INCLUDE<(?<name>$PCT)>>$ ::= @PP<TOKENS<INCLUDED<{{name}}>;>>
+^PP<STRINGIFY<(?<arg>$PCT)>>$ ::= @PP<TOKENS<STR<{{arg}}>;>>
+^PP<PASTE<(?<lhs>$PCT)\|(?<rhs>$PCT)>>$ ::= @PP<TOKENS<ID<{{lhs}}{{rhs}}>;>>
+^PP<PREDEFINED<__LINE__\|(?<line>$PCT)>>$ ::= @PP<TOKENS<ICON<{{line}}>;>>
+^PP<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
+^LINK<FILE<DECL<GLOBAL<int\|(?<name>$PCT)\|(?<value>$PCT)>>\|FN<(?<fn>$PCT)>>>$ ::= @MACHINE<LINKED<SYMBOL<{{name}}|object|external|int|{{value}}>|SYMBOL<{{fn}}|function|external|FUNC<int|void>>>>
+^LINK<TENTATIVE<int\|(?<name>$PCT)>>$ ::= @MACHINE<LINKED<SYMBOL<{{name}}|object|external|int|0>>>
+^LINK<INTERNAL<int\|(?<name>$PCT)\|(?<value>$PCT)>>$ ::= @MACHINE<LINKED<SYMBOL<{{name}}|object|internal|int|{{value}}>>>
+^LIB<putchar\|CHAR<(?<c>$PCT)>>$ ::= @LIBOUT<{{c}}>
+^LIB<puts\|STR<(?<s>$PCT)>>$ ::= @LIBOUT<{{s}}%0A>
+^LIB<printf1\|STR<(?<fmt>$PCT)>\|ICON<(?<n>$PCT)>>$ ::= @LIBRAW<{{fmt}}:{{n}}>
+^LIB<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
+^@PP<(?<tokens>[\s\S]+)>$ ::> stdout {{tokens}}\n
+^@LIBOUT<(?<out>[\s\S]+)>$ ::> stdout {{out|pctdec}}\n
+^@LIBRAW<(?<out>[\s\S]+)>$ ::> stdout {{out}}\n
 # Phase-0 accepted smoke: a freestanding translation unit containing only
 # int main(void) { return <numeric literal>; }
 # or int main() { return <numeric literal>; }.

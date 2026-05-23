@@ -353,6 +353,34 @@ Focused execution/memory validation:
 uv run python tools/example_runner.py examples/c/tests/execution.toml
 ```
 
+Focused preprocessing/linkage/library validation:
+
+```bash
+uv run python tools/example_runner.py examples/c/tests/preprocessor_linkage.toml
+```
+
+## Running preprocessing, linkage, and library fixtures
+
+Phase 5 adds three explicit entry points:
+
+- `pp:<form>` for preprocessing fixture records;
+- `link:<form>` for translation-unit linkage records;
+- `lib:<form>` for the minimal library boundary used by examples.
+
+Example:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'pp:DEFINE<N|ICON<7>;>|USE<N>'
+```
+
+Expected output:
+
+```text
+TOKENS<ICON<7>;>
+```
+
+Implemented coverage includes object/function-like macro fixtures, `#undef`, `#ifdef`/`#ifndef`, includes, stringify, token paste, `__LINE__`, external/internal/tentative linkage, and `putchar`/`puts`/single-integer `printf` boundary records.
+
 Full repository validation before any C MR is marked review-ready/done:
 
 ```bash
