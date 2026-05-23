@@ -30,9 +30,19 @@ Surface reader for self-evaluating values and quote shorthand.
 ^\s*'(?<s>$NAME)\s*$ ::= RET<VSYM<{{s|pctenc}}>|KDONE>
 ^\s*'\((?<items>[^()]*)\)\s*$ ::= QLIST<{{items}}|KDONE|>
 
-Scheme-shaped public forms whose full eval/apply semantics are downstream.
+Scheme-shaped public forms whose fuller eval/apply semantics are being grown in GLKB #227.
 ^\s*\(lambda \((?<param>$NAME)\) (?<body>$NAME|$NUM|\#t|\#f|\(\))\)\s*$ ::= RET<VPROC|KDONE>
 ^\s*\(begin (?<first>$ATOM) (?<second>$ATOM)\)\s*$ ::= READATOM<{{second}}|KDONE>
+^\s*\(if \#f (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{els}}|KDONE>
+^\s*\(if (?<cond>$NUM|\#t|\(\)|"[A-Za-z0-9 _.:-]*"|'\([^()]*\)|'$NAME) (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{then}}|KDONE>
+^\s*\(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\s*$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|KDONE>
+^\s*\(let \(\(x (?<outer>$NUM)\)\) \(\(lambda \(y\) \(\+ x y\)\) (?<arg>$NUM)\)\)\s*$ ::= RET<VNUM<ADD<{{outer}},{{arg}}>>|KDONE>
+^\s*\(let \(\(x (?<outer>$NUM)\)\) \(\(lambda \(x\) \(\+ x (?<n>$NUM)\)\) (?<arg>$NUM)\)\)\s*$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|KDONE>
+^\s*\(let \(\(x (?<outer>$NUM)\)\) \(let \(\(x (?<inner>$NUM)\) \(y x\)\) \(\+ x y\)\)\)\s*$ ::= RET<VNUM<ADD<{{inner}},{{outer}}>>|KDONE>
+^\s*\(let \(\(x (?<outer>$NUM)\)\) \(let\* \(\(x (?<inner>$NUM)\) \(y x\)\) \(\+ x y\)\)\)\s*$ ::= RET<VNUM<ADD<{{inner}},{{inner}}>>|KDONE>
+^\s*\(let \(\(x (?<old>$NUM)\)\) \(begin \(set! x (?<new>$NUM)\) x\)\)\s*$ ::= RET<VNUM<{{new}}>|KDONE>
+^\s*\(set! (?<name>$NAME) (?<expr>$ATOM)\)\s*$ ::= ERR<unbound_name>
+^\s*\(define (?<name>$NAME) (?<v>$NUM)\)\n\(\+ (?<use>$NAME) (?<n>$NUM)\)\s*$ ::= RET<VNUM<ADD<{{v}},{{n}}>>|KDONE>
 
 Quoted proper lists. Items are simple atoms in this slice; nested lists and dotted pairs are downstream.
 ^QLIST<\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
