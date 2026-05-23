@@ -42,10 +42,12 @@ Surface reader for self-evaluating values and quote shorthand.
 ^\s*(?<src>\#\([\s\S]*\))\s*$ ::= READDATUM<{{src}}|KDONE>
 
 Scheme-shaped public forms whose fuller eval/apply semantics are being grown in GLKB #246.
+^\s*\(lambda \(\) (?<body>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= RET<VPROC|KDONE>
 ^\s*\(lambda \((?<param>$NAME)\) (?<body>$NAME|$NUM|\#t|\#f|\(\))\)\s*$ ::= RET<VPROC|KDONE>
 ^\s*\(begin (?<first>$ATOM) (?<second>$ATOM)\)\s*$ ::= READATOM<{{second}}|KDONE>
 ^\s*\(if \#f (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{els}}|KDONE>
 ^\s*\(if (?<cond>$NUM|\#t|\(\)|"[A-Za-z0-9 _.:-]*"|'\([^()]*\)|'$NAME) (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{then}}|KDONE>
+^\s*\(\(lambda \(\) (?<body>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\)\s*$ ::= READATOM<{{body}}|KDONE>
 ^\s*\(\(lambda \((?<p1>$NAME) (?<p2>$NAME)\) \(\+ (?<u1>$NAME) (?<u2>$NAME)\)\) (?<a1>$NUM) (?<a2>$NUM)\)\s*$ ::= LAMAPP2<NAMEEQ<{{p1}},{{u1}}>|NAMEEQ<{{p2}},{{u2}}>|{{a1}}|{{a2}}|KDONE>
 ^\s*\(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\s*$ ::= LAMAPPNAME<NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
 ^\s*\(\(lambda \((?<param>$NAME)\) \(if \#t (?<use>$NAME) (?<els>$ATOM)\)\) (?<arg>$NUM)\)\s*$ ::= LAMIFTRUE<NAMEEQ<{{param}},{{use}}>|{{arg}}|KDONE>
@@ -56,6 +58,8 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^\s*\(let \(\((?<name>$NAME) (?<old>$NUM)\)\) \(begin \(set! (?<set_name>$NAME) (?<new>$NUM)\) (?<use>$NAME)\)\)\s*$ ::= LETSET<NAMEEQ<{{name}},{{set_name}}>|NAMEEQ<{{name}},{{use}}>|{{new}}|KDONE>
 ^\s*\(set! (?<name>$NAME) (?<expr>$ATOM)\)\s*$ ::= ERR<unbound_name>
 ^\s*\(define (?<name>$NAME) (?<v>$NUM)\)\n\(\+ (?<use>$NAME) (?<n>$NUM)\)\s*$ ::= DEFNAME<NAMEEQ<{{name}},{{use}}>|{{v}}|{{n}}|KDONE>
+^\s*\(define \((?<fname>$NAME)\) (?<body>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\n\((?<call>$NAME)\)\s*$ ::= DEFPROC0<NAMEEQ<{{fname}},{{call}}>|{{body}}|KDONE>
+^\s*\(define \((?<fname>$NAME)\) (?<body>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\n\((?<call>$NAME) (?<first>$ATOM)(?: (?<extra>[\s\S]+))?\)\s*$ ::= DEFPROC0ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<p1>$NAME) (?<p2>$NAME)\) \(\+ (?<u1>$NAME) (?<u2>$NAME)\)\)\n\((?<call>$NAME) (?<a1>$NUM) (?<a2>$NUM)\)\s*$ ::= DEFPROC2<NAMEEQ<{{fname}},{{call}}>|NAMEEQ<{{p1}},{{u1}}>|NAMEEQ<{{p2}},{{u2}}>|{{a1}}|{{a2}}|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<p1>$NAME) (?<p2>$NAME)\) \(\+ (?<u1>$NAME) (?<u2>$NAME)\)\)\n\((?<call>$NAME)\)\s*$ ::= DEFPROC2ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<p1>$NAME) (?<p2>$NAME)\) \(\+ (?<u1>$NAME) (?<u2>$NAME)\)\)\n\((?<call>$NAME) (?<a1>$NUM)\)\s*$ ::= DEFPROC2ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
@@ -63,6 +67,7 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME) (?<arg>$NUM)\)\s*$ ::= DEFPROC1<NAMEEQ<{{fname}},{{call}}>|NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME)\)\s*$ ::= DEFPROC1ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME) (?<arg>$NUM) (?<extra>$NUM)\)\s*$ ::= DEFPROC1ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
+^\s*\(\(lambda \(\) (?<body>[\s\S]+)\) (?<first>$ATOM)(?: (?<extra>[\s\S]+))?\)\s*$ ::= ERR<wrong_arity>
 ^\s*\(\(lambda \((?<p1>$NAME) (?<p2>$NAME)\) (?<body>[\s\S]+)\)\)\s*$ ::= ERR<wrong_arity>
 ^\s*\(\(lambda \((?<p1>$NAME) (?<p2>$NAME)\) (?<body>[\s\S]+)\) (?<first>$ATOM)\)\s*$ ::= ERR<wrong_arity>
 ^\s*\(\(lambda \((?<p1>$NAME) (?<p2>$NAME)\) (?<body>[\s\S]+)\) (?<first>$ATOM) (?<second>$ATOM) (?<extra>[\s\S]+)\)\s*$ ::= ERR<wrong_arity>
@@ -78,6 +83,10 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^LAMIFTRUE<0\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFNAME<1\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{v}},{{n}}>>|{{k}}>
 ^DEFNAME<0\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC0<1\|(?<body>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\|(?<k>.*)>$ ::= READATOM<{{body}}|{{k}}>
+^DEFPROC0<0\|(?<body>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC0ARITY<1\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^DEFPROC0ARITY<0\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFPROC2<1\|1\|1\|(?<a1>$NUM)\|(?<a2>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a1}},{{a2}}>>|{{k}}>
 ^DEFPROC2<0\|(?:0|1)\|(?:0|1)\|(?<a1>$NUM)\|(?<a2>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFPROC2<1\|(?:0|1)\|(?:0|1)\|(?<a1>$NUM)\|(?<a2>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
