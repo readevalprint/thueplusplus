@@ -1,0 +1,135 @@
+# Cross-cutting adversarial safety cases for deletion-first Lisp evaluator cleanup.
+# These intentionally pin public behavior touched by let, closure binding,
+# env-return, strict-arg, primitive-arity, special-catcher, and code-as-data
+# simplifications without depending on internal V* constructors.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "let self reference without outer binding remains unbound"
+input = '(let ((x x)) x)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "let self reference uses outer binding before shadowing"
+input = '(let ((x 1)) (let ((x x)) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "closure rhs does not capture its own let binding"
+input = '(let ((x (fn (y) (if (gt y 0) (x (sub y 1)) y)))) (x 2))'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unbound_name"
+
+[[case]]
+name = "closure body captures lexical env while param shadows caller"
+input = '(let ((x 10)) (let ((f (fn (x) (add x 1)))) (let ((x 99)) (f 3))))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "partial closure application preserves first bound arg"
+input = '(((fn (x y) (add x y)) 2) 5)'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "too many closure args stay wrong arity"
+input = '((fn (x) x) 1 2)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "do preserves set-var env update"
+input = '(let ((x 0)) (do (set-var x 1) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "while mutation feeds later reads deterministically"
+input = '(let ((x 0)) (do (while (lt x 2) (set-var x (add x 1))) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "list args evaluate left to right with side effects"
+input = '(let ((x 0)) (list (set-var x 1) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 1)"
+
+[[case]]
+name = "call args evaluate left to right with side effects"
+input = '(let ((x 0)) ((fn (a b) (list a b)) (set-var x 1) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 1)"
+
+[[case]]
+name = "primitive arity routes before type check"
+input = '(add true)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "unsupported letrec wins over outer binding"
+input = '(let ((letrec (fn () 1))) (letrec))'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "unsupported unquote wins over outer binding"
+input = '(let ((unquote (fn (x) x))) (unquote 1))'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "unsupported_form"
+
+[[case]]
+name = "quote does not use strict arg collector"
+input = '(quote (first 1))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(first 1)"
+
+[[case]]
+name = "quasiquote does not use strict call collector"
+input = '`((fn (x) x) (first 1))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "((fn (x) x) (first 1))"
+
+[[case]]
+name = "eval code-as-data path evaluates explicit scope not ambient env"
+input = '(let ((x 9)) (eval (quote x) (list (list (quote x) 3))))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
