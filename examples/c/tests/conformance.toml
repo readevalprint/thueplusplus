@@ -1122,6 +1122,98 @@ exit_code = 2
 stdout = ""
 stderr = "undefined_identifier"
 
+
+[[case]]
+name = "source pipeline executes assigned local return"
+input = "int main(void) { int x; x = 9; return x; }"
+
+[case.expect]
+exit_code = 0
+stdout = "9\n"
+stderr = ""
+
+[[case]]
+name = "source pipeline executes empty-parameter assigned local return"
+input = "int main() { int x; x = 10; return x; }"
+
+[case.expect]
+exit_code = 0
+stdout = "10\n"
+stderr = ""
+
+[[case]]
+name = "parses assigned local return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<x>;PUNC<%3B>;ID<x>;PUNC<%3D>;ICON<9>;PUNC<%3B>;KW<return>;ID<x>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<DECL<VAR<int|x>>|ASSIGN<ID<x>|ICON<9>>|RETURN<ID<x>>>>\n"
+stderr = ""
+
+[[case]]
+name = "parses empty-parameter assigned local return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<x>;PUNC<%3B>;ID<x>;PUNC<%3D>;ICON<10>;PUNC<%3B>;KW<return>;ID<x>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<DECL<VAR<int|x>>|ASSIGN<ID<x>|ICON<10>>|RETURN<ID<x>>>>\n"
+stderr = ""
+
+[[case]]
+name = "sema lowers assigned local return function"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<DECL<VAR<int|x>>|ASSIGN<ID<x>|ICON<9>>|RETURN<ID<x>>>>"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<COMPOUND<DECL<LVAL<int|x>>|ASSIGN<LVAL<int|x>|RVAL<int|9>>|RETURN<RVAL<int|LOAD<LVAL<int|x>>>>>>\n"
+stderr = ""
+
+[[case]]
+name = "sema lowers empty-parameter assigned local return function"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<DECL<VAR<int|x>>|ASSIGN<ID<x>|ICON<10>>|RETURN<ID<x>>>>"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<COMPOUND<DECL<LVAL<int|x>>|ASSIGN<LVAL<int|x>|RVAL<int|10>>|RETURN<RVAL<int|LOAD<LVAL<int|x>>>>>>\n"
+stderr = ""
+
+[[case]]
+name = "source pipeline rejects assignment to different local"
+input = "int main(void) { int x; y = 9; return x; }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
+[[case]]
+name = "source pipeline rejects assigned local return name mismatch"
+input = "int main(void) { int x; x = 9; return y; }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
+
+[[case]]
+name = "sema rejects assigned local helper mismatch"
+input = "SEMA_ASSIGN_LOCAL_RETURN<main|void|x|y|9|x|0|1>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
+[[case]]
+name = "exec rejects assigned local return with mismatched helper state"
+input = "EXECMAIN_LOCAL_ASSIGN<main|main|x|y|x|9|1|0|1>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
 [[case]]
 name = "source pipeline rejects malformed token stream"
 input = "CPIPE_TOKENS<KW<int>;ID<main>;EOF<>;>"
