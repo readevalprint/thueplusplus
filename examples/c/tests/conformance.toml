@@ -364,13 +364,23 @@ stderr = ""
 stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|42>>>>>\n"
 
 [[case]]
-name = "sema annotates loaded identifier return"
+name = "sema function return of undefined identifier fails loudly"
 input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<RETURN<ID<x>>>>"
 
 [case.expect]
-exit_code = 0
-stderr = ""
-stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|LOAD<LVAL<int|x>>>>>>>\n"
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
+
+[[case]]
+name = "sema missing identifier hidden in function return fails loudly"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<RETURN<ID<missing>>>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
 
 [[case]]
 name = "sema annotates scalar object declaration"
@@ -515,6 +525,34 @@ input = "exec:TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int
 exit_code = 0
 stderr = ""
 stdout = "42\n"
+
+
+[[case]]
+name = "exec malformed prefixed function frame fails loudly"
+input = "exec:GARBAGEFN<RETURN<RVAL<int|99>>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "exec malformed junk return frame fails loudly"
+input = "exec:FN<JUNKRETURN<RVAL<int|11>>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "exec typed main binding-name mismatch fails loudly"
+input = "exec:TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<other>|BODY<RETURN<RVAL<int|42>>>>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
 
 [[case]]
 name = "allocates scalar object"
