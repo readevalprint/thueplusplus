@@ -113,3 +113,51 @@ input = "(1 2)"
 exit_code = 2
 stdout = ""
 stderr = "type_error"
+
+[[case]]
+name = "procedure definition sugar applies one numeric argument"
+input = "(define (add1 x) (+ x 1))\n(add1 4)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5"
+
+[[case]]
+name = "procedure definition sugar rejects wrong arity"
+input = "(define (add1 x) (+ x 1))\n(add1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "procedure definition sugar body unbound parameter use fails"
+input = "(define (add1 x) (+ y 1))\n(add1 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "procedure definition sugar rejects too many arguments"
+input = "(define (add1 x) (+ x 1))\n(add1 4 5)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "procedure definition sugar unbound call name fails"
+input = "(define (add1 x) (+ x 1))\n(inc 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "procedure definition sugar wrong arity unbound call name fails through lookup"
+input = "(define (add1 x) (+ x 1))\n(inc)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
