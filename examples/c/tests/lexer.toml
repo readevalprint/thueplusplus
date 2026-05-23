@@ -1,0 +1,138 @@
+program = "../c.tpp"
+timeout = 10
+args = ["--max-evals", "50000"]
+
+[[case]]
+name = "tokenizes main return translation unit"
+input = "lex:int main(void) { return 42; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC<%3B>;PUNC<%7D>;EOF<>;\n"
+
+[[case]]
+name = "skips whitespace and comments"
+input = "lex:/* block */\nint// line\nmain"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<int>;ID<main>;EOF<>;\n"
+
+[[case]]
+name = "tokenizes string and char payloads safely"
+input = "lex:char c = 'x'; char *s = \"ab\";"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<char>;ID<c>;PUNC<%3D>;CHAR<x>;PUNC<%3B>;KW<char>;PUNC<%2A>;ID<s>;PUNC<%3D>;STR<ab>;PUNC<%3B>;EOF<>;\n"
+
+[[case]]
+name = "tokenizes multi-character punctuators"
+input = "lex:a++ -> b >>= 1 ... ## c"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ID<a>;PUNC<%2B%2B>;PUNC<-%3E>;ID<b>;PUNC<%3E%3E%3D>;ICON<1>;PUNC<...>;PUNC<%23%23>;ID<c>;EOF<>;\n"
+
+[[case]]
+name = "unterminated block comment fails loudly"
+input = "lex:int /* nope"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unterminated_comment"
+
+[[case]]
+name = "unterminated string fails loudly"
+input = 'lex:"unterminated'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unterminated_string"
+
+[[case]]
+name = "invalid string escape fails loudly"
+input = 'lex:"bad\\q"'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_escape"
+
+[[case]]
+name = "invalid char escape fails loudly"
+input = "lex:'\\q'"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_escape"
+
+[[case]]
+name = "unterminated char fails loudly"
+input = "lex:'x"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unterminated_char"
+
+[[case]]
+name = "invalid token fails loudly"
+input = "lex:int @ x"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_token"
+
+[[case]]
+name = "scaffold still runs main void"
+input = "int main(void) { return 7; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "7\n"
+
+[[case]]
+name = "scaffold still runs main empty params"
+input = "int main() { return 8; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "8\n"
+
+[[case]]
+name = "scaffold empty translation unit still fails"
+input = "   \n\t"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "empty_translation_unit"
+
+[[case]]
+name = "scaffold unsupported declaration still fails"
+input = "char main(void) { return 0; }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "scaffold unsupported source still fails"
+input = "bogus"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"

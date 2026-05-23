@@ -14,7 +14,7 @@ This is not a C-ish command language. The implementation is expected to grow as 
 8. freestanding or documented hosted-library boundary;
 9. conformance manifests, documentation sync, full rule coverage, and pipeline merge gate.
 
-The current file is the phase-0 scaffold. It establishes the directory, executable manifest shape, fail-loud behavior, and coverage gate for later GLKB child issues.
+The current file contains the phase-0 scaffold plus the phase-1 preprocessing-token lexer foundation. Later GLKB child issues consume the token stream instead of reparsing raw C source.
 
 ## Running the scaffold
 
@@ -43,6 +43,22 @@ Expected output:
 ```
 
 Any C construct outside this scaffold fails loudly. Downstream cards must replace the scaffold with the staged C pipeline described below, not widen it into ad hoc C-ish regex cases.
+
+## Running the lexer
+
+The lexer entry point is `lex:<source>`. It prints preprocessing tokens as a semicolon-delimited stream:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'lex:int main(void) { return 42; }'
+```
+
+Expected output:
+
+```text
+KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC<%3B>;PUNC<%7D>;EOF<>;
+```
+
+Token kinds currently emitted by the lexer are `KW`, `ID`, `ICON`, `STR`, `CHAR`, `PUNC`, and `EOF`. Every token payload is percent-encoded and the raw `;` record separator is outside the payload alphabet, so downstream parser rules do not have to trust raw user source text.
 
 ## Target standard and mode
 
@@ -112,6 +128,16 @@ Implemented now:
 - typed diagnostics for empty input, preprocessor input, and unsupported C constructs.
 
 ### Phase 1: preprocessing-token lexer
+
+Implemented now:
+
+- insignificant whitespace, line comments, and block comments are skipped;
+- identifiers and the C keyword set are tokenized separately;
+- decimal and hexadecimal integer constants are tokenized as `ICON`;
+- string and char literals are tokenized with safely encoded payloads;
+- one-, two-, and three-character C punctuators/operators are tokenized as `PUNC`;
+- every successful lex emits an explicit `EOF<>;` marker;
+- unterminated comments, unterminated strings/chars, invalid `\\q` escapes, and unknown source characters fail loudly.
 
 Required coverage:
 
@@ -185,17 +211,18 @@ Required coverage:
 
 ## Error behavior
 
-Diagnostics are stable stderr strings with exit code 2 for language-level failures. Current scaffold diagnostics:
+Diagnostics are stable stderr strings with exit code 2 for language-level failures. Current diagnostics:
 
 - `empty_translation_unit`
 - `unsupported_c_construct`
-
-Later phases should add precise diagnostics such as:
-
 - `invalid_token`
 - `unterminated_comment`
 - `unterminated_string`
+- `unterminated_char`
 - `invalid_escape`
+
+Later phases should add precise diagnostics such as:
+
 - `syntax_error`
 - `undefined_identifier`
 - `invalid_lvalue`
@@ -209,6 +236,12 @@ Focused scaffold validation:
 
 ```bash
 uv run python tools/example_runner.py examples/c/tests/scaffold.toml
+```
+
+Focused lexer validation:
+
+```bash
+uv run python tools/example_runner.py examples/c/tests/lexer.toml
 ```
 
 Full repository validation before any C MR is marked review-ready/done:
