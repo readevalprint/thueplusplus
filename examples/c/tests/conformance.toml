@@ -975,6 +975,70 @@ exit_code = 0
 stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|42>>>>>\n"
 stderr = ""
 
+
+[[case]]
+name = "source pipeline executes local declaration return"
+input = "int main(void) { int x; return 5; }"
+
+[case.expect]
+exit_code = 0
+stdout = "5\n"
+stderr = ""
+
+[[case]]
+name = "source pipeline executes empty-parameter local declaration return"
+input = "int main() { int x; return 6; }"
+
+[case.expect]
+exit_code = 0
+stdout = "6\n"
+stderr = ""
+
+[[case]]
+name = "parses main local declaration return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<x>;PUNC<%3B>;KW<return>;ICON<5>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<DECL<VAR<int|x>>|RETURN<ICON<5>>>>\n"
+stderr = ""
+
+[[case]]
+name = "parses empty-parameter local declaration return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<x>;PUNC<%3B>;KW<return>;ICON<6>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<DECL<VAR<int|x>>|RETURN<ICON<6>>>>\n"
+stderr = ""
+
+[[case]]
+name = "sema lowers local declaration return function to compound execution"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<DECL<VAR<int|x>>|RETURN<ICON<5>>>>"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<COMPOUND<DECL<LVAL<int|x>>|RETURN<RVAL<int|5>>>>>\n"
+stderr = ""
+
+[[case]]
+name = "sema lowers empty-parameter local declaration return function to compound execution"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<DECL<VAR<int|x>>|RETURN<ICON<6>>>>"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<COMPOUND<DECL<LVAL<int|x>>|RETURN<RVAL<int|6>>>>>\n"
+stderr = ""
+
+[[case]]
+name = "source pipeline rejects malformed local declaration initializer"
+input = "int main(void) { int x = 1; return 5; }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
 [[case]]
 name = "source pipeline rejects malformed token stream"
 input = "CPIPE_TOKENS<KW<int>;ID<main>;EOF<>;>"
