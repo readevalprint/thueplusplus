@@ -205,7 +205,7 @@ Use the repository-root truth-engine command before sending changes for review:
 make test
 ```
 
-`make test` runs the repository conformance check and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, and enforces rule coverage for all manifest-declared example programs. For focused debugging, pass explicit manifest paths directly to the runner:
+`make test` runs the repository conformance check, the Scheme R5RS RED-debt gate, and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, exposes per-program rule match counts, and enforces rule coverage for all manifest-declared example programs. The Scheme R5RS debt gate also uses the shared runner's external-command case path: it requires every `examples/scheme/conformance/*-red.toml` case to remain failing until the behavior is implemented and promoted into the green manifest sweep. For focused debugging, pass explicit manifest paths directly to the runner:
 
 ```bash
 uv run python tools/example_runner.py examples/echo/tests/proc-input.toml

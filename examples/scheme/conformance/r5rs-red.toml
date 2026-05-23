@@ -1,0 +1,81 @@
+program = "../scheme.tpp"
+timeout = 5
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "lambda mismatched body identifier must not capture argument"
+input = "((lambda (x) (+ y 1)) 4)"
+[case.expect]
+exit_code = 2
+stderr_stripped = "unbound_identifier"
+
+[[case]]
+name = "top-level define must bind the named identifier only"
+input = "(define x 2)\n(+ y 3)"
+[case.expect]
+exit_code = 2
+stderr_stripped = "unbound_identifier"
+
+[[case]]
+name = "n-ary addition folds every operand"
+input = "(+ 1 2 3)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
+
+[[case]]
+name = "zero-argument addition returns additive identity"
+input = "(+)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
+
+[[case]]
+name = "quoted dotted pair preserves improper list structure"
+input = "'(1 . 2)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 . 2)"
+
+[[case]]
+name = "vector literal reads and renders as a vector"
+input = "#(1 2 #t)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#(1 2 #t)"
+
+[[case]]
+name = "letrec exposes recursive binding during procedure call"
+input = "(letrec ((f (lambda (n) (if (= n 0) 1 (* n (f (- n 1))))))) (f 4))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "24"
+
+[[case]]
+name = "tail recursion handles large accumulator loop within eval bound"
+input = "(let loop ((n 200) (acc 0)) (if (= n 0) acc (loop (- n 1) (+ acc 1))))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "200"
+
+[[case]]
+name = "set! mutates lexical location visible through closure"
+input = "(let ((x 1)) (let ((inc (lambda () (begin (set! x (+ x 1)) x)))) (begin (inc) (inc))))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "syntax-rules expands hygienic when macro"
+input = "(let ((x 1)) (let-syntax ((m (syntax-rules () ((m y) (let ((x 2)) y))))) (m x)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
