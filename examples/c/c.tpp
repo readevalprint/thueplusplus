@@ -46,12 +46,7 @@ ERRNAME <- [A-Za-z0-9_]+
 # Source-driven smoke entry. The supported raw `int main` slice enters the same
 # lexer as `lex:` and then continues through explicit parse/sema/exec pipeline
 # states. This replaces the old direct raw-source success shortcut.
-^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
-^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSreturn$IWS+[0-9]+(?:(?:$WS[+]$WS|$WS[*]$WS)[0-9]+)+$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
-^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSint$IWS+$ID$WS;$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
-^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSint$IWS+$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
-^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSint$IWS+$ID$WS;$WS$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
-^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSif$WS\($WS$ICON$WS\)$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WSelse$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{[\s\S]*\}$WS)$ ::= LEX<{{src}}||CPIPE>
 
 # Skip insignificant preprocessing-token separators.
 ^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}|{{mode}}>

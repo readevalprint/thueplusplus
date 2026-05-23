@@ -67,10 +67,10 @@ stdout = ""
 stderr = "unsupported_c_construct"
 
 [[case]]
-name = "generic unsupported input fails loudly"
+name = "generic unsupported tokenized main body fails loudly"
 input = "int main(void) { return 0 }"
 
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr = "unsupported_c_construct"
+stderr = "syntax_error"
