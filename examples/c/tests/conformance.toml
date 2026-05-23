@@ -1444,6 +1444,88 @@ exit_code = 0
 stdout = "34\n"
 stderr = ""
 
+
+[[case]]
+name = "parse-expr parses n-ary additive decimal chain"
+input = "parse-expr:ICON<1>;PUNC<%2B>;ICON<2>;PUNC<%2B>;ICON<3>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ADD<ADD<ICON<1>|ICON<2>>|ICON<3>>\n"
+
+[[case]]
+name = "parse-expr parses n-ary multiplicative decimal chain"
+input = "parse-expr:ICON<2>;PUNC<%2A>;ICON<3>;PUNC<%2A>;ICON<4>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "MUL<MUL<ICON<2>|ICON<3>>|ICON<4>>\n"
+
+[[case]]
+name = "parse-expr parses mixed n-ary precedence chain"
+input = "parse-expr:ICON<1>;PUNC<%2A>;ICON<2>;PUNC<%2B>;ICON<3>;PUNC<%2A>;ICON<4>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ADD<MUL<ICON<1>|ICON<2>>|MUL<ICON<3>|ICON<4>>>\n"
+
+[[case]]
+name = "source pipeline executes n-ary additive integer return"
+input = "int main(void) { return 1 + 2 + 3; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "6\n"
+
+[[case]]
+name = "source pipeline executes n-ary multiplicative integer return"
+input = "int main(void) { return 2 * 3 * 4; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "24\n"
+
+[[case]]
+name = "source pipeline executes mixed n-ary integer precedence return"
+input = "int main(void) { return 1 * 2 + 3 * 4; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "14\n"
+
+[[case]]
+name = "source pipeline executes mixed n-ary empty-parameter integer return"
+input = "int main() { return 1 + 2 * 3 + 4; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "11\n"
+
+[[case]]
+name = "sema folds n-ary additive integer return function"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<RETURN<ADD<ADD<ICON<1>|ICON<2>>|ICON<3>>>>>"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|6>>>>>\n"
+
+[[case]]
+name = "sema folds mixed n-ary integer return function"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<RETURN<ADD<MUL<ICON<1>|ICON<2>>|MUL<ICON<3>|ICON<4>>>>>>"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|14>>>>>\n"
+
 [[case]]
 name = "source pipeline rejects parenthesized arithmetic return"
 input = "int main(void) { return (1 + 2) * 3; }"

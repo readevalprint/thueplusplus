@@ -47,7 +47,7 @@ ERRNAME <- [A-Za-z0-9_]+
 # lexer as `lex:` and then continues through explicit parse/sema/exec pipeline
 # states. This replaces the old direct raw-source success shortcut.
 ^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
-^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSreturn$IWS+[0-9]+$WS[+]$WS[0-9]+$WS[*]$WS[0-9]+$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSreturn$IWS+[0-9]+(?:(?:$WS[+]$WS|$WS[*]$WS)[0-9]+)+$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 ^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSint$IWS+$ID$WS;$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 ^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSint$IWS+$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 ^$WS(?<src>int$IWS+main$WS\($MAINPARAM_SRC\)$WS\{$WSint$IWS+$ID$WS;$WS$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
@@ -126,11 +126,20 @@ ERRNAME <- [A-Za-z0-9_]+
 # relational, additive, multiplicative, calls/primary.
 ^PARSE_EXPR<ID<(?<lhs>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;EOF<>;>$ ::= @AST<ASSIGN<ID<{{lhs}}>|ICON<{{n}}>>>
 ^PARSE_EXPR<ID<(?<lhs>$PCT)>;PUNC<%3D>;(?<rhs>$EXPRTOKS)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= PARSE_EXPR<{{rhs}}@@{{prefix}}ASSIGN<ID<{{lhs}}>|@@>{{suffix}}>
+^PARSE_EXPR<(?<expr>ICON<$DEC>;(?:(?:PUNC<%2B>;|PUNC<%2A>;)ICON<$DEC>;)+)EOF<>;>$ ::= PARSE_IEXPR<{{expr}}@@NO@@EMPTY@@@@@@PRINT>
+^PARSE_EXPR<(?<expr>ICON<$DEC>;(?:(?:PUNC<%2B>;|PUNC<%2A>;)ICON<$DEC>;)+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>@@CPIPE$ ::= PARSE_IEXPR<{{expr}}@@NO@@EMPTY@@{{prefix}}@@{{suffix}}@@CPIPE>
+^PARSE_EXPR<(?<expr>ICON<$DEC>;(?:(?:PUNC<%2B>;|PUNC<%2A>;)ICON<$DEC>;)+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= PARSE_IEXPR<{{expr}}@@NO@@EMPTY@@{{prefix}}@@{{suffix}}@@PRINT>
+^PARSE_IEXPR<ICON<(?<n>$DEC)>;(?<rest>[\s\S]*)@@NO@@EMPTY@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@(?<mode>PRINT|CPIPE)>$ ::= PARSE_IEXPR_TAIL<{{rest}}@@NO@@ICON<{{n}}>@@{{prefix}}@@{{suffix}}@@{{mode}}>
+^PARSE_IEXPR_TAIL<PUNC<%2A>;ICON<(?<n>$DEC)>;(?<rest>[\s\S]*)@@(?<sum>[\s\S]+)@@(?<term>[\s\S]+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@(?<mode>PRINT|CPIPE)>$ ::= PARSE_IEXPR_TAIL<{{rest}}@@{{sum}}@@MUL<{{term}}|ICON<{{n}}>>@@{{prefix}}@@{{suffix}}@@{{mode}}>
+^PARSE_IEXPR_TAIL<PUNC<%2B>;ICON<(?<n>$DEC)>;(?<rest>[\s\S]*)@@NO@@(?<term>[\s\S]+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@(?<mode>PRINT|CPIPE)>$ ::= PARSE_IEXPR_TAIL<{{rest}}@@{{term}}@@ICON<{{n}}>@@{{prefix}}@@{{suffix}}@@{{mode}}>
+^PARSE_IEXPR_TAIL<PUNC<%2B>;ICON<(?<n>$DEC)>;(?<rest>[\s\S]*)@@(?<sum>(?:(?:ICON|ADD|MUL)<[\s\S]+))@@(?<term>[\s\S]+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@(?<mode>PRINT|CPIPE)>$ ::= PARSE_IEXPR_TAIL<{{rest}}@@ADD<{{sum}}|{{term}}>@@ICON<{{n}}>@@{{prefix}}@@{{suffix}}@@{{mode}}>
+^PARSE_IEXPR_TAIL<@@NO@@(?<term>[\s\S]+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@CPIPE>$ ::= @AST<{{prefix}}{{term}}{{suffix}}>@@CPIPE
+^PARSE_IEXPR_TAIL<@@NO@@(?<term>[\s\S]+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@PRINT>$ ::= @AST<{{prefix}}{{term}}{{suffix}}>
+^PARSE_IEXPR_TAIL<@@(?<sum>(?:(?:ICON|ADD|MUL)<[\s\S]+))@@(?<term>[\s\S]+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@CPIPE>$ ::= @AST<{{prefix}}ADD<{{sum}}|{{term}}>{{suffix}}>@@CPIPE
+^PARSE_IEXPR_TAIL<@@(?<sum>(?:(?:ICON|ADD|MUL)<[\s\S]+))@@(?<term>[\s\S]+)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)@@PRINT>$ ::= @AST<{{prefix}}ADD<{{sum}}|{{term}}>{{suffix}}>
 ^PARSE_EXPR<(?<lhs>ID<$PCT>;|ICON<$PCT>;)PUNC<%3D%3D>;(?<rhs>ID<$PCT>;|ICON<$PCT>;)EOF<>;>$ ::= @AST<EQ<{{lhs}}|{{rhs}}>>
 ^PARSE_EXPR<(?<lhs>ID<$PCT>;|ICON<$PCT>;)PUNC<%3C>;(?<rhs>ID<$PCT>;|ICON<$PCT>;)EOF<>;>$ ::= @AST<LT<{{lhs}}|{{rhs}}>>
 ^PARSE_EXPR<(?<lhs>ID<$PCT>;|ICON<$PCT>;)PUNC<%2B>;(?<mid>ID<$PCT>;|ICON<$PCT>;)PUNC<%2A>;(?<rhs>ID<$PCT>;|ICON<$PCT>;)EOF<>;>$ ::= @AST<ADD<{{lhs}}|MUL<{{mid}}|{{rhs}}>>>
-^PARSE_EXPR<ICON<(?<lhs>$PCT)>;PUNC<%2B>;ICON<(?<mid>$PCT)>;PUNC<%2A>;ICON<(?<rhs>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>@@CPIPE$ ::= @AST<{{prefix}}ADD<ICON<{{lhs}}>|MUL<ICON<{{mid}}>|ICON<{{rhs}}>>>{{suffix}}>@@CPIPE
-^PARSE_EXPR<ICON<(?<lhs>$PCT)>;PUNC<%2B>;ICON<(?<mid>$PCT)>;PUNC<%2A>;ICON<(?<rhs>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}ADD<ICON<{{lhs}}>|MUL<ICON<{{mid}}>|ICON<{{rhs}}>>>{{suffix}}>
 
 ^PARSE_EXPR<ID<(?<callee>$PCT)>;PUNC<%28>;ID<(?<arg>$PCT)>;PUNC<%29>;EOF<>;>$ ::= @AST<CALL<{{callee}}|ID<{{arg}}>>>
 ^PARSE_EXPR<ICON<(?<n>$PCT)>;EOF<>;>$ ::= @AST<ICON<{{n}}>>
@@ -150,15 +159,13 @@ ERRNAME <- [A-Za-z0-9_]+
 # attach explicit type, scope, namespace, and lvalue/rvalue annotations for the
 # later abstract-machine card.
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
-^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ADD<ICON<(?<lhs>$DEC)>\|MUL<ICON<(?<mid>$DEC)>\|ICON<(?<rhs>$DEC)>>>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|@C_ADD[@C_MUL[{{mid}},{{rhs}}]@,{{lhs}}]@>>>>>>@@CPIPE
+
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL_INIT<VAR<int\|(?<local>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>@@CPIPE$ ::= SEMA_INIT_LOCAL_RETURN<{{name}}|void|{{local}}|{{n}}|{{retid}}|@EQ[{{local}}|{{retid}}]@>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|ASSIGN<ID<(?<lhs>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>@@CPIPE$ ::= SEMA_ASSIGN_LOCAL_RETURN<{{name}}|void|{{local}}|{{lhs}}|{{n}}|{{retid}}|@EQ[{{local}}|{{lhs}}]@|@EQ[{{local}}|{{retid}}]@>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<IF<COND<ICON<(?<cond>$PCT)>>\|THEN<RETURN<ICON<(?<then>$PCT)>>>\|ELSE<RETURN<ICON<(?<elsev>$PCT)>>>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<IF<RVAL<int|{{cond}}>|RETURN<RVAL<int|{{then}}>>|RETURN<RVAL<int|{{elsev}}>>>>>>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
-^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ADD<ICON<(?<lhs>$DEC)>\|MUL<ICON<(?<mid>$DEC)>\|ICON<(?<rhs>$DEC)>>>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|@C_ADD[@C_MUL[{{mid}},{{rhs}}]@,{{lhs}}]@>>>>>>
-^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ADD<ICON<(?<lhs>$DEC)>\|MUL<ICON<(?<mid>$DEC)>\|ICON<(?<rhs>$DEC)>>>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|@C_ADD[@C_MUL[{{mid}},{{rhs}}]@,{{lhs}}]@>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL_INIT<VAR<int\|(?<local>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>$ ::= SEMA_INIT_LOCAL_RETURN<{{name}}|void|{{local}}|{{n}}|{{retid}}|@EQ[{{local}}|{{retid}}]@>
@@ -190,10 +197,12 @@ ERRNAME <- [A-Za-z0-9_]+
 ^SEMA<ADD<STR<(?<s>$PCT)>\|ICON<(?<n>$PCT)>>>$ ::= ERR<type_error>
 ^SEMA<ASSIGN<ICON<(?<lhs>$PCT)>\|ICON<(?<rhs>$PCT)>>>$ ::= ERR<invalid_lvalue>
 ^SEMA<TU<UNSUPPORTED<(?<what>$PCT)>>>$ ::= ERR<unsupported_c_construct>
-^SEMA<(?<bad>[\s\S]+)>@@CPIPE$ ::= ERR<syntax_error>
-^SEMA<(?<bad>[\s\S]+)>$ ::= ERR<syntax_error>
+MUL<ICON<(?<lhs>[^>]+)>\|ICON<(?<rhs>[^>]+)>> ::= ICON<@C_MUL[{{lhs}},{{rhs}}]@>
+ADD<ICON<(?<lhs>[^>]+)>\|ICON<(?<rhs>[^>]+)>> ::= ICON<@C_ADD[{{lhs}},{{rhs}}]@>
 @C_MUL\[(?<a>$DEC),(?<b>$DEC)\]@ ::! mul a b
 @C_ADD\[(?<a>$DEC),(?<b>$DEC)\]@ ::! add a b
+^SEMA<(?<bad>[\s\S]+)>@@CPIPE$ ::= ERR<syntax_error>
+^SEMA<(?<bad>[\s\S]+)>$ ::= ERR<syntax_error>
 ^@TAST<(?<ast>[\s\S]+)>@@CPIPE$ ::= EXEC<{{ast}}>
 ^@TAST<(?<ast>[\s\S]+)>$ ::> stdout {{ast}}\n
 # Phase-4 abstract execution and memory-machine states. These consume typed AST

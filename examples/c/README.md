@@ -94,11 +94,20 @@ Expected output:
 7
 ```
 
-It also accepts a narrow decimal integer arithmetic return with `*` binding
-more tightly than `+`:
+It also accepts decimal integer arithmetic return chains with n-ary `+` and
+`*`, left-associative within each precedence level, with `*` binding more
+tightly than `+`:
 
 ```bash
 uv run python python/thuepp.py examples/c/c.tpp --input 'int main(void) { return 1 + 2 * 3; }'
+```
+
+Additional accepted examples include:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'int main(void) { return 1 + 2 + 3; }'
+uv run python python/thuepp.py examples/c/c.tpp --input 'int main(void) { return 2 * 3 * 4; }'
+uv run python python/thuepp.py examples/c/c.tpp --input 'int main() { return 1 + 2 * 3 + 4; }'
 ```
 
 Expected output:
@@ -107,7 +116,7 @@ Expected output:
 7
 ```
 
-Any C construct outside this scaffold fails loudly. The raw smoke accepts bare integer constants (`ICON`: decimal or hexadecimal) and the narrow decimal expression shape `<DEC> + <DEC> * <DEC>`, not fractions, decimals, parentheses, division, subtraction, or identifier operands. The local-declaration slice accepts `int <identifier>;` before an integer return, `int <identifier> = <ICON>; return <same-identifier>;`, and `int <identifier>; <same-identifier> = <ICON>; return <same-identifier>;`; multiple declarations, multiple assignments, non-constant initializers/assignments, `if` without `else`, non-constant `if` conditions, and returning or assigning a different local name are not yet source-driven. Supported raw source reaches output through the lexer-backed public parser/sema/exec pipeline rather than a direct raw-source success rule; the source-pipeline parser canonicalizes both `main(void)` and `main()` to the same internal `PARAMS<void>` function type before semantic lowering. Downstream cards must extend the staged C pipeline described below, not widen raw regex over source text.
+Any C construct outside this scaffold fails loudly. The raw smoke accepts bare integer constants (`ICON`: decimal or hexadecimal) and decimal arithmetic expression chains made from decimal integer operands plus `+` and `*`, not fractions, decimals, parentheses, division, subtraction, unary operators, hexadecimal arithmetic operands, or identifier operands. The local-declaration slice accepts `int <identifier>;` before an integer return, `int <identifier> = <ICON>; return <same-identifier>;`, and `int <identifier>; <same-identifier> = <ICON>; return <same-identifier>;`; multiple declarations, multiple assignments, non-constant initializers/assignments, `if` without `else`, non-constant `if` conditions, and returning or assigning a different local name are not yet source-driven. Supported raw source reaches output through the lexer-backed public parser/sema/exec pipeline rather than a direct raw-source success rule; the source-pipeline parser canonicalizes both `main(void)` and `main()` to the same internal `PARAMS<void>` function type before semantic lowering. Downstream cards must extend the staged C pipeline described below, not widen raw regex over source text.
 
 
 The raw `int main` smoke is source-driven: supported source first tokenizes through the shared lexer, then flows through the public `PARSE_TU` / `PARSE_RETURN_FN` / `PARSE_EXPR` parser and `SEMA` rules using a narrow `@@CPIPE` continuation, and finally the normal `EXEC` state. `CPIPE_TOKENS` is now only a lexer-to-parser routing adapter for this narrow slice, with source-pipeline parameter spellings normalized before sema; the duplicate `CPIPE_AST`/`CPIPE_TAST` parser/sema bridge has been deleted.
@@ -295,7 +304,7 @@ Implemented now:
 - source-driven `main` definitions support a single declaration-only local `int` before an integer return, a single initialized local `int` before returning that same local identifier, a single declaration plus same-local assignment before returning that local, and constant-condition `if/else` returns;
 - declarations support plain `int x;` and an explicit typedef-name ambiguity case `typedef int T; T x;`;
 - statement shells cover `if/else`, `while`, and `for` forms needed by later semantic/execution work;
-- expression parsing covers assignment, equality, relational comparison, additive/multiplicative precedence, calls, and primary identifiers/constants/string/char literals;
+- expression parsing covers assignment, equality, relational comparison, n-ary decimal additive/multiplicative precedence chains, calls, and primary identifiers/constants/string/char literals;
 - malformed token streams fail loudly with `syntax_error`.
 
 Required coverage:
