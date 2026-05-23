@@ -69,7 +69,7 @@ Hello, World!
 
 <!-- The marker comment above names the example program and test config that supply this block. Regenerate it with: uv run python tools/check_contract.py --update-readme -->
 
-All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`.
+All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`. The `examples/forth/` directory contains a compact stack-language example with its own README documenting supported words, stack rendering, and fail-loud errors.
 
 The guess-number example demonstrates process bindings, stdin reads, validation, and numeric builtins. Run it interactively with a real random-number proc:
 
