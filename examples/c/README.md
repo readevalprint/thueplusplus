@@ -104,6 +104,22 @@ TU<SCOPE<file|BIND<x|object|int>>|DECL<LVAL<int|x>>>
 
 Semantic output introduces explicit `SCOPE`, `BIND`, `TYPE`, `LVAL`, and `RVAL` records. It keeps C namespaces explicit by distinguishing ordinary object/function bindings, typedef bindings, and tag bindings.
 
+## Running execution / abstract memory
+
+The execution entry point consumes typed AST / machine records:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'exec:ASSIGN<LVAL<int|x>|RVAL<int|7>>'
+```
+
+Expected output:
+
+```text
+STATE<MEM<OBJ<x|int|7|auto>>>
+```
+
+Executable `main`-style typed AST records print their integer return value to stdout, preserving the early scaffold result contract. Non-final memory probes render explicit `STATE`, `OBJ`, `PTR`, `LVAL`, `RVAL`, and `CTRL` records so downstream manifests can assert abstract-machine state without host-side C helpers.
+
 ## Target standard and mode
 
 The workstream target is ISO C, progressing toward C17 semantics. The first complete milestone should be freestanding C. Hosted-library behavior is a later, explicitly documented boundary.
@@ -239,6 +255,16 @@ Required coverage:
 
 ### Phase 4: abstract memory and execution
 
+Implemented now:
+
+- `exec:<typed-AST-or-machine-form>` consumes semantic output / machine fixtures;
+- object storage records include object name, type, value, and automatic lifetime;
+- assignment through lvalues mutates explicit memory records;
+- address-of, dereference, array decay, and aggregate field selection produce pointer/lvalue records;
+- `if`, `while`, `for`, `break`, `continue`, compound block, function call, and recursion fixtures establish control-flow/call-frame contracts;
+- typed `main` return records print the integer return value to stdout;
+- fail-loud diagnostics cover division by zero, invalid lvalue assignment, and unsupported machine forms.
+
 Required coverage:
 
 - object storage and lifetimes;
@@ -288,6 +314,7 @@ Diagnostics are stable stderr strings with exit code 2 for language-level failur
 - `undefined_identifier`
 - `type_error`
 - `invalid_lvalue`
+- `division_by_zero`
 
 Later phases should add precise diagnostics such as:
 
@@ -318,6 +345,12 @@ Focused semantic/type validation:
 
 ```bash
 uv run python tools/example_runner.py examples/c/tests/sema.toml
+```
+
+Focused execution/memory validation:
+
+```bash
+uv run python tools/example_runner.py examples/c/tests/execution.toml
 ```
 
 Full repository validation before any C MR is marked review-ready/done:
