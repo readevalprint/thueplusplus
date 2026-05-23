@@ -1,42 +1,79 @@
+> We do this not because it is easy, but because we thought it would be easy
+
 # thue++
 
-Implementations of the thue++ language (v0.2 spec).
-
-## Repository layout
+Start with a string and rules that rewrite it:
 
 ```text
-examples/        Shared thue++ example programs and manifest tests
-python/          Python implementation
-go/              Go implementation and Go-WASM export package
-js/wasm/         JavaScript adapters for loading the Go-WASM module in Node and browsers
-tools/           Repository conformance checker and shared manifest runner
+lhs ::= rhs
 ```
 
-## Python implementation
+This is the semi-Thue process, named after Axel Thue: replace substrings by rule, and repeat. It fits in one line, but it is expressive enough to be Turing complete.
 
-```bash
-# Run a program
-./python/thuepp.py <program.tpp>
+Thue++, based on John Colagioia's esolang [Thue](https://github.com/jcolag/Thue), extends the idea with regex captures and templates:
 
-# With process bindings
-./python/thuepp.py <program.tpp> --proc:<name> <command>
-
-# With execution limits
-./python/thuepp.py <program.tpp> --max-evals 1000 --max-state-bytes 10000
+```thuepp
+^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}
 ```
 
-Requirements:
+A rule sees text. If the pattern matches, it rewrites with the template. Then the machine starts over.
 
-- Python 3.11+
-- Project Python dependencies are managed by `uv` from `pyproject.toml` / `uv.lock`; use `uv run` or the `make` targets for deterministic development and tests.
-- Repository verification also requires `make` and Go for the shared Go implementation tests.
-- Go-WASM adapter tests additionally require Node.js.
+The rest of this README builds up from there: one rule, then captures, then IO, then state machines, then Lisp.
 
-The interpreter entry point remains `python/thuepp.py`. Direct `./python/thuepp.py ...` examples assume the project dependencies have already been installed or are being run in the `uv` environment.
+## One rule
 
-## Examples
+```thuepp
+^hello$ ::= world
 
-Run this quickstart example from the repository root:
+::=
+hello
+```
+
+The bottom block is the initial state. The rule rewrites `hello` to `world`.
+
+Rules scan top to bottom; after a match, scanning restarts.
+
+## Captures and templates
+
+Named regex captures become template fields:
+
+```thuepp
+^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}
+
+::=
+hello Ada
+```
+
+The state `hello Ada` rewrites to `hi Ada`.
+
+## Pattern aliases
+
+Large rule programs stay readable by naming regex fragments:
+
+```thuepp
+NAME_ALIAS <- [A-Za-z_][A-Za-z0-9_]*
+^hello (?<name>$NAME_ALIAS)$ ::= hi {{name}}
+```
+
+Aliases just name regex fragments, so the rule can stay readable.
+
+## IO, resources, and builtins
+
+The basic operators are:
+
+```text
+::=   rewrite state
+::>   write to a resource
+::<   read from a resource
+::-   exit with a code
+::!   call a builtin
+```
+
+Predefined resources are `stdin`, `stdout`, and `stderr`. Runners can also bind names to processes, browser callbacks, or other streams.
+
+## Hello world
+
+Hello world writes, then exits:
 
 <!-- thuepp-readme-example: source=examples/hello/hello.tpp expected-output=examples/hello/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
@@ -67,11 +104,11 @@ Hello, World!
 ```
 <!-- thuepp-readme-example:end -->
 
-<!-- The marker comment above names the example program and test config that supply this block. Regenerate it with: uv run python tools/check_contract.py --update-readme -->
+The command uses the Python backend because it is convenient for local demos. It is not a language-level dependency.
 
-All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`. The `examples/forth/` directory contains a compact stack-language example with its own README documenting supported words, stack rendering, and fail-loud errors.
+## Input and processes
 
-A minimal interactive stdin example can prompt for a line and echo it back. `::< 30 stdin` reads one newline-delimited message from the predefined `stdin` binding, waits up to 30 seconds, strips the line terminator, and stores the payload as PCT data.
+Line reads use `::< timeout resource`. The payload is newline-delimited and PCT-encoded before it enters state. Writes use `::> resource text`.
 
 ```thuepp
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
@@ -83,27 +120,13 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 START
 ```
 
-Run it:
+Process bindings use the same resource interface. The runner binds a name to a process, and thue++ reads or writes through that name.
 
-```bash
-./python/thuepp.py hello-name.tpp
-```
+## Conditionals by rewriting: guess the number
 
-Example interaction:
+There is no separate `if` syntax in core thue++. Programs encode branches into state and let ordinary ordered rules handle them. `examples/guess-number/guess-number.tpp` reads a secret number from a bound process, prompts on stdin, validates guesses before numeric builtins see them, and branches through states such as `CHECK<...|1>` and `CHECK<...|0>`.
 
-```text
-What is your name?
-Ada
-hello Ada!
-```
-
-For non-interactive testing, pipe stdin into the same program:
-
-```bash
-printf 'Ada\n' | ./python/thuepp.py hello-name.tpp
-```
-
-The guess-number example demonstrates process bindings, stdin reads, validation, and numeric builtins. Run it interactively with a real random-number proc:
+Run it interactively with a real random-number process:
 
 ```bash
 ./python/thuepp.py examples/guess-number/guess-number.tpp --proc:random "python3 -c 'import random; print(random.randint(1, 10))'"
@@ -111,38 +134,11 @@ The guess-number example demonstrates process bindings, stdin reads, validation,
 
 The deterministic fixture below scripts the random number and user guesses so it can be checked by `make test`:
 
-<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp expected-output=examples/guess-number/tests/basic.toml -->
+<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=28-51 expected-output=examples/guess-number/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
-Example source (`examples/guess-number/guess-number.tpp`):
+Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 28-51):
 
 ```thuepp
-# Guess the number.
-#
-# The startup proc named "random" prints one secret number. For example:
-#   --proc:random "python3 -c 'import random; print(random.randint(1, 10))'"
-#
-# The game then reads guesses from stdin until the guess equals the secret.
-# Resource reads enter state as PCT payloads, so invalid guesses can be
-# matched safely by PAYLOAD and rejected before numeric builtins see them.
-
-# Decimal whole numbers accepted for the secret and valid guesses.
-NUMBER <- [0-9]+
-
-# Any PCT-encoded stdin payload; used only by the invalid-guess fallback.
-PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
-
-# Load the secret from the external random-number proc.
-@RANDOM_NUMBER@ ::< 5 random
-
-# Prompt and input resources.
-@PROMPT@ ::> stdout Guess:\n
-@USER_GUESS@ ::< 30 stdin
-
-# Output messages.
-@INVALID_NUMBER@ ::> stdout Please enter digits only.\n
-@TOO_LOW@ ::> stdout Too low.\n
-@TOO_HIGH@ ::> stdout Too high.\n
-
 # Numeric builtin markers. They replace themselves with 1 for true or 0 for false.
 @EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq guess secret
 @LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt guess secret
@@ -189,7 +185,91 @@ Correct!
 ```
 <!-- thuepp-readme-example:end -->
 
-<!-- The marker comments above name the example programs and test configs that supply these blocks. Regenerate them with: uv run python tools/check_contract.py --update-readme -->
+## Structured state: copy-on-write KV store
+
+The copy-on-write KV example shows state as a small transactional database. Input is a semicolon-separated command stream:
+
+```text
+begin; set KEY VALUE; get KEY; commit; discard; del KEY
+```
+
+Transactions are represented as stacked overlay frames. Writes inside a transaction touch only the top overlay. Reads scan top overlay, then parents, then base. `commit` merges the top overlay down; `discard` drops it.
+
+```bash
+uv run python python/thuepp.py examples/cow-kv/cow-kv.tpp --input 'set a base; begin; set a child; commit; get a'
+```
+
+Expected output:
+
+```text
+child
+```
+
+The point is not that thue++ is a database language. The point is that plain rewrite state can encode protocols, stacks, tombstones, lookup order, and transactional boundaries while remaining executable text.
+
+## A language inside the language: Lisp with a sandbox.
+
+Apparently, you can write a powerful Lisp in under 500 lines of regex.
+
+Go check out [`examples/lisp/lisp.tpp`](examples/lisp/lisp.tpp) real quick. It is a Lisp evaluator implemented entirely as thue++ rewrite rules. The backend provides only the generic thue++ interpreter and simple math builtins; the Lisp reader, typed runtime values, lexical environments, closures, lists, association-list helpers, parse/unparse, and explicit `eval` contract live in `.tpp` rules.
+
+```bash
+uv run python python/thuepp.py examples/lisp/lisp.tpp --input '(add (mul 2 3) 4)'
+```
+
+Expected output:
+
+```text
+10
+```
+
+## Yo dawg, I heard you like lisp...
+
+This Lisp example can parse source strings into code-as-data and evaluate them with an explicit association-list scope. This is the sandbox boundary: evaluated user code gets exactly the names supplied by the scope.
+
+`(eval code scope)` evaluates `code` with the `scope` as the explicit environment.
+
+This demo sandbox can take a source string, build its allowed scope internally, eval the parsed code, and return the value:
+
+```lisp
+(let ((sandbox
+        (fn (source)
+          (eval
+            (parse source)
+            (dict
+              ((quote square) (fn (x) (mul x x)))
+              ((quote safe-add) (fn (a b) (add a b))))))))
+  (sandbox "(square 6)"))
+```
+
+That returns `36`. The same helper accepts only the API it installed:
+
+```lisp
+(sandbox "(safe-add 1 2)") ; returns 3
+(sandbox "(add 1 2)")      ; fails with unbound_name
+```
+
+`add` is available while constructing `safe-add`, but it is not available to user code unless the scope exposes it. Caller locals are not ambient capabilities either: if the caller binds `secret`, `(sandbox "secret")` still fails with `unbound_name` unless `secret` is placed in the scope.
+
+The executable fixture is `examples/lisp/tests/sandbox_demo.toml`.
+
+This is all with humble `lhs ::= rhs` rewrite rules.
+
+## Current reference runners
+
+Python and Go are current conformance backends. Use whichever is convenient for local runs:
+
+```bash
+# Python backend
+uv run python python/thuepp.py <program.tpp>
+
+# Go backend
+(cd go && go run ./cmd/thuepp ../<program.tpp>)
+```
+
+The stable Python entry point remains `python/thuepp.py`. Direct `./python/thuepp.py ...` examples assume dependencies have already been installed or the command is running under `uv`.
+
+JavaScript support is currently Go-WASM based. The JavaScript files under `js/wasm/` load the WASM artifact and adapt runner resources for Node, browser, and worker environments; they are not a separate JavaScript implementation of the language. Browser resources are callbacks (`readAll`, `readLine`, `write`, and optional `close`). Browser and `GOOS=js/wasm` runs do not support OS subprocesses; attempts to bind subprocess-style resources fail loudly instead of emulating shell processes.
 
 ## Verification
 
@@ -199,47 +279,57 @@ Use the repository-root truth-engine command before sending changes for review:
 make test
 ```
 
-`make test` runs the repository conformance check and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, exposes per-program rule match counts, and enforces rule coverage for all manifest-declared example programs. For focused debugging, pass explicit manifest paths directly to the runner:
+`make test` runs the repository conformance check and the shared manifest truth engine. The manifest runner invokes the current reference backends as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks backend parity, exposes per-program rule match counts, and enforces rule coverage for all manifest-declared example programs.
+
+For focused debugging, pass explicit manifest paths directly to the runner:
 
 ```bash
 uv run python tools/example_runner.py examples/echo/tests/proc-input.toml
 ```
 
-For Go-WASM adapter changes, also run the focused adapter target:
+For Go-WASM adapter changes, also run:
 
 ```bash
 make wasm-adapter-test
 ```
 
-For browser demo changes, run the additive demo build target:
+For browser demo changes, also run:
 
 ```bash
 make demo-build
 ```
 
-`make demo-build` builds the Go-WASM browser assets, installs locked dependencies under `demo/`, runs the Vite/Vue production build, and smoke-checks that the production bundle contains non-empty WASM runtime assets with base-relative URLs. It is a browser-integration check only; it does not replace the native semantic truth engine.
+Generated README examples are checked by `tools/check_contract.py`. Maintainers can regenerate them with:
 
-`make wasm-adapter-test` builds `build/thuepp.wasm` with `GOOS=js GOARCH=wasm` and runs the Node adapter tests in `go/wasm/adapter_test.js`. Those tests cover the JavaScript/WASM host boundary only: WASM loading, stdout buffering, stdin `readLine`, custom resource callbacks, missing-resource errors, callback timeout errors, include maps, coverage TSV return, and a worker smoke run. They intentionally do not run the full `examples/**/tests/*.toml` suite in JavaScript.
+```bash
+uv run python tools/check_contract.py --update-readme
+```
 
-JavaScript support is Go-WASM based. The Go interpreter remains the semantic implementation; the JavaScript files under `js/wasm/` only load the WASM artifact and adapt host resources for Node, browser, and worker environments. Full language conformance remains `make test` through the native Python/Go manifest runner.
+## Language features
 
-Browser resources are callbacks (`readAll`, `readLine`, `write`, and optional `close`). Browser and `GOOS=js/wasm` runs do not support OS subprocesses; attempts to bind subprocess-style resources fail loudly instead of emulating shell processes. See `js/wasm/README.md` for the adapter API shape.
-
-## Numeric builtins
-
-Numeric builtins use exact rational arithmetic and canonical rational output, not floating-point arithmetic or decimal approximation. The accepted numeric input grammar, migration note for decimal-looking division output, and display policy are specified in `docs/numeric-builtins.md`. Example-level readable typed value wrappers are specified in `docs/typed-values.md`.
-
-## String escape builtins
-
-`escape` and `unescape` provide generic source-literal string escaping over canonical PCT payloads. They are separate from `pctenc`/`pctdec`: PCT remains a lossless transport codec, while `escape`/`unescape` interpret the standard backslash spellings documented in `docs/string-escape-builtins.md`.
+- v0.2 semantics checked by shared executable manifests
+- ordered rewrite rules over text state
+- RE2-compatible regex subset for portable implementations
+- pattern aliases with `$NAME` references
+- named captures and `{{group}}` templates
+- operators: `::=` rewrite, `::<` read, `::>` write, `::-` exit, `::!` builtin
+- predefined resources: `stdin`, `stdout`, `stderr`
+- runner-provided process/resource bindings
+- `@include` directive support
+- source rules are parsed once; execution rewrites only state rows
+- `--input` replaces source-provided state for runners that expose the CLI contract
+- resource reads: `::< -1 name` reads bulk/available stream content; `::< {timeout} name` reads one newline-delimited message and PCT-encodes the payload
+- execution limits such as `--max-evals` and `--max-state-bytes`
+- exact rational numeric builtins, not floating-point approximation
+- generic string escape/unescape builtins over PCT payloads
 
 ## Rule coverage counts
 
-Both interpreters can write successful rule application counts:
+Backends can write successful rule application counts:
 
 ```bash
-./python/thuepp.py examples/lisp/lisp.tpp --input '(+ 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
-(cd go && go run ./cmd/thuepp ../examples/lisp/lisp.tpp --input '(+ 1 2)' --rule-coverage /tmp/lisp.go.coverage.tsv)
+./python/thuepp.py examples/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
+(cd go && go run ./cmd/thuepp ../examples/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.go.coverage.tsv)
 ```
 
 Coverage files are minimal TSV, one applied rule per row, with no header:
@@ -249,23 +339,51 @@ examples/lisp/lisp.tpp:97	1
 examples/lisp/lisp.tpp:156	1
 ```
 
-Rules are counted only after a rule successfully applies. Failed probes, failed builtins, missing resources, and failed writes do not count. The shared manifest runner merges counts across TOML cases and fails on any surviving rule with zero coverage. It can also list compiled rules through the external Python CLI:
+Rules are counted only after a rule successfully applies. Failed probes, failed builtins, missing resources, and failed writes do not count. Coverage ignores are intentionally unsupported. Every surviving rule in manifest-declared examples must be covered by shared fixtures; otherwise add a fixture or delete the rule.
 
-```bash
-uv run python python/thuepp.py examples/lisp/lisp.tpp --list-rules
+## Repository layout
+
+```text
+examples/        Shared thue++ programs and manifest tests
+python/          Current Python conformance backend
+go/              Current Go conformance backend and Go-WASM export package
+js/wasm/         JavaScript adapters for loading the Go-WASM module
+docs/            Language contracts for builtins and typed values
+tools/           Repository conformance checker and shared manifest runner
+learnings/       Preserved design notes and failed attempts worth not repeating
 ```
 
-Coverage ignores are intentionally unsupported. Every surviving Lisp rule must be covered by shared fixtures; otherwise add a fixture or delete the rule.
+## Further reading
 
-## Python features
+- `examples/forth/README.md` — compact stack-language example
+- `examples/lisp/README.md` — Lisp evaluator contract
+- `examples/lisp/tests/sandbox_demo.toml` — explicit-scope sandbox demo
+- `docs/numeric-builtins.md` — exact numeric grammar and display policy
+- `docs/string-escape-builtins.md` — escape/unescape contract
+- `docs/typed-values.md` — readable typed value wrappers
+- `js/wasm/README.md` — WASM adapter API
 
-- Full v0.2 spec compliance
-- RE2-compatible regex (via Python `re` with automatic named group conversion)
-- Operators: `::=` (substitute), `::<` (read), `::>` (write), `::-` (exit)
-- `{{group}}` template syntax with escape sequences (`\n`, `\t`, `\r`, `\\`)
-- `@include` directive support
-- Predefined bindings: `stdin`, `stdout`, `stderr`
-- Process bindings via CLI (`--proc:<name> <command>`)
-- Source rules are parsed once; execution rewrites only state rows (`--input` replaces source-provided state)
-- Resource reads: `::< -1 name` reads bulk/available character-stream content from `stdin`/process resources; `::< {timeout} name` reads one newline-delimited message from `stdin`/process resources, strips the line terminator, and PCT-encodes the payload
-- Execution limits (`--max-evals`, `--max-state-bytes`)
+## Installation
+
+There is no package to install. The intended installation path is transposition: give this repository to your coding agent, pick the target language/runtime you need, and ask it to implement thue++ semantics in your project against these examples.
+
+Copy-pasteable agent prompt:
+
+```text
+Implement thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, builtins, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
+```
+
+If you want to run this repository's current reference tooling locally:
+
+```bash
+uv run python python/thuepp.py <program.tpp>
+(cd go && go run ./cmd/thuepp ../<program.tpp>)
+```
+
+Repository development requirements:
+
+- Python 3.11+
+- `uv` for Python dependencies from `pyproject.toml` / `uv.lock`
+- Go for the second conformance backend
+- `make` for verification targets
+- Node.js only for Go-WASM adapter and browser-demo checks

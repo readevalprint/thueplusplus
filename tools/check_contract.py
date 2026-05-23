@@ -15,7 +15,9 @@ import example_runner
 
 README_MARKER_RE = re.compile(
     r"<!--\s*thuepp-readme-example:\s*"
-    r"source=(?P<source>\S+)\s+expected-output=(?P<expected_output>\S+)\s*-->"
+    r"source=(?P<source>\S+)"
+    r"(?:\s+source-lines=(?P<source_lines>[0-9]+-[0-9]+))?"
+    r"\s+expected-output=(?P<expected_output>\S+)\s*-->"
 )
 README_START = "<!-- thuepp-readme-example:start -->"
 README_END = "<!-- thuepp-readme-example:end -->"
@@ -70,12 +72,26 @@ def readme_example_command(root: Path, source_path: str, expected_output_path: s
     return command
 
 
-def render_readme_example(root: Path, source_path: str, expected_output_path: str) -> str:
+def source_excerpt(root: Path, source_path: str, source_lines: str | None) -> tuple[str, str]:
     source = read(root / source_path)
+    if source_lines is None:
+        return source, f"Example source (`{source_path}`):"
+    start_text, end_text = source_lines.split("-", 1)
+    start = int(start_text)
+    end = int(end_text)
+    lines = source.splitlines()
+    if start < 1 or end < start or end > len(lines):
+        raise ValueError(f"{source_path}: source-lines={source_lines} is outside 1-{len(lines)}")
+    excerpt = "\n".join(lines[start - 1 : end]) + "\n"
+    return excerpt, f"Example source excerpt (`{source_path}`, lines {start}-{end}):"
+
+
+def render_readme_example(root: Path, source_path: str, expected_output_path: str, source_lines: str | None = None) -> str:
+    source, source_label = source_excerpt(root, source_path, source_lines)
     stdout = expected_stdout(root, Path(expected_output_path))
     command = readme_example_command(root, source_path, expected_output_path)
     return (
-        f"Example source (`{source_path}`):\n\n"
+        f"{source_label}\n\n"
         "```thuepp\n"
         f"{source.rstrip(chr(10))}\n"
         "```\n\n"
@@ -106,7 +122,12 @@ def updated_readme(root: Path) -> str:
         end = text.find(README_END, content_start)
         if end == -1:
             raise ValueError(f"README marker block end not found after marker for {marker.group('source')}: {README_END}")
-        generated = render_readme_example(root, marker.group("source"), marker.group("expected_output"))
+        generated = render_readme_example(
+            root,
+            marker.group("source"),
+            marker.group("expected_output"),
+            marker.group("source_lines"),
+        )
         pieces.append(text[pos:content_start])
         pieces.append("\n" + generated + "\n")
         pos = end
