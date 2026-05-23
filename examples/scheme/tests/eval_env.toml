@@ -401,3 +401,59 @@ input = "(define (id x) x)\n(other)"
 exit_code = 2
 stdout = ""
 stderr = "unbound_identifier"
+
+[[case]]
+name = "n-ary lambda adds three alpha-renamed parameters through shared walker"
+input = "((lambda (a b c) (+ a b c)) 1 2 3)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "6"
+
+[[case]]
+name = "n-ary lambda adds four alpha-renamed parameters through shared walker"
+input = "((lambda (a b c d) (+ a b c d)) 1 2 3 4)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "10"
+
+[[case]]
+name = "n-ary lambda mismatched body identifier fails through shared walker"
+input = "((lambda (a b c) (+ a missing c)) 1 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "n-ary procedure definition adds four numeric arguments through shared walker"
+input = "(define (sum4 a b c d) (+ a b c d))\n(sum4 1 2 3 4)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "10"
+
+[[case]]
+name = "n-ary procedure definition rejects wrong call name through lookup"
+input = "(define (sum3 a b c) (+ a b c))\n(other 1 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "n-ary procedure definition mismatched body identifier fails through shared walker"
+input = "(define (sum3 a b c) (+ a missing c))\n(sum3 1 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "n-ary lambda rejects too many arguments through shared walker"
+input = "((lambda (a b c) (+ a b c)) 1 2 3 4)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"

@@ -118,6 +118,8 @@ ENV = frame stream mapping symbol -> location
 STORE = location -> value
 ```
 
+Use `examples/cow-kv/cow-kv.tpp` as the small copy-on-write frame-stack reference for the store discipline: writes prepend into the current overlay, lookup scans top frame then parents then base, and lookup/restoration state is explicit rather than implicit. Scheme should adapt that overlay/lookup pattern to lexical env/location/store semantics; it should not copy the cow-kv command syntax or expose transactions as Scheme semantics.
+
 Lookup flow:
 
 ```text
@@ -163,6 +165,8 @@ Strict application flow:
 2. Evaluate operands left-to-right, unless the form is syntax/lazy.
 3. Apply primitive or compound procedure through the same `APPLY` gate.
 4. Return value and updated store.
+
+N-arity is a first-class requirement. Use the `examples/lisp/lisp.tpp` `SRCEVALARGS` / `APPLY` / `BINDCLOS` / `LETBINDRAW` shape as the reference for arbitrary argument, formal, and binding-stream iteration, while preserving Scheme semantics: fixed-formal Scheme procedures report `wrong_arity` for too few or too many arguments and must not inherit Lisp partial-application behavior by accident.
 
 Special forms are syntax dispatchers, not public full-form regex shortcuts:
 
