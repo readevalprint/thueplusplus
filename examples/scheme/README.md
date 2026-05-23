@@ -46,11 +46,11 @@ Literals:
 Scheme-shaped forms/operators in this scaffold:
 
 - `(lambda (x) x)` renders as the opaque procedure marker `#<procedure>`
-- simple lambda application over numeric bodies, including alpha-renamed parameter lookup checks and typed wrong-arity failures for the supported one-argument application shape
+- simple lambda application over numeric bodies, including alpha-renamed parameter lookup checks and typed wrong-arity failures for the supported one- and two-argument application shapes
 - `(begin a b)` returns the final supported atom, plus the first `set!` sequencing slice
 - `if` with Scheme truthiness: only `#f` is false; numbers, strings, symbols, and lists are true where supported
 - the first nested lambda body branch slice: `((lambda (x) (if #t x 0)) 9)`
-- top-level two-form variable `define` followed by a numeric expression, plus first one-argument procedure-definition sugar over numeric `+` bodies
+- top-level two-form variable `define` followed by a numeric expression, plus first one- and two-argument procedure-definition sugar over numeric `+` bodies
 - `set!` inside the supported lexical slice, with unbound names failing loudly
 - `let` and `let*` coverage for the first lexical-binding slice, including alpha-renamed binding names and the Scheme distinction between outer-env and sequential initializer lookup
 - `+` as the first primitive-apply fold, including zero-, one-, two-, and n-ary numeric addition with symmetric type errors
@@ -80,7 +80,7 @@ This scaffold does not claim full R5RS/R7RS Scheme. Deferred features include:
 
 - full reader support for comments and all datum abbreviation forms inside nested datums
 - full datum-level sharing/cycles and complete improper-list mutation behavior
-- fully general lambda application and lexical closure evaluation; this slice now tests alpha-renamed `let`/`let*`/lambda lookup and rejects mismatched identifiers/arity/non-procedure application for the supported shapes, but still does not implement a complete datum-level evaluator
+- fully general lambda application and lexical closure evaluation; this slice now tests alpha-renamed `let`/`let*`/lambda lookup and rejects mismatched identifiers/arity/non-procedure application for the supported one- and two-argument shapes, but still does not implement a complete datum-level evaluator
 - fully general `define`, `set!`, `let`, `let*`; `letrec` remains unsupported and fails loudly
 - macros / `syntax-rules`
 - `call/cc`
