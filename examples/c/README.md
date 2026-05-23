@@ -14,7 +14,7 @@ This is not a C-ish command language. The implementation is expected to grow as 
 8. freestanding or documented hosted-library boundary;
 9. conformance manifests, documentation sync, full rule coverage, and pipeline merge gate.
 
-The current file contains the phase-0 scaffold plus the phase-1 preprocessing-token lexer foundation. Later GLKB child issues consume the token stream instead of reparsing raw C source.
+The current file contains the phase-0 scaffold, the phase-1 preprocessing-token lexer foundation, and the phase-2 token-stream parser/AST foundation. Later GLKB child issues consume the AST instead of reparsing raw C source.
 
 ## Running the scaffold
 
@@ -59,6 +59,34 @@ KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC
 ```
 
 Token kinds currently emitted by the lexer are `KW`, `ID`, `ICON`, `STR`, `CHAR`, `PUNC`, and `EOF`. Every token payload is percent-encoded and the raw `;` record separator is outside the payload alphabet, so downstream parser rules do not have to trust raw user source text.
+
+## Running the parser
+
+The parser entry points consume lexer token streams:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'parse:KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC<%3B>;PUNC<%7D>;EOF<>;'
+```
+
+Expected output:
+
+```text
+TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<RETURN<ICON<42>>>>
+```
+
+Expression parser entry:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'parse-expr:ID<a>;PUNC<%2B>;ID<b>;PUNC<%2A>;ICON<3>;EOF<>;'
+```
+
+Expected output:
+
+```text
+ADD<ID<a>;|MUL<ID<b>;|ICON<3>;>>
+```
+
+The phase-2 AST contract is deliberately framed text for later rewrite phases: `TU`, `FN`, `DECL`, `TYPEDEF`, `RETURN`, `IF`, `WHILE`, `FOR`, `ASSIGN`, `ADD`, `MUL`, `EQ`, `LT`, `CALL`, and primary nodes preserve token payloads without decoding arbitrary source text.
 
 ## Target standard and mode
 
@@ -151,6 +179,16 @@ Required coverage:
 
 ### Phase 2: parser and AST
 
+Implemented now:
+
+- `parse:<token-stream>` parses tokenized translation units into framed AST records;
+- `parse-expr:<token-stream>` parses expression token streams for expression-focused tests;
+- function definitions support `int` return type, `void` or empty parameter lists, single `int` parameters, local `int` declarations, and `return` statements;
+- declarations support plain `int x;` and an explicit typedef-name ambiguity case `typedef int T; T x;`;
+- statement shells cover `if/else`, `while`, and `for` forms needed by later semantic/execution work;
+- expression parsing covers assignment, equality, relational comparison, additive/multiplicative precedence, calls, and primary identifiers/constants/string/char literals;
+- malformed token streams fail loudly with `syntax_error`.
+
 Required coverage:
 
 - expression precedence and associativity;
@@ -220,10 +258,10 @@ Diagnostics are stable stderr strings with exit code 2 for language-level failur
 - `unterminated_string`
 - `unterminated_char`
 - `invalid_escape`
+- `syntax_error`
 
 Later phases should add precise diagnostics such as:
 
-- `syntax_error`
 - `undefined_identifier`
 - `invalid_lvalue`
 - `type_error`
@@ -242,6 +280,12 @@ Focused lexer validation:
 
 ```bash
 uv run python tools/example_runner.py examples/c/tests/lexer.toml
+```
+
+Focused parser validation:
+
+```bash
+uv run python tools/example_runner.py examples/c/tests/parser.toml
 ```
 
 Full repository validation before any C MR is marked review-ready/done:
