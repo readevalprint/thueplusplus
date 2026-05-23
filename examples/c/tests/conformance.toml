@@ -1325,6 +1325,61 @@ exit_code = 2
 stdout = ""
 stderr = "syntax_error"
 
+
+[[case]]
+name = "adversarial source rejects unsupported constant if condition two"
+input = "int main(void) { if (2) { return 7; } else { return 8; } }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "adversarial source rejects hexadecimal truthy if condition"
+input = "int main(void) { if (0x1) { return 7; } else { return 8; } }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "adversarial source rejects valid program with trailing tokens"
+input = "int main(void) { if (1) { return 7; } else { return 8; } } trailing"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "adversarial source rejects identifier return inside if branch"
+input = "int main(void) { if (1) { return 7; } else { return x; } }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "adversarial public exec rejects mismatched main binding typed AST"
+input = "exec:TU<SCOPE<file|BIND<notmain|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|7>>>>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "adversarial public lib rejects fixture printf spelling"
+input = "lib:printf1|STR<answer>|ICON<7>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
 # Keep it as the release/checklist manifest for the C workstream: if a new rule
 # is added to examples/c/c.tpp, add a case here before considering the C example
 # complete.
