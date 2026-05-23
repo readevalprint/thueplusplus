@@ -1,0 +1,132 @@
+# Focused safety cases for the unified BNUM2 numeric primitive dispatcher.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "bnum2 arithmetic dispatch still works"
+input = '(list (add 2 3) (sub 10 4) (mul 3 5) (div 9 2))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(5 6 15 9/2)"
+
+[[case]]
+name = "bnum2 comparison dispatch returns booleans"
+input = '(list (eq 3 3) (lt 2 3) (lte 3 3) (gt 4 3) (gte 4 4))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(true true true true true)"
+
+[[case]]
+name = "division by integer zero still fails before fallback"
+input = '(div 1 0)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "division by decimal zero still fails before fallback"
+input = '(div 1 0.0)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "division by rational zero still fails before fallback"
+input = '(div 1 0/3)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "division_by_zero"
+
+[[case]]
+name = "add non-number stays type error"
+input = '(add 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "sub non-number stays type error"
+input = '(sub 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "mul non-number stays type error"
+input = '(mul 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "div non-number stays type error"
+input = '(div 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "eq non-number stays type error"
+input = '(eq 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "lt non-number stays type error"
+input = '(lt 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "lte non-number stays type error"
+input = '(lte 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "gt non-number stays type error"
+input = '(gt 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "gte non-number stays type error"
+input = '(gte 1 "x")'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "numeric wrong arity still handled before bnum2"
+input = '(add 1)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
+
+[[case]]
+name = "numeric extra arity still handled before bnum2"
+input = '(add 1 2 3)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "wrong_arity"
