@@ -3,8 +3,8 @@
 # The full-C workstream grows in explicit pipeline phases. This file currently
 # contains a narrow source-driven smoke plus the preprocessing-token lexer,
 # parser, semantic-analysis, abstract-machine, preprocessor, linkage, and
-# library-boundary fixture states. Downstream cards should keep deleting
-# direct/duplicate scaffolding as public staged semantics expand.
+# library-boundary states. Coverage-only probes are quarantined behind fixture:
+# so public entries do not overclaim implemented C semantics.
 
 WS <- [ \t\r\n]*
 IWS <- [ \t\r\n]+
@@ -38,6 +38,7 @@ ERRNAME <- [A-Za-z0-9_]+
 ^pp:(?<form>[\s\S]+)$ ::= PP<{{form}}>
 ^link:(?<form>[\s\S]+)$ ::= LINK<{{form}}>
 ^lib:(?<form>[\s\S]+)$ ::= LIB<{{form}}>
+^fixture:(?<form>[\s\S]+)$ ::= FIXTURE<{{form}}>
 
 # Source-driven smoke entry. The supported raw `int main` slice enters the same
 # lexer as `lex:` and then continues through explicit parse/sema/exec pipeline
@@ -162,8 +163,6 @@ ERRNAME <- [A-Za-z0-9_]+
 ^EXEC<IF<RVAL<int\|0>\|RETURN<RVAL<int\|(?<then>$PCT)>>\|RETURN<RVAL<int\|(?<elsev>$PCT)>>>>$ ::= @OUT<{{elsev}}>
 ^EXEC<WHILE<COUNT<(?<n>$PCT)>\|BODY<INC<(?<id>$PCT)>>>>$ ::= @MACHINE<STATE<LOOP<while|iterations|{{n}}>|MUTATED<{{id}}>>>
 ^EXEC<FOR<COUNT<(?<n>$PCT)>\|BODY<RETURN<RVAL<int\|(?<v>$PCT)>>>>$ ::= @OUT<{{v}}>
-^EXEC<CALL<fact\|ARG<int\|0>>>$ ::= @OUT<1>
-^EXEC<CALL<fact\|ARG<int\|3>>>$ ::= @OUT<6>
 ^EXEC<COMPOUND<DECL<LVAL<int\|(?<name>$PCT)>>\|RETURN<RVAL<int\|(?<n>$PCT)>>>>$ ::= @OUT<{{n}}>
 ^EXEC<BREAK<while>>$ ::= @MACHINE<CTRL<break|while>>
 ^EXEC<CONTINUE<while>>$ ::= @MACHINE<CTRL<continue|while>>
@@ -172,11 +171,12 @@ ERRNAME <- [A-Za-z0-9_]+
 ^EXEC<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
 ^@MACHINE<(?<state>[\s\S]+)>$ ::> stdout {{state}}\n
 # Phase-5 preprocessing, linkage, and minimal library-boundary states.
+# Fixture-only probes live behind the explicit fixture: entry so public-looking
+# pp:/exec:/lib: inputs cannot masquerade as implemented C semantics.
 @EQ\[(?<a>$PCT)\|(?<b>$PCT)\]@ ::! eq a b
 ^PP<DEFINE<(?<name>$PCT)\|(?<body>$TOKSTREAM)>\|USE<(?<use>$PCT)>>$ ::= PPCMP_DEFINE<{{name}}|{{use}}|{{body}}|@EQ[{{name}}|{{use}}]@>
 ^PPCMP_DEFINE<(?<name>$PCT)\|(?<use>$PCT)\|(?<body>$TOKSTREAM)\|1>$ ::= @PP<TOKENS<{{body}}>>
 ^PPCMP_DEFINE<(?<name>$PCT)\|(?<use>$PCT)\|(?<body>$TOKSTREAM)\|0>$ ::= ERR<undefined_identifier>
-^PP<FNADD1<(?<actual>$PCT)>>$ ::= @PP<TOKENS<ID<{{actual}}>;PUNC<%2B>;ICON<1>;>>
 ^PP<UNDEF<(?<name>$PCT)>\|USE<(?<use>$PCT)>>$ ::= ERR<undefined_identifier>
 ^PP<IFDEF<DEFINED<(?<name>$PCT)>>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{then}}>>
 ^PP<IFDEF<UNDEFINED<(?<name>$PCT)>>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{elsev}}>>
@@ -192,8 +192,12 @@ ERRNAME <- [A-Za-z0-9_]+
 ^LINK<INTERNAL<int\|(?<name>$PCT)\|(?<value>$PCT)>>$ ::= @MACHINE<LINKED<SYMBOL<{{name}}|object|internal|int|{{value}}>>>
 ^LIB<putchar\|CHAR<(?<c>$PCT)>>$ ::= @LIBOUT<{{c}}>
 ^LIB<puts\|STR<(?<s>$PCT)>>$ ::= @LIBOUT<{{s}}%0A>
-^LIB<printf1\|STR<(?<fmt>$PCT)>\|ICON<(?<n>$PCT)>>$ ::= @LIBRAW<{{fmt}}:{{n}}>
 ^LIB<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
+^FIXTURE<EXEC<CALL<fact\|ARG<int\|0>>>>$ ::= @OUT<1>
+^FIXTURE<EXEC<CALL<fact\|ARG<int\|3>>>>$ ::= @OUT<6>
+^FIXTURE<PP<FNADD1<(?<actual>$PCT)>>>$ ::= @PP<TOKENS<ID<{{actual}}>;PUNC<%2B>;ICON<1>;>>
+^FIXTURE<LIB<printf1\|STR<(?<fmt>$PCT)>\|ICON<(?<n>$PCT)>>>$ ::= @LIBRAW<{{fmt}}:{{n}}>
+^FIXTURE<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
 ^@PP<(?<tokens>[\s\S]+)>$ ::> stdout {{tokens}}\n
 ^@LIBOUT<(?<out>[\s\S]+)>$ ::> stdout {{out|pctdec}}\n
 ^@LIBRAW<(?<out>[\s\S]+)>$ ::> stdout {{out}}\n

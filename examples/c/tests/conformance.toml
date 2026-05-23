@@ -664,8 +664,8 @@ stderr = ""
 stdout = "9\n"
 
 [[case]]
-name = "executes base recursive call"
-input = "exec:CALL<fact|ARG<int|0>>"
+name = "fixture executes base recursive call"
+input = "fixture:EXEC<CALL<fact|ARG<int|0>>>"
 
 [case.expect]
 exit_code = 0
@@ -673,8 +673,8 @@ stderr = ""
 stdout = "1\n"
 
 [[case]]
-name = "executes recursive call fixture"
-input = "exec:CALL<fact|ARG<int|3>>"
+name = "fixture executes recursive call"
+input = "fixture:EXEC<CALL<fact|ARG<int|3>>>"
 
 [case.expect]
 exit_code = 0
@@ -782,8 +782,8 @@ stdout = ""
 stderr = "unsupported_c_construct"
 
 [[case]]
-name = "preprocesses function macro"
-input = "pp:FNADD1<y>"
+name = "fixture preprocesses function macro"
+input = "fixture:PP<FNADD1<y>>"
 
 [case.expect]
 exit_code = 0
@@ -854,6 +854,33 @@ stderr = ""
 stdout = "TOKENS<ICON<12>;>\n"
 
 [[case]]
+name = "stale public function macro fixture fails loudly"
+input = "pp:FNADD1<y>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "stale public printf fixture fails loudly"
+input = "lib:printf1|STR<n>|ICON<5>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "stale public hard-coded call fixture fails loudly"
+input = "exec:CALL<fact|ARG<int|3>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
 name = "preprocessor unsupported fails loudly"
 input = "pp:PRAGMA<once>"
 
@@ -908,13 +935,23 @@ stderr = ""
 stdout = "hi\n\n"
 
 [[case]]
-name = "library printf one integer fixture"
-input = "lib:printf1|STR<n>|ICON<5>"
+name = "fixture library printf one integer"
+input = "fixture:LIB<printf1|STR<n>|ICON<5>>"
 
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout = "n:5\n"
+
+
+[[case]]
+name = "fixture unsupported fails loudly"
+input = "fixture:LIB<scanf|PTR<x>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
 
 [[case]]
 name = "library unsupported fails loudly"
