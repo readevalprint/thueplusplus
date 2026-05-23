@@ -1039,6 +1039,89 @@ exit_code = 2
 stdout = ""
 stderr = "unsupported_c_construct"
 
+
+[[case]]
+name = "source pipeline executes initialized local return"
+input = "int main(void) { int x = 7; return x; }"
+
+[case.expect]
+exit_code = 0
+stdout = "7\n"
+stderr = ""
+
+[[case]]
+name = "source pipeline executes empty-parameter initialized local return"
+input = "int main() { int x = 8; return x; }"
+
+[case.expect]
+exit_code = 0
+stdout = "8\n"
+stderr = ""
+
+[[case]]
+name = "parses initialized local return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<x>;PUNC<%3D>;ICON<7>;PUNC<%3B>;KW<return>;ID<x>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<DECL_INIT<VAR<int|x>|ICON<7>>|RETURN<ID<x>>>>\n"
+stderr = ""
+
+[[case]]
+name = "parses empty-parameter initialized local return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<x>;PUNC<%3D>;ICON<8>;PUNC<%3B>;KW<return>;ID<x>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<DECL_INIT<VAR<int|x>|ICON<8>>|RETURN<ID<x>>>>\n"
+stderr = ""
+
+[[case]]
+name = "sema lowers initialized local return function"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<DECL_INIT<VAR<int|x>|ICON<7>>|RETURN<ID<x>>>>"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<COMPOUND<DECL_INIT<LVAL<int|x>|RVAL<int|7>>|RETURN<RVAL<int|LOAD<LVAL<int|x>>>>>>\n"
+stderr = ""
+
+
+[[case]]
+name = "sema lowers empty-parameter initialized local return function"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<DECL_INIT<VAR<int|x>|ICON<8>>|RETURN<ID<x>>>>"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<COMPOUND<DECL_INIT<LVAL<int|x>|RVAL<int|8>>|RETURN<RVAL<int|LOAD<LVAL<int|x>>>>>>\n"
+stderr = ""
+
+[[case]]
+name = "exec rejects initialized local return with mismatched main binding"
+input = "EXECMAIN_LOCAL_INIT<main|main|x|y|7|1|0>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "sema rejects initialized local return name mismatch"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<DECL_INIT<VAR<int|x>|ICON<7>>|RETURN<ID<y>>>>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
+[[case]]
+name = "source pipeline rejects initialized local return name mismatch"
+input = "int main(void) { int x = 7; return y; }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
 [[case]]
 name = "source pipeline rejects malformed token stream"
 input = "CPIPE_TOKENS<KW<int>;ID<main>;EOF<>;>"

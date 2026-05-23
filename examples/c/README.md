@@ -55,7 +55,20 @@ Expected output:
 5
 ```
 
-Any C construct outside this scaffold fails loudly. The raw smoke accepts only integer constants (`ICON`: decimal or hexadecimal), not fractions or decimals. The local-declaration slice accepts `int <identifier>;` before the return; initializers, multiple declarations, and returning the local value are not yet source-driven. Supported raw source reaches output through the lexer-backed public parser/sema/exec pipeline rather than a direct raw-source success rule. Downstream cards must extend the staged C pipeline described below, not widen raw regex over source text.
+It also accepts one initialized local `int` followed by returning that same
+local identifier:
+
+```bash
+uv run python python/thuepp.py examples/c/c.tpp --input 'int main(void) { int x = 7; return x; }'
+```
+
+Expected output:
+
+```text
+7
+```
+
+Any C construct outside this scaffold fails loudly. The raw smoke accepts only integer constants (`ICON`: decimal or hexadecimal), not fractions or decimals. The local-declaration slice accepts `int <identifier>;` before an integer return and `int <identifier> = <ICON>; return <same-identifier>;`; multiple declarations, declaration-then-assignment, non-constant initializers, and returning a different local name are not yet source-driven. Supported raw source reaches output through the lexer-backed public parser/sema/exec pipeline rather than a direct raw-source success rule. Downstream cards must extend the staged C pipeline described below, not widen raw regex over source text.
 
 
 The raw `int main` smoke is source-driven: supported source first tokenizes through the shared lexer, then flows through the public `PARSE_TU` / `PARSE_RETURN_FN` / `PARSE_EXPR` parser and `SEMA` rules using a narrow `@@CPIPE` continuation, and finally the normal `EXEC` state. `CPIPE_TOKENS` is now only a lexer-to-parser routing adapter for this narrow slice; the duplicate `CPIPE_AST`/`CPIPE_TAST` parser/sema bridge has been deleted.
@@ -203,6 +216,8 @@ Implemented now:
 - `int main() { return <number>; }`
 - `int main(void) { int <identifier>; return <number>; }`
 - `int main() { int <identifier>; return <number>; }`
+- `int main(void) { int <identifier> = <number>; return <same-identifier>; }`
+- `int main() { int <identifier> = <number>; return <same-identifier>; }`
 - typed diagnostics for empty input, preprocessor input, and unsupported C constructs.
 
 ### Phase 1: preprocessing-token lexer
@@ -234,7 +249,7 @@ Implemented now:
 - `parse:<token-stream>` parses tokenized translation units into framed AST records;
 - `parse-expr:<token-stream>` parses expression token streams for expression-focused tests;
 - function definitions support `int` return type, `void` or empty parameter lists, single `int` parameters, local `int` declarations, and `return` statements;
-- source-driven `main` definitions support a single declaration-only local `int` before an integer return;
+- source-driven `main` definitions support a single declaration-only local `int` before an integer return, plus a single initialized local `int` before returning that same local identifier;
 - declarations support plain `int x;` and an explicit typedef-name ambiguity case `typedef int T; T x;`;
 - statement shells cover `if/else`, `while`, and `for` forms needed by later semantic/execution work;
 - expression parsing covers assignment, equality, relational comparison, additive/multiplicative precedence, calls, and primary identifiers/constants/string/char literals;
