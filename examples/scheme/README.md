@@ -81,13 +81,21 @@ Unsupported input fails loudly with a typed error instead of silently degrading.
 
 ## Tests and coverage
 
-The executable manifest is:
+The executable green manifest is:
 
 ```bash
 uv run python tools/example_runner.py examples/scheme/tests/core.toml
 ```
 
-It checks Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. The manifest covers reader/literals, quote, lists/pairs, arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
+The R5RS RED-debt gate is:
+
+```bash
+uv run python tools/scheme_conformance.py
+```
+
+It validates `examples/scheme/conformance/*-red.toml` with the shared manifest schema and runs each RED case through the shared runner's external-command case path with Python/Go parity. RED cases state intended R5RS behavior and must fail until an implementation card promotes them into `examples/scheme/tests/`.
+
+The green manifest checks Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. The manifest covers reader/literals, quote, lists/pairs, arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
 
 ```bash
 make test

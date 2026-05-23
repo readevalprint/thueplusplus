@@ -399,6 +399,12 @@ def check_rule_coverage(
         print(f"  rules:      {len(rules)}")
         print(f"  covered:    {sum(1 for rule_id in rules if counts[rule_id] > 0)}")
         print(f"  uncovered:  {len(uncovered)}")
+        print(f"  matches:    {sum(counts.values())}")
+        hot_rules = counts.most_common(3)
+        if hot_rules:
+            print("  hottest:")
+            for rule_id, count in hot_rules:
+                print(f"    {count:>7}  {rule_id}  {rules.get(rule_id, '<unknown rule>')}")
         if uncovered:
             print("\nuncovered:")
             for rule_id in uncovered:
