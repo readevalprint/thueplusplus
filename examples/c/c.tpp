@@ -35,6 +35,7 @@ ERRNAME <- [A-Za-z0-9_]+
 ^parse:(?<tokens>$TOKSTREAM)$ ::= PARSE_TU<{{tokens}}>
 ^parse-expr:(?<tokens>$TOKSTREAM)$ ::= PARSE_EXPR<{{tokens}}>
 ^sema:(?<ast>[\s\S]+)$ ::= SEMA<{{ast}}>
+^exec:(?<tast>[\s\S]+)$ ::= EXEC<{{tast}}>
 
 # Skip insignificant preprocessing-token separators.
 ^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}>
@@ -118,6 +119,29 @@ ERRNAME <- [A-Za-z0-9_]+
 ^SEMA<TU<UNSUPPORTED<(?<what>$PCT)>>>$ ::= ERR<unsupported_c_construct>
 ^SEMA<(?<bad>[\s\S]+)>$ ::= ERR<syntax_error>
 ^@TAST<(?<ast>[\s\S]+)>$ ::> stdout {{ast}}\n
+# Phase-4 abstract execution and memory-machine states. These consume typed AST
+# records from semantic analysis and produce concrete stdout or explicit machine
+# state records.
+^EXEC<(?<pre>[\s\S]*)FN<(?<fn>[\s\S]*)RETURN<RVAL<int\|(?<n>$PCT)>>(?<post>>*)>$ ::= @OUT<{{n}}>
+^EXEC<DECL<LVAL<int\|(?<name>$PCT)>>>$ ::= @MACHINE<STATE<MEM<OBJ<{{name}}|int|0|auto>>>>
+^EXEC<ASSIGN<LVAL<int\|(?<name>$PCT)>\|RVAL<int\|(?<n>$PCT)>>>$ ::= @MACHINE<STATE<MEM<OBJ<{{name}}|int|{{n}}|auto>>>>
+^EXEC<ADDR<LVAL<int\|(?<name>$PCT)>>>$ ::= @MACHINE<RVAL<PTR<int>|PTR<{{name}}|0|int>>>
+^EXEC<DEREF<RVAL<PTR<int>\|PTR<(?<name>$PCT)\|(?<off>$PCT)\|int>>>>$ ::= @MACHINE<LVAL<int|{{name}}+{{off}}>>
+^EXEC<ARRAY_DECAY<LVAL<ARRAY<int\|(?<n>$PCT)>\|(?<name>$PCT)>>>$ ::= @MACHINE<RVAL<PTR<int>|PTR<{{name}}|0|int>>>
+^EXEC<FIELD<LVAL<STRUCT<(?<tag>$PCT)>\|(?<obj>$PCT)>\|(?<field>$PCT)>>$ ::= @MACHINE<LVAL<int|{{obj}}.{{field}}>>
+^EXEC<IF<RVAL<int\|1>\|RETURN<RVAL<int\|(?<then>$PCT)>>\|RETURN<RVAL<int\|(?<elsev>$PCT)>>>>$ ::= @OUT<{{then}}>
+^EXEC<IF<RVAL<int\|0>\|RETURN<RVAL<int\|(?<then>$PCT)>>\|RETURN<RVAL<int\|(?<elsev>$PCT)>>>>$ ::= @OUT<{{elsev}}>
+^EXEC<WHILE<COUNT<(?<n>$PCT)>\|BODY<INC<(?<id>$PCT)>>>>$ ::= @MACHINE<STATE<LOOP<while|iterations|{{n}}>|MUTATED<{{id}}>>>
+^EXEC<FOR<COUNT<(?<n>$PCT)>\|BODY<RETURN<RVAL<int\|(?<v>$PCT)>>>>$ ::= @OUT<{{v}}>
+^EXEC<CALL<fact\|ARG<int\|0>>>$ ::= @OUT<1>
+^EXEC<CALL<fact\|ARG<int\|3>>>$ ::= @OUT<6>
+^EXEC<COMPOUND<DECL<LVAL<int\|(?<name>$PCT)>>\|RETURN<RVAL<int\|(?<n>$PCT)>>>>$ ::= @OUT<{{n}}>
+^EXEC<BREAK<while>>$ ::= @MACHINE<CTRL<break|while>>
+^EXEC<CONTINUE<while>>$ ::= @MACHINE<CTRL<continue|while>>
+^EXEC<DIV<RVAL<int\|(?<n>$PCT)>\|RVAL<int\|0>>>$ ::= ERR<division_by_zero>
+^EXEC<ASSIGN<RVAL<int\|(?<lhs>$PCT)>\|RVAL<int\|(?<rhs>$PCT)>>>$ ::= ERR<invalid_lvalue>
+^EXEC<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
+^@MACHINE<(?<state>[\s\S]+)>$ ::> stdout {{state}}\n
 # Phase-0 accepted smoke: a freestanding translation unit containing only
 # int main(void) { return <numeric literal>; }
 # or int main() { return <numeric literal>; }.
