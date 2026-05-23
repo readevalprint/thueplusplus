@@ -322,6 +322,7 @@ Use parser states over token streams. Do not grow a rule per C surface spelling.
 Implemented now:
 
 - `sema:<AST>` consumes framed parser output or equivalent AST fixtures;
+- semantic lowering canonicalizes the current executable `PARAMS<>` main-function model to the internal `PARAMS<void>` path, while public parser output still preserves the source spelling;
 - file-scope bindings distinguish objects, functions, typedef names, and tags;
 - scalar `int`, pointer, array, function, struct, union, enum, and typedef-name type records are represented explicitly;
 - declarations produce `LVAL<type|name>` records while expression values produce `RVAL<type|value-or-load>` records;
