@@ -8,7 +8,6 @@
 
 WS <- [ \t\r\n]*
 IWS <- [ \t\r\n]+
-NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 ICON <- (?:0[xX][0-9A-Fa-f]+|[0-9]+)
 ID <- [A-Za-z_][A-Za-z0-9_]*
 KEYWORD <- auto|break|case|char|const|continue|default|do|double|else|enum|extern|float|for|goto|if|inline|int|long|register|restrict|return|short|signed|sizeof|static|struct|switch|typedef|union|unsigned|void|volatile|while|_Bool|_Complex|_Atomic
@@ -177,9 +176,9 @@ ERRNAME <- [A-Za-z0-9_]+
 # Phase-0 accepted smoke: a freestanding translation unit containing only
 # int main(void) { return <numeric literal>; }
 # or int main() { return <numeric literal>; }.
-^$WSint$IWS+main$WS\($WSvoid$WS\)$WS\{$WSreturn$IWS+(?<n>$NUM)$WS;$WS\}$WS$ ::= @OUT<{{n}}>
-^$WSint$IWS+main$WS\($WS\)$WS\{$WSreturn$IWS+(?<n>$NUM)$WS;$WS\}$WS$ ::= @OUT<{{n}}>
-^@OUT<(?<n>$NUM)>$ ::> stdout {{n}}\n
+^$WSint$IWS+main$WS\($WSvoid$WS\)$WS\{$WSreturn$IWS+(?<n>$ICON)$WS;$WS\}$WS$ ::= @OUT<{{n}}>
+^$WSint$IWS+main$WS\($WS\)$WS\{$WSreturn$IWS+(?<n>$ICON)$WS;$WS\}$WS$ ::= @OUT<{{n}}>
+^@OUT<(?<n>$ICON)>$ ::> stdout {{n}}\n
 
 ^ERR<(?<e>$ERRNAME)>$ ::= @ERR<{{e}}>@@EXIT2@
 ^@ERR<(?<v>$ERRNAME)>@ ::> stderr {{v}}

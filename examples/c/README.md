@@ -14,7 +14,7 @@ This is not a C-ish command language. The implementation is expected to grow as 
 8. freestanding or documented hosted-library boundary;
 9. conformance manifests, documentation sync, full rule coverage, and pipeline merge gate.
 
-The current file contains the phase-0 scaffold, the phase-1 preprocessing-token lexer foundation, and the phase-2 token-stream parser/AST foundation. Later GLKB child issues consume the AST instead of reparsing raw C source.
+The current file contains an intentionally narrow phase-0 raw-source smoke plus lexer, parser/AST, semantic/type-analysis, execution/memory, preprocessing/linkage, and library-boundary fixture states. Later GLKB child issues should shrink or delete the raw-source smoke in favor of the staged token/AST pipeline instead of widening raw regex over source text.
 
 ## Running the scaffold
 
@@ -42,7 +42,7 @@ Expected output:
 42
 ```
 
-Any C construct outside this scaffold fails loudly. Downstream cards must replace the scaffold with the staged C pipeline described below, not widen it into ad hoc C-ish regex cases.
+Any C construct outside this scaffold fails loudly. The raw scaffold accepts only integer constants (`ICON`: decimal or hexadecimal), not fractions or decimals. Downstream cards must replace the scaffold with the staged C pipeline described below, not widen it into ad hoc source-regex cases.
 
 ## Running the lexer
 
@@ -362,7 +362,7 @@ Focused preprocessing/linkage/library validation:
 uv run python tools/example_runner.py examples/c/tests/preprocessor_linkage.toml
 ```
 
-Release/conformance validation for the complete C-ish example:
+Release/conformance validation for the current C workstream:
 
 ```bash
 uv run python tools/example_runner.py examples/c/tests/conformance.toml
@@ -394,7 +394,7 @@ Implemented coverage includes object/function-like macro fixtures, `#undef`, `#i
 
 ## Completion checklist
 
-Before marking the C-ish example complete:
+Before marking the C workstream complete:
 
 - `uv run python tools/example_runner.py examples/c/tests/conformance.toml` passes;
 - `uv run python tools/example_runner.py` passes;
