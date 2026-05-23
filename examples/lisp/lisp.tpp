@@ -356,15 +356,7 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<(?<op>$PRIM2)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>$PRIM3)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>$PRIM3)>\|(?<a>[^;]*);(?<b>[^;]*);(?<c>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<add>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BADD<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<sub>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BSUB<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<mul>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BMUL<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<div>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BDIV<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<eq>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BEQ<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<lt>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BLT<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<lte>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BLE<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<gt>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGT<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
-^APPLY<VPRIM<gte>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGE<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
+^APPLY<VPRIM<(?<op>$PRIM_NUM2)>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BNUM2<{{op}}|{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 
 ^APPLY<VPRIM<parse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARSE<{{a|pctdec}}|{{k}}>
 ^BPARSE<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= READ<{{s|pctdec}}> KPARSE<{{k}}>
@@ -419,18 +411,18 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^BNAME<VSYM<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
 ^BNAME<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VSTR<$PCT>|VLIST<$ITEMS>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
 
-^BADD<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
-^BSUB<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>
-^BMUL<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|{{k}}>
-^BDIV<VNUM<(?<a>$NUM)>\|VNUM<0>\|(?<k>.*)>$ ::= ERR<division_by_zero>
-^BDIV<VNUM<(?<a>$NUM)>\|VNUM<0(?:\.0+|/[0-9]+)>\|(?<k>.*)>$ ::= ERR<division_by_zero>
-^BDIV<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<DIV<{{a}},{{b}}>>|{{k}}>
-^BEQ<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<EQ<{{a}},{{b}}>>|{{k}}>
-^BLT<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LT<{{a}},{{b}}>>|{{k}}>
-^BLE<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LE<{{a}},{{b}}>>|{{k}}>
-^BGT<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GT<{{a}},{{b}}>>|{{k}}>
-^BGE<VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GE<{{a}},{{b}}>>|{{k}}>
-^B(?:ADD|SUB|MUL|DIV|EQ|LT|LE|GT|GE)<(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^BNUM2<add\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
+^BNUM2<sub\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>
+^BNUM2<mul\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|{{k}}>
+^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<0>\|(?<k>.*)>$ ::= ERR<division_by_zero>
+^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<0(?:\.0+|/[0-9]+)>\|(?<k>.*)>$ ::= ERR<division_by_zero>
+^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<DIV<{{a}},{{b}}>>|{{k}}>
+^BNUM2<eq\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<EQ<{{a}},{{b}}>>|{{k}}>
+^BNUM2<lt\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LT<{{a}},{{b}}>>|{{k}}>
+^BNUM2<lte\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LE<{{a}},{{b}}>>|{{k}}>
+^BNUM2<gt\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GT<{{a}},{{b}}>>|{{k}}>
+^BNUM2<gte\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GE<{{a}},{{b}}>>|{{k}}>
+^BNUM2<(?<op>$PRIM_NUM2)\|(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VNUM<(?<n>$NUM)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VBOOL<(?<b>true|false)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSTR<(?<s>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
