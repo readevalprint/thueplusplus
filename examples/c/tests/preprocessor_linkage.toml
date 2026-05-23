@@ -11,6 +11,25 @@ exit_code = 0
 stderr = ""
 stdout = "KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC<%3B>;PUNC<%7D>;EOF<>;\n"
 
+
+[[case]]
+name = "tokenizes keyword at EOF"
+input = "lex:int"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<int>;EOF<>;\n"
+
+[[case]]
+name = "keeps keyword-prefixed identifier distinct"
+input = "lex:integer"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ID<integer>;EOF<>;\n"
+
 [[case]]
 name = "skips whitespace and comments"
 input = "lex:/* block */\nint// line\nmain"
@@ -668,6 +687,43 @@ exit_code = 0
 stderr = ""
 stdout = "TOKENS<ICON<7>;>\n"
 
+
+[[case]]
+name = "preprocessor define/use mismatch fails loudly"
+input = "pp:DEFINE<N|ICON<7>;>|USE<M>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "undefined_identifier"
+
+[[case]]
+name = "preprocesses ifdef undefined else branch"
+input = "pp:IFDEF<UNDEFINED<N>>|THEN<ICON<1>;>|ELSE<ICON<0>;>"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TOKENS<ICON<0>;>\n"
+
+[[case]]
+name = "preprocesses ifndef undefined then branch"
+input = "pp:IFNDEF<UNDEFINED<N>>|THEN<ICON<1>;>|ELSE<ICON<0>;>"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TOKENS<ICON<1>;>\n"
+
+[[case]]
+name = "preprocessor plain ifdef fixture is unsupported"
+input = "pp:IFDEF<UNDEFINED>|THEN<ICON<1>;>|ELSE<ICON<0>;>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
 [[case]]
 name = "preprocesses function macro"
 input = "pp:FNADD1<y>"
@@ -688,7 +744,7 @@ stderr = "undefined_identifier"
 
 [[case]]
 name = "preprocesses ifdef then branch"
-input = "pp:IFDEF<N>|THEN<ICON<1>;>|ELSE<ICON<0>;>"
+input = "pp:IFDEF<DEFINED<N>>|THEN<ICON<1>;>|ELSE<ICON<0>;>"
 
 [case.expect]
 exit_code = 0
@@ -697,7 +753,7 @@ stdout = "TOKENS<ICON<1>;>\n"
 
 [[case]]
 name = "preprocesses ifndef else branch"
-input = "pp:IFNDEF<N>|THEN<ICON<1>;>|ELSE<ICON<0>;>"
+input = "pp:IFNDEF<DEFINED<N>>|THEN<ICON<1>;>|ELSE<ICON<0>;>"
 
 [case.expect]
 exit_code = 0

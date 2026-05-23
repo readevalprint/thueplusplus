@@ -54,6 +54,7 @@ ERRNAME <- [A-Za-z0-9_]+
 
 # Recognize tokens. Keywords must precede identifiers.
 ^LEX<(?<kw>$KEYWORD)(?<rest>[^A-Za-z0-9_][\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}KW<{{kw|pctenc}}>;>
+^LEX<(?<kw>$KEYWORD)\|(?<out>$TOKS)>$ ::= LEX<|{{out}}KW<{{kw|pctenc}}>;>
 ^LEX<(?<id>$ID)(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}ID<{{id|pctenc}}>;>
 ^LEX<(?<n>$ICON)(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}ICON<{{n|pctenc}}>;>
 ^LEX<"(?<s>(?:[^"\\\n]|\\$STRESC)*)"(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}STR<{{s|pctenc}}>;>
@@ -146,11 +147,16 @@ ERRNAME <- [A-Za-z0-9_]+
 ^EXEC<(?<bad>[\s\S]+)>$ ::= ERR<unsupported_c_construct>
 ^@MACHINE<(?<state>[\s\S]+)>$ ::> stdout {{state}}\n
 # Phase-5 preprocessing, linkage, and minimal library-boundary states.
-^PP<DEFINE<(?<name>$PCT)\|(?<body>$TOKSTREAM)>\|USE<(?<use>$PCT)>>$ ::= @PP<TOKENS<{{body}}>>
+@EQ\[(?<a>$PCT)\|(?<b>$PCT)\]@ ::! eq a b
+^PP<DEFINE<(?<name>$PCT)\|(?<body>$TOKSTREAM)>\|USE<(?<use>$PCT)>>$ ::= PPCMP_DEFINE<{{name}}|{{use}}|{{body}}|@EQ[{{name}}|{{use}}]@>
+^PPCMP_DEFINE<(?<name>$PCT)\|(?<use>$PCT)\|(?<body>$TOKSTREAM)\|1>$ ::= @PP<TOKENS<{{body}}>>
+^PPCMP_DEFINE<(?<name>$PCT)\|(?<use>$PCT)\|(?<body>$TOKSTREAM)\|0>$ ::= ERR<undefined_identifier>
 ^PP<FNADD1<(?<actual>$PCT)>>$ ::= @PP<TOKENS<ID<{{actual}}>;PUNC<%2B>;ICON<1>;>>
 ^PP<UNDEF<(?<name>$PCT)>\|USE<(?<use>$PCT)>>$ ::= ERR<undefined_identifier>
-^PP<IFDEF<(?<name>$PCT)>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{then}}>>
-^PP<IFNDEF<(?<name>$PCT)>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{elsev}}>>
+^PP<IFDEF<DEFINED<(?<name>$PCT)>>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{then}}>>
+^PP<IFDEF<UNDEFINED<(?<name>$PCT)>>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{elsev}}>>
+^PP<IFNDEF<DEFINED<(?<name>$PCT)>>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{elsev}}>>
+^PP<IFNDEF<UNDEFINED<(?<name>$PCT)>>\|THEN<(?<then>$TOKSTREAM)>\|ELSE<(?<elsev>$TOKSTREAM)>>$ ::= @PP<TOKENS<{{then}}>>
 ^PP<INCLUDE<(?<name>$PCT)>>$ ::= @PP<TOKENS<INCLUDED<{{name}}>;>>
 ^PP<STRINGIFY<(?<arg>$PCT)>>$ ::= @PP<TOKENS<STR<{{arg}}>;>>
 ^PP<PASTE<(?<lhs>$PCT)\|(?<rhs>$PCT)>>$ ::= @PP<TOKENS<ID<{{lhs}}{{rhs}}>;>>
