@@ -55,6 +55,9 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^\s*\(let \(\((?<name>$NAME) (?<old>$NUM)\)\) \(begin \(set! (?<set_name>$NAME) (?<new>$NUM)\) (?<use>$NAME)\)\)\s*$ ::= LETSET<NAMEEQ<{{name}},{{set_name}}>|NAMEEQ<{{name}},{{use}}>|{{new}}|KDONE>
 ^\s*\(set! (?<name>$NAME) (?<expr>$ATOM)\)\s*$ ::= ERR<unbound_name>
 ^\s*\(define (?<name>$NAME) (?<v>$NUM)\)\n\(\+ (?<use>$NAME) (?<n>$NUM)\)\s*$ ::= DEFNAME<NAMEEQ<{{name}},{{use}}>|{{v}}|{{n}}|KDONE>
+^\s*\(\(lambda \((?<param>$NAME)\) (?<body>[\s\S]+)\)\)\s*$ ::= ERR<wrong_arity>
+^\s*\(\(lambda \((?<param>$NAME)\) (?<body>[\s\S]+)\) (?<first>$ATOM) (?<extra>[\s\S]+)\)\s*$ ::= ERR<wrong_arity>
+^\s*\((?<notproc>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)(?: (?<args>[^()]*))?\)\s*$ ::= ERR<type_error>
 
 ^LAMAPPNAME<1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>
 ^LAMAPPNAME<0\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
