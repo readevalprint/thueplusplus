@@ -664,8 +664,8 @@ stderr = ""
 stdout = "9\n"
 
 [[case]]
-name = "executes base recursive call"
-input = "exec:CALL<fact|ARG<int|0>>"
+name = "fixture executes base recursive call"
+input = "fixture:EXEC<CALL<fact|ARG<int|0>>>"
 
 [case.expect]
 exit_code = 0
@@ -673,8 +673,8 @@ stderr = ""
 stdout = "1\n"
 
 [[case]]
-name = "executes recursive call fixture"
-input = "exec:CALL<fact|ARG<int|3>>"
+name = "fixture executes recursive call"
+input = "fixture:EXEC<CALL<fact|ARG<int|3>>>"
 
 [case.expect]
 exit_code = 0

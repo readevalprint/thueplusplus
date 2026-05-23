@@ -14,7 +14,7 @@ This is not a C-ish command language. The implementation is expected to grow as 
 8. freestanding or documented hosted-library boundary;
 9. conformance manifests, documentation sync, full rule coverage, and pipeline merge gate.
 
-The current file contains an intentionally narrow raw-source smoke that now enters the shared lexer and then continues through public parser/sema rules with a narrow continuation, plus public lexer, parser/AST, semantic/type-analysis, execution/memory, preprocessing/linkage, and library-boundary fixture states. Later GLKB child issues should delete remaining fixture-looking APIs instead of widening raw regex over source text.
+The current file contains an intentionally narrow raw-source smoke that now enters the shared lexer and then continues through public parser/sema rules with a narrow continuation, plus public lexer, parser/AST, semantic/type-analysis, execution/memory, preprocessing/linkage, and library-boundary states. Remaining coverage-only probes are quarantined behind the explicit `fixture:` entry so public-looking `exec:`, `pp:`, and `lib:` inputs cannot be mistaken for implemented C semantics.
 
 ## Running the scaffold
 
@@ -260,11 +260,11 @@ Required coverage:
 
 Implemented now:
 
-- `exec:<typed-AST-or-machine-form>` consumes semantic output / machine fixtures;
+- `exec:<typed-AST-or-machine-form>` consumes semantic output / machine records;
 - object storage records include object name, type, value, and automatic lifetime;
 - assignment through lvalues mutates explicit memory records;
 - address-of, dereference, array decay, and aggregate field selection produce pointer/lvalue records;
-- `if`, `while`, `for`, `break`, `continue`, compound block, function call, and recursion fixtures establish control-flow/call-frame contracts;
+- `if`, `while`, `for`, `break`, `continue`, and compound block records establish control-flow contracts;
 - typed `main` return records print the integer return value to stdout only when the surrounding typed-AST frame is exact and the function binding/name agree;
 - malformed function-shaped frames with garbage prefixes or junk `RETURN` substrings fail loudly instead of executing a valid-looking substring;
 - fail-loud diagnostics cover division by zero, invalid lvalue assignment, and unsupported machine forms.
@@ -286,7 +286,8 @@ Implemented now:
 - object-like macro fixtures compare the defined and used macro name exactly before expansion;
 - conditional preprocessing fixtures use explicit `DEFINED<name>` / `UNDEFINED<name>` state records for `IFDEF` and `IFNDEF` branch selection;
 - mismatched object macro use fails loudly with `undefined_identifier` instead of expanding a different macro's body;
-- include, stringify, token paste, predefined line, linkage, and minimal library-boundary fixture records remain explicit framed contracts.
+- include, stringify, token paste, predefined line, linkage, and minimal library-boundary records remain explicit framed contracts;
+- coverage-only function-like macro, hard-coded recursive-call, and one-integer printf probes are quarantined behind `fixture:` and are not advertised as `pp:`, `exec:`, or `lib:` semantics.
 
 Required coverage:
 
@@ -393,7 +394,7 @@ Expected output:
 TOKENS<ICON<7>;>
 ```
 
-Implemented coverage includes object/function-like macro fixtures, `#undef`, `#ifdef`/`#ifndef`, includes, stringify, token paste, `__LINE__`, external/internal/tentative linkage, and `putchar`/`puts`/single-integer `printf` boundary records.
+Implemented coverage includes object-like macro expansion, `#undef`, `#ifdef`/`#ifndef`, includes, stringify, token paste, `__LINE__`, external/internal/tentative linkage, and `putchar`/`puts` boundary records. Coverage-only function-like macro, hard-coded call, and single-integer printf probes use `fixture:<form>`; stale public forms such as `pp:FNADD1<...>`, `exec:CALL<fact|...>`, and `lib:printf1|...` fail loudly.
 
 ## Completion checklist
 
