@@ -49,6 +49,8 @@ ERRNAME <- [A-Za-z0-9_]+
 ^$WS(?<src>int$IWS+main$WS\($WS\)$WS\{$WSint$IWS+$ID$WS;$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 ^$WS(?<src>int$IWS+main$WS\($WSvoid$WS\)$WS\{$WSint$IWS+$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 ^$WS(?<src>int$IWS+main$WS\($WS\)$WS\{$WSint$IWS+$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+^$WS(?<src>int$IWS+main$WS\($WSvoid$WS\)$WS\{$WSint$IWS+$ID$WS;$WS$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+^$WS(?<src>int$IWS+main$WS\($WS\)$WS\{$WSint$IWS+$ID$WS;$WS$ID$WS=$WS$ICON$WS;$WSreturn$IWS+$ID$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
 
 # Skip insignificant preprocessing-token separators.
 ^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}|{{mode}}>
@@ -92,6 +94,8 @@ ERRNAME <- [A-Za-z0-9_]+
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= PARSE_LOCAL_RETURN_FN<int|{{name}}|PARAMS<>|{{local}}|{{expr}}>@@CPIPE
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<void>|BODY<DECL_INIT<VAR<int|{{local}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>@@CPIPE
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<>|BODY<DECL_INIT<VAR<int|{{local}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>@@CPIPE
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;ID<(?<lhs>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<void>|BODY<DECL<VAR<int|{{local}}>>|ASSIGN<ID<{{lhs}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>@@CPIPE
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;ID<(?<lhs>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<>|BODY<DECL<VAR<int|{{local}}>>|ASSIGN<ID<{{lhs}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>@@CPIPE
 ^PARSE_TU<(?<bad>$TOKSTREAM)>@@CPIPE$ ::= ERR<syntax_error>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<void>|{{expr}}>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<>|{{expr}}>
@@ -99,6 +103,8 @@ ERRNAME <- [A-Za-z0-9_]+
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_LOCAL_RETURN_FN<int|{{name}}|PARAMS<>|{{local}}|{{expr}}>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<void>|BODY<DECL_INIT<VAR<int|{{local}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<>|BODY<DECL_INIT<VAR<int|{{local}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;ID<(?<lhs>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<void>|BODY<DECL<VAR<int|{{local}}>>|ASSIGN<ID<{{lhs}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;ID<(?<lhs>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;PUNC<%3B>;KW<return>;ID<(?<retid>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= @AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<>|BODY<DECL<VAR<int|{{local}}>>|ASSIGN<ID<{{lhs}}>|ICON<{{n}}>>|RETURN<ID<{{retid}}>>>>>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<int>;ID<(?<param>$PCT)>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<int>|NAME<{{name}}>|PARAMS<PARAM<int|{{param}}>>|BODY<DECL<VAR<int|{{local}}>>|RETURN<@@>>>>
 ^PARSE_TU<KW<typedef>;KW<int>;ID<(?<alias>$PCT)>;PUNC<%3B>;ID<(?<type>$PCT)>;ID<(?<name>$PCT)>;PUNC<%3B>;EOF<>;>$ ::= @AST<TU<TYPEDEF<int|{{alias}}>|DECL<VAR<TYPEDEFNAME<{{type}}>|{{name}}>>>>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%3B>;EOF<>;>$ ::= @AST<TU<DECL<VAR<int|{{name}}>>>>
@@ -144,6 +150,8 @@ ERRNAME <- [A-Za-z0-9_]+
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL_INIT<VAR<int\|(?<local>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>@@CPIPE$ ::= SEMA_INIT_LOCAL_RETURN<{{name}}|void|{{local}}|{{n}}|{{retid}}|@EQ[{{local}}|{{retid}}]@>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<DECL_INIT<VAR<int\|(?<local>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>@@CPIPE$ ::= SEMA_INIT_LOCAL_RETURN<{{name}}|void|{{local}}|{{n}}|{{retid}}|@EQ[{{local}}|{{retid}}]@>@@CPIPE
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|ASSIGN<ID<(?<lhs>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>@@CPIPE$ ::= SEMA_ASSIGN_LOCAL_RETURN<{{name}}|void|{{local}}|{{lhs}}|{{n}}|{{retid}}|@EQ[{{local}}|{{lhs}}]@|@EQ[{{local}}|{{retid}}]@>@@CPIPE
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|ASSIGN<ID<(?<lhs>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>@@CPIPE$ ::= SEMA_ASSIGN_LOCAL_RETURN<{{name}}|void|{{local}}|{{lhs}}|{{n}}|{{retid}}|@EQ[{{local}}|{{lhs}}]@|@EQ[{{local}}|{{retid}}]@>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|RETURN<RVAL<int|{{n}}>>>>>>
@@ -154,6 +162,12 @@ ERRNAME <- [A-Za-z0-9_]+
 ^SEMA_INIT_LOCAL_RETURN<(?<name>$PCT)\|void\|(?<local>$PCT)\|(?<n>$PCT)\|(?<retid>$PCT)\|0>@@CPIPE$ ::= ERR<undefined_identifier>
 ^SEMA_INIT_LOCAL_RETURN<(?<name>$PCT)\|void\|(?<local>$PCT)\|(?<n>$PCT)\|(?<retid>$PCT)\|1>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL_INIT<LVAL<int|{{local}}>|RVAL<int|{{n}}>>|RETURN<RVAL<int|LOAD<LVAL<int|{{retid}}>>>>>>>
 ^SEMA_INIT_LOCAL_RETURN<(?<name>$PCT)\|void\|(?<local>$PCT)\|(?<n>$PCT)\|(?<retid>$PCT)\|0>$ ::= ERR<undefined_identifier>
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|ASSIGN<ID<(?<lhs>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>$ ::= SEMA_ASSIGN_LOCAL_RETURN<{{name}}|void|{{local}}|{{lhs}}|{{n}}|{{retid}}|@EQ[{{local}}|{{lhs}}]@|@EQ[{{local}}|{{retid}}]@>
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<DECL<VAR<int\|(?<local>$PCT)>>\|ASSIGN<ID<(?<lhs>$PCT)>\|ICON<(?<n>$PCT)>>\|RETURN<ID<(?<retid>$PCT)>>>>>$ ::= SEMA_ASSIGN_LOCAL_RETURN<{{name}}|void|{{local}}|{{lhs}}|{{n}}|{{retid}}|@EQ[{{local}}|{{lhs}}]@|@EQ[{{local}}|{{retid}}]@>
+^SEMA_ASSIGN_LOCAL_RETURN<(?<name>$PCT)\|void\|(?<local>$PCT)\|(?<lhs>$PCT)\|(?<n>$PCT)\|(?<retid>$PCT)\|1\|1>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|ASSIGN<LVAL<int|{{lhs}}>|RVAL<int|{{n}}>>|RETURN<RVAL<int|LOAD<LVAL<int|{{retid}}>>>>>>>>@@CPIPE
+^SEMA_ASSIGN_LOCAL_RETURN<(?<name>$PCT)\|void\|(?<local>$PCT)\|(?<lhs>$PCT)\|(?<n>$PCT)\|(?<retid>$PCT)\|(?<assignok>0|1)\|(?<retok>0|1)>@@CPIPE$ ::= ERR<undefined_identifier>
+^SEMA_ASSIGN_LOCAL_RETURN<(?<name>$PCT)\|void\|(?<local>$PCT)\|(?<lhs>$PCT)\|(?<n>$PCT)\|(?<retid>$PCT)\|1\|1>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<COMPOUND<DECL<LVAL<int|{{local}}>>|ASSIGN<LVAL<int|{{lhs}}>|RVAL<int|{{n}}>>|RETURN<RVAL<int|LOAD<LVAL<int|{{retid}}>>>>>>>
+^SEMA_ASSIGN_LOCAL_RETURN<(?<name>$PCT)\|void\|(?<local>$PCT)\|(?<lhs>$PCT)\|(?<n>$PCT)\|(?<retid>$PCT)\|(?<assignok>0|1)\|(?<retok>0|1)>$ ::= ERR<undefined_identifier>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ID<(?<id>$PCT)>>>>>$ ::= ERR<undefined_identifier>
 ^SEMA<TU<DECL<VAR<int\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|int>>|DECL<LVAL<int|{{name}}>>>>
 ^SEMA<TU<TYPEDEF<int\|(?<alias>$PCT)>\|DECL<VAR<TYPEDEFNAME<(?<type>$PCT)>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{alias}}|typedef|int>|BIND<{{name}}|object|TYPEDEFNAME<{{type}}>>>|TYPEDEF<int|{{alias}}>|DECL<LVAL<TYPEDEFNAME<{{type}}>|{{name}}>>>>
@@ -179,10 +193,13 @@ ERRNAME <- [A-Za-z0-9_]+
 ^EXEC<TU<SCOPE<file\|BIND<(?<bind>$PCT)\|function\|FUNC<int\|void>>>\|FN<TYPE<FUNC<int\|void>>\|NAME<(?<name>$PCT)>\|BODY<RETURN<RVAL<int\|(?<n>$PCT)>>>>>>$ ::= EXECMAIN<{{bind}}|{{name}}|{{n}}|@EQ[{{bind}}|{{name}}]@>
 ^EXEC<TU<SCOPE<file\|BIND<(?<bind>$PCT)\|function\|FUNC<int\|void>>>\|FN<TYPE<FUNC<int\|void>>\|NAME<(?<name>$PCT)>\|BODY<COMPOUND<DECL<LVAL<int\|(?<local>$PCT)>>\|RETURN<RVAL<int\|(?<n>$PCT)>>>>>>$ ::= EXECMAIN<{{bind}}|{{name}}|{{n}}|@EQ[{{bind}}|{{name}}]@>
 ^EXEC<TU<SCOPE<file\|BIND<(?<bind>$PCT)\|function\|FUNC<int\|void>>>\|FN<TYPE<FUNC<int\|void>>\|NAME<(?<name>$PCT)>\|BODY<COMPOUND<DECL_INIT<LVAL<int\|(?<local>$PCT)>\|RVAL<int\|(?<n>$PCT)>>\|RETURN<RVAL<int\|LOAD<LVAL<int\|(?<retid>$PCT)>>>>>>>>$ ::= EXECMAIN_LOCAL_INIT<{{bind}}|{{name}}|{{local}}|{{retid}}|{{n}}|@EQ[{{bind}}|{{name}}]@|@EQ[{{local}}|{{retid}}]@>
+^EXEC<TU<SCOPE<file\|BIND<(?<bind>$PCT)\|function\|FUNC<int\|void>>>\|FN<TYPE<FUNC<int\|void>>\|NAME<(?<name>$PCT)>\|BODY<COMPOUND<DECL<LVAL<int\|(?<local>$PCT)>>\|ASSIGN<LVAL<int\|(?<lhs>$PCT)>\|RVAL<int\|(?<n>$PCT)>>\|RETURN<RVAL<int\|LOAD<LVAL<int\|(?<retid>$PCT)>>>>>>>>$ ::= EXECMAIN_LOCAL_ASSIGN<{{bind}}|{{name}}|{{local}}|{{lhs}}|{{retid}}|{{n}}|@EQ[{{bind}}|{{name}}]@|@EQ[{{local}}|{{lhs}}]@|@EQ[{{local}}|{{retid}}]@>
 ^EXECMAIN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<n>$PCT)\|1>$ ::= @OUT<{{n}}>
 ^EXECMAIN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<n>$PCT)\|0>$ ::= ERR<unsupported_c_construct>
 ^EXECMAIN_LOCAL_INIT<(?<bind>$PCT)\|(?<name>$PCT)\|(?<local>$PCT)\|(?<retid>$PCT)\|(?<n>$PCT)\|1\|1>$ ::= @OUT<{{n}}>
 ^EXECMAIN_LOCAL_INIT<(?<bind>$PCT)\|(?<name>$PCT)\|(?<local>$PCT)\|(?<retid>$PCT)\|(?<n>$PCT)\|(?<bindok>0|1)\|(?<localok>0|1)>$ ::= ERR<unsupported_c_construct>
+^EXECMAIN_LOCAL_ASSIGN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<local>$PCT)\|(?<lhs>$PCT)\|(?<retid>$PCT)\|(?<n>$PCT)\|1\|1\|1>$ ::= @OUT<{{n}}>
+^EXECMAIN_LOCAL_ASSIGN<(?<bind>$PCT)\|(?<name>$PCT)\|(?<local>$PCT)\|(?<lhs>$PCT)\|(?<retid>$PCT)\|(?<n>$PCT)\|(?<bindok>0|1)\|(?<assignok>0|1)\|(?<retok>0|1)>$ ::= ERR<unsupported_c_construct>
 ^EXEC<DECL<LVAL<int\|(?<name>$PCT)>>>$ ::= @MACHINE<STATE<MEM<OBJ<{{name}}|int|0|auto>>>>
 ^EXEC<ASSIGN<LVAL<int\|(?<name>$PCT)>\|RVAL<int\|(?<n>$PCT)>>>$ ::= @MACHINE<STATE<MEM<OBJ<{{name}}|int|{{n}}|auto>>>>
 ^EXEC<ADDR<LVAL<int\|(?<name>$PCT)>>>$ ::= @MACHINE<RVAL<PTR<int>|PTR<{{name}}|0|int>>>
