@@ -1,0 +1,91 @@
+program = "../scheme.tpp"
+timeout = 5
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "lexical closure captures alpha-renamed outer binding"
+input = "(let ((a 10)) ((lambda (b) (+ a b)) 5))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "15"
+
+[[case]]
+name = "lambda parameter shadows alpha-renamed outer binding"
+input = "(let ((a 10)) ((lambda (a) (+ a 1)) 3))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "let initializer uses alpha-renamed outer environment"
+input = "(let ((a 1)) (let ((a 2) (b a)) (+ a b)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "let star initializer sees alpha-renamed previous binding"
+input = "(let ((a 1)) (let* ((a 2) (b a)) (+ a b)))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "nested lambda body if evaluates through argument binding"
+input = "((lambda (x) (if #t x 0)) 9)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
+name = "lambda body unbound identifier fails through lookup"
+input = "((lambda (x) (if #t y 0)) 9)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "lexical closure unbound alpha-renamed outer use fails"
+input = "(let ((a 10)) ((lambda (b) (+ c b)) 5))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "lambda shadow body unbound alpha-renamed use fails"
+input = "(let ((a 10)) ((lambda (b) (+ c 1)) 5))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "let initializer unbound alpha-renamed use fails"
+input = "(let ((a 1)) (let ((a 2) (b c)) (+ a b)))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "let star initializer unbound alpha-renamed use fails"
+input = "(let ((a 1)) (let* ((a 2) (b c)) (+ a b)))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "let set wrong alpha-renamed binding fails"
+input = "(let ((a 1)) (begin (set! b 3) a))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_name"

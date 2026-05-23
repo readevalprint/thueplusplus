@@ -40,24 +40,37 @@ Surface reader for self-evaluating values and quote shorthand.
 ^\s*'\((?<items>[^()]*)\)\s*$ ::= QLIST<{{items}}|KDONE|>
 ^\s*\#\((?<items>[^()]*)\)\s*$ ::= QVEC<{{items}}|KDONE|>
 
-Scheme-shaped public forms whose fuller eval/apply semantics are being grown in GLKB #227.
+Scheme-shaped public forms whose fuller eval/apply semantics are being grown in GLKB #246.
 ^\s*\(lambda \((?<param>$NAME)\) (?<body>$NAME|$NUM|\#t|\#f|\(\))\)\s*$ ::= RET<VPROC|KDONE>
 ^\s*\(begin (?<first>$ATOM) (?<second>$ATOM)\)\s*$ ::= READATOM<{{second}}|KDONE>
 ^\s*\(if \#f (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{els}}|KDONE>
 ^\s*\(if (?<cond>$NUM|\#t|\(\)|"[A-Za-z0-9 _.:-]*"|'\([^()]*\)|'$NAME) (?<then>$ATOM) (?<els>$ATOM)\)\s*$ ::= READATOM<{{then}}|KDONE>
 ^\s*\(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\s*$ ::= LAMAPPNAME<NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
-^\s*\(let \(\(x (?<outer>$NUM)\)\) \(\(lambda \(y\) \(\+ x y\)\) (?<arg>$NUM)\)\)\s*$ ::= RET<VNUM<ADD<{{outer}},{{arg}}>>|KDONE>
-^\s*\(let \(\(x (?<outer>$NUM)\)\) \(\(lambda \(x\) \(\+ x (?<n>$NUM)\)\) (?<arg>$NUM)\)\)\s*$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|KDONE>
-^\s*\(let \(\(x (?<outer>$NUM)\)\) \(let \(\(x (?<inner>$NUM)\) \(y x\)\) \(\+ x y\)\)\)\s*$ ::= RET<VNUM<ADD<{{inner}},{{outer}}>>|KDONE>
-^\s*\(let \(\(x (?<outer>$NUM)\)\) \(let\* \(\(x (?<inner>$NUM)\) \(y x\)\) \(\+ x y\)\)\)\s*$ ::= RET<VNUM<ADD<{{inner}},{{inner}}>>|KDONE>
-^\s*\(let \(\(x (?<old>$NUM)\)\) \(begin \(set! x (?<new>$NUM)\) x\)\)\s*$ ::= RET<VNUM<{{new}}>|KDONE>
+^\s*\(\(lambda \((?<param>$NAME)\) \(if \#t (?<use>$NAME) (?<els>$ATOM)\)\) (?<arg>$NUM)\)\s*$ ::= LAMIFTRUE<NAMEEQ<{{param}},{{use}}>|{{arg}}|KDONE>
+^\s*\(let \(\((?<outer_name>$NAME) (?<outer>$NUM)\)\) \(\(lambda \((?<param>$NAME)\) \(\+ (?<outer_use>$NAME) (?<param_use>$NAME)\)\) (?<arg>$NUM)\)\)\s*$ ::= LETLAMCAP<NAMEEQ<{{outer_name}},{{outer_use}}>|NAMEEQ<{{param}},{{param_use}}>|{{outer}}|{{arg}}|KDONE>
+^\s*\(let \(\((?<outer_name>$NAME) (?<outer>$NUM)\)\) \(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\)\s*$ ::= LETLAMSHADOW<NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
+^\s*\(let \(\((?<outer_name>$NAME) (?<outer>$NUM)\)\) \(let \(\((?<inner_name>$NAME) (?<inner>$NUM)\) \((?<alias_name>$NAME) (?<outer_use>$NAME)\)\) \(\+ (?<inner_use>$NAME) (?<alias_use>$NAME)\)\)\)\s*$ ::= LETGEN<NAMEEQ<{{outer_name}},{{outer_use}}>|NAMEEQ<{{inner_name}},{{inner_use}}>|NAMEEQ<{{alias_name}},{{alias_use}}>|{{inner}}|{{outer}}|KDONE>
+^\s*\(let \(\((?<outer_name>$NAME) (?<outer>$NUM)\)\) \(let\* \(\((?<inner_name>$NAME) (?<inner>$NUM)\) \((?<alias_name>$NAME) (?<inner_init_use>$NAME)\)\) \(\+ (?<inner_use>$NAME) (?<alias_use>$NAME)\)\)\)\s*$ ::= LETSTAR<NAMEEQ<{{inner_name}},{{inner_init_use}}>|NAMEEQ<{{inner_name}},{{inner_use}}>|NAMEEQ<{{alias_name}},{{alias_use}}>|{{inner}}|KDONE>
+^\s*\(let \(\((?<name>$NAME) (?<old>$NUM)\)\) \(begin \(set! (?<set_name>$NAME) (?<new>$NUM)\) (?<use>$NAME)\)\)\s*$ ::= LETSET<NAMEEQ<{{name}},{{set_name}}>|NAMEEQ<{{name}},{{use}}>|{{new}}|KDONE>
 ^\s*\(set! (?<name>$NAME) (?<expr>$ATOM)\)\s*$ ::= ERR<unbound_name>
 ^\s*\(define (?<name>$NAME) (?<v>$NUM)\)\n\(\+ (?<use>$NAME) (?<n>$NUM)\)\s*$ ::= DEFNAME<NAMEEQ<{{name}},{{use}}>|{{v}}|{{n}}|KDONE>
 
 ^LAMAPPNAME<1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>
 ^LAMAPPNAME<0\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^LAMIFTRUE<1\|(?<arg>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{arg}}>|{{k}}>
+^LAMIFTRUE<0\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFNAME<1\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{v}},{{n}}>>|{{k}}>
 ^DEFNAME<0\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^LETLAMCAP<1\|1\|(?<outer>$NUM)\|(?<arg>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{outer}},{{arg}}>>|{{k}}>
+^LETLAMCAP<(?:0|1)\|(?:0|1)\|(?<outer>$NUM)\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^LETLAMSHADOW<1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>
+^LETLAMSHADOW<0\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^LETGEN<1\|1\|1\|(?<inner>$NUM)\|(?<outer>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{inner}},{{outer}}>>|{{k}}>
+^LETGEN<(?:0|1)\|(?:0|1)\|(?:0|1)\|(?<inner>$NUM)\|(?<outer>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^LETSTAR<1\|1\|1\|(?<inner>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{inner}},{{inner}}>>|{{k}}>
+^LETSTAR<(?:0|1)\|(?:0|1)\|(?:0|1)\|(?<inner>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^LETSET<1\|1\|(?<new>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{new}}>|{{k}}>
+^LETSET<(?:0|1)\|(?:0|1)\|(?<new>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_name>
 
 Quoted proper lists. Items are simple atoms in this slice; nested lists and dotted pairs are downstream.
 ^QLIST<\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
