@@ -1,0 +1,183 @@
+program = "../scheme.tpp"
+timeout = 5
+args = ["--max-evals", "20000"]
+
+[[case]]
+name = "number literal"
+input = "42"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "42"
+
+[[case]]
+name = "true literal"
+input = "#t"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "false literal"
+input = "#f"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "empty list literal distinct from false"
+input = "()"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
+
+[[case]]
+name = "plain string literal"
+input = '"hello"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '"hello"'
+
+[[case]]
+name = "quoted symbol"
+input = "'alpha"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "alpha"
+
+[[case]]
+name = "lambda syntax is recognized as a procedure value"
+input = "(lambda (x) x)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#<procedure>"
+
+[[case]]
+name = "begin syntax is recognized"
+input = "(begin 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "addition primitive uses Scheme operator"
+input = "(+ 1 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "subtraction primitive uses Scheme operator"
+input = "(- 7 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "5"
+
+[[case]]
+name = "multiplication primitive uses Scheme operator"
+input = "(* 3 4)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "12"
+
+[[case]]
+name = "division primitive uses Scheme operator"
+input = "(/ 8 2)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "4"
+
+[[case]]
+name = "numeric equality true"
+input = "(= 3 3)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "numeric equality false"
+input = "(= 3 4)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "less than true"
+input = "(< 2 5)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "less or equal true"
+input = "(<= 5 5)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "greater than true"
+input = "(> 9 5)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "greater or equal false"
+input = "(>= 1 5)"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "division by zero"
+input = "(/ 1 0)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "division_by_zero"
+
+[[case]]
+name = "unsupported form fails loud"
+input = "(define x 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_form"
