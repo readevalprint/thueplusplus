@@ -14,7 +14,7 @@ This is not a C-ish command language. The implementation is expected to grow as 
 8. freestanding or documented hosted-library boundary;
 9. conformance manifests, documentation sync, full rule coverage, and pipeline merge gate.
 
-The current file contains an intentionally narrow raw-source smoke that now enters the shared lexer and then continues through explicit source-pipeline parse/sema/exec states, plus public lexer, parser/AST, semantic/type-analysis, execution/memory, preprocessing/linkage, and library-boundary fixture states. Later GLKB child issues should delete the remaining source-pipeline duplicate states in favor of the public staged token/AST pipeline instead of widening raw regex over source text.
+The current file contains an intentionally narrow raw-source smoke that now enters the shared lexer and then continues through public parser/sema rules with a narrow continuation, plus public lexer, parser/AST, semantic/type-analysis, execution/memory, preprocessing/linkage, and library-boundary fixture states. Later GLKB child issues should delete remaining fixture-looking APIs instead of widening raw regex over source text.
 
 ## Running the scaffold
 
@@ -42,10 +42,10 @@ Expected output:
 42
 ```
 
-Any C construct outside this scaffold fails loudly. The raw smoke accepts only integer constants (`ICON`: decimal or hexadecimal), not fractions or decimals, and reaches output through the lexer-backed source pipeline rather than a direct raw-source success rule. Downstream cards must replace the remaining source-pipeline duplicate states with the public staged C pipeline described below, not widen them into ad hoc source-regex cases.
+Any C construct outside this scaffold fails loudly. The raw smoke accepts only integer constants (`ICON`: decimal or hexadecimal), not fractions or decimals, and reaches output through the lexer-backed public parser/sema/exec pipeline rather than a direct raw-source success rule. Downstream cards must extend the staged C pipeline described below, not widen raw regex over source text.
 
 
-The raw `int main` smoke is source-driven: supported source first tokenizes through the shared lexer, then flows through `CPIPE_TOKENS`, `CPIPE_AST`, `CPIPE_TAST`, and finally the normal `EXEC` state. These `CPIPE_*` states are a temporary bridge for this narrow slice; the next deletion-first step is to collapse them into the public parser/sema pipeline instead of growing a second parser.
+The raw `int main` smoke is source-driven: supported source first tokenizes through the shared lexer, then flows through the public `PARSE_TU` / `PARSE_RETURN_FN` / `PARSE_EXPR` parser and `SEMA` rules using a narrow `@@CPIPE` continuation, and finally the normal `EXEC` state. `CPIPE_TOKENS` is now only a lexer-to-parser routing adapter for this narrow slice; the duplicate `CPIPE_AST`/`CPIPE_TAST` parser/sema bridge has been deleted.
 
 ## Running the lexer
 

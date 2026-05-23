@@ -928,6 +928,16 @@ stderr = "unsupported_c_construct"
 # This aggregate conformance manifest intentionally mirrors the highest-phase
 # manifest so the example runner verifies every C rule with both Python and Go.
 
+
+[[case]]
+name = "sema accepts empty parameter main integer return"
+input = "sema:TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<RETURN<ICON<42>>>>"
+
+[case.expect]
+exit_code = 0
+stdout = "TU<SCOPE<file|BIND<main|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<main>|BODY<RETURN<RVAL<int|42>>>>>\n"
+stderr = ""
+
 [[case]]
 name = "source pipeline rejects malformed token stream"
 input = "CPIPE_TOKENS<KW<int>;ID<main>;EOF<>;>"
@@ -938,8 +948,8 @@ stdout = ""
 stderr = "syntax_error"
 
 [[case]]
-name = "source pipeline rejects malformed AST frame"
-input = "CPIPE_AST<GARBAGE>"
+name = "source pipeline rejects malformed continuation AST frame"
+input = "@AST<GARBAGE>@@CPIPE"
 
 [case.expect]
 exit_code = 2
