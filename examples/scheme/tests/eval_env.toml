@@ -89,3 +89,27 @@ input = "(let ((a 1)) (begin (set! b 3) a))"
 exit_code = 2
 stdout = ""
 stderr = "unbound_name"
+
+[[case]]
+name = "lambda application with too few arguments fails as wrong arity"
+input = "((lambda (x) (+ x 1)))"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "lambda application with too many arguments fails as wrong arity"
+input = "((lambda (x) (+ x 1)) 4 5)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "applying a non-procedure number fails as type error"
+input = "(1 2)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
