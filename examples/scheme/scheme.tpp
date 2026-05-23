@@ -20,9 +20,10 @@ VLIST <- VLIST<$ITEMS>
 VPAIR <- VPAIR<[^>]*>
 VVEC <- VVEC<$ITEMS>
 VPROC <- VPROC
-VAL <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC)
-NONNUM <- (?:$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC)
-NONLIST <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VPAIR|$VVEC|$VPROC)
+VPRIM <- VPRIM<[A-Za-z0-9_]+>
+VAL <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC|$VPRIM)
+NONNUM <- (?:$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC|$VPRIM)
+NONLIST <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VPAIR|$VVEC|$VPROC|$VPRIM)
 
 Surface reader for self-evaluating values and quote shorthand.
 ^\s*(?<n>$NUM)\s*$ ::= RET<VNUM<{{n}}>|KDONE>
@@ -100,8 +101,13 @@ Quoted proper lists. Items are simple atoms in this slice; nested lists and dott
 ^READATOM<'(?<s>$NAME)\|(?<k>.*)>$ ::= RET<VSYM<{{s|pctenc}}>|{{k}}>
 ^READATOM<(?<s>$NAME)\|(?<k>.*)>$ ::= RET<VSYM<{{s|pctenc}}>|{{k}}>
 
-Numeric primitive procedures use Scheme operator names. They are binary in this layer; n-ary application belongs with eval/apply.
-^\s*\(\+ (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|KDONE>
+Numeric primitive procedures use Scheme operator names. `+` now routes through a primitive apply fold; the remaining operators are still binary until #249/#250 migrate them.
+^\s*\(\+(?: (?<args>[^()]*))?\)\s*$ ::= APPLY<VPRIM<add>|{{args}}|KDONE>
+^APPLY<VPRIM<add>\|(?<args>[^|]*)\|(?<k>.*)>$ ::= ADDARGS<{{args}}|0|{{k}}>
+^ADDARGS<\s*\|(?<acc>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{acc}}>|{{k}}>
+^ADDARGS<\s*(?<n>$NUM)\s+(?<rest>[^|]*)\|(?<acc>$NUM)\|(?<k>.*)>$ ::= ADDARGS<{{rest}}|ADD<{{acc}},{{n}}>|{{k}}>
+^ADDARGS<\s*(?<n>$NUM)\s*\|(?<acc>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{acc}},{{n}}>>|{{k}}>
+^ADDARGS<\s*(?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME|$NAME)(?:\s+[^|]*)?\|(?<acc>$NUM)\|(?<k>.*)>$ ::= ERR<type_error>
 ^\s*\(- (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|KDONE>
 ^\s*\(\* (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|KDONE>
 ^\s*\(/ (?<a>$NUM) 0\)\s*$ ::= ERR<division_by_zero>
@@ -112,13 +118,10 @@ Numeric primitive procedures use Scheme operator names. They are binary in this 
 ^\s*\(<= (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VBOOL<LE<{{a}},{{b}}>>|KDONE>
 ^\s*\(> (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VBOOL<GT<{{a}},{{b}}>>|KDONE>
 ^\s*\(>= (?<a>$NUM) (?<b>$NUM)\)\s*$ ::= RET<VBOOL<GE<{{a}},{{b}}>>|KDONE>
-^\s*\(\+ (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
 ^\s*\(- (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
 ^\s*\(\* (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
 ^\s*\(/ (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
 ^\s*\((?:=|<|<=|>|>=) (?<a>$NUM) (?<bad>\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= ERR<type_error>
-^\s*\(\+ (?<only>$NUM)\)\s*$ ::= ERR<wrong_arity>
-^\s*\(\+ (?<a>$NUM) (?<b>$NUM) (?<extra>$NUM)\)\s*$ ::= ERR<wrong_arity>
 
 Proper-list operations for the reader/value layer.
 ^\s*\(cons (?<item>$ATOM) '\((?<items>[^()]*)\)\)\s*$ ::= READATOM<{{item}}|KCONS<{{items}}> KDONE>
@@ -152,7 +155,7 @@ Predicates over the supported value family. Only #f is false; empty list is trut
 ^\s*\(char\? (?<bad>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= RET<VBOOL<f>|KDONE>
 ^\s*\(vector\? \#\((?<items>[^()]*)\)\)\s*$ ::= RET<VBOOL<t>|KDONE>
 ^\s*\(vector\? (?<bad>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= RET<VBOOL<f>|KDONE>
-^\s*\((?:\+|-|\*|/|=|<|<=|>|>=|car|cdr|cons|null\?|pair\?|list\?|number\?|boolean\?|symbol\?|string\?|char\?|vector\?)\)\s*$ ::= ERR<wrong_arity>
+^\s*\((?:-|\*|/|=|<|<=|>|>=|car|cdr|cons|null\?|pair\?|list\?|number\?|boolean\?|symbol\?|string\?|char\?|vector\?)\)\s*$ ::= ERR<wrong_arity>
 
 Generic numeric builtins. They stay generic Thue++ primitives, not Scheme-specific host helpers.
 NAMEEQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
@@ -181,6 +184,7 @@ Builtin boolean normalization and final rendering.
 ^RET<VCHAR<(?<c>$PCT)>\|KDONE>$ ::= @OUT<%23%5C{{c}}>@@EXIT0@
 ^RET<VSYM<(?<s>$PCT)>\|KDONE>$ ::= @OUT<{{s}}>@@EXIT0@
 ^RET<VPROC\|KDONE>$ ::= @OUT<%23%3Cprocedure%3E>@@EXIT0@
+^RET<VPRIM<(?<name>[A-Za-z0-9_]+)>\|KDONE>$ ::= @OUT<%23%3Cprimitive-procedure%3E>@@EXIT0@
 ^RET<VLIST<(?<items>$ITEMS)>\|KDONE>$ ::= RLIST<{{items}}||KOUT>
 ^RET<VPAIR<(?<a>[^\^]*)\^(?<b>[^>]*)>\|KDONE>$ ::= RENDER<{{a|pctdec}}|KPAIRCAR<{{b}}> KOUT>
 ^RET<VVEC<(?<items>$ITEMS)>\|KDONE>$ ::= RLIST<{{items}}||KVECOUT>

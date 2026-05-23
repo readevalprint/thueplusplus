@@ -3,23 +3,6 @@ timeout = 5
 args = ["--max-evals", "60000"]
 
 [[case]]
-name = "n-ary addition folds every operand"
-input = "(+ 1 2 3)"
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "6"
-
-[[case]]
-name = "zero-argument addition returns additive identity"
-input = "(+)"
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "0"
-
-
-[[case]]
 name = "letrec exposes recursive binding during procedure call"
 input = "(letrec ((f (lambda (n) (if (= n 0) 1 (* n (f (- n 1))))))) (f 4))"
 [case.expect]

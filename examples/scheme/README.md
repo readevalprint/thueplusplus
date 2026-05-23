@@ -53,7 +53,8 @@ Scheme-shaped forms/operators in this scaffold:
 - top-level two-form variable `define` followed by a numeric expression
 - `set!` inside the supported lexical slice, with unbound names failing loudly
 - `let` and `let*` coverage for the first lexical-binding slice, including alpha-renamed binding names and the Scheme distinction between outer-env and sequential initializer lookup
-- binary numeric operators: `+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`
+- `+` as the first primitive-apply fold, including zero-, one-, two-, and n-ary numeric addition with symmetric type errors
+- remaining binary numeric operators: `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`
 - proper-list operations over quoted lists: `cons`, `car`, `cdr`
 - predicates: `null?`, `pair?`, `list?`, `number?`, `boolean?`, `symbol?`, `string?`, `char?`, `vector?`
 
@@ -69,8 +70,9 @@ The internal value direction is deliberately Scheme-shaped:
 - `VPAIR<car^cdr>` for the first improper-list/dotted-pair slice
 - `VVEC<...>` for the first vector slice
 - `VPROC` as the first opaque procedure marker
+- `VPRIM<name>` as the first primitive procedure value marker; this slice applies `VPRIM<add>` through the shared primitive-apply fold and renders primitive values opaquely
 
-Downstream cards will broaden the evaluator beyond this first lexical slice, especially recursive forms, more general nested source parsing, environment-bound primitive procedures, and more complete pair/list parsing.
+Downstream cards will broaden the evaluator beyond this first lexical slice, especially recursive forms, the remaining environment-bound primitive procedures, more general nested source parsing, and more complete pair/list parsing.
 
 ## Deliberately deferred
 
@@ -102,7 +104,7 @@ uv run python tools/scheme_conformance.py
 
 It validates `examples/scheme/conformance/*-red.toml` with the shared manifest schema and runs each RED case through the shared runner's external-command case path with Python/Go parity. RED cases state intended R5RS behavior and must fail until an implementation card promotes them into `examples/scheme/tests/`.
 
-The green manifests check Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. They cover reader/literals, comments, escaped strings, characters, quote, lists/pairs, vectors, arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
+The green manifests check Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. They cover reader/literals, comments, escaped strings, characters, quote, lists/pairs, vectors, the first primitive-apply fold for `+`, remaining binary arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
 
 ```bash
 make test
