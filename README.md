@@ -71,12 +71,6 @@ Hello, World!
 
 All shared runnable examples live under `examples/<name>/`, with their expected output and bindings in `examples/<name>/tests/*.toml`. The `examples/forth/` directory contains a compact stack-language example with its own README documenting supported words, stack rendering, and fail-loud errors.
 
-The `examples/scheme/` directory contains a separate Scheme-shaped target-language example implemented entirely as Thue++ rules. It is intentionally distinct from `examples/lisp/`: Scheme uses `#t`/`#f`, `()`, quote shorthand, proper-list operations, selected lexical forms, and Scheme truthiness. Run a quick Scheme smoke test with:
-
-```bash
-uv run python python/thuepp.py examples/scheme/scheme.tpp --input '(if #f 1 2)'
-```
-
 A minimal interactive stdin example can prompt for a line and echo it back. `::< 30 stdin` reads one newline-delimited message from the predefined `stdin` binding, waits up to 30 seconds, strips the line terminator, and stores the payload as PCT data.
 
 ```thuepp
@@ -205,7 +199,7 @@ Use the repository-root truth-engine command before sending changes for review:
 make test
 ```
 
-`make test` runs the repository conformance check, the Scheme R5RS RED-debt gate, and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, exposes per-program rule match counts, and enforces rule coverage for all manifest-declared example programs. The Scheme R5RS debt gate also uses the shared runner's external-command case path: it requires every `examples/scheme/conformance/*-red.toml` case to remain failing until the behavior is implemented and promoted into the green manifest sweep. For focused debugging, pass explicit manifest paths directly to the runner:
+`make test` runs the repository conformance check and the shared manifest truth engine. The manifest runner invokes both mandatory implementations as external commands (`uv run python python/thuepp.py` and a freshly built Go binary), checks Python/Go parity, exposes per-program rule match counts, and enforces rule coverage for all manifest-declared example programs. For focused debugging, pass explicit manifest paths directly to the runner:
 
 ```bash
 uv run python tools/example_runner.py examples/echo/tests/proc-input.toml
