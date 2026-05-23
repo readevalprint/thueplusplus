@@ -1,11 +1,10 @@
 program = "../scheme.tpp"
 timeout = 5
-args = ["--max-evals", "20000"]
+args = ["--max-evals", "60000"]
 
 [[case]]
 name = "number literal"
 input = "42"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -14,7 +13,6 @@ stdout_stripped = "42"
 [[case]]
 name = "true literal"
 input = "#t"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -23,7 +21,6 @@ stdout_stripped = "#t"
 [[case]]
 name = "false literal"
 input = "#f"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -32,7 +29,6 @@ stdout_stripped = "#f"
 [[case]]
 name = "empty list literal distinct from false"
 input = "()"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -41,7 +37,6 @@ stdout_stripped = "()"
 [[case]]
 name = "plain string literal"
 input = '"hello"'
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -50,34 +45,62 @@ stdout_stripped = '"hello"'
 [[case]]
 name = "quoted symbol"
 input = "'alpha"
-
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "alpha"
 
 [[case]]
+name = "quoted empty list"
+input = "'()"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
+
+[[case]]
+name = "quoted atom list renders Scheme syntax"
+input = "'(1 #t hello \"x\")"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '(1 #t hello "x")'
+
+[[case]]
+name = "cons can add empty list as element"
+input = "(cons () '(1))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(() 1)"
+
+[[case]]
+name = "cons can add explicitly quoted symbol"
+input = "(cons 'alpha '(1))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(alpha 1)"
+
+[[case]]
 name = "lambda syntax is recognized as a procedure value"
 input = "(lambda (x) x)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "#<procedure>"
 
 [[case]]
-name = "begin syntax is recognized"
-input = "(begin 1 2)"
-
+name = "begin syntax returns final atom"
+input = "(begin #f \"done\")"
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "2"
+stdout_stripped = '"done"'
 
 [[case]]
 name = "addition primitive uses Scheme operator"
 input = "(+ 1 2)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -86,7 +109,6 @@ stdout_stripped = "3"
 [[case]]
 name = "subtraction primitive uses Scheme operator"
 input = "(- 7 2)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -95,7 +117,6 @@ stdout_stripped = "5"
 [[case]]
 name = "multiplication primitive uses Scheme operator"
 input = "(* 3 4)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -104,7 +125,6 @@ stdout_stripped = "12"
 [[case]]
 name = "division primitive uses Scheme operator"
 input = "(/ 8 2)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -113,7 +133,6 @@ stdout_stripped = "4"
 [[case]]
 name = "numeric equality true"
 input = "(= 3 3)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -122,7 +141,6 @@ stdout_stripped = "#t"
 [[case]]
 name = "numeric equality false"
 input = "(= 3 4)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -131,7 +149,6 @@ stdout_stripped = "#f"
 [[case]]
 name = "less than true"
 input = "(< 2 5)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -140,7 +157,6 @@ stdout_stripped = "#t"
 [[case]]
 name = "less or equal true"
 input = "(<= 5 5)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -149,7 +165,6 @@ stdout_stripped = "#t"
 [[case]]
 name = "greater than true"
 input = "(> 9 5)"
-
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -158,7 +173,150 @@ stdout_stripped = "#t"
 [[case]]
 name = "greater or equal false"
 input = "(>= 1 5)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
 
+[[case]]
+name = "cons prepends onto proper list"
+input = "(cons 0 '(1 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(0 1 2)"
+
+[[case]]
+name = "car returns first list element"
+input = "(car '(1 #f))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "cdr returns rest of list"
+input = "(cdr '(1 #f \"z\"))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = '(#f "z")'
+
+[[case]]
+name = "cdr empty returns empty list"
+input = "(cdr '())"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
+
+[[case]]
+name = "null predicate true only for empty list"
+input = "(null? ())"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "null predicate false for symbol"
+input = "(null? 'alpha)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "null predicate false for non-empty list"
+input = "(null? '(1))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "pair predicate true for non-empty proper list"
+input = "(pair? '(1 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "pair predicate false for empty list"
+input = "(pair? ())"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "list predicate true for quoted proper list"
+input = "(list? '(1 2))"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "number predicate true"
+input = "(number? 1/2)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "number predicate false"
+input = "(number? #t)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "boolean predicate true"
+input = "(boolean? #f)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "boolean predicate false for empty list"
+input = "(boolean? ())"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "symbol predicate true"
+input = "(symbol? 'alpha)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "symbol predicate false"
+input = "(symbol? 12)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#f"
+
+[[case]]
+name = "string predicate true"
+input = '(string? "s")'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#t"
+
+[[case]]
+name = "string predicate false"
+input = "(string? 'alpha)"
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -167,16 +325,54 @@ stdout_stripped = "#f"
 [[case]]
 name = "division by zero"
 input = "(/ 1 0)"
-
 [case.expect]
 exit_code = 2
 stdout = ""
 stderr = "division_by_zero"
 
 [[case]]
+name = "numeric type error"
+input = "(+ 1 #t)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "primitive too few args"
+input = "(+)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "numeric primitive one arg wrong arity"
+input = "(+ 1)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "numeric primitive too many args wrong arity"
+input = "(+ 1 2 3)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "car empty errors"
+input = "(car '())"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "empty_list"
+
+[[case]]
 name = "unsupported form fails loud"
 input = "(define x 1)"
-
 [case.expect]
 exit_code = 2
 stdout = ""
