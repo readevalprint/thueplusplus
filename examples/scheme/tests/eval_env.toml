@@ -337,3 +337,67 @@ input = "(lambda () 42)"
 exit_code = 0
 stderr = ""
 stdout_stripped = "#<procedure>"
+
+[[case]]
+name = "one-argument lambda identity returns numeric argument"
+input = "((lambda (x) x) 7)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "7"
+
+[[case]]
+name = "one-argument lambda identity mismatched body name fails"
+input = "((lambda (x) y) 7)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "one-argument procedure definition identity applies numeric argument"
+input = "(define (id x) x)\n(id 8)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "8"
+
+[[case]]
+name = "one-argument procedure definition identity rejects mismatched body name"
+input = "(define (id x) y)\n(id 8)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "one-argument procedure definition identity rejects wrong call name"
+input = "(define (id x) x)\n(other 8)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
+
+[[case]]
+name = "one-argument procedure definition identity rejects zero arguments"
+input = "(define (id x) x)\n(id)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "one-argument procedure definition identity rejects too many arguments"
+input = "(define (id x) x)\n(id 8 9)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "one-argument procedure definition identity rejects zero-arg wrong call name"
+input = "(define (id x) x)\n(other)"
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_identifier"
