@@ -75,18 +75,15 @@ ERRNAME <- [A-Za-z0-9_]+
 ^@TOKENS<(?<tokens>(?:(?:KW|ID|ICON|STR|CHAR|PUNC|EOF)<$PCT>;)+)>$ ::> stdout {{tokens}}\n
 
 # Source-pipeline continuation for the current raw-source smoke. It consumes the
-# shared lexer token stream, constructs the same AST/TAST shapes used by public
-# parser/sema/exec fixtures, then hands off to EXEC.
-^CPIPE_TOKENS<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<(?<n>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= CPIPE_AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<void>|BODY<RETURN<ICON<{{n}}>>>>>>
-^CPIPE_TOKENS<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<(?<n>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= CPIPE_AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<>|BODY<RETURN<ICON<{{n}}>>>>>>
-^CPIPE_TOKENS<(?<bad>$TOKSTREAM)>$ ::= ERR<syntax_error>
-^CPIPE_AST<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>>$ ::= CPIPE_TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
-^CPIPE_AST<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>>$ ::= CPIPE_TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
-^CPIPE_AST<(?<bad>[\s\S]+)>$ ::= ERR<syntax_error>
-^CPIPE_TAST<(?<tast>[\s\S]+)>$ ::= EXEC<{{tast}}>
+# shared lexer token stream, then routes into the public parser and semantic
+# states with a continuation marker instead of duplicating a private parser/sema.
+^CPIPE_TOKENS<(?<tokens>$TOKSTREAM)>$ ::= PARSE_TU<{{tokens}}>@@CPIPE
 
 # Phase-2 parser states. These rules consume lexer token streams and produce
 # explicit framed AST nodes; they do not match raw C source.
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<void>|{{expr}}>@@CPIPE
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>@@CPIPE$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<>|{{expr}}>@@CPIPE
+^PARSE_TU<(?<bad>$TOKSTREAM)>@@CPIPE$ ::= ERR<syntax_error>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<void>|{{expr}}>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<>|{{expr}}>
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<int>;ID<(?<param>$PCT)>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<int>|NAME<{{name}}>|PARAMS<PARAM<int|{{param}}>>|BODY<DECL<VAR<int|{{local}}>>|RETURN<@@>>>>
@@ -97,6 +94,7 @@ ERRNAME <- [A-Za-z0-9_]+
 ^PARSE_TU<KW<for>;PUNC<%28>;ID<(?<initlhs>$PCT)>;PUNC<%3D>;(?<init>$EXPRTOKS)PUNC<%3B>;(?<cond>$EXPRTOKS)PUNC<%3B>;ID<(?<incid>$PCT)>;PUNC<%2B%2B>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<body>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_EXPR<{{body}}@@TU<FOR<INIT<ASSIGN<ID<{{initlhs}}>|{{init}}>>|COND<{{cond}}>|INC<POSTINC<ID<{{incid}}>>|BODY<RETURN<@@>>>>
 ^PARSE_TU<(?<bad>$TOKSTREAM)>$ ::= ERR<syntax_error>
 
+^PARSE_RETURN_FN<(?<ret>$PCT)\|(?<name>$PCT)\|(?<params>[A-Z<>,|%A-Za-z0-9_.-]*)\|(?<expr>$EXPRTOKS)>@@CPIPE$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<{{ret}}>|NAME<{{name}}>|{{params}}|BODY<RETURN<@@>>>>@@CPIPE
 ^PARSE_RETURN_FN<(?<ret>$PCT)\|(?<name>$PCT)\|(?<params>[A-Z<>,|%A-Za-z0-9_.-]*)\|(?<expr>$EXPRTOKS)>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<{{ret}}>|NAME<{{name}}>|{{params}}|BODY<RETURN<@@>>>>
 ^PARSE_IF<(?<cond>$EXPRTOKS)\|(?<then>$EXPRTOKS)\|(?<otherwise>$EXPRTOKS)>$ ::= PARSE_EXPR<{{cond}}@@TU<IF<COND<@@>|THEN<{{then}}>|ELSE<{{otherwise}}>>>
 
@@ -113,17 +111,22 @@ ERRNAME <- [A-Za-z0-9_]+
 ^PARSE_EXPR<ID<(?<id>$PCT)>;EOF<>;>$ ::= @AST<ID<{{id}}>>
 ^PARSE_EXPR<STR<(?<s>$PCT)>;EOF<>;>$ ::= @AST<STR<{{s}}>>
 ^PARSE_EXPR<CHAR<(?<c>$PCT)>;EOF<>;>$ ::= @AST<CHAR<{{c}}>>
+^PARSE_EXPR<ICON<(?<n>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>@@CPIPE$ ::= @AST<{{prefix}}ICON<{{n}}>{{suffix}}>@@CPIPE
 ^PARSE_EXPR<ICON<(?<n>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}ICON<{{n}}>{{suffix}}>
 ^PARSE_EXPR<ID<(?<id>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}ID<{{id}}>{{suffix}}>
 ^PARSE_EXPR<STR<(?<s>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}STR<{{s}}>{{suffix}}>
 ^PARSE_EXPR<CHAR<(?<c>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}CHAR<{{c}}>{{suffix}}>
 ^PARSE_EXPR<(?<bad>$TOKSTREAM)>$ ::= ERR<syntax_error>
 
+^@AST<(?<ast>[\s\S]+)>@@CPIPE$ ::= SEMA<{{ast}}>@@CPIPE
 ^@AST<(?<ast>[\s\S]+)>$ ::> stdout {{ast}}\n
 # Phase-3 semantic/type-analysis states. These consume framed AST records and
 # attach explicit type, scope, namespace, and lvalue/rvalue annotations for the
 # later abstract-machine card.
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>@@CPIPE$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>@@CPIPE
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
+^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
 ^SEMA<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ID<(?<id>$PCT)>>>>>$ ::= ERR<undefined_identifier>
 ^SEMA<TU<DECL<VAR<int\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{name}}|object|int>>|DECL<LVAL<int|{{name}}>>>>
 ^SEMA<TU<TYPEDEF<int\|(?<alias>$PCT)>\|DECL<VAR<TYPEDEFNAME<(?<type>$PCT)>\|(?<name>$PCT)>>>>$ ::= @TAST<TU<SCOPE<file|BIND<{{alias}}|typedef|int>|BIND<{{name}}|object|TYPEDEFNAME<{{type}}>>>|TYPEDEF<int|{{alias}}>|DECL<LVAL<TYPEDEFNAME<{{type}}>|{{name}}>>>>
@@ -139,7 +142,9 @@ ERRNAME <- [A-Za-z0-9_]+
 ^SEMA<ADD<STR<(?<s>$PCT)>\|ICON<(?<n>$PCT)>>>$ ::= ERR<type_error>
 ^SEMA<ASSIGN<ICON<(?<lhs>$PCT)>\|ICON<(?<rhs>$PCT)>>>$ ::= ERR<invalid_lvalue>
 ^SEMA<TU<UNSUPPORTED<(?<what>$PCT)>>>$ ::= ERR<unsupported_c_construct>
+^SEMA<(?<bad>[\s\S]+)>@@CPIPE$ ::= ERR<syntax_error>
 ^SEMA<(?<bad>[\s\S]+)>$ ::= ERR<syntax_error>
+^@TAST<(?<ast>[\s\S]+)>@@CPIPE$ ::= EXEC<{{ast}}>
 ^@TAST<(?<ast>[\s\S]+)>$ ::> stdout {{ast}}\n
 # Phase-4 abstract execution and memory-machine states. These consume typed AST
 # records from semantic analysis and produce concrete stdout or explicit machine
