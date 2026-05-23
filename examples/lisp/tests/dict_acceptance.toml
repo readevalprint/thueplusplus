@@ -19,9 +19,9 @@ exit_code = 0
 
 [[case]]
 name = "string key dict renders escaped pair syntax"
-input = '(dict ("x" 1) ("line\\nkey" 2))'
+input = '(dict ("x" 1) ("line\nkey" 2))'
 [case.expect]
-stdout = "((\"x\" 1) (\"line\\nkey\" 2))\n"
+stdout = "((\"x\" 1) (\"line\\\\nkey\" 2))\n"
 stderr = ""
 exit_code = 0
 

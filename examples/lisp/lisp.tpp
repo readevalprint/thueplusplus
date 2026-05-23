@@ -42,18 +42,15 @@ READER_DATUM <- (?:\([^()]*\)|$OPSYM|$EXPR)
 # Shared source reader/freezer. Top-level input and `(parse string)` both enter
 # READ<source> with different continuations, so string escape handling,
 # quote-family expansion, and inside-out list freezing cannot drift.
-# Phase A: protect quoted strings before paren framing.
-^READ<(?<pre>[\s\S]*)\\@(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<invalid_string_escape>
+# Reject unsupported escapes before calling builtin unescape; both top-level
+# evaluation and `(parse string)` must expose the same Lisp-level error.
+^READ<(?<pre>(?:[\s\S]*[^\\])?)\\\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<invalid_string_escape>
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<{{str|pctenc}}>>{{post}}> {{k}}
-UNESC<(?<pre>$PCT)%5C%5C(?<post>$PCT)> ::= UNESC<{{pre}}%5C{{post}}>
-UNESC<(?<pre>$PCT)%5C%22(?<post>$PCT)> ::= UNESC<{{pre}}%22{{post}}>
-UNESC<(?<pre>$PCT)%5Cn(?<post>$PCT)> ::= UNESC<{{pre}}%0A{{post}}>
-UNESC<(?<pre>$PCT)%5Ct(?<post>$PCT)> ::= UNESC<{{pre}}%09{{post}}>
-UNESC<(?<pre>$PCT)%5Cr(?<post>$PCT)> ::= UNESC<{{pre}}%0D{{post}}>
-UNESC<(?<pre>$PCT)%5Cb(?<post>$PCT)> ::= UNESC<{{pre}}%08{{post}}>
-UNESC<(?<pre>$PCT)%5Cf(?<post>$PCT)> ::= UNESC<{{pre}}%0C{{post}}>
-UNESC<(?<s>$PCT)> ::= {{s}}
+# Captured source strings carry rewrite-state escaped backslashes after template
+# insertion. The inner generic unescape removes that state escape layer; the
+# outer generic unescape applies the Lisp source-literal escape contract.
+^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<UNESC<{{str|pctenc}}>>>{{post}}> {{k}}
+UNESC<(?<s>$PCT)> ::! unescape s
 
 # Reader quote-family shorthand. Strings are already protected as VSTR<...>,
 # and list freezing may expose nested list datums as L<...>; expand to the
