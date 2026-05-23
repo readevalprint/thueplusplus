@@ -1,10 +1,10 @@
 # Full C example implemented as Thue++ rewrite rules.
 #
 # The full-C workstream grows in explicit pipeline phases. This file currently
-# contains the phase-0 executable scaffold plus the phase-1 preprocessing-token
-# lexer foundation. Downstream cards build parser, semantic analysis, abstract
-# machine, preprocessor, linkage, and library behavior on top of the token
-# stream produced here.
+# contains a narrow source-driven smoke plus the preprocessing-token lexer,
+# parser, semantic-analysis, abstract-machine, preprocessor, linkage, and
+# library-boundary fixture states. Downstream cards should keep deleting
+# direct/duplicate scaffolding as public staged semantics expand.
 
 WS <- [ \t\r\n]*
 IWS <- [ \t\r\n]+
@@ -26,7 +26,7 @@ ERRNAME <- [A-Za-z0-9_]+
 # Phase-1 public lexer entry. It emits a stable token stream where every token
 # payload is percent-encoded and token records are separated by raw semicolons,
 # which are outside the PCT alphabet.
-^lex:(?<src>[\s\S]+)$ ::= LEX<{{src}}|>
+^lex:(?<src>[\s\S]+)$ ::= LEX<{{src}}||PRINT>
 
 # Phase-2 public parser entries. The parser consumes token streams emitted by
 # the lexer, not raw C source. It renders framed AST records for downstream
@@ -39,33 +39,52 @@ ERRNAME <- [A-Za-z0-9_]+
 ^link:(?<form>[\s\S]+)$ ::= LINK<{{form}}>
 ^lib:(?<form>[\s\S]+)$ ::= LIB<{{form}}>
 
+# Source-driven smoke entry. The supported raw `int main` slice enters the same
+# lexer as `lex:` and then continues through explicit parse/sema/exec pipeline
+# states. This replaces the old direct raw-source success shortcut.
+^$WS(?<src>int$IWS+main$WS\($WSvoid$WS\)$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+^$WS(?<src>int$IWS+main$WS\($WS\)$WS\{$WSreturn$IWS+$ICON$WS;$WS\}$WS)$ ::= LEX<{{src}}||CPIPE>
+
 # Skip insignificant preprocessing-token separators.
-^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}>
-^LEX<//[^\n]*(?:\n)?(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}>
-^LEX</\*(?:[^*]|\*[^/])*\*/(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}>
+^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}|{{mode}}>
+^LEX<//[^\n]*(?:\n)?(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}|{{mode}}>
+^LEX</\*(?:[^*]|\*[^/])*\*/(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}|{{mode}}>
 
 # Fail-loud malformed token forms before generic token recognition.
-^LEX</\*(?<bad>[\s\S]*)\|(?<out>$TOKS)>$ ::= ERR<unterminated_comment>
-^LEX<"(?<bad>[\s\S]*\\q[\s\S]*)\|(?<out>$TOKS)>$ ::= ERR<invalid_escape>
-^LEX<"(?<bad>(?:[^"\\\n]|\\$STRESC)*)$ ::= ERR<unterminated_string>
-^LEX<'(?<bad>[\s\S]*\\q[\s\S]*)\|(?<out>$TOKS)>$ ::= ERR<invalid_escape>
-^LEX<'(?<bad>(?:[^'\\\n]|\\$CHRESC)*)$ ::= ERR<unterminated_char>
+^LEX</\*(?<bad>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= ERR<unterminated_comment>
+^LEX<"(?<bad>[\s\S]*\\q[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= ERR<invalid_escape>
+^LEX<"(?<bad>(?:[^"\\\n]|\\$STRESC)*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= ERR<unterminated_string>
+^LEX<'(?<bad>[\s\S]*\\q[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= ERR<invalid_escape>
+^LEX<'(?<bad>(?:[^'\\\n]|\\$CHRESC)*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= ERR<unterminated_char>
 
 # Recognize tokens. Keywords must precede identifiers.
-^LEX<(?<kw>$KEYWORD)(?<rest>[^A-Za-z0-9_][\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}KW<{{kw|pctenc}}>;>
-^LEX<(?<kw>$KEYWORD)\|(?<out>$TOKS)>$ ::= LEX<|{{out}}KW<{{kw|pctenc}}>;>
-^LEX<(?<id>$ID)(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}ID<{{id|pctenc}}>;>
-^LEX<(?<n>$ICON)(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}ICON<{{n|pctenc}}>;>
-^LEX<"(?<s>(?:[^"\\\n]|\\$STRESC)*)"(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}STR<{{s|pctenc}}>;>
-^LEX<'(?<c>(?:[^'\\\n]|\\$CHRESC)+)'(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}CHAR<{{c|pctenc}}>;>
-^LEX<(?<p>$PUNC3)(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}PUNC<{{p|pctenc}}>;>
-^LEX<(?<p>$PUNC2)(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}PUNC<{{p|pctenc}}>;>
-^LEX<(?<p>$PUNC1)(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}PUNC<{{p|pctenc}}>;>
+^LEX<(?<kw>$KEYWORD)(?<rest>[^A-Za-z0-9_][\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}KW<{{kw|pctenc}}>;|{{mode}}>
+^LEX<(?<kw>$KEYWORD)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<|{{out}}KW<{{kw|pctenc}}>;|{{mode}}>
+^LEX<(?<id>$ID)(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}ID<{{id|pctenc}}>;|{{mode}}>
+^LEX<(?<n>$ICON)(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}ICON<{{n|pctenc}}>;|{{mode}}>
+^LEX<"(?<s>(?:[^"\\\n]|\\$STRESC)*)"(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}STR<{{s|pctenc}}>;|{{mode}}>
+^LEX<'(?<c>(?:[^'\\\n]|\\$CHRESC)+)'(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}CHAR<{{c|pctenc}}>;|{{mode}}>
+^LEX<(?<p>$PUNC3)(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}PUNC<{{p|pctenc}}>;|{{mode}}>
+^LEX<(?<p>$PUNC2)(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}PUNC<{{p|pctenc}}>;|{{mode}}>
+^LEX<(?<p>$PUNC1)(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= LEX<{{rest}}|{{out}}PUNC<{{p|pctenc}}>;|{{mode}}>
 
 # EOF and invalid-token handling.
-^LEX<\|(?<out>$TOKS)>$ ::= @TOKENS<{{out}}EOF<>;>
-^LEX<(?<bad>[\s\S])(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= ERR<invalid_token>
+^LEX<\|(?<out>$TOKS)\|PRINT>$ ::= @TOKENS<{{out}}EOF<>;>
+^LEX<\|(?<out>$TOKS)\|CPIPE>$ ::= CPIPE_TOKENS<{{out}}EOF<>;>
+^LEX<(?<bad>[\s\S])(?<rest>[\s\S]*)\|(?<out>$TOKS)\|(?<mode>PRINT|CPIPE)>$ ::= ERR<invalid_token>
 ^@TOKENS<(?<tokens>(?:(?:KW|ID|ICON|STR|CHAR|PUNC|EOF)<$PCT>;)+)>$ ::> stdout {{tokens}}\n
+
+# Source-pipeline continuation for the current raw-source smoke. It consumes the
+# shared lexer token stream, constructs the same AST/TAST shapes used by public
+# parser/sema/exec fixtures, then hands off to EXEC.
+^CPIPE_TOKENS<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<(?<n>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= CPIPE_AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<void>|BODY<RETURN<ICON<{{n}}>>>>>>
+^CPIPE_TOKENS<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<(?<n>$PCT)>;PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= CPIPE_AST<TU<FN<RET<int>|NAME<{{name}}>|PARAMS<>|BODY<RETURN<ICON<{{n}}>>>>>>
+^CPIPE_TOKENS<(?<bad>$TOKSTREAM)>$ ::= ERR<syntax_error>
+^CPIPE_AST<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<void>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>>$ ::= CPIPE_TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
+^CPIPE_AST<TU<FN<RET<int>\|NAME<(?<name>$PCT)>\|PARAMS<>\|BODY<RETURN<ICON<(?<n>$PCT)>>>>>>$ ::= CPIPE_TAST<TU<SCOPE<file|BIND<{{name}}|function|FUNC<int|void>>>|FN<TYPE<FUNC<int|void>>|NAME<{{name}}>|BODY<RETURN<RVAL<int|{{n}}>>>>>>
+^CPIPE_AST<(?<bad>[\s\S]+)>$ ::= ERR<syntax_error>
+^CPIPE_TAST<(?<tast>[\s\S]+)>$ ::= EXEC<{{tast}}>
+
 # Phase-2 parser states. These rules consume lexer token streams and produce
 # explicit framed AST nodes; they do not match raw C source.
 ^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<void>|{{expr}}>
@@ -173,11 +192,8 @@ ERRNAME <- [A-Za-z0-9_]+
 ^@PP<(?<tokens>[\s\S]+)>$ ::> stdout {{tokens}}\n
 ^@LIBOUT<(?<out>[\s\S]+)>$ ::> stdout {{out|pctdec}}\n
 ^@LIBRAW<(?<out>[\s\S]+)>$ ::> stdout {{out}}\n
-# Phase-0 accepted smoke: a freestanding translation unit containing only
-# int main(void) { return <numeric literal>; }
-# or int main() { return <numeric literal>; }.
-^$WSint$IWS+main$WS\($WSvoid$WS\)$WS\{$WSreturn$IWS+(?<n>$ICON)$WS;$WS\}$WS$ ::= @OUT<{{n}}>
-^$WSint$IWS+main$WS\($WS\)$WS\{$WSreturn$IWS+(?<n>$ICON)$WS;$WS\}$WS$ ::= @OUT<{{n}}>
+# No direct raw-source success shortcut remains. Supported raw-source smoke
+# cases enter above through the lexer-backed CPIPE path.
 ^@OUT<(?<n>$ICON)>$ ::> stdout {{n}}\n
 
 ^ERR<(?<e>$ERRNAME)>$ ::= @ERR<{{e}}>@@EXIT2@

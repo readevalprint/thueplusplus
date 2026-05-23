@@ -927,6 +927,25 @@ stderr = "unsupported_c_construct"
 
 # This aggregate conformance manifest intentionally mirrors the highest-phase
 # manifest so the example runner verifies every C rule with both Python and Go.
+
+[[case]]
+name = "source pipeline rejects malformed token stream"
+input = "CPIPE_TOKENS<KW<int>;ID<main>;EOF<>;>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "syntax_error"
+
+[[case]]
+name = "source pipeline rejects malformed AST frame"
+input = "CPIPE_AST<GARBAGE>"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "syntax_error"
+
 # Keep it as the release/checklist manifest for the C workstream: if a new rule
 # is added to examples/c/c.tpp, add a case here before considering the C example
 # complete.
