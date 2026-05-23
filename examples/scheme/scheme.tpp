@@ -50,6 +50,7 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^\s*\(\(lambda \(\) (?<body>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\)\s*$ ::= READATOM<{{body}}|KDONE>
 ^\s*\(\(lambda \((?<p1>$NAME) (?<p2>$NAME)\) \(\+ (?<u1>$NAME) (?<u2>$NAME)\)\) (?<a1>$NUM) (?<a2>$NUM)\)\s*$ ::= LAMAPP2<NAMEEQ<{{p1}},{{u1}}>|NAMEEQ<{{p2}},{{u2}}>|{{a1}}|{{a2}}|KDONE>
 ^\s*\(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\s*$ ::= LAMAPPNAME<NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
+^\s*\(\(lambda \((?<param>$NAME)\) (?<use>$NAME)\) (?<arg>$NUM)\)\s*$ ::= LAMID<NAMEEQ<{{param}},{{use}}>|{{arg}}|KDONE>
 ^\s*\(\(lambda \((?<param>$NAME)\) \(if \#t (?<use>$NAME) (?<els>$ATOM)\)\) (?<arg>$NUM)\)\s*$ ::= LAMIFTRUE<NAMEEQ<{{param}},{{use}}>|{{arg}}|KDONE>
 ^\s*\(let \(\((?<outer_name>$NAME) (?<outer>$NUM)\)\) \(\(lambda \((?<param>$NAME)\) \(\+ (?<outer_use>$NAME) (?<param_use>$NAME)\)\) (?<arg>$NUM)\)\)\s*$ ::= LETLAMCAP<NAMEEQ<{{outer_name}},{{outer_use}}>|NAMEEQ<{{param}},{{param_use}}>|{{outer}}|{{arg}}|KDONE>
 ^\s*\(let \(\((?<outer_name>$NAME) (?<outer>$NUM)\)\) \(\(lambda \((?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\) (?<arg>$NUM)\)\)\s*$ ::= LETLAMSHADOW<NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
@@ -65,6 +66,9 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^\s*\(define \((?<fname>$NAME) (?<p1>$NAME) (?<p2>$NAME)\) \(\+ (?<u1>$NAME) (?<u2>$NAME)\)\)\n\((?<call>$NAME) (?<a1>$NUM)\)\s*$ ::= DEFPROC2ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<p1>$NAME) (?<p2>$NAME)\) \(\+ (?<u1>$NAME) (?<u2>$NAME)\)\)\n\((?<call>$NAME) (?<a1>$NUM) (?<a2>$NUM) (?<extra>$NUM)\)\s*$ ::= DEFPROC2ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME) (?<arg>$NUM)\)\s*$ ::= DEFPROC1<NAMEEQ<{{fname}},{{call}}>|NAMEEQ<{{param}},{{use}}>|{{arg}}|{{n}}|KDONE>
+^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) (?<use>$NAME)\)\n\((?<call>$NAME) (?<arg>$NUM)\)\s*$ ::= DEFPROC1ID<NAMEEQ<{{fname}},{{call}}>|NAMEEQ<{{param}},{{use}}>|{{arg}}|KDONE>
+^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) (?<use>$NAME)\)\n\((?<call>$NAME)\)\s*$ ::= DEFPROC1IDARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
+^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) (?<use>$NAME)\)\n\((?<call>$NAME) (?<arg>$NUM) (?<extra>$NUM)\)\s*$ ::= DEFPROC1IDARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME)\)\s*$ ::= DEFPROC1ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(define \((?<fname>$NAME) (?<param>$NAME)\) \(\+ (?<use>$NAME) (?<n>$NUM)\)\)\n\((?<call>$NAME) (?<arg>$NUM) (?<extra>$NUM)\)\s*$ ::= DEFPROC1ARITY<NAMEEQ<{{fname}},{{call}}>|KDONE>
 ^\s*\(\(lambda \(\) (?<body>[\s\S]+)\) (?<first>$ATOM)(?: (?<extra>[\s\S]+))?\)\s*$ ::= ERR<wrong_arity>
@@ -79,6 +83,8 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^LAMAPP2<(?:0|1)\|(?:0|1)\|(?<a1>$NUM)\|(?<a2>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^LAMAPPNAME<1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>
 ^LAMAPPNAME<0\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^LAMID<1\|(?<arg>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{arg}}>|{{k}}>
+^LAMID<0\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^LAMIFTRUE<1\|(?<arg>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{arg}}>|{{k}}>
 ^LAMIFTRUE<0\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFNAME<1\|(?<v>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{v}},{{n}}>>|{{k}}>
@@ -95,6 +101,11 @@ Scheme-shaped public forms whose fuller eval/apply semantics are being grown in 
 ^DEFPROC1<1\|1\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{arg}},{{n}}>>|{{k}}>
 ^DEFPROC1<0\|(?:0|1)\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFPROC1<1\|0\|(?<arg>$NUM)\|(?<n>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC1ID<1\|1\|(?<arg>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{arg}}>|{{k}}>
+^DEFPROC1ID<0\|(?:0|1)\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC1ID<1\|0\|(?<arg>$NUM)\|(?<k>.*)>$ ::= ERR<unbound_identifier>
+^DEFPROC1IDARITY<1\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^DEFPROC1IDARITY<0\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^DEFPROC1ARITY<1\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^DEFPROC1ARITY<0\|(?<k>.*)>$ ::= ERR<unbound_identifier>
 ^LETLAMCAP<1\|1\|(?<outer>$NUM)\|(?<arg>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{outer}},{{arg}}>>|{{k}}>

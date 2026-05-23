@@ -46,11 +46,11 @@ Literals:
 Scheme-shaped forms/operators in this scaffold:
 
 - `(lambda () 42)` and `(lambda (x) x)` render as the opaque procedure marker `#<procedure>`
-- simple zero-, one-, and two-argument lambda application shapes, including alpha-renamed parameter lookup checks and typed wrong-arity failures for the supported application shapes
+- simple zero-, one-, and two-argument lambda application shapes, including one-argument identity, alpha-renamed parameter lookup checks, and typed wrong-arity failures for the supported application shapes
 - `(begin a b)` returns the final supported atom, plus the first `set!` sequencing slice
 - `if` with Scheme truthiness: only `#f` is false; numbers, strings, symbols, and lists are true where supported
 - the first nested lambda body branch slice: `((lambda (x) (if #t x 0)) 9)`
-- top-level two-form variable `define` followed by a numeric expression, plus first zero-, one-, and two-argument procedure-definition sugar over constant/numeric `+` bodies
+- top-level two-form variable `define` followed by a numeric expression, plus first zero-, one-, and two-argument procedure-definition sugar over constant/identity/numeric `+` bodies
 - `set!` inside the supported lexical slice, with unbound names failing loudly
 - `let` and `let*` coverage for the first lexical-binding slice, including alpha-renamed binding names and the Scheme distinction between outer-env and sequential initializer lookup
 - `+` as the first primitive-apply fold, including zero-, one-, two-, and n-ary numeric addition with symmetric type errors
