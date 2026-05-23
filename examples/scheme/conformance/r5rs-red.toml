@@ -32,21 +32,6 @@ exit_code = 0
 stderr = ""
 stdout_stripped = "0"
 
-[[case]]
-name = "quoted dotted pair preserves improper list structure"
-input = "'(1 . 2)"
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "(1 . 2)"
-
-[[case]]
-name = "vector literal reads and renders as a vector"
-input = "#(1 2 #t)"
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "#(1 2 #t)"
 
 [[case]]
 name = "letrec exposes recursive binding during procedure call"

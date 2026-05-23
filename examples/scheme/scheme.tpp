@@ -9,26 +9,36 @@ NAME <- [A-Za-z_][A-Za-z0-9_-]*\??
 PCTCHAR <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})
 PCT <- $PCTCHAR*
 ITEMS <- (?:[^;>|]*;)*
-ATOM <- (?:$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME|$NAME)
+ATOM <- (?:$NUM|\#t|\#f|\(\)|\#\\(?:space|newline|[A-Za-z0-9])|"[A-Za-z0-9 _.:-]*"|'$NAME|$NAME)
 VNUM <- VNUM<$NUM>
 VBOOL <- VBOOL<(?:t|f)>
 VNIL <- VNIL
 VSTR <- VSTR<$PCT>
+VCHAR <- VCHAR<$PCT>
 VSYM <- VSYM<$PCT>
 VLIST <- VLIST<$ITEMS>
+VPAIR <- VPAIR<[^>]*>
+VVEC <- VVEC<$ITEMS>
 VPROC <- VPROC
-VAL <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VSYM|$VLIST|$VPROC)
-NONNUM <- (?:$VBOOL|$VNIL|$VSTR|$VSYM|$VLIST|$VPROC)
-NONLIST <- (?:$VNUM|$VBOOL|$VSTR|$VSYM|$VPROC)
+VAL <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC)
+NONNUM <- (?:$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VLIST|$VPAIR|$VVEC|$VPROC)
+NONLIST <- (?:$VNUM|$VBOOL|$VNIL|$VSTR|$VCHAR|$VSYM|$VPAIR|$VVEC|$VPROC)
 
 Surface reader for self-evaluating values and quote shorthand.
 ^\s*(?<n>$NUM)\s*$ ::= RET<VNUM<{{n}}>|KDONE>
 ^\s*\#t\s*$ ::= RET<VBOOL<t>|KDONE>
 ^\s*\#f\s*$ ::= RET<VBOOL<f>|KDONE>
+^\s*;[^\n]*\n(?<rest>[\s\S]*)$ ::= {{rest}}
 ^\s*\(\)\s*$ ::= RET<VNIL|KDONE>
-^\s*"(?<s>[A-Za-z0-9 _.:-]*)"\s*$ ::= RET<VSTR<{{s|pctenc}}>|KDONE>
+^\s*"(?<pre>[^"\\]*)\\[A-Zacdeghijklmopqsuvwxyz0-9](?<post>[^"\\]*)"\s*$ ::= ERR<invalid_string_escape>
+^\s*"(?<s>(?:[^"\\]|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"\s*$ ::= RET<VSTR<UNESC<UNESC<{{s|pctenc}}>>>|KDONE>
+^\s*\#\\space\s*$ ::= RET<VCHAR<space>|KDONE>
+^\s*\#\\newline\s*$ ::= RET<VCHAR<newline>|KDONE>
+^\s*\#\\(?<c>[A-Za-z0-9])\s*$ ::= RET<VCHAR<{{c|pctenc}}>|KDONE>
 ^\s*'(?<s>$NAME)\s*$ ::= RET<VSYM<{{s|pctenc}}>|KDONE>
+^\s*'\((?<a>$ATOM) \. (?<b>$ATOM)\)\s*$ ::= READATOM<{{a}}|KDOTPAIR<{{b}}> KDONE>
 ^\s*'\((?<items>[^()]*)\)\s*$ ::= QLIST<{{items}}|KDONE|>
+^\s*\#\((?<items>[^()]*)\)\s*$ ::= QVEC<{{items}}|KDONE|>
 
 Scheme-shaped public forms whose fuller eval/apply semantics are being grown in GLKB #227.
 ^\s*\(lambda \((?<param>$NAME)\) (?<body>$NAME|$NUM|\#t|\#f|\(\))\)\s*$ ::= RET<VPROC|KDONE>
@@ -49,11 +59,17 @@ Quoted proper lists. Items are simple atoms in this slice; nested lists and dott
 ^QLIST<\s*(?<head>$ATOM)\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{head}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
 ^QLIST<\s*(?<last>$ATOM)\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{last}}|KQLIST<|{{acc}}> {{k}}>
 ^RET<(?<v>$VAL)\|KQLIST<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QLIST<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
+^RET<(?<a>$VAL)\|KDOTPAIR<(?<b>[^>]*)> (?<k>.*)>$ ::= READATOM<{{b}}|KDOTDONE<{{a|pctenc}}> {{k}}>
+^RET<(?<b>$VAL)\|KDOTDONE<(?<a>[^>]*)> (?<k>.*)>$ ::= RET<VPAIR<{{a}}^{{b|pctenc}}>|{{k}}>
+^QVEC<\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VVEC<{{acc}}>|{{k}}>
+^QVEC<\s*(?<head>$ATOM)\s+(?<rest>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{head}}|KQVEC<{{rest}}|{{acc}}> {{k}}>
+^QVEC<\s*(?<last>$ATOM)\s*\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= READATOM<{{last}}|KQVEC<|{{acc}}> {{k}}>
+^RET<(?<v>$VAL)\|KQVEC<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QVEC<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
 ^READATOM<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
 ^READATOM<\#t\|(?<k>.*)>$ ::= RET<VBOOL<t>|{{k}}>
 ^READATOM<\#f\|(?<k>.*)>$ ::= RET<VBOOL<f>|{{k}}>
 ^READATOM<\(\)\|(?<k>.*)>$ ::= RET<VNIL|{{k}}>
-^READATOM<"(?<s>[A-Za-z0-9 _.:-]*)"\|(?<k>.*)>$ ::= RET<VSTR<{{s|pctenc}}>|{{k}}>
+^READATOM<"(?<s>(?:[^"\\]|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"\|(?<k>.*)>$ ::= RET<VSTR<UNESC<UNESC<{{s|pctenc}}>>>|{{k}}>
 ^READATOM<'(?<s>$NAME)\|(?<k>.*)>$ ::= RET<VSYM<{{s|pctenc}}>|{{k}}>
 ^READATOM<(?<s>$NAME)\|(?<k>.*)>$ ::= RET<VSYM<{{s|pctenc}}>|{{k}}>
 
@@ -98,13 +114,19 @@ Predicates over the supported value family. Only #f is false; empty list is trut
 ^\s*\(symbol\? (?<bad>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*")\)\s*$ ::= RET<VBOOL<f>|KDONE>
 ^\s*\(string\? "(?<s>[A-Za-z0-9 _.:-]*)"\)\s*$ ::= RET<VBOOL<t>|KDONE>
 ^\s*\(string\? (?<bad>$NUM|\#t|\#f|\(\)|'$NAME)\)\s*$ ::= RET<VBOOL<f>|KDONE>
-^\s*\((?:\+|-|\*|/|=|<|<=|>|>=|car|cdr|cons|null\?|pair\?|list\?|number\?|boolean\?|symbol\?|string\?)\)\s*$ ::= ERR<wrong_arity>
+^\s*\(char\? (?<c>\#\\(?:space|newline|[A-Za-z0-9]))\)\s*$ ::= RET<VBOOL<t>|KDONE>
+^\s*\(char\? (?<bad>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= RET<VBOOL<f>|KDONE>
+^\s*\(vector\? \#\((?<items>[^()]*)\)\)\s*$ ::= RET<VBOOL<t>|KDONE>
+^\s*\(vector\? (?<bad>$NUM|\#t|\#f|\(\)|"[A-Za-z0-9 _.:-]*"|'$NAME)\)\s*$ ::= RET<VBOOL<f>|KDONE>
+^\s*\((?:\+|-|\*|/|=|<|<=|>|>=|car|cdr|cons|null\?|pair\?|list\?|number\?|boolean\?|symbol\?|string\?|char\?|vector\?)\)\s*$ ::= ERR<wrong_arity>
 
 Generic numeric builtins. They stay generic Thue++ primitives, not Scheme-specific host helpers.
 ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
 SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
 MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
 DIV<(?<a>$NUM),(?<b>$NUM)> ::! div a b
+UNESC<(?<s>$PCT)> ::! unescape s
+ESC<(?<s>$PCT)> ::! escape s
 EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq a b
 LT<(?<a>$NUM),(?<b>$NUM)> ::! lt a b
 LE<(?<a>$NUM),(?<b>$NUM)> ::! le a b
@@ -118,10 +140,15 @@ Builtin boolean normalization and final rendering.
 ^RET<VBOOL<t>\|KDONE>$ ::= @OUT<%23t>@@EXIT0@
 ^RET<VBOOL<f>\|KDONE>$ ::= @OUT<%23f>@@EXIT0@
 ^RET<VNIL\|KDONE>$ ::= @OUT<%28%29>@@EXIT0@
-^RET<VSTR<(?<s>$PCT)>\|KDONE>$ ::= @OUT<%22{{s}}%22>@@EXIT0@
+^RET<VSTR<(?<s>$PCT)>\|KDONE>$ ::= @OUT<%22ESC<{{s}}>%22>@@EXIT0@
+^RET<VCHAR<space>\|KDONE>$ ::= @OUT<%23%5Cspace>@@EXIT0@
+^RET<VCHAR<newline>\|KDONE>$ ::= @OUT<%23%5Cnewline>@@EXIT0@
+^RET<VCHAR<(?<c>$PCT)>\|KDONE>$ ::= @OUT<%23%5C{{c}}>@@EXIT0@
 ^RET<VSYM<(?<s>$PCT)>\|KDONE>$ ::= @OUT<{{s}}>@@EXIT0@
 ^RET<VPROC\|KDONE>$ ::= @OUT<%23%3Cprocedure%3E>@@EXIT0@
 ^RET<VLIST<(?<items>$ITEMS)>\|KDONE>$ ::= RLIST<{{items}}||KOUT>
+^RET<VPAIR<(?<a>[^\^]*)\^(?<b>[^>]*)>\|KDONE>$ ::= RENDER<{{a|pctdec}}|KPAIRCAR<{{b}}> KOUT>
+^RET<VVEC<(?<items>$ITEMS)>\|KDONE>$ ::= RLIST<{{items}}||KVECOUT>
 ^RLIST<\|\|(?<k>.*)>$ ::= RRET<%28%29|{{k}}>
 ^RLIST<\|(?<acc>$PCT)\|(?<k>.*)>$ ::= RRET<%28{{acc}}%29|{{k}}>
 ^RLIST<(?<v>[^;]*);(?<rest>$ITEMS)\|\|(?<k>.*)>$ ::= RENDER<{{v|pctdec}}|KLISTFIRST<{{rest}}|{{k}}>>
@@ -132,8 +159,11 @@ Builtin boolean normalization and final rendering.
 ^RENDER<VBOOL<t>\|(?<k>.*)>$ ::= RRET<%23t|{{k}}>
 ^RENDER<VBOOL<f>\|(?<k>.*)>$ ::= RRET<%23f|{{k}}>
 ^RENDER<VNIL\|(?<k>.*)>$ ::= RRET<%28%29|{{k}}>
-^RENDER<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RRET<%22{{s}}%22|{{k}}>
+^RENDER<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RRET<%22ESC<{{s}}>%22|{{k}}>
 ^RENDER<VSYM<(?<s>$PCT)>\|(?<k>.*)>$ ::= RRET<{{s}}|{{k}}>
+^RRET<(?<car>$PCT)\|KPAIRCAR<(?<b>[^>]*)> (?<k>.*)>$ ::= RENDER<{{b|pctdec}}|KPAIRCDR<{{car}}|{{k}}>>
+^RRET<(?<cdr>$PCT)\|KPAIRCDR<(?<car>$PCT)\|(?<k>.*)>>$ ::= RRET<%28{{car}}%20.%20{{cdr}}%29|{{k}}>
+^RRET<%28(?<body>$PCT)%29\|KVECOUT>$ ::= @OUT<%23%28{{body}}%29>@@EXIT0@
 ^RRET<(?<frag>$PCT)\|KOUT>$ ::= @OUT<{{frag}}>@@EXIT0@
 ^@OUT<(?<v>$PCT)>@@EXIT0@$ ::> stdout {{v|pctdec}}\n
 Typed fail-loud exits.
