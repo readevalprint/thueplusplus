@@ -192,7 +192,7 @@ Implemented now:
 Implemented now:
 
 - insignificant whitespace, line comments, and block comments are skipped;
-- identifiers and the C keyword set are tokenized separately;
+- identifiers and the C keyword set are tokenized separately, including keyword tokens that appear immediately before EOF;
 - decimal and hexadecimal integer constants are tokenized as `ICON`;
 - string and char literals are tokenized with safely encoded payloads;
 - one-, two-, and three-character C punctuators/operators are tokenized as `PUNC`;
@@ -277,6 +277,13 @@ Required coverage:
 
 ### Phase 5: preprocessor, linkage, and library boundary
 
+Implemented now:
+
+- object-like macro fixtures compare the defined and used macro name exactly before expansion;
+- conditional preprocessing fixtures use explicit `DEFINED<name>` / `UNDEFINED<name>` state records for `IFDEF` and `IFNDEF` branch selection;
+- mismatched object macro use fails loudly with `undefined_identifier` instead of expanding a different macro's body;
+- include, stringify, token paste, predefined line, linkage, and minimal library-boundary fixture records remain explicit framed contracts.
+
 Required coverage:
 
 - object-like and function-like macros;
@@ -315,11 +322,6 @@ Diagnostics are stable stderr strings with exit code 2 for language-level failur
 - `type_error`
 - `invalid_lvalue`
 - `division_by_zero`
-
-Later phases should add precise diagnostics such as:
-
-- `division_by_zero`
-- `unsupported_c_construct`
 
 ## Validation
 

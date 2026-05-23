@@ -11,6 +11,25 @@ exit_code = 0
 stderr = ""
 stdout = "KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC<%3B>;PUNC<%7D>;EOF<>;\n"
 
+
+[[case]]
+name = "tokenizes keyword at EOF"
+input = "lex:int"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<int>;EOF<>;\n"
+
+[[case]]
+name = "keeps keyword-prefixed identifier distinct"
+input = "lex:integer"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ID<integer>;EOF<>;\n"
+
 [[case]]
 name = "skips whitespace and comments"
 input = "lex:/* block */\nint// line\nmain"
