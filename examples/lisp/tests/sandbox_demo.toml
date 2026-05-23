@@ -1,0 +1,55 @@
+# Explicit eval-scope sandbox demo.
+#
+# These cases model a sandbox helper in ordinary Lisp. The sandbox function
+# takes a source string, parses it into code-as-data, builds the entire allowed
+# scope internally, evals the code in that scope, and returns the resulting
+# value. User code can only resolve names supplied by that scope; there is no
+# ambient caller environment and no hidden core fallback.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "120000"]
+
+[[case]]
+name = "sandbox parses source string and runs provided square function"
+input = '(let ((sandbox (fn (source) (eval (parse source) (dict ((quote square) (fn (x) (mul x x))) ((quote safe-add) (fn (a b) (add a b)))))))) (sandbox "(square 6)"))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "36"
+
+[[case]]
+name = "sandbox parses source string and runs provided safe-add function"
+input = '(let ((sandbox (fn (source) (eval (parse source) (dict ((quote square) (fn (x) (mul x x))) ((quote safe-add) (fn (a b) (add a b)))))))) (sandbox "(safe-add 1 2)"))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "sandbox blocks primitive not present in internally built scope"
+input = '(let ((sandbox (fn (source) (eval (parse source) (dict ((quote square) (fn (x) (mul x x))) ((quote safe-add) (fn (a b) (add a b)))))))) (sandbox "(add 1 2)"))'
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "sandbox blocks caller local not present in internally built scope"
+input = '(let ((secret 99) (sandbox (fn (source) (eval (parse source) (dict ((quote square) (fn (x) (mul x x))) ((quote safe-add) (fn (a b) (add a b)))))))) (sandbox "secret"))'
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "sandbox reports parse errors before eval"
+input = '(let ((sandbox (fn (source) (eval (parse source) (dict ((quote square) (fn (x) (mul x x))) ((quote safe-add) (fn (a b) (add a b)))))))) (sandbox "(square 6"))'
+
+[case.expect]
+exit_code = 2
+stderr = "malformed_list"
+stdout_stripped = ""

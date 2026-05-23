@@ -1,8 +1,8 @@
-# Lisp example contract
+# Lisp in Thue++
 
-`lisp.tpp` is the canonical Lisp evaluator for this repository. It is implemented entirely as Thue++ rewrite rules in `examples/lisp/lisp.tpp`; Python and Go only provide the generic Thue++ interpreter and builtins used by the rules.
+Apparently, you can write a powerful Lisp in 500 lines of Thue++.
 
-This example is intentionally small. Unsupported forms fail loudly instead of being accepted as partial Lisp compatibility.
+`lisp.tpp` is the canonical Lisp evaluator for this repository. It is implemented entirely as Thue++rewrite rules in `examples/lisp/lisp.tpp`; Python and Go only provide the generic Thue++ interpreter and builtins used by the rules.
 
 ## Supported input forms
 
@@ -12,7 +12,7 @@ Atoms:
 - booleans: `true`, `false`;
 - strings delimited by double quotes, with the supported escape set described below;
 - names bound by `let`, fn parameters, or the initial core environment;
-- quote-family reader shorthand: `'datum`, `` `datum ``, `,datum`, and `,@datum`, which read as the long forms `(quote datum)`, `(quasiquote datum)`, `(unquote datum)`, and `(splice datum)`.
+- quote-family reader shorthand: `'datum`, ``datum`, `,datum`, and `,@datum`, which read as the long forms `(quote datum)`, `(quasiquote datum)`, `(unquote datum)`, and `(splice datum)`.
 
 Compound forms:
 
@@ -69,12 +69,12 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
 - `do` evaluates expressions in order and returns the final expression value.
 - `(while cond body)` evaluates `cond` before each iteration and evaluates the single
-  `body` expression only while the condition is boolean `true`; use `(do ...)` as
-  that one body expression when sequencing is needed.
+`body` expression only while the condition is boolean `true`; use `(do ...)` as
+that one body expression when sequencing is needed.
 - A false-initial or normally exhausted `while` returns `()`. Loop-side state is
-  observed through bindings updated by `set-var`.
+observed through bindings updated by `set-var`.
 - `(set-var name expr)` updates the nearest existing lexical binding and returns the
-  assigned value; setting an unbound name fails with `unbound_name`.
+assigned value; setting an unbound name fails with `unbound_name`.
 - Arithmetic, comparison, collection, alist, and type-inspection primitive callables are strict for the operands they require and have exact arity.
 
 ## Explicit eval scope
@@ -86,6 +86,28 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 ```
 
 returns `11`.
+
+This is the sandbox boundary: evaluated user code gets exactly the names supplied by the scope alist. There is no ambient caller environment and no hidden core fallback. A sandbox helper can take a source string, parse it, build the entire allowed scope internally, evaluate the parsed code in that scope, and return the value:
+
+```lisp
+(let ((sandbox
+        (fn (source)
+          (eval
+            (parse source)
+            (dict
+              ((quote square) (fn (x) (mul x x)))
+              ((quote safe-add) (fn (a b) (add a b))))))))
+  (sandbox "(square 6)"))
+```
+
+returns `36`. The same sandbox accepts only the API it installed in the explicit scope:
+
+```lisp
+(sandbox "(safe-add 1 2)") ; returns 3
+(sandbox "(add 1 2)")      ; fails with unbound_name
+```
+
+`add` is available to the sandbox implementation while building `safe-add`, but it is not available to user code unless the scope exposes it. Caller locals are not ambient capabilities either: if the caller binds `secret`, `(sandbox "secret")` still fails with `unbound_name` unless `secret` is placed in the scope. The executable demo is `examples/lisp/tests/sandbox_demo.toml`.
 
 Contract:
 
@@ -111,12 +133,14 @@ Unsupported syntax exits non-zero with a named stderr error. Current deliberate 
 
 Reserved unsupported-form rules are kept only where they protect a deliberate public boundary:
 
-| Form(s) | Keep/delete | Reason |
-| --- | --- | --- |
-| `define`, `letrec` | keep | Binding recursion is intentionally absent; generic get/application would report the wrong failure boundary. |
-| `break`, `continue` | keep | Minimal `while` contains no non-local loop-control channel, so these names must stay reserved and explicit. |
-| `map` | keep | Higher-order list traversal is outside the current list/code-as-data slice and should not be treated as an ordinary missing function. |
-| bare `quasiquote`, `unquote`, `splice` | keep | These forms are valid only through the quasiquote evaluator; outside that evaluator they remain unsupported syntax, not get misses. |
+
+| Form(s)                                | Keep/delete | Reason                                                                                                                                |
+| -------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `define`, `letrec`                     | keep        | Binding recursion is intentionally absent; generic get/application would report the wrong failure boundary.                           |
+| `break`, `continue`                    | keep        | Minimal `while` contains no non-local loop-control channel, so these names must stay reserved and explicit.                           |
+| `map`                                  | keep        | Higher-order list traversal is outside the current list/code-as-data slice and should not be treated as an ordinary missing function. |
+| bare `quasiquote`, `unquote`, `splice` | keep        | These forms are valid only through the quasiquote evaluator; outside that evaluator they remain unsupported syntax, not get misses.   |
+
 
 Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
 
@@ -165,7 +189,7 @@ To update a variable, explicitly rebind it with `set-var`:
 
 returns `(1 9 3)`. Without the `set-var`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(set-nth (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
 
-Reader shorthand is syntax only and canonicalizes to long-form code-as-data. `'x` reads as `(quote x)`, `` `(1 ,x) `` reads as `(quasiquote (1 (unquote x)))`, and `,@xs` reads as `(splice xs)`. The `splice` name remains the only long-form splicing form; there is no `unquote-splicing` form. Canonical rendering with `unparse` remains long-form/list syntax rather than source-preserving shorthand.
+Reader shorthand is syntax only and canonicalizes to long-form code-as-data. `'x` reads as `(quote x)`, ``(1 ,x)` reads as `(quasiquote (1 (unquote x)))`, and `,@xs` reads as `(splice xs)`. The `splice` name remains the only long-form splicing form; there is no `unquote-splicing` form. Canonical rendering with `unparse` remains long-form/list syntax rather than source-preserving shorthand.
 
 ## Parse/unparse round trip
 
