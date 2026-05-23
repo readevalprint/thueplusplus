@@ -1,0 +1,336 @@
+program = "../c.tpp"
+timeout = 10
+args = ["--max-evals", "80000"]
+
+[[case]]
+name = "tokenizes main return translation unit"
+input = "lex:int main(void) { return 42; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC<%3B>;PUNC<%7D>;EOF<>;\n"
+
+[[case]]
+name = "skips whitespace and comments"
+input = "lex:/* block */\nint// line\nmain"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<int>;ID<main>;EOF<>;\n"
+
+[[case]]
+name = "tokenizes string and char payloads safely"
+input = "lex:char c = 'x'; char *s = \"ab\";"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "KW<char>;ID<c>;PUNC<%3D>;CHAR<x>;PUNC<%3B>;KW<char>;PUNC<%2A>;ID<s>;PUNC<%3D>;STR<ab>;PUNC<%3B>;EOF<>;\n"
+
+[[case]]
+name = "tokenizes multi-character punctuators"
+input = "lex:a++ -> b >>= 1 ... ## c"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ID<a>;PUNC<%2B%2B>;PUNC<-%3E>;ID<b>;PUNC<%3E%3E%3D>;ICON<1>;PUNC<...>;PUNC<%23%23>;ID<c>;EOF<>;\n"
+
+[[case]]
+name = "unterminated block comment fails loudly"
+input = "lex:int /* nope"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unterminated_comment"
+
+[[case]]
+name = "unterminated string fails loudly"
+input = 'lex:"unterminated'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unterminated_string"
+
+[[case]]
+name = "invalid string escape fails loudly"
+input = 'lex:"bad\\q"'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_escape"
+
+[[case]]
+name = "invalid char escape fails loudly"
+input = "lex:'\\q'"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_escape"
+
+[[case]]
+name = "unterminated char fails loudly"
+input = "lex:'x"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unterminated_char"
+
+[[case]]
+name = "invalid token fails loudly"
+input = "lex:int @ x"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_token"
+
+[[case]]
+name = "parses main void return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<42>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<RETURN<ICON<42>>>>\n"
+
+[[case]]
+name = "parses empty parameter return function AST"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;ID<x>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<>|BODY<RETURN<ID<x>>>>\n"
+
+[[case]]
+name = "parses parameter local declaration and return"
+input = "parse:KW<int>;ID<f>;PUNC<%28>;KW<int>;ID<x>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<y>;PUNC<%3B>;KW<return>;ID<x>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<FN<RET<int>|NAME<f>|PARAMS<PARAM<int|x>>|BODY<DECL<VAR<int|y>>|RETURN<ID<x>>>>\n"
+
+[[case]]
+name = "parses typedef-name declaration ambiguity explicitly"
+input = "parse:KW<typedef>;KW<int>;ID<T>;PUNC<%3B>;ID<T>;ID<x>;PUNC<%3B>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<TYPEDEF<int|T>|DECL<VAR<TYPEDEFNAME<T>|x>>>\n"
+
+[[case]]
+name = "parses variable declaration"
+input = "parse:KW<int>;ID<x>;PUNC<%3B>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<DECL<VAR<int|x>>>\n"
+
+[[case]]
+name = "parses if else statement shell"
+input = "parse:KW<if>;PUNC<%28>;ID<x>;PUNC<%29>;PUNC<%7B>;KW<return>;ICON<1>;PUNC<%3B>;PUNC<%7D>;KW<else>;PUNC<%7B>;KW<return>;ICON<0>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<IF<COND<ID<x>>|THEN<ICON<1>;>|ELSE<ICON<0>;>>\n"
+
+[[case]]
+name = "parses while assignment body"
+input = "parse:KW<while>;PUNC<%28>;ID<x>;PUNC<%29>;PUNC<%7B>;ID<x>;PUNC<%3D>;ICON<1>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<WHILE<COND<ID<x>;>|BODY<ASSIGN<ID<x>|ICON<1>>>>\n"
+
+[[case]]
+name = "parses nested assignment in statement context"
+input = "parse:KW<while>;PUNC<%28>;ID<x>;PUNC<%29>;PUNC<%7B>;ID<x>;PUNC<%3D>;ID<y>;PUNC<%3D>;ICON<1>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<WHILE<COND<ID<x>;>|BODY<ASSIGN<ID<x>|ASSIGN<ID<y>|ICON<1>>>>>\n"
+
+[[case]]
+name = "parses for loop shell"
+input = "parse:KW<for>;PUNC<%28>;ID<i>;PUNC<%3D>;ICON<0>;PUNC<%3B>;ID<i>;PUNC<%3C>;ICON<3>;PUNC<%3B>;ID<i>;PUNC<%2B%2B>;PUNC<%29>;PUNC<%7B>;KW<return>;ID<i>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<FOR<INIT<ASSIGN<ID<i>|ICON<0>;>>|COND<ID<i>;PUNC<%3C>;ICON<3>;>|INC<POSTINC<ID<i>>|BODY<RETURN<ID<i>>>>\n"
+
+[[case]]
+name = "parses expression precedence"
+input = "parse-expr:ID<a>;PUNC<%2B>;ID<b>;PUNC<%2A>;ICON<3>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ADD<ID<a>;|MUL<ID<b>;|ICON<3>;>>\n"
+
+[[case]]
+name = "parses assignment expression"
+input = "parse-expr:ID<x>;PUNC<%3D>;ICON<1>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ASSIGN<ID<x>|ICON<1>>\n"
+
+[[case]]
+name = "parses equality expression"
+input = "parse-expr:ID<x>;PUNC<%3D%3D>;ICON<1>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "EQ<ID<x>;|ICON<1>;>\n"
+
+[[case]]
+name = "parses relational expression"
+input = "parse-expr:ID<x>;PUNC<%3C>;ICON<1>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "LT<ID<x>;|ICON<1>;>\n"
+
+[[case]]
+name = "parses call expression"
+input = "parse-expr:ID<f>;PUNC<%28>;ID<x>;PUNC<%29>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "CALL<f|ID<x>>\n"
+
+[[case]]
+name = "parses integer primary"
+input = "parse-expr:ICON<7>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ICON<7>\n"
+
+[[case]]
+name = "parses identifier primary"
+input = "parse-expr:ID<x>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ID<x>\n"
+
+[[case]]
+name = "parses string primary"
+input = "parse-expr:STR<hi>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "STR<hi>\n"
+
+[[case]]
+name = "parses char primary"
+input = "parse-expr:CHAR<x>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "CHAR<x>\n"
+
+[[case]]
+name = "parses string return context"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;STR<hi>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<RETURN<STR<hi>>>>\n"
+
+[[case]]
+name = "parses char return context"
+input = "parse:KW<int>;ID<main>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;CHAR<x>;PUNC<%3B>;PUNC<%7D>;EOF<>;"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "TU<FN<RET<int>|NAME<main>|PARAMS<void>|BODY<RETURN<CHAR<x>>>>\n"
+
+[[case]]
+name = "translation-unit syntax error fails loudly"
+input = "parse:KW<int>;ID<main>;EOF<>;"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "syntax_error"
+
+[[case]]
+name = "expression syntax error fails loudly"
+input = "parse-expr:PUNC<%2B>;EOF<>;"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "syntax_error"
+
+[[case]]
+name = "scaffold still runs main void"
+input = "int main(void) { return 7; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "7\n"
+
+[[case]]
+name = "scaffold still runs main empty params"
+input = "int main() { return 8; }"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "8\n"
+
+[[case]]
+name = "scaffold empty translation unit still fails"
+input = "   \n\t"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "empty_translation_unit"
+
+[[case]]
+name = "scaffold unsupported declaration still fails"
+input = "char main(void) { return 0; }"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"
+
+[[case]]
+name = "scaffold unsupported source still fails"
+input = "bogus"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_c_construct"

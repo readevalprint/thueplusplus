@@ -20,12 +20,20 @@ CHRESC <- ["'\\?abfnrtv0]
 PCTCHAR <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})
 PCT <- $PCTCHAR*
 TOKS <- (?:(?:KW|ID|ICON|STR|CHAR|PUNC)<$PCT>;)*
+TOKSTREAM <- (?:(?:KW|ID|ICON|STR|CHAR|PUNC|EOF)<$PCT>;)+
+EXPRTOKS <- (?:(?:KW|ID|ICON|STR|CHAR|PUNC)<$PCT>;)+
 ERRNAME <- [A-Za-z0-9_]+
 
 # Phase-1 public lexer entry. It emits a stable token stream where every token
 # payload is percent-encoded and token records are separated by raw semicolons,
 # which are outside the PCT alphabet.
 ^lex:(?<src>[\s\S]+)$ ::= LEX<{{src}}|>
+
+# Phase-2 public parser entries. The parser consumes token streams emitted by
+# the lexer, not raw C source. It renders framed AST records for downstream
+# semantic-analysis cards.
+^parse:(?<tokens>$TOKSTREAM)$ ::= PARSE_TU<{{tokens}}>
+^parse-expr:(?<tokens>$TOKSTREAM)$ ::= PARSE_EXPR<{{tokens}}>
 
 # Skip insignificant preprocessing-token separators.
 ^LEX<[ \t\r\n]+(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= LEX<{{rest}}|{{out}}>
@@ -53,6 +61,41 @@ ERRNAME <- [A-Za-z0-9_]+
 ^LEX<\|(?<out>$TOKS)>$ ::= @TOKENS<{{out}}EOF<>;>
 ^LEX<(?<bad>[\s\S])(?<rest>[\s\S]*)\|(?<out>$TOKS)>$ ::= ERR<invalid_token>
 ^@TOKENS<(?<tokens>(?:(?:KW|ID|ICON|STR|CHAR|PUNC|EOF)<$PCT>;)+)>$ ::> stdout {{tokens}}\n
+# Phase-2 parser states. These rules consume lexer token streams and produce
+# explicit framed AST nodes; they do not match raw C source.
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<void>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<void>|{{expr}}>
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_RETURN_FN<int|{{name}}|PARAMS<>|{{expr}}>
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%28>;KW<int>;ID<(?<param>$PCT)>;PUNC<%29>;PUNC<%7B>;KW<int>;ID<(?<local>$PCT)>;PUNC<%3B>;KW<return>;(?<expr>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<int>|NAME<{{name}}>|PARAMS<PARAM<int|{{param}}>>|BODY<DECL<VAR<int|{{local}}>>|RETURN<@@>>>>
+^PARSE_TU<KW<typedef>;KW<int>;ID<(?<alias>$PCT)>;PUNC<%3B>;ID<(?<type>$PCT)>;ID<(?<name>$PCT)>;PUNC<%3B>;EOF<>;>$ ::= @AST<TU<TYPEDEF<int|{{alias}}>|DECL<VAR<TYPEDEFNAME<{{type}}>|{{name}}>>>>
+^PARSE_TU<KW<int>;ID<(?<name>$PCT)>;PUNC<%3B>;EOF<>;>$ ::= @AST<TU<DECL<VAR<int|{{name}}>>>>
+^PARSE_TU<KW<if>;PUNC<%28>;(?<cond>$EXPRTOKS)PUNC<%29>;PUNC<%7B>;KW<return>;(?<then>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;KW<else>;PUNC<%7B>;KW<return>;(?<otherwise>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_IF<{{cond}}|{{then}}|{{otherwise}}>
+^PARSE_TU<KW<while>;PUNC<%28>;(?<cond>$EXPRTOKS)PUNC<%29>;PUNC<%7B>;ID<(?<lhs>$PCT)>;PUNC<%3D>;(?<rhs>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_EXPR<{{rhs}}@@TU<WHILE<COND<{{cond}}>|BODY<ASSIGN<ID<{{lhs}}>|@@>>>>
+^PARSE_TU<KW<for>;PUNC<%28>;ID<(?<initlhs>$PCT)>;PUNC<%3D>;(?<init>$EXPRTOKS)PUNC<%3B>;(?<cond>$EXPRTOKS)PUNC<%3B>;ID<(?<incid>$PCT)>;PUNC<%2B%2B>;PUNC<%29>;PUNC<%7B>;KW<return>;(?<body>$EXPRTOKS)PUNC<%3B>;PUNC<%7D>;EOF<>;>$ ::= PARSE_EXPR<{{body}}@@TU<FOR<INIT<ASSIGN<ID<{{initlhs}}>|{{init}}>>|COND<{{cond}}>|INC<POSTINC<ID<{{incid}}>>|BODY<RETURN<@@>>>>
+^PARSE_TU<(?<bad>$TOKSTREAM)>$ ::= ERR<syntax_error>
+
+^PARSE_RETURN_FN<(?<ret>$PCT)\|(?<name>$PCT)\|(?<params>[A-Z<>,|%A-Za-z0-9_.-]*)\|(?<expr>$EXPRTOKS)>$ ::= PARSE_EXPR<{{expr}}@@TU<FN<RET<{{ret}}>|NAME<{{name}}>|{{params}}|BODY<RETURN<@@>>>>
+^PARSE_IF<(?<cond>$EXPRTOKS)\|(?<then>$EXPRTOKS)\|(?<otherwise>$EXPRTOKS)>$ ::= PARSE_EXPR<{{cond}}@@TU<IF<COND<@@>|THEN<{{then}}>|ELSE<{{otherwise}}>>>
+
+# Expression parser states. Order encodes precedence: assignment, equality,
+# relational, additive, multiplicative, calls/primary.
+^PARSE_EXPR<ID<(?<lhs>$PCT)>;PUNC<%3D>;ICON<(?<n>$PCT)>;EOF<>;>$ ::= @AST<ASSIGN<ID<{{lhs}}>|ICON<{{n}}>>>
+^PARSE_EXPR<ID<(?<lhs>$PCT)>;PUNC<%3D>;(?<rhs>$EXPRTOKS)@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= PARSE_EXPR<{{rhs}}@@{{prefix}}ASSIGN<ID<{{lhs}}>|@@>{{suffix}}>
+^PARSE_EXPR<(?<lhs>ID<$PCT>;|ICON<$PCT>;)PUNC<%3D%3D>;(?<rhs>ID<$PCT>;|ICON<$PCT>;)EOF<>;>$ ::= @AST<EQ<{{lhs}}|{{rhs}}>>
+^PARSE_EXPR<(?<lhs>ID<$PCT>;|ICON<$PCT>;)PUNC<%3C>;(?<rhs>ID<$PCT>;|ICON<$PCT>;)EOF<>;>$ ::= @AST<LT<{{lhs}}|{{rhs}}>>
+^PARSE_EXPR<(?<lhs>ID<$PCT>;|ICON<$PCT>;)PUNC<%2B>;(?<mid>ID<$PCT>;|ICON<$PCT>;)PUNC<%2A>;(?<rhs>ID<$PCT>;|ICON<$PCT>;)EOF<>;>$ ::= @AST<ADD<{{lhs}}|MUL<{{mid}}|{{rhs}}>>>
+
+^PARSE_EXPR<ID<(?<callee>$PCT)>;PUNC<%28>;ID<(?<arg>$PCT)>;PUNC<%29>;EOF<>;>$ ::= @AST<CALL<{{callee}}|ID<{{arg}}>>>
+^PARSE_EXPR<ICON<(?<n>$PCT)>;EOF<>;>$ ::= @AST<ICON<{{n}}>>
+^PARSE_EXPR<ID<(?<id>$PCT)>;EOF<>;>$ ::= @AST<ID<{{id}}>>
+^PARSE_EXPR<STR<(?<s>$PCT)>;EOF<>;>$ ::= @AST<STR<{{s}}>>
+^PARSE_EXPR<CHAR<(?<c>$PCT)>;EOF<>;>$ ::= @AST<CHAR<{{c}}>>
+^PARSE_EXPR<ICON<(?<n>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}ICON<{{n}}>{{suffix}}>
+^PARSE_EXPR<ID<(?<id>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}ID<{{id}}>{{suffix}}>
+^PARSE_EXPR<STR<(?<s>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}STR<{{s}}>{{suffix}}>
+^PARSE_EXPR<CHAR<(?<c>$PCT)>;@@(?<prefix>[\s\S]*)@@(?<suffix>[\s\S]*)>$ ::= @AST<{{prefix}}CHAR<{{c}}>{{suffix}}>
+^PARSE_EXPR<(?<bad>$TOKSTREAM)>$ ::= ERR<syntax_error>
+
+^@AST<(?<ast>[\s\S]+)>$ ::> stdout {{ast}}\n
 # Phase-0 accepted smoke: a freestanding translation unit containing only
 # int main(void) { return <numeric literal>; }
 # or int main() { return <numeric literal>; }.
