@@ -2,7 +2,7 @@
 
 `scheme.tpp` is a new greenfield Scheme-shaped target-language example implemented entirely as Thue++ rewrite rules. It is separate from `examples/lisp/lisp.tpp`; the Lisp example remains the canonical mini-Lisp core and is not being renamed or repurposed.
 
-This first slice is a scaffold for the Scheme workstream. It establishes the directory, manifest shape, public surface direction, typed internal values, and fail-loud behavior that downstream cards will grow into a fuller tiny lexical Scheme.
+This slice establishes the Scheme reader/value/primitives layer for the workstream. It is still intentionally smaller than full Scheme, but it now covers Scheme-shaped booleans, quoted data, proper lists, primitive list operations, predicates, arithmetic/comparison primitives, typed errors, and full rule coverage.
 
 ## Running it
 
@@ -27,12 +27,15 @@ Literals:
 - empty list: `()`
 - plain strings without escapes in this initial slice
 - quoted symbols such as `'alpha`
+- quoted proper lists such as `'(1 #t alpha "x")`
 
 Scheme-shaped forms/operators in this scaffold:
 
 - `(lambda (x) x)` renders as the opaque procedure marker `#<procedure>`
-- `(begin 1 2)` returns the final expression for this initial numeric case
+- `(begin a b)` returns the final supported atom
 - binary numeric operators: `+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`
+- proper-list operations over quoted lists: `cons`, `car`, `cdr`
+- predicates: `null?`, `pair?`, `list?`, `number?`, `boolean?`, `symbol?`, `string?`
 
 The internal value direction is deliberately Scheme-shaped:
 
@@ -41,15 +44,16 @@ The internal value direction is deliberately Scheme-shaped:
 - `VNIL` for the empty list, distinct from `#f`
 - `VSTR<pct>` for strings
 - `VSYM<pct>` for symbols
+- `VLIST<...>` for proper lists with percent-encoded items
 - `VPROC` as the first opaque procedure marker
 
-Downstream cards will replace the direct scaffold cases with a real Scheme reader/eval/apply machine, pair/list representation, lexical closures, top-level definitions, and proper `let` / `let*` behavior.
+Downstream cards will replace the direct surface cases with a real Scheme eval/apply machine, lexical closures, top-level definitions, proper `let` / `let*` behavior, and more complete pair/list parsing.
 
 ## Deliberately deferred
 
 This scaffold does not claim full R5RS/R7RS Scheme. Deferred features include:
 
-- general pair/list parsing and dotted pairs
+- nested list parsing and dotted pairs
 - full string escape handling
 - full lambda application and lexical closure evaluation
 - `define`, `set!`, `let`, `let*`, `letrec`
