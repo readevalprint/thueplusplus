@@ -104,6 +104,14 @@ uv run python tools/scheme_conformance.py
 
 It validates `examples/scheme/conformance/*-red.toml` with the shared manifest schema and runs each RED case through the shared runner's external-command case path with Python/Go parity. RED cases state intended R5RS behavior and must fail until an implementation card promotes them into `examples/scheme/tests/`.
 
+The adversarial semantic-probe gate is:
+
+```bash
+uv run python tools/scheme_adversarial.py
+```
+
+It validates `examples/scheme/conformance/adversarial.toml`, runs green semantic probes, checks equivalence groups such as alpha-renaming/shadowing invariants, and keeps explicitly linked RED probes failing until their owning GLKB issue promotes them. This is separate from rule coverage: a rule can be fully covered while the claimed semantic family is still unsupported. Optional external oracle comparison is explicit via `--oracle-command`; when no oracle is configured, the tool reports oracle unavailability rather than counting it as an oracle pass.
+
 The green manifests check Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. They cover reader/literals, comments, escaped strings, characters, quote, recursive quoted lists/pairs/vectors, the first primitive-apply fold for `+`, remaining binary arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
 
 ```bash
