@@ -179,8 +179,40 @@ stderr = ""
 stdout_stripped = "#(#\\newline 1)"
 
 [[case]]
-name = "nested quoted list remains unsupported loudly until recursive reader"
+name = "nested quoted proper list renders recursively"
 input = "'((1) 2)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "((1) 2)"
+
+[[case]]
+name = "vector literal can contain nested list"
+input = "#((1) 2)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "#((1) 2)"
+
+[[case]]
+name = "quoted list can contain nested vector"
+input = "'(#(1) 2)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(#(1) 2)"
+
+[[case]]
+name = "nested quoted improper pair renders recursively"
+input = "'((1 . 2) . 3)"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "((1 . 2) . 3)"
+
+[[case]]
+name = "malformed dotted pair fails loudly"
+input = "'(1 . 2 3)"
 [case.expect]
 exit_code = 2
 stdout = ""

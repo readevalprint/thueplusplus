@@ -2,7 +2,7 @@
 
 `scheme.tpp` is a new greenfield Scheme-shaped target-language example implemented entirely as Thue++ rewrite rules. It is separate from `examples/lisp/lisp.tpp`; the Lisp example remains the canonical mini-Lisp core and is not being renamed or repurposed.
 
-This slice establishes the Scheme reader/value/primitives layer and the first evaluator semantics for the workstream. It is still intentionally smaller than full Scheme, but it now covers Scheme-shaped booleans, characters, escaped strings, quoted data, proper and simple dotted lists, simple vectors including character elements, primitive list operations, predicates, arithmetic/comparison primitives, selected lexical forms, typed errors, and full rule coverage.
+This slice establishes the Scheme reader/value/primitives layer and the first evaluator semantics for the workstream. It is still intentionally smaller than full Scheme, but it now covers Scheme-shaped booleans, characters, escaped strings, quoted data, recursive quoted proper lists, nested dotted pairs, simple vectors including nested list/vector datums and character elements, primitive list operations, predicates, arithmetic/comparison primitives, selected lexical forms, typed errors, and full rule coverage.
 
 The full R5RS target is defined in [`R5RS_CONTRACT.md`](R5RS_CONTRACT.md). That contract supersedes any scaffold behavior that currently contradicts R5RS. The implementation design gate is [`R5RS_ARCHITECTURE.md`](R5RS_ARCHITECTURE.md).
 
@@ -39,9 +39,9 @@ Literals:
 - plain strings with generic Scheme-level escape rendering for `\"`, `\n`, `\t`, `\r`, `\b`, `\f`, and `\\`
 - character literals: `#\a`, `#\space`, `#\newline`
 - quoted symbols such as `'alpha`
-- quoted proper lists such as `'(1 #t alpha "x")`, including character elements
-- simple quoted dotted pairs such as `'(1 . 2)`
-- simple vector literals such as `#(1 2 #t #\a)`
+- quoted proper lists such as `'(1 #t alpha "x")`, including nested proper lists, vectors, characters, and strings
+- quoted dotted pairs such as `'(1 . 2)` and nested/improper variants such as `'((1 . 2) . 3)`
+- vector literals such as `#(1 2 #t #\a)` and `#((1) 2)`
 
 Scheme-shaped forms/operators in this scaffold:
 
@@ -72,14 +72,14 @@ The internal value direction is deliberately Scheme-shaped:
 - `VPROC` as the first opaque procedure marker
 - `VPRIM<name>` as the first primitive procedure value marker; this slice applies `VPRIM<add>` through the shared primitive-apply fold and renders primitive values opaquely
 
-Downstream cards will broaden the evaluator beyond this first lexical slice, especially recursive forms, the remaining environment-bound primitive procedures, more general nested source parsing, and more complete pair/list parsing.
+Downstream cards will broaden the evaluator beyond this first lexical slice, especially recursive forms, the remaining environment-bound primitive procedures, pair/list operations beyond quoted-datum rendering, and more complete source parsing for executable expressions.
 
 ## Deliberately deferred
 
 This scaffold does not claim full R5RS/R7RS Scheme. Deferred features include:
 
-- general nested list parsing and arbitrary dotted-pair placement
-- full recursive reader/freezer machinery for quote-family datums
+- full reader support for comments and all datum abbreviation forms inside nested datums
+- full datum-level sharing/cycles and complete improper-list mutation behavior
 - fully general lambda application and lexical closure evaluation; this slice now tests alpha-renamed `let`/`let*`/lambda lookup and rejects mismatched identifiers, but still does not implement a complete datum-level evaluator
 - fully general `define`, `set!`, `let`, `let*`; `letrec` remains unsupported and fails loudly
 - macros / `syntax-rules`
@@ -104,7 +104,7 @@ uv run python tools/scheme_conformance.py
 
 It validates `examples/scheme/conformance/*-red.toml` with the shared manifest schema and runs each RED case through the shared runner's external-command case path with Python/Go parity. RED cases state intended R5RS behavior and must fail until an implementation card promotes them into `examples/scheme/tests/`.
 
-The green manifests check Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. They cover reader/literals, comments, escaped strings, characters, quote, lists/pairs, vectors, the first primitive-apply fold for `+`, remaining binary arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
+The green manifests check Python/Go parity and manifest-declared rule coverage for `examples/scheme/scheme.tpp`. They cover reader/literals, comments, escaped strings, characters, quote, recursive quoted lists/pairs/vectors, the first primitive-apply fold for `+`, remaining binary arithmetic/comparison primitives, predicates, conditionals, lambda/lexical binding slices, top-level `define`, `set!`, and loud error paths. The repository truth engine remains:
 
 ```bash
 make test
