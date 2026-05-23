@@ -103,9 +103,9 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^ARGENV<false\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 ^ARGENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^ARGENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
-# Env-preserving expression demand: plain value returns keep the original env;
-# env-aware returns propagate the updated env. While bodies use this so generic
-# `do` sequencing can own body ordering without a custom loop sequencer.
+# Env-return normalizer: plain value returns keep the supplied env; env-aware
+# returns propagate the updated env. Forms use this to collapse paired RET and
+# RETENV continuation handlers when the only difference is env propagation.
 ^EENVKEEP<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
 ^EENVKEEP<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
 ^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
@@ -151,8 +151,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RET<VBOOL<false>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{rhs}}|{{env}}|{{k}}>
 ^RET<(?<bad>$NONBOOL)\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<do (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
-^EENV<do (?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
-^RET<(?<ignored>$VAL)\|KENBEGIN<(?<rest>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= EENV<do {{rest|pctdec}}|{{env}}|{{k}}>
+^EENV<do (?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KKEEPENV<{{env}}> KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
 ^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KENBEGIN<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= EENV<do {{rest|pctdec}}|{{env}}|{{k}}>
 
 # Minimal bounded loop/mutation slice for #108. `(while cond body)` repeats one
@@ -213,17 +212,14 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^QQESC<quasiquote\|top\|(?<args>$PCT)\|\|(?<env>[^|]*)\|> (?<k>.*)>$ ::= ERR<unsupported_form>
 ^QQESC<unquote\|list\|\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<wrong_arity>
 ^QQESC<unquote\|list\|(?<expr>$PCT_NO_SPACE)%20(?<extra>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<wrong_arity>
-^QQESC<unquote\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
+^QQESC<unquote\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KKEEPENV<{{env}}> KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
 ^QQESC<splice\|list\|\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<wrong_arity>
 ^QQESC<splice\|list\|(?<expr>$PCT_NO_SPACE)%20(?<extra>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<wrong_arity>
-^QQESC<splice\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KQQSPLICE<{{rest}}|{{env}}|{{acc}}> {{k}}>
+^QQESC<splice\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KKEEPENV<{{env}}> KQQSPLICE<{{rest}}|{{env}}|{{acc}}> {{k}}>
 ^QQESC<quasiquote\|list\|(?<args>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<unsupported_form>
-^QQLIST<(?<item>(?:$OPSYM|$EXPR))(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QQ<{{item}}|{{env}}|KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
-^RET<(?<v>$VAL)\|KQQITEM<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};>
+^QQLIST<(?<item>(?:$OPSYM|$EXPR))(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QQ<{{item}}|{{env}}|KKEEPENV<{{env}}> KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KQQITEM<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{v|pctenc}};>
-^RET<VLIST<(?<items>$ITEMS)>\|KQQSPLICE<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{items}}>
 ^RETENV<VLIST<(?<items>$ITEMS)>\|(?<env>[^|]*)\|KQQSPLICE<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QQLIST<{{rest}}|{{env}}|{{k}}|{{acc}}{{items}}>
-^RET<(?<bad>$NONLIST)\|KQQSPLICE<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<type_error>
 ^RETENV<(?<bad>$NONLIST)\|(?<env>[^|]*)\|KQQSPLICE<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ERR<type_error>
 
 ^EENV<list (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKLISTENV<{{items}}|{{env}}|{{k}}|>

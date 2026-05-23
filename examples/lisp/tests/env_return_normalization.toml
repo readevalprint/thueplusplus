@@ -1,0 +1,84 @@
+# Focused safety cases for env-return normalization through KKEEPENV.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "do normalizes plain first expression"
+input = '(do 1 2)'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "do normalizes env-updating first expression"
+input = '(let ((x 1)) (do (set-var x 2) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "do normalizes env-updating nested body"
+input = '(let ((x 1)) (do (do (set-var x 2) x) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "while body mutation still feeds next iteration"
+input = '(let ((x 0)) (do (while (lt x 3) (set-var x (add x 1))) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "quasiquote plain item path still builds list"
+input = '`(a 1 true)'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(a 1 true)"
+
+[[case]]
+name = "quasiquote unquote set-var propagates env"
+input = '(let ((x 1)) (do `(a ,(set-var x 2) ,x) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "quasiquote splice plain list still splices"
+input = '`(a ,@(list 1 2) b)'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(a 1 2 b)"
+
+[[case]]
+name = "quasiquote splice env-updating expression propagates env"
+input = '(let ((x 1)) (do `(a ,@(do (set-var x 2) (list x)) b) x))'
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "2"
+
+[[case]]
+name = "quasiquote splice non-list remains type error"
+input = '`(a ,@1 b)'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "quasiquote splice env-updating non-list remains type error"
+input = '(let ((x 1)) `(a ,@(do (set-var x 2) x) b))'
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
