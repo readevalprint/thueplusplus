@@ -24,6 +24,10 @@ VLIST <- VLIST<$ITEMS>
 VSYM <- VSYM<$PCT>
 VCLOS <- VCLOS<[^>]*>
 VPRIM <- VPRIM<$NAME>
+PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
+PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse
+PRIM2 <- cons|nth|contains|dissoc|$PRIM_NUM2
+PRIM3 <- assoc|get|set-nth
 NODE <- (?:$NUM|true|false|$VSTR|$VLIST|$VSYM|L<$PCT>)
 VAL <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONNUM <- (?:$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
@@ -346,8 +350,12 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 # closure's arity: a partially applied call returns a residual closure with the
 # unbound params and the extended captured env.
 ^APPLY<VCLOS<(?<params>$PCT)\^(?<body>$PCT)\^(?<cenv>[^>]*)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= BINDCLOS0<{{params}}|{{args}}|{{cenv}}|{{body}}|{{k}}>
-^APPLY<VPRIM<(?<op>add|sub|mul|div|eq|lt|lte|gt|gte)>\|(?<one>[^;]*);\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>add|sub|mul|div|eq|lt|lte|gt|gte)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>$PRIM1)>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>$PRIM1)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>$PRIM2)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>$PRIM2)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>$PRIM3)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^APPLY<VPRIM<(?<op>$PRIM3)>\|(?<a>[^;]*);(?<b>[^;]*);(?<c>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<add>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BADD<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 ^APPLY<VPRIM<sub>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BSUB<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 ^APPLY<VPRIM<mul>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BMUL<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
@@ -358,19 +366,11 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VPRIM<gt>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGT<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 ^APPLY<VPRIM<gte>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BGE<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
 
-^APPLY<VPRIM<parse>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<parse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARSE<{{a|pctdec}}|{{k}}>
 ^BPARSE<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= READ<{{s|pctdec}}> KPARSE<{{k}}>
 ^BPARSE<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
-^APPLY<VPRIM<unparse>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<unparse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= RENDER<{{a|pctdec}}|KUNPARSE<{{k}}>>
 ^RRET<(?<frag>$PCT)\|KUNPARSE<(?<k>.*)>>$ ::= RET<VSTR<{{frag}}>|{{k}}>
-^APPLY<VPRIM<(?<op>type|symbol|name)>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>first|rest|is-empty|count|type|symbol|name)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>cons|nth|contains|dissoc)>\|(?<a>[^;]*);(?<b>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>assoc|get|set-nth)>\|(?:[^;]*;){0,2}\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^APPLY<VPRIM<(?<op>assoc|get|set-nth)>\|(?<a>[^;]*);(?<b>[^;]*);(?<c>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
 ^APPLY<VPRIM<rest>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTAIL {{k}}>
 ^APPLY<VPRIM<is-empty>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KEMPTY {{k}}>
