@@ -4,7 +4,7 @@
 
 This slice establishes the Scheme reader/value/primitives layer and the first evaluator semantics for the workstream. It is still intentionally smaller than full Scheme, but it now covers Scheme-shaped booleans, quoted data, proper lists, primitive list operations, predicates, arithmetic/comparison primitives, selected lexical forms, typed errors, and full rule coverage.
 
-The full R5RS target is defined in [`R5RS_CONTRACT.md`](R5RS_CONTRACT.md). That contract supersedes any scaffold behavior that currently contradicts R5RS.
+The full R5RS target is defined in [`R5RS_CONTRACT.md`](R5RS_CONTRACT.md). That contract supersedes any scaffold behavior that currently contradicts R5RS. The implementation design gate is [`R5RS_ARCHITECTURE.md`](R5RS_ARCHITECTURE.md).
 
 ## Running it
 
