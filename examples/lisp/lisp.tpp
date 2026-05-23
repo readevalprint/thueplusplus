@@ -343,7 +343,7 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 # Apply VCLOS by binding args left-to-right. The remaining params stream is the
 # closure's arity: a partially applied call returns a residual closure with the
 # unbound params and the extended captured env.
-^APPLY<VCLOS<(?<params>$PCT)\^(?<body>$PCT)\^(?<cenv>[^>]*)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= BINDCLOS0<{{params}}|{{args}}|{{cenv}}|{{body}}|{{k}}>
+^APPLY<VCLOS<(?<params>$PCT)\^(?<body>$PCT)\^(?<cenv>[^>]*)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= BINDCLOS<{{params}}|{{args}}|{{cenv}}|{{body}}|{{k}}|0>
 ^APPLY<VPRIM<(?<op>$PRIM1)>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>$PRIM1)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>$PRIM2)>\|(?:[^;]*;){0,1}\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -422,16 +422,11 @@ PCTEQ<(?<a>$DICTKEY),(?<b>$DICTKEY)> ::! eq a b
 ^APPLY<VSTR<(?<s>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VLIST<(?<items>$ITEMS)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSYM<(?<name>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
-^BINDCLOS0<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{env}}|{{k}}>
-^BINDCLOS0<\|(?<args>(?:[^;>]*;)+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-
-^BINDCLOS0<(?<p>$NAME)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= BINDCLOS1<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}>
-^BINDCLOS0<(?<p>$NAME)\|(?<aval>[^;]*);(?<extra>.+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^BINDCLOS0<(?<p>$NAME)\|(?<aval>[^;]*);\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{p}}={{aval}};{{env}}|{{k}}>
-^BINDCLOS1<(?<params>$PCT)\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body}}^{{env}}>|{{k}}>
-^BINDCLOS1<(?<p>$NAME)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= BINDCLOS1<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}>
-^BINDCLOS1<(?<p>$NAME)\|(?<aval>[^;]*);(?<extra>.+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^BINDCLOS1<(?<p>$NAME)\|(?<aval>[^;]*);\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)>$ ::= EENV<{{body|pctdec}}|{{p}}={{aval}};{{env}}|{{k}}>
+^BINDCLOS<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= EENV<{{body|pctdec}}|{{env}}|{{k}}>
+^BINDCLOS<\|(?<args>(?:[^;>]*;)+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= ERR<wrong_arity>
+^BINDCLOS<(?<params>$PCT)\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|1>$ ::= RET<VCLOS<{{params}}^{{body}}^{{env}}>|{{k}}>
+^BINDCLOS<(?<p>$NAME)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= BINDCLOS<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}|1>
+^BINDCLOS<(?<p>$NAME)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= BINDCLOS<|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}|1>
 
 # Let binding-stream iterator. Decode the outer binding list once so raw spaces separate binding nodes.
 # The init capture deliberately excludes >, so it stops at this binding's close rather than the last binding.
