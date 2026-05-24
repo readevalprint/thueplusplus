@@ -222,7 +222,44 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
     expect(mockedRunWithWorker.mock.calls[0][0].trace).toBe(true)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'middle')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('#1 row 1')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('^start$ ::= middle')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('-start')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('+middle')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('examples/hello/hello.tpp')
+    expect(wrapper.find('.state-diff-char-removed').exists()).toBe(true)
+    expect(wrapper.find('.state-diff-char-added').exists()).toBe(true)
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
+  })
+
+  it('shows compact changed context for long state diffs below State', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle')
+    const before = `${'a'.repeat(80)}LOOK<add|mul=VPRIM<mul>;add=VPRIM<add>;|K>${'z'.repeat(80)}`
+    const after = `${'a'.repeat(80)}FOUND<VPRIM<add>|K>${'z'.repeat(80)}`
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: after,
+      trace: [{ step: 4, ruleIndex: 7, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 80, matchEnd: 130, groups: {}, stateBefore: before, replacement: 'FOUND<VPRIM<add>|K>', stateAfter: after }],
+      resourceLogs: [],
+    })
+
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    const diffs = wrapper.get('[data-test="playground-diffs"]')
+    expect(diffs.text()).toContain('#4 row 1')
+    expect(diffs.text()).toContain('^start$ ::= middle')
+    expect(diffs.text()).toContain('…')
+    expect(diffs.text()).toContain('LOOK<add')
+    expect(diffs.text()).toContain('FOUND<VPRIM<add>|K>')
+    expect(diffs.text()).not.toContain('examples/hello/hello.tpp')
+    expect(diffs.text()).not.toContain('a'.repeat(80))
+    expect(diffs.text()).not.toContain('z'.repeat(80))
   })
 
   it('keeps resource output as an append-only transcript across steps', async () => {
