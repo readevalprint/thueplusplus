@@ -15,9 +15,18 @@ Execution scans rules top-to-bottom. The first rule whose pattern matches acts o
 
 ## 2. Source parsing
 
-Split source into rows by newline. Rows whose trimmed text is empty are not rules. The exact row `::=` is not a rule.
+Split source into rows by newline. Source has an optional final initial-state section:
 
-A row beginning with `#` has no special status: it is a rule if it contains a valid operator, otherwise it is initial-state text. After aliases/rules are parsed, every remaining non-rule row is an initial-state row. Remove trailing empty state rows. Join rows with `\n`. A host-supplied input override replaces this state only; it does not change rules.
+- the row whose trimmed text is exactly `::=` is the state separator;
+- rows before that separator are the rule/alias section;
+- the separator is not part of state and is not a rule;
+- zero or one row may follow the separator and becomes the complete initial state string exactly as written;
+- any additional row after that state row is a parse error;
+- if no separator exists, the initial state is the empty string.
+
+Rows after the final separator are data only: do not parse aliases or rules there. Rows before the final separator are parsed as aliases/rules only; non-empty rows that are neither aliases nor rules are inert source text and do not become initial state.
+
+A row beginning with `#` has no special status. It is a rule if it contains a valid operator in the rule/alias section; it is ordinary matchable text if used as the one state row. A host-supplied input override replaces the initial state only; it does not change rules.
 
 ## 3. Aliases
 

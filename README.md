@@ -29,7 +29,7 @@ The rest of this README builds up from there: one rule, then captures, then IO, 
 hello
 ```
 
-The bottom block is the initial state. The rule rewrites `hello` to `world`.
+The final `::=` separator introduces the optional source-provided initial state. The separator itself is not part of state; at most one row may follow it. The rule rewrites `hello` to `world`.
 
 Rules scan top to bottom; after a match, scanning restarts.
 
@@ -81,12 +81,12 @@ Example source (`examples/hello/hello.tpp`):
 
 ```thuepp
 
+^START$ ::= hello\ndone
 hello ::> stdout Hello, World!\n
 done ::- 0
 
 ::=
-hello
-done
+START
 ```
 
 Run it:
@@ -132,9 +132,9 @@ Run it interactively with a real random-number process:
 
 The deterministic fixture below scripts the random number and user guesses so it can be checked by `make test`:
 
-<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-30 expected-output=examples/guess-number/tests/basic.toml -->
+<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-31 expected-output=examples/guess-number/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
-Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-30):
+Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-31):
 
 ```thuepp
 
@@ -166,6 +166,7 @@ PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^DIRECTION<(?<secret>$NUMBER)\|(?<guess>$NUMBER)\|1>$ ::= @TOO_LOW@SECRET<{{secret}}>
 ^DIRECTION<(?<secret>$NUMBER)\|(?<guess>$NUMBER)\|0>$ ::= @TOO_HIGH@SECRET<{{secret}}>
 
+::=
 SECRET<@RANDOM_NUMBER@>
 ```
 
@@ -319,7 +320,8 @@ uv run python tools/check_contract.py --update-readme
 - operators: `::=` rewrite, `::<` read, `::>` write, `::-` exit, `::!` builtin
 - predefined resources: `stdin`, `stdout`, `stderr`
 - runner-provided process/resource bindings
-- source rules are parsed once; execution rewrites only state rows
+- source rules are parsed once; execution rewrites only the mutable state string
+- source-provided initial state is an optional final section: a final `::=` separator may be followed by zero or one state row; without that separator the initial state is empty
 - `#` has no special language meaning: a source row is a rule only when it contains a valid operator, and runtime state rows beginning with `#` are ordinary matchable text
 - `--input` replaces source-provided state for runners that expose the CLI contract
 - resource reads: `::< {timeout} name` reads one newline-delimited message and PCT-encodes the payload; timeout must be positive

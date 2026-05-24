@@ -1,0 +1,6 @@
+program = "../final-separator-one-row.tpp"
+
+[expect]
+exit_code = 0
+stdout = "ok"
+stderr = ""

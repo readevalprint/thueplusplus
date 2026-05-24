@@ -1,0 +1,6 @@
+program = "../final-separator-empty.tpp"
+
+[expect]
+exit_code = 0
+stdout = ""
+stderr = ""

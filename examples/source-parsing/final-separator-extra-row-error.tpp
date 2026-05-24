@@ -1,0 +1,4 @@
+^state$ ::= ok
+::=
+state
+extra

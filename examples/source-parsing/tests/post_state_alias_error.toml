@@ -1,0 +1,5 @@
+program = "../post-state-alias-error.tpp"
+
+[expect]
+exit_code = 1
+stderr_contains = ["State section after ::= must contain at most one row"]

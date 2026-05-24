@@ -1,0 +1,6 @@
+program = "../hash-state-row.tpp"
+
+[expect]
+exit_code = 0
+stdout = "abc"
+stderr = ""

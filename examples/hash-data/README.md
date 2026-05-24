@@ -2,7 +2,7 @@
 
 The character `#` has no special language-level meaning in Thue++.
 
-A source row is a rule only when ordinary rule parsing finds a valid unescaped operator such as `::=`. A row that starts with `#` and has no valid operator is inert data for the same reason as any other non-rule row. A row such as `#x ::= y` is parsed by the ordinary rule grammar.
+A source row is a rule only when ordinary rule parsing finds a valid unescaped operator such as `::=`. A row that starts with `#` and has no valid operator is ordinary text for the same reason as any other non-rule row: before the final state separator it is inert source text, and after the final state separator it can be the one initial-state row. A row such as `#x ::= y` is parsed by the ordinary rule grammar.
 
 Runtime state is just text. Rows beginning with `#` are not protected from matching, and `\#` is not a language permission bit; it is only ordinary regex spelling for a literal hash where accepted by the regex engine.
 

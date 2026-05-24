@@ -14,7 +14,7 @@ func TestRuntimeIOUsesHostResources(t *testing.T) {
 		Stderr: &stderr,
 	})
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@IN@ ::< 1 stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n@IN@"); err != nil {
+	if err := interp.parseProgram("@IN@ ::< 1 stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
@@ -39,7 +39,7 @@ func TestBulkResourceReadFailsLoud(t *testing.T) {
 		Stderr: &bytes.Buffer{},
 	})
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@IN@ ::< -1 stdin\n@IN@"); err != nil {
+	if err := interp.parseProgram("@IN@ ::< -1 stdin\n::=\n@IN@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
@@ -60,7 +60,7 @@ func TestLoadProgramTextPreservesSourceAndCoverageTSV(t *testing.T) {
 		Stdout: &bytes.Buffer{},
 		Stderr: &bytes.Buffer{},
 	})
-	if err := interp.LoadProgramText("virtual/main.tpp", "foo ::= bar\nbar ::- 0\nfoo"); err != nil {
+	if err := interp.LoadProgramText("virtual/main.tpp", "foo ::= bar\nbar ::- 0\n::=\nfoo"); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := interp.ProgramPath, "virtual/main.tpp"; got != want {
@@ -84,7 +84,7 @@ func TestIncludeRowsAreInertState(t *testing.T) {
 		Stdout: &bytes.Buffer{},
 		Stderr: &bytes.Buffer{},
 	})
-	if err := interp.LoadProgramText("virtual/main.tpp", "@include other.tpp\n"); err != nil {
+	if err := interp.LoadProgramText("virtual/main.tpp", "::=\n@include other.tpp\n"); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := interp.State, "@include other.tpp"; got != want {
@@ -98,11 +98,43 @@ func TestDataOperatorIsInvalidSyntax(t *testing.T) {
 		Stdout: &bytes.Buffer{},
 		Stderr: &bytes.Buffer{},
 	})
-	err := interp.LoadProgramText("virtual/main.tpp", "^x$ ::% data\nx")
+	err := interp.LoadProgramText("virtual/main.tpp", "^x$ ::% data\n::=\nx")
 	if err == nil {
 		t.Fatal("LoadProgramText succeeded, want invalid syntax error")
 	}
 	if got, want := err.Error(), "Line 1: Invalid rule syntax: ^x$ ::% data"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+func TestNoSeparatorMeansEmptyInitialState(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	if err := interp.LoadProgramText("virtual/main.tpp", "literal state without separator\n"); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := interp.State, ""; got != want {
+		t.Fatalf("state = %q, want %q", got, want)
+	}
+	if got := len(interp.Rules); got != 0 {
+		t.Fatalf("rules = %d, want 0", got)
+	}
+}
+
+func TestFinalSeparatorRejectsAdditionalRows(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	err := interp.LoadProgramText("virtual/main.tpp", "^x$ ::= y\n::=\nx\ny\n")
+	if err == nil {
+		t.Fatal("LoadProgramText succeeded, want state section row-count error")
+	}
+	if got, want := err.Error(), "Line 4: State section after ::= must contain at most one row"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
@@ -114,7 +146,7 @@ func TestTraceRecordsAppliedRuleStateAndCaptures(t *testing.T) {
 		Stderr: &bytes.Buffer{},
 	})
 	interp.TraceEnabled = true
-	if err := interp.LoadProgramText("trace.tpp", "^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}\nhello Ada"); err != nil {
+	if err := interp.LoadProgramText("trace.tpp", "^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}\n::=\nhello Ada"); err != nil {
 		t.Fatalf("LoadProgramText: %v", err)
 	}
 	code, err := interp.Run()
