@@ -1,4 +1,3 @@
-# Generic PCT framing examples.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 ^enc:(?<x>[\s\S]*)$ ::! pctenc x

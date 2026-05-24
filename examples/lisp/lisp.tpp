@@ -1,6 +1,3 @@
-# Canonical Lisp evaluator implemented entirely as Thue++ rewrite rules.
-# Architecture: protect strings, freeze lists inside-out as L<pct(payload)>, evaluate on demand with typed V* runtime values, lexical env, closures, and n-ary let iterator.
-# Scope: a deliberately small, fail-loud Lisp core used as the gold-standard language example for Python/Go parity.
 
 PCTCHAR <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})
 PCT <- $PCTCHAR*
@@ -39,28 +36,16 @@ READER_DATUM <- (?:\([^()]*\)|$OPSYM|$EXPR)
 ^\([^)]*$ ::= ERR<malformed_list>
 ^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)$ ::= READ<{{input}}> KTOP
 
-# Shared source reader/freezer. Top-level input and `(parse string)` both enter
-# READ<source> with different continuations, so string escape handling,
-# quote-family expansion, and inside-out list freezing cannot drift.
-# Reject unsupported escapes before calling builtin unescape; both top-level
-# evaluation and `(parse string)` must expose the same Lisp-level error.
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<invalid_string_escape>
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-# Captured source strings carry rewrite-state escaped backslashes after template
-# insertion. The inner generic unescape removes that state escape layer; the
-# outer generic unescape applies the Lisp source-literal escape contract.
 ^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<UNESC<{{str|pctenc}}>>>{{post}}> {{k}}
 UNESC<(?<s>$PCT)> ::! unescape s
 
-# Reader quote-family shorthand. Strings are already protected as VSTR<...>,
-# and list freezing may expose nested list datums as L<...>; expand to the
-# existing long-form source before evaluation or parse-result quoting.
 ^READ<(?<pre>[\s\S]*),@(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(splice {{datum}}){{post}}> {{k}}
 ^READ<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(unquote {{datum}}){{post}}> {{k}}
 ^READ<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quasiquote {{datum}}){{post}}> {{k}}
 ^READ<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quote {{datum}}){{post}}> {{k}}
 
-# Phase B: inside-out list freezing.
 ^READ<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}L<{{inner|pctenc}}>{{post}}> {{k}}
 ^READ<\([^)]*> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<malformed_list>
 ^READ<L<(?<payload>$PCT)>> KTOP$ ::= CBOOT<{{payload|pctdec}}|KDONE>
@@ -73,15 +58,12 @@ UNESC<(?<s>$PCT)> ::! unescape s
 ^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;|{{k}}>
 
 
-# Demand a node: literals return; encoded lists decode only when demanded.
 ^ARG<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
 ^ARG<true\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^ARG<false\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 ^ARG<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
 
 
-# Lexical environment and generic call/apply support.
-# Closure payload: VCLOS<params_pct^body_pct^env_bindings>. Env bindings: name=pct(value);
 ^LOOK<(?<want>$NAME)\|\|(?<k>.*)>$ ::= ERR<unbound_name>
 ^LOOK<(?<want>$NAME)\|(?<got>$NAME)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQTEST<{{want}}|{{got}}|{{val}}|{{rest}}|{{k}}>
 ^LOOKEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQ<STREQ<{{a}},{{b}}>|{{a}}|{{val}}|{{rest}}|{{k}}>
@@ -89,28 +71,20 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^LOOKEQ<1\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
 ^LOOKEQ<0\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{want}}|{{rest}}|{{k}}>
 
-# Top-level and env-aware fn expression creates closure.
 ^EENV<fn L<(?<params>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
 ^EENV<fn L<(?<params>$PCT)> (?<body>$NODE|$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
 
-# Env-aware demand/eval. L<...> before generic node to preserve env.
 ^ARGENV<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|{{k}}>
 ^ARGENV<true\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^ARGENV<false\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 ^ARGENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^ARGENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
-# Env-return normalizer: plain value returns keep the supplied env; env-aware
-# returns propagate the updated env. Forms use this to collapse paired RET and
-# RETENV continuation handlers when the only difference is env propagation.
 ^EENVKEEP<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
 ^EENVKEEP<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
 ^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^EENV<list\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
 ^EENV<dict\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
-# Bare special forms need an early owner because zero-operand forms have no
-# generic-call shape. Non-bare arity catchers are centralized immediately before
-# generic call lookup.
 ^EENV<(?<form>$SPECIAL_WRONG_ARITY)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?:symbol|name)\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
 ^EENV<(?<form>$UNSUPPORTED_FORM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
@@ -122,11 +96,8 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^EENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^EENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node}}|{{env}}|{{k}}>
 
-# Hard cutoff for symbolic arithmetic/comparison as evaluator syntax. Named
-# Primitive callables such as `add`/`eq` are ordinary env bindings and dispatch via APPLY.
 ^EENV<(?:\+|-|\*|/|=|<|<=|>|>=)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 
-# Env-aware special forms and primitives must run before generic call lookup.
 ^EENV<if (?<cond>$EXPR) (?<then>$EXPR) (?<els>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KENIF<{{then}}|{{els}}|{{env}}> {{k}}>
 ^RET<VBOOL<true>\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{then}}|{{env}}|{{k}}>
 ^RET<VBOOL<false>\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{els}}|{{env}}|{{k}}>
@@ -149,9 +120,6 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^EENV<do (?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KKEEPENV<{{env}}> KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
 ^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KENBEGIN<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= EENV<do {{rest|pctdec}}|{{env}}|{{k}}>
 
-# Minimal bounded loop/mutation slice for #108. `(while cond body)` repeats one
-# body expression; use `(do ...)` in that body slot for sequencing. `set-var`
-# updates the nearest existing lexical binding and returns the assigned value.
 ^EENV<while (?<cond>$EXPR) (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILECOND<{{cond|pctenc}}^{{body|pctenc}}^{{env}}> {{k}}>
 ^RET<VBOOL<false>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<VLIST<>|{{env}}|{{k}}>
 ^RET<VBOOL<true>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= EENVKEEP<{{body|pctdec}}|{{env}}|KWHILEBODY<{{cond}}^{{body}}^{{env}}> {{k}}>
@@ -167,8 +135,6 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^SETEQ<1\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= RETENV<{{v}}|{{prefix}}{{got}}={{v|pctenc}};{{rest}}|{{k}}>
 ^SETEQ<0\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETENV<{{want}}|{{v}}|{{rest}}|{{k}}|{{prefix}}{{got}}={{old}};>
 
-# Quote/list code-as-data. VLIST stores pct-encoded VAL items; VSYM stores quoted symbols.
-# Public rendering hides these constructors and prints ordinary source-list syntax.
 ^EENV<quote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
 ^EENV<quote (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^QUOTE<true\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
@@ -181,11 +147,6 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^QUOTELIST<(?<item>(?:$OPSYM|$EXPR))(?: (?<rest>[^|]*))?\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QUOTE<{{item}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
 ^RET<(?<v>$VAL)\|KQLIST<(?<rest>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= QUOTELIST<{{rest}}|{{k}}|{{acc}}{{v|pctenc}};>
 
-# Quasiquote routes scalar code-as-data through quote, except `(unquote expr)`
-# evaluates one value and `(splice expr)` expands list elements into the current
-# quasiquoted list.
-# Nested quasiquote is deliberately rejected in this first slice to avoid implicit
-# depth accounting; bare unquote/splice stay unsupported outside this evaluator.
 ^EENV<quasiquote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQ<{{item}}|{{env}}|{{k}}>
 ^EENV<quasiquote (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^QQ<(?<item>(?:$OPSYM|$NAME|$NUM|$VSTR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
@@ -223,12 +184,6 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^SRCEVALARGS<(?<arg>$EXPR)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= ARGENV<{{arg}}|{{env}}|KKEEPENV<{{env}}> KSRCARG<{{rest}}|{{env}}|{{acc}}> {{done}}>
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KSRCARG<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= SRCEVALARGS<{{rest}}|{{env}}|{{acc}}{{v|pctenc}};> {{done}}>
 
-# Explicit code-as-data eval: evaluate the code value and scope map normally,
-# then evaluate code values directly inside the map-derived env. Scalar values
-# are self-evaluating. Symbols resolve in the explicit scope. Lists evaluate by
-# evaluating the first code value to a callable, evaluating remaining code values
-# as arguments, and applying the callable. There is no ambient-env, core-env, or
-# public render/reparse fallback.
 ^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
 ^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
 ^RET<VLIST<(?<items>$ITEMS)>\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ALIST2ENV<{{items}}|{{code}}|{{k}}|>
@@ -255,11 +210,6 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^CODEVAL<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
 ^EENV<eval (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
-# Association lists. `dict` is a boring evaluated helper: it evaluates each
-# two-expression source entry and returns an ordinary list of `(key value)`
-# entries. Alist operations interpret ordinary lists loosely: non-list and empty
-# entries are skipped/preserved, key comparison is exact encoded `$VAL` equality,
-# and there is no duplicate-key or symbol/string-only map layer.
 VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 ^EENV<dict (?<entries>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKDICTENV<{{entries}}|{{env}}|{{k}}|>
 ^PACKDICTENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
@@ -271,9 +221,6 @@ VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 ^RET<(?<val>$VAL)\|KDICTVAL<(?<key>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= BUILDDICTPAIR<VLIST<{{key}};{{val|pctenc}};>|{{rest}}|{{env}}|{{k}}|{{acc}}>
 ^BUILDDICTPAIR<(?<pair>$VLIST)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= PACKDICTENV<{{rest}}|{{env}}|{{k}}|{{acc}}{{pair|pctenc}};>
 
-# Shared loose alist walker. OP-specific exits share entry classification and
-# exact encoded-value key comparison so `get`, `contains`, `assoc`, and `dissoc`
-# cannot drift on malformed/non-list/key-only entries.
 ^ALISTWALK<GET\|(?<want>$PCT)\|\|(?<default>$PCT)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<{{default|pctdec}}|{{k}}>
 ^ALISTWALK<HAS\|(?<want>$PCT)\|\|(?<payload>$PCT)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 ^ALISTWALK<PUT\|(?<want>$PCT)\|\|(?<newval>$PCT)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= ALISTPUTPREPEND<VLIST<{{want}};{{newval}};>|{{acc}}|{{k}}>
@@ -301,24 +248,13 @@ VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 ^RET<(?<bad>$NONLIST)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
 ^EENV<let L<(?<bindings>$PCT)> (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
-# Canonical non-bare special-form catchers. Keep this section immediately before
-# generic call lookup so supported forms above win first while reserved forms do
-# not drift into lookup/not_function errors.
-# - define/letrec: binding and recursion boundaries are deliberately absent.
-# - break/continue: while has no non-local loop-control channel.
-# - map: higher-order list API semantics are not in this greenfield slice.
-# - unquote/splice: only recognized in the quasiquote evaluator.
 ^EENV<(?<form>$SPECIAL_WRONG_ARITY) (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?<form>$UNSUPPORTED_FORM)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
-# Generic call: eval callee, eval args, then APPLY.
 ^EENV<(?<callee>$NAME) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$NAME) (?<a>$EXPR) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$EXPR) (?<args>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{callee}}|{{env}}|KENVCALL<{{args|pctenc}}|{{env}}> {{k}}>
 ^RET<(?<fn>$VAL)\|KENVCALL<(?<args>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= SRCEVALARGS<{{args|pctdec}}|{{env}}|> KSRCAPPLY<{{fn}}> {{k}}>
 
-# Apply VCLOS by binding args left-to-right. The remaining params stream is the
-# closure's arity: a partially applied call returns a residual closure with the
-# unbound params and the extended captured env.
 ^APPLY<VCLOS<(?<params>$PCT)\^(?<body>$PCT)\^(?<cenv>[^>]*)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= BINDCLOS<{{params}}|{{args}}|{{cenv}}|{{body}}|{{k}}|0>
 ^APPLY<VPRIM<(?<op>$PRIM1)>\|\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^APPLY<VPRIM<(?<op>$PRIM1)>\|(?<a>[^;]*);(?<extra>[^|]+)\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -365,9 +301,6 @@ VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 ^BALISTDEL<VLIST<(?<items>$ITEMS)>\|(?<key>$VAL)\|(?<k>.*)>$ ::= ALISTWALK<DEL|{{key|pctenc}}|{{items}}|||{{k}}>
 ^BALISTDEL<(?<bad>$NONLIST)\|(?<key>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 
-# Symbol/name conversion. `symbol` accepts existing symbols idempotently or
-# strings whose rendered spelling would parse back as a symbol, not a boolean
-# or number. Operator strings are stored pct-encoded, matching quoted OPSYM.
 ^BSYMBOL<VSYM<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
 ^BSYMBOL<VSTR<(?:true|false)>\|(?<k>.*)>$ ::= ERR<invalid_symbol>
 ^BSYMBOL<VSTR<(?<s>$NAME)>\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
@@ -400,9 +333,6 @@ VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 ^BINDCLOS<(?<p>$NAME)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= BINDCLOS<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}|1>
 ^BINDCLOS<(?<p>$NAME)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= BINDCLOS<|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}|1>
 
-# Let binding-stream iterator. Decode the outer binding list once so raw spaces separate binding nodes.
-# The init capture deliberately excludes >, so it stops at this binding's close rather than the last binding.
-# Env-aware let keeps caller bindings available while evaluating binding values, then shadows by prepending new bindings.
 
 ^LETBINDRAW<\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{body}}|{{env}}|{{k}}>
 ^LETBINDRAW<L<(?<n>$NAME)%20(?<v>$LET_VALUE_PCT)> (?<rest>.*)\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}|{{rest}}|{{body}}|{{env}}> {{k}}>
@@ -410,7 +340,6 @@ VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 ^LETARGENV<(?<node>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node|pctdec}}|{{env}}|{{k}}>
 ^RET<(?<v>$VAL)\|KLETN<(?<n>$NAME)\|(?<rest>[^|]*)\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
 
-# Generic numeric and comparison primitives used by named primitive callables.
 ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
 SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
 MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
@@ -453,8 +382,6 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<(?<bad>$NONLIST)\|KLEN (?<k>.*)>$ ::= ERR<type_error>
 ^RET<(?<bad>$NONLIST)\|KAT2<(?<idx>$NUM)> (?<k>.*)>$ ::= ERR<type_error>
 
-# Render final values. Public render output is recursive Lisp syntax for values that
-# have reader syntax.
 
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KDONE>$ ::= RET<{{v}}|KDONE>
 ^RET<(?<v>$VAL)\|KDONE>$ ::= RENDER<{{v}}|KOUT>
@@ -482,7 +409,5 @@ ESC<(?<s>$PCT)> ::! escape s
 ^@ERR<(?<v>[A-Za-z0-9_]+)>@ ::> stderr {{v}}
 ^@EXIT2@$ ::- 2
 
-# Final fail-loud fallback for raw or stuck evaluator states. Keep this last so
-# all supported reductions and explicit ERR/OUT exits get the first chance.
 ^\{(?<bad>[^\n]*)$ ::= ERR<malformed_list>
 ^(?<bad>[^\n].*)$ ::= ERR<unsupported_form>

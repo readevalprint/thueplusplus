@@ -80,8 +80,6 @@ Hello world writes, then exits:
 Example source (`examples/hello/hello.tpp`):
 
 ```thuepp
-# Hello World in thue++
-# Writes "Hello, World!" to stdout and exits
 
 hello ::> stdout Hello, World!\n
 done ::- 0
@@ -134,34 +132,40 @@ Run it interactively with a real random-number process:
 
 The deterministic fixture below scripts the random number and user guesses so it can be checked by `make test`:
 
-<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=28-51 expected-output=examples/guess-number/tests/basic.toml -->
+<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-30 expected-output=examples/guess-number/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
-Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 28-51):
+Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-30):
 
 ```thuepp
-# Numeric builtin markers. They replace themselves with 1 for true or 0 for false.
+
+NUMBER <- [0-9]+
+
+PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
+
+@RANDOM_NUMBER@ ::< 5 random
+
+@PROMPT@ ::> stdout Guess:\n
+@USER_GUESS@ ::< 30 stdin
+
+@INVALID_NUMBER@ ::> stdout Please enter digits only.\n
+@TOO_LOW@ ::> stdout Too low.\n
+@TOO_HIGH@ ::> stdout Too high.\n
+
 @EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq guess secret
 @LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt guess secret
 
-# Ask for a guess while preserving the secret.
 ^SECRET<(?<secret>$NUMBER)>$ ::= @PROMPT@GUESS<{{secret}}|@USER_GUESS@>
 
-# Valid digit guesses go to equality checking.
 ^GUESS<(?<secret>$NUMBER)\|(?<guess>$NUMBER)>$ ::= CHECK<{{secret}}|{{guess}}|@EQUAL[{{guess}},{{secret}}]@>
 
-# Anything else is an invalid PCT payload; print an error and ask again.
 ^GUESS<(?<secret>$NUMBER)\|(?<bad>$PAYLOAD)>$ ::= @INVALID_NUMBER@SECRET<{{secret}}>
 
-# Equality succeeds: print the final message. The empty replacement stops execution.
 ^CHECK<(?<secret>$NUMBER)\|(?<guess>$NUMBER)\|1>$ ::> stdout Correct!\n
-# Equality fails: compute whether the guess is below the secret.
 ^CHECK<(?<secret>$NUMBER)\|(?<guess>$NUMBER)\|0>$ ::= DIRECTION<{{secret}}|{{guess}}|@LESS_THAN[{{guess}},{{secret}}]@>
 
-# Direction result 1 means guess < secret. Direction result 0 means guess > secret.
 ^DIRECTION<(?<secret>$NUMBER)\|(?<guess>$NUMBER)\|1>$ ::= @TOO_LOW@SECRET<{{secret}}>
 ^DIRECTION<(?<secret>$NUMBER)\|(?<guess>$NUMBER)\|0>$ ::= @TOO_HIGH@SECRET<{{secret}}>
 
-# Initial state: load the random number, then enter SECRET<...>.
 SECRET<@RANDOM_NUMBER@>
 ```
 
@@ -317,6 +321,7 @@ uv run python tools/check_contract.py --update-readme
 - runner-provided process/resource bindings
 - `@include` directive support
 - source rules are parsed once; execution rewrites only state rows
+- `#` has no special language meaning: a source row is a rule only when it contains a valid operator, and runtime state rows beginning with `#` are ordinary matchable text
 - `--input` replaces source-provided state for runners that expose the CLI contract
 - resource reads: `::< {timeout} name` reads one newline-delimited message and PCT-encodes the payload; timeout must be positive
 - execution limits such as `--max-evals` and `--max-state-bytes`
