@@ -54,6 +54,26 @@ func TestBulkResourceReadFailsLoud(t *testing.T) {
 	}
 }
 
+func TestFastExitProcessOutputIsReadable(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.AddProcBinding("once", "printf '7\\n'")
+	interp.ProgramPath = "test.tpp"
+	if err := interp.parseProgram("@N@ ::< 1 once\n^(?<n>[0-9]+)$ ::> stdout {{n}}\\n\n::=\n@N@"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+}
+
 func TestLoadProgramTextPreservesSourceAndCoverageTSV(t *testing.T) {
 	interp := NewWithHostResources(HostResources{
 		Stdin:  strings.NewReader(""),
