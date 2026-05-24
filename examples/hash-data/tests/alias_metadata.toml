@@ -1,0 +1,21 @@
+name = "alias expansion does not inject user-visible hash metadata"
+program = "../alias-metadata.tpp"
+timeout = 5
+
+[[case]]
+name = "alias metadata is not mutable state"
+input = "ok"
+
+[case.expect]
+exit_code = 0
+stdout = "matched\n"
+stderr = ""
+
+[[case]]
+name = "fallback rule coverage"
+input = "other"
+
+[case.expect]
+exit_code = 0
+stdout = "fallback:other\n"
+stderr = ""

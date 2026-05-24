@@ -189,8 +189,7 @@ class ThueppInterpreter:
 
             effective_line = self._alias_line_number(line_number, current_source)
 
-            # Skip comments and empty lines (pass through)
-            if not stripped or stripped.startswith('#'):
+            if not stripped:
                 result_lines.append(line)
                 continue
 
@@ -204,8 +203,6 @@ class ThueppInterpreter:
                     raise RuntimeError(f"Line {effective_line}: Pattern alias '{name}' must not contain named captures")
                 expanded = self._expand_alias_refs(pattern, aliases, effective_line)
                 aliases[name] = f"(?:{expanded})"
-                # Keep as comment for debugging
-                result_lines.append(f'# [pattern] {name} <- {expanded}')
                 continue
 
             match = RULE_RE.match(line)
@@ -267,7 +264,7 @@ class ThueppInterpreter:
     def _parse_rule(self, line: str, line_number: int, source_path: str) -> Optional[Rule]:
         """Parse a single rule line."""
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped == "::=":
+        if not stripped or stripped == "::=":
             return None
 
         match = RULE_RE.match(line)
@@ -731,33 +728,8 @@ class ThueppInterpreter:
         ]
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
-    def _state_comment_spans(self, state_rows: list[tuple], rule: Rule) -> list[tuple[int, int]]:
-        """Return source-comment spans this rule should skip as match targets.
-
-        Matching is over state, but source comments remain inert unless the rule
-        explicitly mentions an escaped literal hash (\#).
-        """
-        spans = []
-        allow_comments = r"\#" in rule.lhs
-        for _line_number, row, start, end, _source_path, _source_line, _row_index in state_rows:
-            if row.strip().startswith("#") and not allow_comments:
-                spans.append((start, end))
-        return spans
-
     def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
-        disallowed = self._state_comment_spans(state_rows, rule)
-        pos = 0
-        while pos <= len(self.state):
-            match = rule.lhs_pattern.search(self.state, pos)
-            if not match:
-                return None
-            if not any(match.start() < end and start < match.end() for start, end in disallowed):
-                return match
-            next_pos = match.start() + 1
-            if next_pos <= pos:
-                next_pos = pos + 1
-            pos = next_pos
-        return None
+        return rule.lhs_pattern.search(self.state)
 
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""

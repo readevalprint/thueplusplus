@@ -1,0 +1,30 @@
+name = "hash is ordinary source and state data"
+program = "../hash-data.tpp"
+timeout = 5
+
+[[case]]
+name = "runtime hash row is matchable without special escape"
+input = "#abc"
+
+[case.expect]
+exit_code = 0
+stdout = "hash=abc\n"
+stderr = ""
+
+[[case]]
+name = "broad row pattern sees hash-prefixed state"
+input = "#wide:hidden"
+
+[case.expect]
+exit_code = 0
+stdout = "broad=#wide:hidden\n"
+stderr = ""
+
+[[case]]
+name = "escaped hash is only ordinary regex syntax"
+input = "#literal"
+
+[case.expect]
+exit_code = 0
+stdout = "escaped\n"
+stderr = ""

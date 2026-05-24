@@ -299,7 +299,7 @@ func expandPatterns(content string) (string, error) {
 			continue
 		}
 		effectiveLine := aliasLineNumber(lineNumber, currentSourceLine)
-		if stripped == "" || strings.HasPrefix(stripped, "#") {
+		if stripped == "" {
 			out = append(out, line)
 			continue
 		}
@@ -317,7 +317,6 @@ func expandPatterns(content string) (string, error) {
 				return "", err
 			}
 			aliases[name] = "(?:" + expanded + ")"
-			out = append(out, "# [pattern] "+name+" <- "+expanded)
 			continue
 		}
 		if ruleMatch := rulePattern.FindStringSubmatch(line); ruleMatch != nil {
@@ -379,7 +378,7 @@ func (i *Interpreter) parseProgram(content string) error {
 
 func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	trimmed := strings.TrimSpace(line)
-	if trimmed == "" || strings.HasPrefix(trimmed, "#") || trimmed == "::=" {
+	if trimmed == "" || trimmed == "::=" {
 		return nil, nil
 	}
 	matches := rulePattern.FindStringSubmatch(line)
@@ -1055,7 +1054,7 @@ func (i *Interpreter) Run() (int, error) {
 			}
 			i.EvalCount++
 
-			match, ok := i.findAllowedStateMatch(rule, rows)
+			match, ok := findMatch(rule, i.State)
 			if !ok {
 				continue
 			}
@@ -1171,63 +1170,6 @@ func (i *Interpreter) Run() (int, error) {
 			return 0, nil
 		}
 	}
-}
-
-type disallowedSpan struct {
-	start int
-	end   int
-}
-
-func spansOverlap(aStart, aEnd, bStart, bEnd int) bool {
-	return aStart < bEnd && bStart < aEnd
-}
-
-func (i *Interpreter) stateCommentSpans(rule Rule, rows []stateRow) ([]disallowedSpan, error) {
-	spans := []disallowedSpan{}
-	allowComments := strings.Contains(rule.LHS, `\#`)
-	offset := 0
-	for _, row := range rows {
-		segmentLen := len(row.row)
-		if offset+segmentLen < len(i.State) && i.State[offset+segmentLen] == '\n' {
-			segmentLen++
-		}
-		trimmed := strings.TrimSpace(row.row)
-		if strings.HasPrefix(trimmed, "#") && !allowComments {
-			spans = append(spans, disallowedSpan{start: offset, end: offset + segmentLen})
-		}
-		offset += segmentLen
-	}
-	return spans, nil
-}
-
-func (i *Interpreter) findAllowedStateMatch(rule Rule, rows []stateRow) (matchInfo, bool) {
-	spans, err := i.stateCommentSpans(rule, rows)
-	if err != nil {
-		return matchInfo{}, false
-	}
-	pos := 0
-	for pos <= len(i.State) {
-		m, ok := findMatchFrom(rule, i.State, pos)
-		if !ok {
-			return matchInfo{}, false
-		}
-		allowed := true
-		for _, span := range spans {
-			if spansOverlap(m.start, m.end, span.start, span.end) {
-				allowed = false
-				break
-			}
-		}
-		if allowed {
-			return m, true
-		}
-		next := m.start + 1
-		if next <= pos {
-			next = pos + 1
-		}
-		pos = next
-	}
-	return matchInfo{}, false
 }
 
 func findMatch(rule Rule, state string) (matchInfo, bool) {

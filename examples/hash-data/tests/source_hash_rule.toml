@@ -1,0 +1,9 @@
+name = "source row beginning with hash can be a rule"
+program = "../source-hash-rule.tpp"
+timeout = 5
+input = "#x"
+
+[expect]
+exit_code = 0
+stdout = "source-row-rule\n"
+stderr = ""
