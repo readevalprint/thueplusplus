@@ -41,7 +41,7 @@
               <span class="panel-label">State</span>
             </div>
           </div>
-          <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="off" @input="clearDiffs" />
+          <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
           <section class="state-diffs" data-test="playground-diffs" aria-label="step diffs">
             <div class="state-diffs-heading">diffs</div>
             <p v-if="stateDiffs.length === 0" class="state-diffs-empty">step diffs appear here</p>
