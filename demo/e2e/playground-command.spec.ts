@@ -1,0 +1,67 @@
+import { expect, test } from '@playwright/test'
+
+test('playground selector searches by path/case but not input', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  const search = page.getByTestId('test-case-command-input')
+
+  await search.fill('closure_binding_flattening zero arg')
+  await expect(page.getByTestId('test-case-option').first()).toBeVisible()
+  await expect(page.getByTestId('test-case-option-path').first()).toContainText('closure_binding_flattening.toml')
+  await expect(page.getByTestId('test-case-option-name').first()).toContainText('zero arg')
+  await expect(page.getByTestId('test-case-option-input-preview').first()).toContainText('fn')
+
+  await search.fill('100')
+  await expect(page.getByTestId('test-case-command-empty')).toBeVisible()
+})
+
+test('clicking a test case loads state and runs through stdio', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+
+  await page.getByTestId('test-case-command-input').fill('zero arg closure call still evaluates body')
+  await page.getByTestId('test-case-option').first().click()
+
+  await expect(page.getByTestId('playground-state')).toHaveValue('((fn () 7))')
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('7\n')
+  await expect(page.getByTestId('terminal')).toHaveCount(0)
+})
+
+test('run button writes stdout without a shell simulator', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+
+  await page.getByTestId('playground-run').click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Hello, World!\n')
+  await expect(page.getByTestId('resource-output-stderr')).toHaveValue('')
+  await expect(page.getByTestId('terminal')).toHaveCount(0)
+  await expect(page.getByTestId('playground-reset')).toHaveCount(0)
+})
+
+test('stdin textarea is consumed directly by read rules', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await page.getByTestId('playground-rules').fill('PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30 stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
+  await page.getByTestId('playground-state').fill('read')
+
+  await page.getByTestId('resource-input-stdin').fill('Ada')
+  await expect(page.getByTestId('stdin-send')).toHaveCount(0)
+  await expect(page.getByTestId('stdin-queue')).toHaveCount(0)
+
+  await page.getByTestId('playground-run').click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Ada\n')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
+})
+
+test('resource sections are derived from rules and stdio is pinned', async ({ page }) => {
+  await page.goto('/playground?file=./examples/guess-number/guess-number.tpp')
+
+  await expect(page.getByTestId('playground-js-procs')).toHaveCount(0)
+  await expect(page.getByTestId('resource-section-stdin')).toBeVisible()
+  await expect(page.getByTestId('resource-section-stdout')).toBeVisible()
+  await expect(page.getByTestId('resource-section-stderr')).toBeVisible()
+  await expect(page.getByTestId('resource-section-random')).toContainText('random')
+  await page.getByTestId('resource-input-random').fill('7')
+  await page.getByTestId('resource-input-stdin').fill('x\n3\n8\n7')
+
+  await page.getByTestId('playground-run').click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
+  await expect(page.getByTestId('resource-input-random')).toHaveValue('')
+})

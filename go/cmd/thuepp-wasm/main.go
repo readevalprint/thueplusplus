@@ -56,6 +56,7 @@ type wasmResult struct {
 	Error       string
 	Errors      []string
 	CoverageTSV string
+	Trace       []thuepp.TraceEvent
 }
 
 func main() {
@@ -108,6 +109,7 @@ func run(args []js.Value) wasmResult {
 	if err := applyIntOption(opts, "maxStateBytes", &interp.MaxStateBytes); err != nil {
 		return errorResult(err.Error())
 	}
+	interp.TraceEnabled = truthy(opts.Get("trace"))
 	if resources := opts.Get("resources"); resources.Type() == js.TypeObject {
 		keys := js.Global().Get("Object").Call("keys", resources)
 		for idx := 0; idx < keys.Length(); idx++ {
@@ -147,6 +149,9 @@ func run(args []js.Value) wasmResult {
 	if truthy(opts.Get("coverage")) {
 		res.CoverageTSV = interp.RuleCoverageTSV()
 	}
+	if interp.TraceEnabled {
+		res.Trace = interp.Trace
+	}
 	return res
 }
 
@@ -178,6 +183,34 @@ func resultToJS(r wasmResult) js.Value {
 	}
 	if r.CoverageTSV != "" {
 		obj["coverageTSV"] = r.CoverageTSV
+	}
+	if r.Trace != nil {
+		trace := make([]any, 0, len(r.Trace))
+		for _, event := range r.Trace {
+			groups := map[string]any{}
+			for key, value := range event.Groups {
+				groups[key] = value
+			}
+			entry := map[string]any{
+				"step":        event.Step,
+				"ruleIndex":   event.RuleIndex,
+				"sourcePath":  event.SourcePath,
+				"lineNumber":  event.LineNumber,
+				"operator":    string(event.Operator),
+				"lhs":         event.LHS,
+				"matchStart":  event.MatchStart,
+				"matchEnd":    event.MatchEnd,
+				"groups":      groups,
+				"stateBefore": event.StateBefore,
+				"replacement": event.Replacement,
+				"stateAfter":  event.StateAfter,
+			}
+			if event.ExitCode != nil {
+				entry["exitCode"] = *event.ExitCode
+			}
+			trace = append(trace, entry)
+		}
+		obj["trace"] = trace
 	}
 	return js.ValueOf(obj)
 }

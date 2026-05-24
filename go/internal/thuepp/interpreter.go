@@ -59,6 +59,22 @@ type Binding struct {
 	Resource      runtimeResource
 }
 
+type TraceEvent struct {
+	Step        int               `json:"step"`
+	RuleIndex   int               `json:"ruleIndex"`
+	SourcePath  string            `json:"sourcePath"`
+	LineNumber  int               `json:"lineNumber"`
+	Operator    Operator          `json:"operator"`
+	LHS         string            `json:"lhs"`
+	MatchStart  int               `json:"matchStart"`
+	MatchEnd    int               `json:"matchEnd"`
+	Groups      map[string]string `json:"groups"`
+	StateBefore string            `json:"stateBefore"`
+	Replacement string            `json:"replacement"`
+	StateAfter  string            `json:"stateAfter"`
+	ExitCode    *int              `json:"exitCode,omitempty"`
+}
+
 type Interpreter struct {
 	Rules              []Rule
 	State              string
@@ -72,6 +88,8 @@ type Interpreter struct {
 	RuleCoveragePath   string
 	RuleCoverageCounts map[string]int
 	ProgramPath        string
+	TraceEnabled       bool
+	Trace              []TraceEvent
 }
 
 func New() *Interpreter {
@@ -953,6 +971,35 @@ func (i *Interpreter) recordRuleCoverage(rule Rule) {
 	i.RuleCoverageCounts[i.ruleID(rule)]++
 }
 
+func cloneGroups(groups map[string]string) map[string]string {
+	cloned := map[string]string{}
+	for key, value := range groups {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func (i *Interpreter) recordTrace(rule Rule, ruleIndex int, match matchInfo, stateBefore, replacement string, exitCode *int) {
+	if !i.TraceEnabled {
+		return
+	}
+	i.Trace = append(i.Trace, TraceEvent{
+		Step:        i.EvalCount,
+		RuleIndex:   ruleIndex,
+		SourcePath:  rule.SourcePath,
+		LineNumber:  rule.LineNumber,
+		Operator:    rule.Operator,
+		LHS:         rule.LHS,
+		MatchStart:  match.start,
+		MatchEnd:    match.end,
+		Groups:      cloneGroups(match.groups),
+		StateBefore: stateBefore,
+		Replacement: replacement,
+		StateAfter:  i.State,
+		ExitCode:    exitCode,
+	})
+}
+
 // RuleCoverageTSV returns applied rule coverage as sorted TSV rows in the same
 // format written by --rule-coverage: rule-id<TAB>count<LF>.
 func (i *Interpreter) RuleCoverageTSV() string {
@@ -1022,6 +1069,7 @@ func (i *Interpreter) Run() (int, error) {
 				continue
 			}
 			applied = true
+			stateBefore := i.State
 			groups := match.groups
 			magicVars := map[string]string{"rule_index": strconv.Itoa(ruleIndex)}
 			if i.Debug {
@@ -1117,14 +1165,17 @@ func (i *Interpreter) Run() (int, error) {
 				code, err := strconv.Atoi(codeStr)
 				if err != nil {
 					i.recordRuleCoverage(rule)
+					i.recordTrace(rule, ruleIndex, match, stateBefore, "", nil)
 					return 1, nil
 				}
 				i.recordRuleCoverage(rule)
+				i.recordTrace(rule, ruleIndex, match, stateBefore, "", &code)
 				return code, nil
 			}
 			if err := i.setState(i.State[:match.start] + repl + i.State[match.end:]); err != nil {
 				return 1, err
 			}
+			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
 			}

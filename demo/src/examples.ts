@@ -1,7 +1,6 @@
 export interface DemoResourceExample {
   name: string
-  readLines: string
-  echoWrites?: boolean
+  inputText: string
   readError?: string
 }
 
@@ -56,7 +55,7 @@ start
   {
     id: 'resource-echo',
     name: 'Custom resource echo',
-    description: 'Uses a named callback resource. Writes are logged and echoed back to queued reads.',
+    description: 'Uses a named callback resource. Writes are logged, and reads consume its input text.',
     sourcePath: 'resource-echo.tpp',
     sourceText: `^start$ ::= WRITE\\nread
 ^WRITE$ ::> echo ping\\n
@@ -67,7 +66,7 @@ start
 start
 `,
     input: '',
-    resources: [{ name: 'echo', readLines: '', echoWrites: true }],
+    resources: [{ name: 'echo', inputText: 'ping\n' }],
     includes: [],
   },
   {
@@ -107,7 +106,7 @@ start
 start
 `,
     input: '',
-    resources: [{ name: 'broken', readLines: '', readError: 'boom' }],
+    resources: [{ name: 'broken', inputText: '', readError: 'boom' }],
     includes: [],
   },
   {
@@ -119,7 +118,7 @@ start
 start
 `,
     input: '',
-    resources: [{ name: 'sleepy', readLines: '', readError: 'timeout' }],
+    resources: [{ name: 'sleepy', inputText: '', readError: 'timeout' }],
     includes: [],
   },
 ]

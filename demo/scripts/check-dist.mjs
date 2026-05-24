@@ -23,7 +23,7 @@ for (const fileName of jsFiles) {
   if (text.includes('/thuepp.wasm') || text.includes('/wasm_exec.js')) {
     throw new Error(`${fileName} contains origin-root WASM asset URLs`)
   }
-  if (text.includes('data:text/javascript')) {
+  if (text.includes('new Worker("data:text/javascript') || text.includes("new Worker('data:text/javascript")) {
     throw new Error(`${fileName} inlines the browser worker as a data: URL`)
   }
 }

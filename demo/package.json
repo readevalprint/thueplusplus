@@ -8,17 +8,24 @@
     "build": "vue-tsc --noEmit && vite build && node scripts/check-dist.mjs",
     "test": "vue-tsc --noEmit && vitest run",
     "test:ui": "vitest run",
+    "test:e2e": "playwright test",
     "smoke:dist": "node scripts/check-dist.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "latest",
     "@vue/tsconfig": "latest",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "reka-ui": "^2.9.8",
+    "smol-toml": "^1.6.1",
+    "tailwind-merge": "^3.6.0",
     "typescript": "latest",
     "vite": "latest",
     "vue": "latest",
     "vue-tsc": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@vue/test-utils": "latest",
     "jsdom": "latest",
     "vitest": "latest"
