@@ -46,7 +46,7 @@
               <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
             </ResizablePanel>
 
-            <ResizableHandle with-handle data-test="state-diff-resize-handle" />
+            <ResizableHandle with-handle class="state-diff-resize-handle" data-test="state-diff-resize-handle" />
 
             <ResizablePanel :default-size="34" :min-size="16" class="state-diffs-panel">
               <section class="state-diffs" data-test="playground-diffs" aria-label="step diffs">
