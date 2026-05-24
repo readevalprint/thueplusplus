@@ -65,13 +65,13 @@ stderr = ""
 stdout_stripped = "hello%5Cnworld%2C%20done"
 
 [[case]]
-name = "read produces PCT and pctdec filter writes output"
+name = "line read produces PCT and pctdec filter writes output"
 input = "read"
 
 [bindings.procs]
-input = "sh -c 'printf hello; printf \" \"; printf world; printf \"\n@RULE@ {{x}}\n\"'"
+input = "printf 'hello world @RULE@ {{x}}\n'"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout = "hello world\n@RULE@ {{x}}\n"
+stdout = "hello world @RULE@ {{x}}"

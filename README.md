@@ -269,7 +269,7 @@ uv run python python/thuepp.py <program.tpp>
 
 The stable Python entry point remains `python/thuepp.py`. Direct `./python/thuepp.py ...` examples assume dependencies have already been installed or the command is running under `uv`.
 
-JavaScript support is currently Go-WASM based. The JavaScript files under `js/wasm/` load the WASM artifact and adapt runner resources for Node, browser, and worker environments; they are not a separate JavaScript implementation of the language. Browser resources are callbacks (`readAll`, `readLine`, `write`, and optional `close`). Browser and `GOOS=js/wasm` runs do not support OS subprocesses; attempts to bind subprocess-style resources fail loudly instead of emulating shell processes.
+JavaScript support is currently Go-WASM based. The JavaScript files under `js/wasm/` load the WASM artifact and adapt runner resources for Node, browser, and worker environments; they are not a separate JavaScript implementation of the language. Browser resources are callbacks (`readLine`, `write`, and optional `close`). Browser and `GOOS=js/wasm` runs do not support OS subprocesses; attempts to bind subprocess-style resources fail loudly instead of emulating shell processes.
 
 ## Verification
 
@@ -318,7 +318,7 @@ uv run python tools/check_contract.py --update-readme
 - `@include` directive support
 - source rules are parsed once; execution rewrites only state rows
 - `--input` replaces source-provided state for runners that expose the CLI contract
-- resource reads: `::< -1 name` reads bulk/available stream content; `::< {timeout} name` reads one newline-delimited message and PCT-encodes the payload
+- resource reads: `::< {timeout} name` reads one newline-delimited message and PCT-encodes the payload; timeout must be positive
 - execution limits such as `--max-evals` and `--max-state-bytes`
 - exact rational numeric builtins, not floating-point approximation
 - generic string escape/unescape builtins over PCT payloads

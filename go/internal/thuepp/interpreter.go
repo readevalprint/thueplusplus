@@ -890,17 +890,6 @@ func (i *Interpreter) expandDataTemplate(template string, groups map[string]stri
 	return pctEncode(out.String()), nil
 }
 
-func (i *Interpreter) readAll(b *Binding) (string, string) {
-	if b.Resource == nil {
-		return "", fmt.Sprintf("ERR:resource:%s:missing host resource", b.Name)
-	}
-	content, err := b.Resource.ReadAll()
-	if err != nil {
-		return "", formatResourceError(b.Name, err)
-	}
-	return content, ""
-}
-
 func formatResourceError(name string, err error) string {
 	if resourceErr, ok := err.(resourceError); ok && resourceErr.omitName {
 		return fmt.Sprintf("ERR:resource:%v", err)
@@ -1101,16 +1090,12 @@ func (i *Interpreter) Run() (int, error) {
 					return 1, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
 				}
 				readSpec, resource := parts[0], parts[1]
-				lineRead := false
 				var readTimeout time.Duration
-				if readSpec != "-1" {
-					seconds, err := strconv.ParseFloat(readSpec, 64)
-					if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
-						return 1, fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
-					}
-					lineRead = true
-					readTimeout = time.Duration(seconds * float64(time.Second))
+				seconds, err := strconv.ParseFloat(readSpec, 64)
+				if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
+					return 1, fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
 				}
+				readTimeout = time.Duration(seconds * float64(time.Second))
 				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
 					return 1, fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
 				}
@@ -1118,12 +1103,7 @@ func (i *Interpreter) Run() (int, error) {
 				if b == nil {
 					return 1, fmt.Errorf("Unknown resource '%s'", resource)
 				}
-				var content, er string
-				if lineRead {
-					content, er = i.readLine(b, readTimeout)
-				} else {
-					content, er = i.readAll(b)
-				}
+				content, er := i.readLine(b, readTimeout)
 				if er != "" {
 					return 1, errors.New(er)
 				}

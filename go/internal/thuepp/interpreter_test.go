@@ -32,24 +32,24 @@ func TestRuntimeIOUsesHostResources(t *testing.T) {
 	}
 }
 
-func TestMissingResourceReadFailsLoud(t *testing.T) {
+func TestBulkResourceReadFailsLoud(t *testing.T) {
 	interp := NewWithHostResources(HostResources{
-		Stdin:  strings.NewReader(""),
+		Stdin:  strings.NewReader("hello\n"),
 		Stdout: &bytes.Buffer{},
 		Stderr: &bytes.Buffer{},
 	})
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@IN@ ::< -1 input\n@IN@"); err != nil {
+	if err := interp.parseProgram("@IN@ ::< -1 stdin\n@IN@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
 	if err == nil {
-		t.Fatal("Run succeeded, want unknown resource error")
+		t.Fatal("Run succeeded, want invalid timeout error")
 	}
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	if got, want := err.Error(), "Unknown resource 'input'"; got != want {
+	if got, want := err.Error(), "Line 1: invalid read timeout '-1'"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }

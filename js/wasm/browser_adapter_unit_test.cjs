@@ -85,12 +85,14 @@ async function rejectsWith(promise, pattern) {
 
   const internals = loadBrowserWorkerInternals();
   const stdin = internals.buildResources({ input: 'a\n\n' });
-  assert.strictEqual(stdin.resources.stdin.readAll(), 'a\n\n');
-  assert.deepStrictEqual(Array.from(stdin.logs[0].reads), ['a\n\n']);
+  assert.strictEqual(stdin.resources.stdin.readAll, undefined);
+  assert.strictEqual(stdin.resources.stdin.readLine(), 'a');
+  assert.strictEqual(stdin.resources.stdin.readLine(), '');
+  assert.deepStrictEqual(Array.from(stdin.logs[0].reads), ['a', '']);
 
   const mixedStdin = internals.buildResources({ input: 'Ada\nLovelace\n' });
   assert.strictEqual(mixedStdin.resources.stdin.readLine(), 'Ada');
-  assert.strictEqual(mixedStdin.resources.stdin.readAll(), 'Lovelace\n');
+  assert.strictEqual(mixedStdin.resources.stdin.readLine(), 'Lovelace');
 
   const resource = internals.buildResources({
     resourceConfig: [{ name: 'echo', inputText: '  ping  \nlast' }],
@@ -98,7 +100,7 @@ async function rejectsWith(promise, pattern) {
   resource.resources.echo.write('ignored by reads\n');
   assert.strictEqual(resource.resources.echo.readLine(), '  ping  ');
   assert.strictEqual(resource.resources.echo.readLine(), 'last');
-  assert.strictEqual(resource.resources.echo.readAll().error, 'pending_input:echo');
+  assert.strictEqual(resource.resources.echo.readLine().error, 'pending_input:echo');
   const echoLog = resource.logs.find((log) => log.name === 'echo');
   assert.deepStrictEqual(Array.from(echoLog.writes), ['ignored by reads\n']);
   assert.deepStrictEqual(Array.from(echoLog.reads), ['  ping  ', 'last']);

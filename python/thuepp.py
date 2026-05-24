@@ -621,44 +621,6 @@ class ThueppInterpreter:
                 bufsize=0,  # Unbuffered
             )
 
-    def _read_all(self, binding: Binding) -> tuple[str, Optional[str]]:
-        """Read entire content from a binding. Returns (content, error)."""
-        if binding.name == "stdin":
-            return sys.stdin.read(), None
-        if binding.name == "stdout" or binding.name == "stderr":
-            return "", "ERR:resource:cannot_read_output_stream"
-
-        if binding.is_process:
-            self._ensure_process(binding)
-            try:
-                # Read all available output, collecting until no more data
-                result = []
-                while True:
-                    ready, _, _ = select.select([binding.process.stdout], [], [], 0.1)
-                    if not ready:
-                        break
-                    chunk = binding.process.stdout.read(4096)
-                    if not chunk:
-                        break
-                    result.append(chunk.decode("utf-8", errors="replace") if isinstance(chunk, bytes) else chunk)
-                if not result:
-                    # Wait longer for first response
-                    ready, _, _ = select.select([binding.process.stdout], [], [], 5.0)
-                    if ready:
-                        chunk = binding.process.stdout.read(4096)
-                        if chunk:
-                            result.append(chunk.decode("utf-8", errors="replace") if isinstance(chunk, bytes) else chunk)
-                if not result and binding.process.poll() not in (None, 0):
-                    stderr = binding.process.stderr.read()
-                    if isinstance(stderr, bytes):
-                        stderr = stderr.decode("utf-8", errors="replace")
-                    stderr = stderr.strip() or f"process exited {binding.process.returncode}"
-                    return "", f"ERR:resource:{binding.name}:{stderr}"
-                return "".join(result), None
-            except OSError as e:
-                return "", f"ERR:resource:{binding.name}:{e}"
-        return "", f"ERR:resource:{binding.name}:bulk read requires process or stdin binding"
-
     def _read_line(self, binding: Binding, timeout: float) -> tuple[str, Optional[str]]:
         """Read one newline-delimited message, stripping one line terminator."""
         if binding.name == "stdout" or binding.name == "stderr":
@@ -860,23 +822,18 @@ class ThueppInterpreter:
                     if len(parts) != 2:
                         raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
                     read_spec, resource = parts
-                    read_timeout = None
-                    if read_spec != "-1":
-                        try:
-                            read_timeout = float(read_spec)
-                        except ValueError as exc:
-                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
-                        if not math.isfinite(read_timeout) or read_timeout <= 0:
-                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'")
+                    try:
+                        read_timeout = float(read_spec)
+                    except ValueError as exc:
+                        raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
+                    if not math.isfinite(read_timeout) or read_timeout <= 0:
+                        raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'")
                     if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
                         raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
                     binding = self.bindings.get(resource)
                     if not binding:
                         raise RuntimeError(f"Unknown resource '{resource}'")
-                    if read_timeout is not None:
-                        content, error = self._read_line(binding, read_timeout)
-                    else:
-                        content, error = self._read_all(binding)
+                    content, error = self._read_line(binding, read_timeout)
                     if error:
                         raise RuntimeError(error)
                     replacement = self._pct_encode(content)

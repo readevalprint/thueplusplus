@@ -9,7 +9,7 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^data:encoded-looking$ ::% %20
 ^join:(?<a>$PCT),(?<b>$PCT)$ ::% {{a}}, {{b}}
 ^read$ ::= out:@IN@
-@IN@ ::< -1 input
+@IN@ ::< 5 input
 ^out:(?<x>$PCT)$ ::> stdout {{x|pctdec}}
 ^(?<out>[^\n]+)$ ::> stdout {{out}}\n
 
