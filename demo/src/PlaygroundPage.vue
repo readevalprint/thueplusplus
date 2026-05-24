@@ -130,15 +130,12 @@ const rulesText = ref('')
 const stateText = ref('')
 const resourceInputs = ref<Record<string, string>>({})
 const resourceSubmittedInputs = ref<Record<string, string>>({})
-const resourceReady = ref<Record<string, boolean>>({})
 const resourceLogs = ref<Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }>>({})
 const resourceOutputs = ref<Record<string, string>>({})
 const loadError = ref('')
 const running = ref(false)
 const autoStep = ref(false)
 const statusText = ref('idle')
-const stdoutText = ref('')
-const stderrText = ref('')
 
 const resourceSections = computed(() => extractResources(rulesText.value))
 
@@ -228,18 +225,22 @@ function markResource(resources: Map<string, ResourceUsage>, name: string, mode:
 
 function setResourceInput(name: string, value: string): void {
   resourceInputs.value = { ...resourceInputs.value, [name]: value }
-  resourceReady.value = { ...resourceReady.value, [name]: false }
+  const { [name]: _removed, ...remainingSubmitted } = resourceSubmittedInputs.value
+  resourceSubmittedInputs.value = remainingSubmitted
 }
 
 async function submitResource(name: string): Promise<void> {
   const value = resourceInputs.value[name] ?? ''
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
-  resourceReady.value = { ...resourceReady.value, [name]: value.length > 0 }
-  if (statusText.value === `waiting for ${name}`) await stepProgram(true)
+  if (statusText.value === `waiting for ${name}`) await stepProgram()
+}
+
+function isResourceReady(name: string): boolean {
+  return (resourceSubmittedInputs.value[name] ?? '').length > 0
 }
 
 function resourceReadyText(name: string): string {
-  return resourceReady.value[name] ? 'ready' : 'not ready'
+  return isResourceReady(name) ? 'ready' : 'not ready'
 }
 
 async function focusResourceInput(name: string): Promise<void> {
@@ -257,13 +258,13 @@ function showResourceOutput(resource: ResourceUsage): boolean {
 }
 
 function resourceOutputText(name: string): string {
-  return resourceOutputs.value[name] ?? resourceLogs.value[name]?.writes.join('') ?? ''
+  return resourceOutputs.value[name] ?? ''
 }
 
 function resourceConfigs() {
   return resourceSections.value.map(resource => ({
     name: resource.name,
-    inputText: resourceReady.value[resource.name] ? (resourceSubmittedInputs.value[resource.name] ?? '') : '',
+    inputText: isResourceReady(resource.name) ? (resourceSubmittedInputs.value[resource.name] ?? '') : '',
     readError: undefined,
   }))
 }
@@ -296,39 +297,30 @@ async function selectTestCase(testCase: TestCaseOption): Promise<void> {
   stateText.value = testCase.input
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, stdin: testCase.stdin ?? '' }
-  resourceReady.value = { ...resourceReady.value, stdin: Boolean(testCase.stdin) }
   const url = new URL(window.location.href)
   url.searchParams.set('test', `./${testCase.manifestPath}`)
   url.searchParams.set('case', testCase.id.split('::').at(-1) ?? testCase.caseName)
   window.history.replaceState({}, '', url)
-  await runProgram()
+  await executeProgram({ stepLimit: undefined, status: 'running' })
 }
 
 function clearRun(): void {
   running.value = false
   statusText.value = 'idle'
-  stdoutText.value = ''
-  stderrText.value = ''
   resourceLogs.value = {}
   resourceOutputs.value = {}
   resourceSubmittedInputs.value = {}
-  resourceReady.value = {}
 }
 
-async function runProgram(): Promise<void> {
-  await executeProgram({ stepLimit: undefined, status: 'running' })
-}
 
-async function stepProgram(forceAuto = false): Promise<void> {
-  await executeProgram(forceAuto || autoStep.value ? { stepLimit: undefined, status: 'running' } : { stepLimit: 1, status: 'stepping' })
+async function stepProgram(): Promise<void> {
+  await executeProgram(autoStep.value ? { stepLimit: undefined, status: 'running' } : { stepLimit: 1, status: 'stepping' })
 }
 
 async function executeProgram(options: { stepLimit?: number; status: string }): Promise<void> {
   if (running.value) return
   running.value = true
   statusText.value = options.status
-  stdoutText.value = ''
-  stderrText.value = ''
   resourceLogs.value = {}
   try {
     const result = await runWithWorker({
@@ -343,24 +335,20 @@ async function executeProgram(options: { stepLimit?: number; status: string }): 
       trace: options.stepLimit !== undefined,
       stepLimit: options.stepLimit,
     })
-    stdoutText.value = result.stdout ?? ''
     const stderr = [result.stderr ?? '', result.error ?? '', result.errors ?? ''].filter(Boolean).join('\n')
-    stderrText.value = stderr
     applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
+    const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
+    if (nextState !== undefined) stateText.value = nextState
     const pendingResource = pendingInputResource(result)
     if (pendingResource) {
-      if (result.state !== undefined) stateText.value = result.state
-      else if (result.trace && result.trace.length > 0) stateText.value = result.trace[result.trace.length - 1].stateAfter
       statusText.value = `waiting for ${pendingResource}`
       await focusResourceInput(pendingResource)
     } else {
-      if (result.state !== undefined) stateText.value = result.state
-      else if (result.trace && result.trace.length > 0) stateText.value = result.trace[result.trace.length - 1].stateAfter
       statusText.value = options.stepLimit === 1 ? 'stepped' : `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
     }
   } catch (error) {
-    stderrText.value = error instanceof Error ? error.message : String(error)
-    resourceOutputs.value = { ...resourceOutputs.value, stderr: stderrText.value }
+    const stderr = error instanceof Error ? error.message : String(error)
+    resourceOutputs.value = { ...resourceOutputs.value, stderr: `${resourceOutputs.value.stderr ?? ''}${stderr}` }
     statusText.value = 'errored'
   } finally {
     running.value = false
@@ -377,7 +365,6 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
   const nextLogs: Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }> = {}
   const nextInputs = { ...resourceInputs.value }
   const nextSubmittedInputs = { ...resourceSubmittedInputs.value }
-  const nextReady = { ...resourceReady.value }
   const nextOutputs: Record<string, string> = { ...resourceOutputs.value }
   for (const log of logs) {
     const normalized = {
@@ -388,10 +375,9 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
       outputText: log.outputText,
     }
     nextLogs[log.name] = normalized
-    if (log.remainingInputText !== undefined && nextReady[log.name]) {
+    if (log.remainingInputText !== undefined && (nextSubmittedInputs[log.name] ?? '').length > 0) {
       nextInputs[log.name] = log.remainingInputText
       nextSubmittedInputs[log.name] = log.remainingInputText
-      nextReady[log.name] = log.remainingInputText.length > 0
     }
     const outputText = log.outputText ?? (normalized.writes.length > 0 ? normalized.writes.join('') : undefined)
     if (outputText !== undefined) nextOutputs[log.name] = `${nextOutputs[log.name] ?? ''}${outputText}`
@@ -403,7 +389,6 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
   resourceLogs.value = nextLogs
   resourceInputs.value = nextInputs
   resourceSubmittedInputs.value = nextSubmittedInputs
-  resourceReady.value = nextReady
   resourceOutputs.value = nextOutputs
 }
 
