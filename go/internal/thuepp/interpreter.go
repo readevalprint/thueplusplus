@@ -26,12 +26,11 @@ const (
 	Write      Operator = "::>"
 	Exit       Operator = "::-"
 	Builtin    Operator = "::!"
-	Data       Operator = "::%"
 )
 
 var (
 	numericLiteralPattern    = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
-	rulePattern              = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!%-])(.*)$`)
+	rulePattern              = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!-])(.*)$`)
 	zeroDenominatorPattern   = regexp.MustCompile(`^-?[0-9]+/0+$`)
 	aliasDefPattern          = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
 	invalidAliasTokenPattern = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
@@ -115,7 +114,7 @@ func (i *Interpreter) LoadProgram(programPath string) error {
 		return err
 	}
 	i.ProgramPath = abs
-	content, err := i.loadWithIncludes(abs, map[string]bool{})
+	content, err := loadSourceText(abs)
 	if err != nil {
 		return err
 	}
@@ -125,34 +124,18 @@ func (i *Interpreter) LoadProgram(programPath string) error {
 // LoadProgramText loads a program from in-memory source text. sourcePath is
 // used for diagnostics and rule coverage IDs; it is not opened as a file.
 func (i *Interpreter) LoadProgramText(sourcePath, content string) error {
-	return i.LoadProgramTextWithInclude(sourcePath, content, nil)
-}
-
-// IncludeLoader returns source text for an @include path. The path argument is
-// the literal include operand after optional quotes are removed.
-type IncludeLoader func(path string) (string, error)
-
-// LoadProgramTextWithInclude loads a program from in-memory source text and
-// resolves @include directives through include. A nil include loader preserves
-// LoadProgramText behavior and rejects @include explicitly.
-func (i *Interpreter) LoadProgramTextWithInclude(sourcePath, content string, include IncludeLoader) error {
 	if strings.TrimSpace(sourcePath) == "" {
 		return fmt.Errorf("source path is required")
 	}
 	i.ProgramPath = sourcePath
-	annotated, err := annotateSourceText(sourcePath, content, include, map[string]bool{})
+	annotated, err := annotateSourceText(sourcePath, content)
 	if err != nil {
 		return err
 	}
 	return i.parseProgram(annotated)
 }
 
-func annotateSourceText(sourcePath, content string, include IncludeLoader, included map[string]bool) (string, error) {
-	if included[sourcePath] {
-		return "", fmt.Errorf("Cyclic include detected: %s", sourcePath)
-	}
-	included[sourcePath] = true
-	defer delete(included, sourcePath)
+func annotateSourceText(sourcePath, content string) (string, error) {
 	var b strings.Builder
 	s := bufio.NewScanner(strings.NewReader(content))
 	// allow long example lines
@@ -161,37 +144,13 @@ func annotateSourceText(sourcePath, content string, include IncludeLoader, inclu
 	for s.Scan() {
 		lineNumber++
 		line := s.Text() + "\n"
-		stripped := strings.TrimSpace(line)
-		if strings.HasPrefix(stripped, "@include ") {
-			if include == nil {
-				return "", fmt.Errorf("Line %d: @include is not supported when loading source text", lineNumber)
-			}
-			p := strings.TrimSpace(stripped[9:])
-			if strings.HasPrefix(p, "\"") && strings.HasSuffix(p, "\"") {
-				p = strings.TrimSuffix(strings.TrimPrefix(p, "\""), "\"")
-			}
-			inc, err := include(p)
-			if err != nil {
-				return "", fmt.Errorf("Line %d: include %q: %w", lineNumber, p, err)
-			}
-			annotated, err := annotateSourceText(p, inc, include, included)
-			if err != nil {
-				return "", err
-			}
-			b.WriteString(annotated)
-			continue
-		}
 		b.WriteString(fmt.Sprintf("# thuepp-source: %s:%d\n", sourcePath, lineNumber))
 		b.WriteString(line)
 	}
 	return b.String(), s.Err()
 }
 
-func (i *Interpreter) loadWithIncludes(filePath string, included map[string]bool) (string, error) {
-	if included[filePath] {
-		return "", fmt.Errorf("Cyclic include detected: %s", filePath)
-	}
-	included[filePath] = true
+func loadSourceText(filePath string) (string, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -208,21 +167,8 @@ func (i *Interpreter) loadWithIncludes(filePath string, included map[string]bool
 	for s.Scan() {
 		lineNumber++
 		line := s.Text() + "\n"
-		stripped := strings.TrimSpace(line)
-		if strings.HasPrefix(stripped, "@include ") {
-			p := strings.TrimSpace(stripped[9:])
-			if strings.HasPrefix(p, "\"") && strings.HasSuffix(p, "\"") {
-				p = strings.TrimSuffix(strings.TrimPrefix(p, "\""), "\"")
-			}
-			inc, err := i.loadWithIncludes(filepath.Join(filepath.Dir(filePath), p), included)
-			if err != nil {
-				return "", err
-			}
-			b.WriteString(inc)
-		} else {
-			b.WriteString(fmt.Sprintf("# thuepp-source: %s:%d\n", filePath, lineNumber))
-			b.WriteString(line)
-		}
+		b.WriteString(fmt.Sprintf("# thuepp-source: %s:%d\n", filePath, lineNumber))
+		b.WriteString(line)
 	}
 	return b.String(), s.Err()
 }
@@ -383,7 +329,7 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	}
 	matches := rulePattern.FindStringSubmatch(line)
 	if matches == nil {
-		if regexp.MustCompile(`(?:^|[^\\])::[^\s\w=<>!%-]`).FindStringIndex(line) != nil {
+		if regexp.MustCompile(`(?:^|[^\\])::[^\s\w=<>!-]`).FindStringIndex(line) != nil {
 			return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 		}
 		return nil, nil
@@ -402,8 +348,6 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 		op = Exit
 	case "!":
 		op = Builtin
-	case "%":
-		op = Data
 	default:
 		return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 	}
@@ -842,53 +786,6 @@ func decodeReplacementEscapes(text string) string {
 	return text
 }
 
-func (i *Interpreter) expandDataTemplate(template string, groups map[string]string, extra map[string]string) (string, error) {
-	raw := map[string]string{}
-	for k, v := range groups {
-		raw[k] = v
-	}
-	for k, v := range extra {
-		raw[k] = v
-	}
-	var out strings.Builder
-	pos := 0
-	for pos < len(template) {
-		if strings.HasPrefix(template[pos:], "{{") {
-			end := strings.Index(template[pos+2:], "}}")
-			if end >= 0 {
-				inside := template[pos+2 : pos+2+end]
-				if strings.Contains(inside, "|") {
-					return "", fmt.Errorf("Filters are not supported inside ::%% templates")
-				}
-				if isWord(inside) && !(inside[0] >= '0' && inside[0] <= '9') {
-					value, ok := raw[inside]
-					if !ok {
-						return "", fmt.Errorf("Missing template capture '%s'", inside)
-					}
-					decoded, err := pctDecode(value)
-					if err != nil {
-						return "", err
-					}
-					out.WriteString(decoded)
-					pos += 2 + end + 2
-					continue
-				}
-			}
-		}
-		if strings.HasPrefix(template[pos:], "{{") {
-			out.WriteByte(template[pos])
-			pos++
-			continue
-		}
-		literalStart := pos
-		for pos < len(template) && !strings.HasPrefix(template[pos:], "{{") {
-			pos++
-		}
-		out.WriteString(decodeReplacementEscapes(template[literalStart:pos]))
-	}
-	return pctEncode(out.String()), nil
-}
-
 func formatResourceError(name string, err error) string {
 	if resourceErr, ok := err.(resourceError); ok && resourceErr.omitName {
 		return fmt.Sprintf("ERR:resource:%v", err)
@@ -1072,13 +969,6 @@ func (i *Interpreter) Run() (int, error) {
 			case Substitute:
 				var err error
 				repl, err = i.expandTemplate(rule.RHS, groups, magicVars)
-				if err != nil {
-					return 1, err
-				}
-				i.recordRuleCoverage(rule)
-			case Data:
-				var err error
-				repl, err = i.expandDataTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
 					return 1, err
 				}

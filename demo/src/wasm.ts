@@ -11,7 +11,6 @@ export interface DemoRunRequest {
   maxEvals: number
   maxStateBytes: number
   coverage: boolean
-  include: Record<string, string>
   resources: DemoResourceConfig[]
   procs?: Record<string, string>
   trace?: boolean
@@ -85,7 +84,6 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
       maxEvals: request.maxEvals,
       maxStateBytes: request.maxStateBytes,
       coverage: request.coverage,
-      include: request.include,
       resourceConfig: request.resources,
       procs: request.procs,
       trace: request.trace,

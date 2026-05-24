@@ -319,7 +319,6 @@ uv run python tools/check_contract.py --update-readme
 - operators: `::=` rewrite, `::<` read, `::>` write, `::-` exit, `::!` builtin
 - predefined resources: `stdin`, `stdout`, `stderr`
 - runner-provided process/resource bindings
-- `@include` directive support
 - source rules are parsed once; execution rewrites only state rows
 - `#` has no special language meaning: a source row is a rule only when it contains a valid operator, and runtime state rows beginning with `#` are ordinary matchable text
 - `--input` replaces source-provided state for runners that expose the CLI contract

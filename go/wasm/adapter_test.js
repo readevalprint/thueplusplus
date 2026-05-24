@@ -65,13 +65,20 @@ function request(worker, message) {
   assert.strictEqual(timeout.exitCode, 1, JSON.stringify(timeout));
   assert.match(timeout.error || '', /ERR:resource:sleepy:timeout/);
 
-  const included = await thuepp.run({
+  const inertInclude = await thuepp.run({
     sourcePath: 'main.tpp',
-    sourceText: '@include lib.tpp\nhello',
-    include: { 'lib.tpp': '^hello$ ::> stdout included\\n' },
+    sourceText: '@include lib.tpp',
   });
-  assert.strictEqual(included.exitCode, 0, JSON.stringify(included));
-  assert.strictEqual(included.stdout, 'included\n');
+  assert.strictEqual(inertInclude.exitCode, 0, JSON.stringify(inertInclude));
+  assert.strictEqual(inertInclude.stdout, '');
+  assert.strictEqual(inertInclude.state, '@include lib.tpp');
+
+  const invalidData = await thuepp.run({
+    sourcePath: 'bad.tpp',
+    sourceText: '^x$ ::% data\nx',
+  });
+  assert.strictEqual(invalidData.exitCode, 1, JSON.stringify(invalidData));
+  assert.match(invalidData.error || '', /Invalid rule syntax: \^x\$ ::% data/);
 
   const worker = new Worker(path.join(__dirname, '..', '..', 'js', 'wasm', 'node-worker.cjs'), {
     workerData: { wasmPath },

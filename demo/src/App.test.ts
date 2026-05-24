@@ -76,9 +76,8 @@ describe('Go-WASM demo UI', () => {
     const wrapper = mount(App)
 
     const cards = wrapper.findAll('[data-test="example-card"]')
-    expect(cards.length).toBeGreaterThanOrEqual(7)
+    expect(cards.length).toBeGreaterThanOrEqual(6)
     expect(wrapper.get('[data-example-id="resource-echo"]').text()).toContain('callback resource')
-    expect(wrapper.get('[data-example-id="include"]').text()).toContain('includes')
 
     await selectExample(wrapper, 'coverage')
     expect(wrapper.get('[data-test="selected-example-summary"]').text()).toContain('Coverage TSV')
@@ -122,17 +121,6 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.text()).toContain('errors: ["timeout"]')
   })
 
-  it('passes include-map entries to the worker', async () => {
-    const wrapper = mount(App)
-    await selectExample(wrapper, 'include')
-
-    const request = await runDemo(wrapper, { exitCode: 0, stdout: 'included from map\n' })
-
-    expect(request.sourcePath).toBe('main.tpp')
-    expect(request.sourceText).toContain('@include lib/greet.tpp')
-    expect(request.include).toEqual({ 'lib/greet.tpp': '^hello$ ::> stdout included from map\\n' })
-    expect(wrapper.text()).toContain('included from map')
-  })
 
   it('renders raw coverage TSV and parsed coverage rows in the coverage tab', async () => {
     const wrapper = mount(App)

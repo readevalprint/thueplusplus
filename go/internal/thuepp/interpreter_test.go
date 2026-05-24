@@ -78,17 +78,31 @@ func TestLoadProgramTextPreservesSourceAndCoverageTSV(t *testing.T) {
 	}
 }
 
-func TestLoadProgramTextRejectsIncludes(t *testing.T) {
+func TestIncludeRowsAreInertState(t *testing.T) {
 	interp := NewWithHostResources(HostResources{
 		Stdin:  strings.NewReader(""),
 		Stdout: &bytes.Buffer{},
 		Stderr: &bytes.Buffer{},
 	})
-	err := interp.LoadProgramText("virtual/main.tpp", "@include other.tpp\n")
-	if err == nil {
-		t.Fatal("LoadProgramText succeeded, want include error")
+	if err := interp.LoadProgramText("virtual/main.tpp", "@include other.tpp\n"); err != nil {
+		t.Fatal(err)
 	}
-	if got, want := err.Error(), "Line 1: @include is not supported when loading source text"; got != want {
+	if got, want := interp.State, "@include other.tpp"; got != want {
+		t.Fatalf("state = %q, want %q", got, want)
+	}
+}
+
+func TestDataOperatorIsInvalidSyntax(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	err := interp.LoadProgramText("virtual/main.tpp", "^x$ ::% data\nx")
+	if err == nil {
+		t.Fatal("LoadProgramText succeeded, want invalid syntax error")
+	}
+	if got, want := err.Error(), "Line 1: Invalid rule syntax: ^x$ ::% data"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }

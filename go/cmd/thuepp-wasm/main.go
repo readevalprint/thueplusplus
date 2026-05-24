@@ -134,11 +134,7 @@ func run(args []js.Value) wasmResult {
 			interp.AddProcBinding(name, procs.Get(name).String())
 		}
 	}
-	includeLoader, err := includeLoaderFrom(opts.Get("include"))
-	if err != nil {
-		return errorResult(err.Error())
-	}
-	if err := interp.LoadProgramTextWithInclude(sourcePath, sourceText, includeLoader); err != nil {
+	if err := interp.LoadProgramText(sourcePath, sourceText); err != nil {
 		return resultWithError(stdout.String(), stderr.String(), err.Error())
 	}
 	if input, err := optionalString(opts, "input", ""); err != nil {
@@ -163,27 +159,6 @@ func run(args []js.Value) wasmResult {
 		res.Trace = interp.Trace
 	}
 	return res
-}
-
-func includeLoaderFrom(v js.Value) (thuepp.IncludeLoader, error) {
-	if v.Type() == js.TypeUndefined || v.Type() == js.TypeNull || !truthy(v) {
-		return nil, nil
-	}
-	if v.Type() == js.TypeFunction {
-		return func(path string) (string, error) {
-			return jsValueToString(v.Invoke(path))
-		}, nil
-	}
-	if v.Type() == js.TypeObject {
-		return func(path string) (string, error) {
-			content := v.Get(path)
-			if content.Type() == js.TypeUndefined {
-				return "", fmt.Errorf("missing include %q", path)
-			}
-			return jsValueToString(content)
-		}, nil
-	}
-	return nil, fmt.Errorf("include must be a function, object map, or false")
 }
 
 func resultToJS(r wasmResult) js.Value {
