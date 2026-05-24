@@ -402,7 +402,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-input-random"]').element).toHaveProperty('value', '')
   })
 
-  it('step waits at stdin until submitted and focuses the textarea', async () => {
+  it('submit resumes through one Step unless auto is checked', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = mount(App, { attachTo: document.body })
 
@@ -435,21 +435,54 @@ describe('Go-WASM demo UI', () => {
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
-      stdout: 'Ada\n',
+      stdout: '',
       stderr: '',
-      state: '',
+      state: 'got:Ada',
+      trace: [{ step: 1, ruleIndex: 1, sourcePath: 'examples/echo/echo.tpp', lineNumber: 8, operator: '::<', lhs: '@IN@', matchStart: 4, matchEnd: 8, groups: {}, stateBefore: 'got:@IN@', replacement: 'Ada', stateAfter: 'got:Ada' }],
       resourceLogs: [
         { name: 'stdin', reads: ['Ada'], writes: [], errors: [], remainingInputText: '', outputText: '' },
-        { name: 'stdout', reads: [], writes: ['Ada\n'], errors: [], remainingInputText: '', outputText: 'Ada\n' },
+        { name: 'stdout', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
         { name: 'stderr', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
       ],
     })
     await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
     await flush()
 
+    expect(mockedRunWithWorker.mock.calls[1][0].stepLimit).toBe(1)
     expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'Ada', readError: undefined })
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'got:Ada')
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
+
+    await wrapper.get('[data-test="playground-auto"]').setValue(true)
+    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Grace')
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 1,
+      stdout: '',
+      stderr: '',
+      error: 'ERR:resource:stdin:pending_input:stdin',
+      errors: 'ERR:resource:stdin:pending_input:stdin',
+      state: 'got:@IN@',
+      resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: 'Grace\n',
+      stderr: '',
+      state: '',
+      resourceLogs: [
+        { name: 'stdin', reads: ['Grace'], writes: [], errors: [], remainingInputText: '', outputText: '' },
+        { name: 'stdout', reads: [], writes: ['Grace\n'], errors: [], remainingInputText: '', outputText: 'Grace\n' },
+      ],
+    })
+    await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker.mock.calls[3][0].stepLimit).toBeUndefined()
     expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
-    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Ada\n')
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Grace\n')
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 })

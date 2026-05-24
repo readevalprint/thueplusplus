@@ -36,7 +36,7 @@ test('step button writes stdout without a shell simulator', async ({ page }) => 
   await expect(page.getByTestId('playground-reset')).toHaveCount(0)
 })
 
-test('stdin read step waits until input is submitted', async ({ page }) => {
+test('stdin submit respects the auto checkbox', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await page.getByTestId('playground-rules').fill('PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30 stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
   await page.getByTestId('playground-state').fill('read')
@@ -54,7 +54,11 @@ test('stdin read step waits until input is submitted', async ({ page }) => {
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
 
   await page.getByTestId('resource-submit-stdin').click()
-  await expect(page.getByTestId('resource-ready-stdin')).toContainText('ready')
+  await expect(page.getByTestId('resource-ready-stdin')).toContainText('not ready')
+  await expect(page.getByTestId('playground-state')).toHaveValue('got:Ada')
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
+
+  await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Ada\n')
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
 })
