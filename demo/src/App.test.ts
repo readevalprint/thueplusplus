@@ -183,7 +183,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-input-stdin"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="resource-output-stderr"]').element.tagName).toBe('TEXTAREA')
-    expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBe(3)
+    expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBe(5)
+    expect(wrapper.get('[data-test="state-resizable"]').attributes('data-orientation')).toBe('vertical')
+    expect(wrapper.get('[data-test="state-diff-resize-handle"]').attributes('data-orientation')).toBe('vertical')
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Hello, World')
 
     mockedRunWithWorker.mockResolvedValueOnce({
