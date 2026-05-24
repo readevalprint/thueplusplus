@@ -78,24 +78,6 @@ function buildResources(options) {
         log.remainingInputText = buffer.text;
         return line;
       },
-      readAll() {
-        if (config.readError) {
-          log.errors.push(String(config.readError));
-          log.remainingInputText = buffer.text;
-          return { error: String(config.readError) };
-        }
-        if (!buffer.text) {
-          const pending = `pending_input:${name}`;
-          log.errors.push(pending);
-          log.remainingInputText = buffer.text;
-          return { error: pending };
-        }
-        const text = buffer.text;
-        buffer.text = '';
-        log.reads.push(text);
-        log.remainingInputText = buffer.text;
-        return text;
-      },
       write(text) {
         const value = String(text);
         log.writes.push(value);

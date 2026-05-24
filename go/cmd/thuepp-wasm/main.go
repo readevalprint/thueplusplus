@@ -30,7 +30,6 @@ func (r *jsResource) callString(method string, args ...any) (string, error) {
 	return jsValueToString(v)
 }
 
-func (r *jsResource) ReadAll() (string, error) { return r.callString("readAll") }
 func (r *jsResource) ReadLine(timeout time.Duration) (string, error) {
 	return r.callString("readLine", timeout.Seconds())
 }

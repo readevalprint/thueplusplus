@@ -54,7 +54,7 @@ function request(worker, message) {
   assert.strictEqual(roundtrip.exitCode, 0, JSON.stringify(roundtrip));
   assert.strictEqual(roundtrip.stdout, 'ping');
 
-  const missing = await thuepp.run({ sourceText: '^start$ ::< -1 missing\nstart' });
+  const missing = await thuepp.run({ sourceText: '^start$ ::< 5 missing\nstart' });
   assert.strictEqual(missing.exitCode, 1, JSON.stringify(missing));
   assert.match(missing.error || '', /Unknown resource 'missing'/);
 

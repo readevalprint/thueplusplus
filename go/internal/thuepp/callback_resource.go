@@ -5,7 +5,6 @@ import "time"
 // CallbackResource is a host-supplied resource implementation for embedders
 // such as the Go WASM bridge. All methods should fail loudly when unsupported.
 type CallbackResource interface {
-	ReadAll() (string, error)
 	ReadLine(timeout time.Duration) (string, error)
 	WriteString(content string) error
 	Cleanup()

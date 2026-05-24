@@ -1,11 +1,11 @@
 program = "../process.tpp"
 timeout = 10
 
-# Keep this shell command deliberately line-free: both implementations prefix
+# Keep this shell command simple: both implementations prefix
 # process commands with `stdbuf -oL`, and this compact command exercises the
 # documented --proc path without depending on host-specific newline quoting.
 [bindings.procs]
-worker = "sh -c 'printf proc-outputn; sleep 1'"
+worker = "printf 'proc-outputn\\n'"
 
 [expect]
 stdout = "proc-outputn"

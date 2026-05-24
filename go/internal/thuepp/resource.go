@@ -9,7 +9,6 @@ import (
 )
 
 type runtimeResource interface {
-	ReadAll() (string, error)
 	ReadLine(timeout time.Duration) (string, error)
 	WriteString(content string) error
 	Cleanup()
@@ -35,14 +34,6 @@ func newStdinResource(name string, input io.Reader) *stdinResource {
 	return &stdinResource{name: name, reader: bufio.NewReader(input)}
 }
 
-func (r *stdinResource) ReadAll() (string, error) {
-	data, err := io.ReadAll(r.reader)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
 func (r *stdinResource) ReadLine(timeout time.Duration) (string, error) {
 	line, err := r.reader.ReadString('\n')
 	if err != nil {
@@ -63,10 +54,6 @@ func (r *stdinResource) Cleanup() {}
 
 type outputResource struct {
 	writer *io.Writer
-}
-
-func (r *outputResource) ReadAll() (string, error) {
-	return "", unnamedResourceError("cannot_read_output_stream")
 }
 
 func (r *outputResource) ReadLine(timeout time.Duration) (string, error) {

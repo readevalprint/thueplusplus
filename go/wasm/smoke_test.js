@@ -34,10 +34,10 @@ async function runSmoke(cases) {
       },
     },
     {
-      sourceText: '^start$ ::< -1 missing\nstart',
+      sourceText: '^start$ ::< 5 missing\nstart',
     },
     {
-      sourceText: '^start$ ::< -1 sh\nstart',
+      sourceText: '^start$ ::< 5 sh\nstart',
       procs: { sh: 'printf nope' },
     },
     {

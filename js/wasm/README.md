@@ -27,4 +27,4 @@ const result = await thuepp.run({
 
 The result includes `exitCode`, `stdout`, `stderr`, `error` when nonzero, and `coverageTSV` when requested.
 
-Browser resources are callbacks (`readAll`, `readLine`, `write`, optional `close`). OS subprocess resources are intentionally unsupported in `GOOS=js/wasm` and fail loudly. Full language conformance remains the native Python/Go manifest suite (`make test`); adapter tests only prove the JavaScript/WASM host boundary.
+Browser resources are callbacks (`readLine`, `write`, optional `close`). OS subprocess resources are intentionally unsupported in `GOOS=js/wasm` and fail loudly. Full language conformance remains the native Python/Go manifest suite (`make test`); adapter tests only prove the JavaScript/WASM host boundary.

@@ -75,52 +75,6 @@ func (r *processResource) exitError(err error) error {
 	return fmt.Errorf("%s", msg)
 }
 
-func (r *processResource) ReadAll() (string, error) {
-	if err := r.ensureStarted(); err != nil {
-		return "", err
-	}
-	var out strings.Builder
-	deadline := time.After(100 * time.Millisecond)
-	for {
-		select {
-		case s, ok := <-r.outCh:
-			if ok {
-				out.WriteString(s)
-				deadline = time.After(100 * time.Millisecond)
-				continue
-			}
-			return out.String(), nil
-		case <-deadline:
-			if out.Len() > 0 {
-				return out.String(), nil
-			}
-			goto waitFirst
-		case err := <-r.exitCh:
-			if exitErr := r.exitError(err); exitErr != nil {
-				return "", exitErr
-			}
-			return out.String(), nil
-		}
-	}
-
-waitFirst:
-	select {
-	case s, ok := <-r.outCh:
-		if ok {
-			out.WriteString(s)
-			return out.String(), nil
-		}
-		return "", nil
-	case <-time.After(5 * time.Second):
-		return "", nil
-	case err := <-r.exitCh:
-		if exitErr := r.exitError(err); exitErr != nil {
-			return "", exitErr
-		}
-		return "", nil
-	}
-}
-
 func (r *processResource) ReadLine(timeout time.Duration) (string, error) {
 	if err := r.ensureStarted(); err != nil {
 		return "", err
