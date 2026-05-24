@@ -44,7 +44,7 @@ test('stdin submit respects the auto checkbox', async ({ page }) => {
   await page.getByTestId('resource-input-stdin').fill('Ada')
   await expect(page.getByTestId('stdin-send')).toHaveCount(0)
   await expect(page.getByTestId('stdin-queue')).toHaveCount(0)
-  await expect(page.getByTestId('resource-ready-stdin')).toContainText('not ready')
+  await expect(page.getByTestId('resource-ready-stdin')).toHaveCount(0)
 
   await page.getByTestId('playground-step').click()
   await page.getByTestId('playground-step').click()
@@ -54,7 +54,6 @@ test('stdin submit respects the auto checkbox', async ({ page }) => {
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
 
   await page.getByTestId('resource-submit-stdin').click()
-  await expect(page.getByTestId('resource-ready-stdin')).toContainText('not ready')
   await expect(page.getByTestId('playground-state')).toHaveValue('got:Ada')
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
 

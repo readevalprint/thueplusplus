@@ -75,7 +75,6 @@
                 />
                 <span class="resource-submit-row">
                   <button type="button" :data-test="`resource-submit-${resource.name}`" :disabled="running" @click="submitResource(resource.name)">Submit</button>
-                  <span class="resource-ready" :data-test="`resource-ready-${resource.name}`">{{ resourceReadyText(resource.name) }}</span>
                 </span>
               </label>
               <label v-if="showResourceOutput(resource)" class="resource-field">
@@ -237,10 +236,6 @@ async function submitResource(name: string): Promise<void> {
 
 function isResourceReady(name: string): boolean {
   return (resourceSubmittedInputs.value[name] ?? '').length > 0
-}
-
-function resourceReadyText(name: string): string {
-  return isResourceReady(name) ? 'ready' : 'not ready'
 }
 
 async function focusResourceInput(name: string): Promise<void> {
