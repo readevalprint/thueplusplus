@@ -4,11 +4,6 @@ export interface DemoResourceExample {
   readError?: string
 }
 
-export interface DemoIncludeExample {
-  path: string
-  sourceText: string
-}
-
 export interface DemoExample {
   id: string
   name: string
@@ -17,7 +12,6 @@ export interface DemoExample {
   sourceText: string
   input: string
   resources: DemoResourceExample[]
-  includes: DemoIncludeExample[]
   coverage?: boolean
   maxEvals?: number
   maxStateBytes?: number
@@ -35,7 +29,6 @@ hello
 `,
     input: '',
     resources: [],
-    includes: [],
     coverage: true,
   },
   {
@@ -50,7 +43,6 @@ start
 `,
     input: 'Ada\n',
     resources: [],
-    includes: [],
   },
   {
     id: 'resource-echo',
@@ -67,19 +59,6 @@ start
 `,
     input: '',
     resources: [{ name: 'echo', inputText: 'ping\n' }],
-    includes: [],
-  },
-  {
-    id: 'include',
-    name: 'Include map',
-    description: 'Resolves @include through the browser include map, not the filesystem.',
-    sourcePath: 'main.tpp',
-    sourceText: `@include lib/greet.tpp
-hello
-`,
-    input: '',
-    resources: [],
-    includes: [{ path: 'lib/greet.tpp', sourceText: '^hello$ ::> stdout included from map\\n' }],
   },
   {
     id: 'coverage',
@@ -94,7 +73,6 @@ start
 `,
     input: '',
     resources: [],
-    includes: [],
     coverage: true,
   },
   {
@@ -107,7 +85,6 @@ start
 `,
     input: '',
     resources: [{ name: 'broken', inputText: '', readError: 'boom' }],
-    includes: [],
   },
   {
     id: 'timeout',
@@ -119,6 +96,5 @@ start
 `,
     input: '',
     resources: [{ name: 'sleepy', inputText: '', readError: 'timeout' }],
-    includes: [],
   },
 ]

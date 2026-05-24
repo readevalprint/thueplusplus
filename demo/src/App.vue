@@ -39,8 +39,8 @@
           <p class="kicker">playground</p>
           <h2 id="playground-title">Start with one small example</h2>
           <p>
-            The first three examples teach stdout, stdin, and includes. The advanced panel keeps resources,
-            coverage, limits, traces, and source inspection available without making the first screen feel like an IDE.
+            The starter examples teach stdout, stdin, and callback resources. The advanced panel keeps coverage,
+            limits, traces, and source inspection available without making the first screen feel like an IDE.
           </p>
         </div>
         <button data-test="run-demo" :disabled="running" @click="() => runProgram()">
@@ -116,7 +116,7 @@
     <details class="advanced-panel">
       <summary>
         <span>More examples and run details</span>
-        <small>resources, includes, stderr, coverage, trace, and generated source</small>
+        <small>resources, stderr, coverage, trace, and generated source</small>
       </summary>
 
       <section class="advanced-grid">
@@ -213,12 +213,11 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { examples, type DemoIncludeExample, type DemoResourceExample } from './examples'
+import { examples, type DemoResourceExample } from './examples'
 import PlaygroundPage from './PlaygroundPage.vue'
 import { runWithWorker, type DemoRunResult } from './wasm'
 
 interface ResourceState extends DemoResourceExample { key: number }
-interface IncludeState extends DemoIncludeExample { key: number }
 type ResultTabId = 'stdout' | 'stderr' | 'errors' | 'resources' | 'coverage' | 'trace' | 'source'
 
 const resultTabs: Array<{ id: ResultTabId; label: string }> = [
@@ -247,21 +246,20 @@ const copyNotice = ref('')
 const activeTab = ref<ResultTabId>('stdout')
 const result = reactive<DemoRunResult>({ stdout: '', stderr: '', coverage: '', coverageTSV: '', resourceLogs: [] })
 const resources = ref<ResourceState[]>([])
-const includes = ref<IncludeState[]>([])
 let nextKey = 1
 
 const isPlaygroundRoute = computed(() => window.location.pathname.replace(/\/$/, '').endsWith('/playground'))
 const selectedExample = computed(() => examples.find(item => item.id === selectedId.value) ?? examples[0])
-const starterExamples = computed(() => ['hello', 'stdin', 'include'].map(id => examples.find(item => item.id === id)).filter((item): item is typeof examples[number] => Boolean(item)))
+const starterExamples = computed(() => ['hello', 'stdin', 'resource-echo'].map(id => examples.find(item => item.id === id)).filter((item): item is typeof examples[number] => Boolean(item)))
 const advancedExamples = computed(() => examples.filter(example => !starterExamples.value.some(starter => starter.id === example.id)))
 const concepts = [
   { step: '01', title: 'State Is Text', description: 'Every run starts with a plain text state you can read and edit.' },
   { step: '02', title: 'Rules Match Text', description: 'Ordered regex patterns rewrite state or call an explicit resource.' },
-  { step: '03', title: 'Resources Are Boundaries', description: 'stdin, stdout, stderr, includes, and callbacks stay visible in the UI.' },
+  { step: '03', title: 'Resources Are Boundaries', description: 'stdin, stdout, stderr, and callbacks stay visible in the UI.' },
 ]
 const nextSteps = [
   { title: 'Edit the Program', description: 'Change the rules or initial state and run again to see the rewrite model.' },
-  { title: 'Open Advanced Controls', description: 'Try callback resources, includes, coverage TSV, or raw source inspection.' },
+  { title: 'Open Advanced Controls', description: 'Try callback resources, coverage TSV, or raw source inspection.' },
   { title: 'Read the Contracts', description: 'Use the repository examples and manifests when porting thue++ into another runtime.' },
 ]
 const composedSource = computed(() => composeSource(rulesText.value, stateText.value))
@@ -327,9 +325,8 @@ function isProgramHeaderLine(line: string): boolean {
   const trimmed = line.trim()
   return trimmed === ''
     || trimmed.startsWith('#')
-    || trimmed.startsWith('@include ')
     || /^[A-Z][A-Z0-9_]*\s*<-/.test(trimmed)
-    || /(^|[^\\])::[=<>!%-]/.test(line)
+    || /(^|[^\\])::[=<>!-]/.test(line)
 }
 
 function composeSource(rules: string, state: string): string {
@@ -344,16 +341,11 @@ function cloneResources(items: DemoResourceExample[]): ResourceState[] {
   return items.map(item => ({ ...item, key: nextKey++ }))
 }
 
-function cloneIncludes(items: DemoIncludeExample[]): IncludeState[] {
-  return items.map(item => ({ ...item, key: nextKey++ }))
-}
-
 function exampleFeature(id: string): string {
   const features: Record<string, string> = {
     hello: 'stdout starter',
     stdin: 'stdin starter',
     'resource-echo': 'callback resource',
-    include: 'includes',
     coverage: 'coverage TSV',
     error: 'resource error',
     timeout: 'timeout surface',
@@ -362,14 +354,13 @@ function exampleFeature(id: string): string {
 }
 
 function displayExampleName(example: { id: string; name: string }): string {
-  return example.id === 'include' ? 'Includes' : example.name
+  return example.name
 }
 
 function outputFor(id: string): string {
   const outputs: Record<string, string> = {
     hello: 'stdout appears here after you run the example',
     stdin: 'stdout appears here after stdin is consumed',
-    include: 'stdout appears here after the includes resolves',
   }
   return outputs[id] ?? 'stdout appears here after a run'
 }
@@ -378,7 +369,6 @@ function explanationFor(id: string): string {
   const explanations: Record<string, string> = {
     hello: 'The initial text is “hello”. A rule matches it and writes a line to stdout.',
     stdin: 'The first rule reads one stdin line into state. The next rule captures the name and writes the greeting.',
-    include: 'The browser supplies the included source through an includes. The interpreter still runs normal thue++ rules.',
   }
   return explanations[id] ?? 'Run the example to see how rules transform text and resources.'
 }
@@ -400,7 +390,6 @@ function loadSelectedExample(): void {
   maxStateBytes.value = example.maxStateBytes ?? 1_000_000
   coverage.value = example.coverage ?? false
   resources.value = cloneResources(example.resources)
-  includes.value = cloneIncludes(example.includes)
   activeTab.value = 'stdout'
   clearOutput()
 }
@@ -462,7 +451,6 @@ async function runProgram(options: { stepLimit?: number; trace?: boolean } = {})
       maxEvals: maxEvals.value,
       maxStateBytes: maxStateBytes.value,
       coverage: coverage.value,
-      include: Object.fromEntries(includes.value.filter(item => item.path.trim()).map(item => [item.path.trim(), item.sourceText])),
       resources: resources.value.filter(item => item.name.trim()).map(item => ({
         name: item.name.trim(),
         inputText: item.inputText,

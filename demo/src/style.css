@@ -337,7 +337,7 @@ code {
   justify-content: start;
 }
 .inline-check { align-self: center; }
-.resource-row, .include-row, .compact-row {
+.resource-row, .compact-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.6fr) minmax(180px, 1fr) minmax(130px, auto) minmax(130px, 0.8fr) auto;
   gap: var(--space-3);
@@ -346,8 +346,7 @@ code {
   padding-top: var(--space-4);
   margin-top: var(--space-4);
 }
-.include-row { grid-template-columns: minmax(180px, 0.7fr) minmax(320px, 1.6fr) auto; }
-.resource-row textarea, .include-row textarea { min-height: 92px; }
+.resource-row textarea { min-height: 92px; }
 .log { min-height: 58px; grid-column: 1 / -1; }
 .error, .error-text { color: var(--color-danger); }
 .empty { padding: var(--space-3) 0; }
@@ -398,7 +397,7 @@ code {
 
 @media (max-width: 980px) {
   .site-shell { width: min(100% - 28px, 1120px); }
-  .landing-hero, .program-layout, .advanced-grid, .concept-grid, .next-grid, .runtime-strip, .controls, .runner-controls, .resource-row, .include-row, .compact-row {
+  .landing-hero, .program-layout, .advanced-grid, .concept-grid, .next-grid, .runtime-strip, .controls, .runner-controls, .resource-row, .compact-row {
     grid-template-columns: 1fr;
   }
   .span, .log { grid-column: auto; }

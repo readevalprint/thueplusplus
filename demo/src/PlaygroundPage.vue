@@ -196,20 +196,8 @@ function isProgramHeaderLine(line: string): boolean {
   const trimmed = line.trim()
   return trimmed === ''
     || trimmed.startsWith('#')
-    || trimmed.startsWith('@include ')
     || /^[A-Z][A-Z0-9_]*\s*<-/.test(trimmed)
-    || /(^|[^\\])::[=<>!%-]/.test(line)
-}
-
-function includeMapFor(programPath: string): Record<string, string> {
-  const normalized = programPath.replace(/^\.\//, '')
-  const dir = normalized.includes('/') ? normalized.slice(0, normalized.lastIndexOf('/')) : ''
-  const include: Record<string, string> = {}
-  for (const [path, content] of Object.entries(repoFiles)) {
-    const clean = path.replace(/^\.\//, '').replace(/^\/+/, '')
-    if (dir && clean.startsWith(`${dir}/`)) include[clean.slice(dir.length + 1)] = content
-  }
-  return include
+    || /(^|[^\\])::[=<>!-]/.test(line)
 }
 
 interface ResourceUsage {
@@ -375,7 +363,6 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       maxEvals: 10_000,
       maxStateBytes: 1_000_000,
       coverage: false,
-      include: includeMapFor(sourcePath.value),
       resources: resourceConfigs(),
       trace: options.collectTrace ?? options.stepLimit !== undefined,
       stepLimit: options.stepLimit,
@@ -431,10 +418,6 @@ function sourceTextForTraceEvent(event: DemoTraceEvent): string | undefined {
   const cleanEventPath = event.sourcePath.replace(/^\.\//, '')
   const cleanSourcePath = sourcePath.value.replace(/^\.\//, '')
   if (cleanEventPath === cleanSourcePath) return rulesText.value
-  const include = includeMapFor(sourcePath.value)
-  if (include[cleanEventPath]) return include[cleanEventPath]
-  const sourceDir = cleanSourcePath.includes('/') ? cleanSourcePath.slice(0, cleanSourcePath.lastIndexOf('/')) : ''
-  if (sourceDir && cleanEventPath.startsWith(`${sourceDir}/`)) return include[cleanEventPath.slice(sourceDir.length + 1)]
   return repoFiles[cleanEventPath]
 }
 

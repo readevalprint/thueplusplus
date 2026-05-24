@@ -287,20 +287,9 @@ def rel(path: Path) -> str:
         return path.resolve().as_posix()
 
 
-def reject_coverage_ignores(program: Path, seen: set[Path] | None = None) -> None:
-    seen = set() if seen is None else seen
-    program = program.resolve()
-    if program in seen:
-        raise RuntimeError(f"cyclic include detected: {program}")
-    seen.add(program)
-    for line_number, raw_line in enumerate(program.read_text(encoding="utf-8").splitlines(), 1):
+def reject_coverage_ignores(program: Path) -> None:
+    for line_number, raw_line in enumerate(program.resolve().read_text(encoding="utf-8").splitlines(), 1):
         stripped = raw_line.strip()
-        if stripped.startswith("@include "):
-            include_path = stripped[9:].strip()
-            if include_path.startswith('"') and include_path.endswith('"'):
-                include_path = include_path[1:-1]
-            reject_coverage_ignores(program.parent / include_path, seen)
-            continue
         if stripped.startswith("# coverage: ignore"):
             raise RuntimeError(f"{rel(program)}:{line_number}: coverage ignore comments are unsupported; add fixtures or delete the rule")
 

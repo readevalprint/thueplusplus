@@ -23,7 +23,7 @@ from typing import Any, Optional
 MAX_NUMERIC_LITERAL_CHARS = 4096
 MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE = 10000
 MAX_EXPANDED_PATTERN_BYTES = 1000000
-RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!%-])(?P<rhs>.*)$")
+RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!-])(?P<rhs>.*)$")
 ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
 ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
 INVALID_ALIAS_TOKEN_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
@@ -36,7 +36,6 @@ class Operator(Enum):
     WRITE = "::>"
     EXIT = "::-"
     BUILTIN = "::!"
-    DATA = "::%"
 
 
 @dataclass
@@ -102,37 +101,14 @@ class ThueppInterpreter:
         """Load and parse a thue++ program."""
         resolved_program_path = Path(program_path).resolve()
         self.program_path = str(resolved_program_path)
-        content = self._load_with_includes(resolved_program_path, set())
-        self._parse_program(content)
-
-    def _load_with_includes(self, file_path: Path, included: set) -> str:
-        """Load a file and process @include directives."""
-        if file_path in included:
-            raise RuntimeError(f"Cyclic include detected: {file_path}")
-        included.add(file_path)
-
-        if not file_path.exists():
-            raise RuntimeError(f"File not found: {file_path}")
-
-        lines = []
-        with open(file_path, "r", encoding="utf-8") as f:
+        if not resolved_program_path.exists():
+            raise RuntimeError(f"File not found: {resolved_program_path}")
+        content = []
+        with open(resolved_program_path, "r", encoding="utf-8") as f:
             for line_number, line in enumerate(f, 1):
-                stripped = line.strip()
-                if stripped.startswith("@include "):
-                    include_path = stripped[9:].strip()
-                    # Handle quoted paths
-                    if include_path.startswith('"') and include_path.endswith('"'):
-                        include_path = include_path[1:-1]
-                    # Resolve relative to including file
-                    resolved = (file_path.parent / include_path).resolve()
-                    included_content = self._load_with_includes(
-                        resolved, included)
-                    lines.append(included_content)
-                else:
-                    lines.append(f"# thuepp-source: {file_path}:{line_number}\n")
-                    lines.append(line)
-
-        return "".join(lines)
+                content.append(f"# thuepp-source: {resolved_program_path}:{line_number}\n")
+                content.append(line)
+        self._parse_program("".join(content))
 
     def _alias_line_number(self, fallback_line: int, current_source: tuple[str, int] | None) -> int:
         return current_source[1] if current_source else fallback_line
@@ -269,7 +245,7 @@ class ThueppInterpreter:
 
         match = RULE_RE.match(line)
         if not match:
-            if py_re.search(r"(?<!\\)::[^\s\w=<>!%-]", line):
+            if py_re.search(r"(?<!\\)::[^\s\w=<>!-]", line):
                 raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
             return None
 
@@ -281,7 +257,6 @@ class ThueppInterpreter:
             ">": Operator.WRITE,
             "-": Operator.EXIT,
             "!": Operator.BUILTIN,
-            "%": Operator.DATA,
         }[match.group("op")]
 
         if not lhs:
@@ -575,26 +550,6 @@ class ThueppInterpreter:
             pos = match.end()
         pieces.append(self._decode_replacement_escapes(template[pos:]))
         return "".join(pieces)
-    def _expand_data_template(self, template: str, groups: dict, extra: dict = None) -> str:
-        if extra is None:
-            extra = {}
-        raw_vars = {**groups, **extra}
-        pieces = []
-        pos = 0
-        for match in py_re.finditer(r"{{([A-Za-z_]\w*)}}", template):
-            literal = template[pos:match.start()]
-            pieces.append(self._decode_replacement_escapes(literal))
-            name = match.group(1)
-            if name not in raw_vars:
-                raise RuntimeError(f"Missing template capture '{name}'")
-            pieces.append(self._pct_decode(str(raw_vars[name])))
-            pos = match.end()
-        tail = template[pos:]
-        if py_re.search(r"{{[^}]*[|][^}]*}}", template):
-            raise RuntimeError("Filters are not supported inside ::% templates")
-        pieces.append(self._decode_replacement_escapes(tail))
-        return self._pct_encode("".join(pieces))
-
     def _decode_replacement_escapes(self, text: str) -> str:
         placeholder = "\x00BACKSLASH\x00"
         text = text.replace("\\\\", placeholder)
@@ -783,10 +738,6 @@ class ThueppInterpreter:
 
                 if rule.operator == Operator.SUBSTITUTE:
                     replacement = self._expand_template(rule.rhs, groups, magic_vars)
-                    self._record_rule_coverage(rule)
-
-                elif rule.operator == Operator.DATA:
-                    replacement = self._expand_data_template(rule.rhs, groups, magic_vars)
                     self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.READ:

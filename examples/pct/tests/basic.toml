@@ -20,51 +20,6 @@ stderr = ""
 stdout = "hello world\n"
 
 [[case]]
-name = "data substitution encodes literal spaces"
-input = "data:space"
-
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "hello%20world"
-
-[[case]]
-name = "data substitution encodes replacement escapes"
-input = "data:escape"
-
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "a%0Ab"
-
-[[case]]
-name = "data substitution encodes literal percent"
-input = "data:percent"
-
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "100%25"
-
-[[case]]
-name = "data substitution treats encoded-looking text as text"
-input = "data:encoded-looking"
-
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "%2520"
-
-[[case]]
-name = "data substitution decodes captures once and re-encodes"
-input = "join:hello%5Cnworld,done"
-
-[case.expect]
-exit_code = 0
-stderr = ""
-stdout_stripped = "hello%5Cnworld%2C%20done"
-
-[[case]]
 name = "line read produces PCT and pctdec filter writes output"
 input = "read"
 

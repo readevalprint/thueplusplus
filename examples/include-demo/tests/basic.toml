@@ -1,7 +1,0 @@
-name = "include demo prints greeting sequence"
-program = "../include_demo.tpp"
-
-[expect]
-stdout = "Hello!\nGoodbye!\n"
-stderr = ""
-exit_code = 0

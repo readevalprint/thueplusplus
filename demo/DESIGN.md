@@ -126,7 +126,7 @@ Use Inter/system sans for UI and headings. Use the mono stack only for code, sou
 Desktop layout is a three-part workbench:
 
 1. Example navigator rail.
-2. Input/editor stack for source, stdin, named resources, includes, and run controls.
+2. Input/editor stack for source, stdin, named resources, and run controls.
 3. Observability panel for status and output tabs.
 
 The observability panel may be sticky on wide screens. At tablet/mobile widths the layout collapses to one column in this order: hero, status strip, examples, inputs, outputs.
