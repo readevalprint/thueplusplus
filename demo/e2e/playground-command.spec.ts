@@ -25,10 +25,11 @@ test('clicking a test case loads state and runs through stdio', async ({ page })
   await expect(page.getByTestId('terminal')).toHaveCount(0)
 })
 
-test('run button writes stdout without a shell simulator', async ({ page }) => {
+test('step button writes stdout without a shell simulator', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
 
-  await page.getByTestId('playground-run').click()
+  await expect(page.getByTestId('playground-run')).toHaveCount(0)
+  await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Hello, World!\n')
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue('')
   await expect(page.getByTestId('terminal')).toHaveCount(0)
@@ -45,7 +46,8 @@ test('stdin read step waits until input is submitted', async ({ page }) => {
   await expect(page.getByTestId('stdin-queue')).toHaveCount(0)
   await expect(page.getByTestId('resource-ready-stdin')).toContainText('not ready')
 
-  await page.getByTestId('playground-run').click()
+  await page.getByTestId('playground-step').click()
+  await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
   await expect(page.getByTestId('resource-input-stdin')).toBeFocused()
   await expect(page.getByTestId('playground-state')).toHaveValue(/got:@IN@/)
@@ -53,7 +55,6 @@ test('stdin read step waits until input is submitted', async ({ page }) => {
 
   await page.getByTestId('resource-submit-stdin').click()
   await expect(page.getByTestId('resource-ready-stdin')).toContainText('ready')
-  await page.getByTestId('playground-run').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Ada\n')
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
 })
@@ -71,7 +72,8 @@ test('resource sections are derived from rules and stdio is pinned', async ({ pa
   await page.getByTestId('resource-submit-random').click()
   await page.getByTestId('resource-submit-stdin').click()
 
-  await page.getByTestId('playground-run').click()
+  await page.getByTestId('playground-auto').check()
+  await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n')
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
   await expect(page.getByTestId('resource-input-random')).toHaveValue('')

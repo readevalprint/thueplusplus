@@ -10,8 +10,11 @@
         <select v-model="fileParam" aria-label="example file" @change="loadFile(fileParam)">
           <option v-for="file in availableFiles" :key="file" :value="file">{{ file }}</option>
         </select>
-        <button type="button" data-test="playground-step" :disabled="running" @click="stepProgram">Step</button>
-        <button type="button" data-test="playground-run" :disabled="running" @click="runProgram">{{ runButtonText }}</button>
+        <button type="button" data-test="playground-step" :disabled="running" @click="() => stepProgram()">Step</button>
+        <label class="auto-step-toggle">
+          <input v-model="autoStep" type="checkbox" data-test="playground-auto" :disabled="running" />
+          auto
+        </label>
       </div>
     </header>
 
@@ -132,16 +135,12 @@ const resourceLogs = ref<Record<string, { reads: string[]; writes: string[]; err
 const resourceOutputs = ref<Record<string, string>>({})
 const loadError = ref('')
 const running = ref(false)
+const autoStep = ref(false)
 const statusText = ref('idle')
 const stdoutText = ref('')
 const stderrText = ref('')
 
 const resourceSections = computed(() => extractResources(rulesText.value))
-const runButtonText = computed(() => {
-  if (running.value) return 'Running…'
-  if (isPausedForInput()) return 'Continue'
-  return 'Run'
-})
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -232,11 +231,11 @@ function setResourceInput(name: string, value: string): void {
   resourceReady.value = { ...resourceReady.value, [name]: false }
 }
 
-function submitResource(name: string): void {
+async function submitResource(name: string): Promise<void> {
   const value = resourceInputs.value[name] ?? ''
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
   resourceReady.value = { ...resourceReady.value, [name]: value.length > 0 }
-  if (statusText.value === `waiting for ${name}`) statusText.value = `${name} ready`
+  if (statusText.value === `waiting for ${name}`) await stepProgram(true)
 }
 
 function resourceReadyText(name: string): string {
@@ -267,10 +266,6 @@ function resourceConfigs() {
     inputText: resourceReady.value[resource.name] ? (resourceSubmittedInputs.value[resource.name] ?? '') : '',
     readError: undefined,
   }))
-}
-
-function isPausedForInput(): boolean {
-  return /^waiting for [A-Za-z_][A-Za-z0-9_-]*$/.test(statusText.value) || /^[A-Za-z_][A-Za-z0-9_-]* ready$/.test(statusText.value)
 }
 
 function loadFile(file: string): void {
@@ -324,19 +319,17 @@ async function runProgram(): Promise<void> {
   await executeProgram({ stepLimit: undefined, status: 'running' })
 }
 
-async function stepProgram(): Promise<void> {
-  await executeProgram({ stepLimit: 1, status: 'stepping' })
+async function stepProgram(forceAuto = false): Promise<void> {
+  await executeProgram(forceAuto || autoStep.value ? { stepLimit: undefined, status: 'running' } : { stepLimit: 1, status: 'stepping' })
 }
 
 async function executeProgram(options: { stepLimit?: number; status: string }): Promise<void> {
   if (running.value) return
-  const appendOutputs = isPausedForInput()
   running.value = true
   statusText.value = options.status
   stdoutText.value = ''
   stderrText.value = ''
   resourceLogs.value = {}
-  if (!appendOutputs) resourceOutputs.value = {}
   try {
     const result = await runWithWorker({
       sourceText: rulesText.value,
@@ -353,7 +346,7 @@ async function executeProgram(options: { stepLimit?: number; status: string }): 
     stdoutText.value = result.stdout ?? ''
     const stderr = [result.stderr ?? '', result.error ?? '', result.errors ?? ''].filter(Boolean).join('\n')
     stderrText.value = stderr
-    applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr, appendOutputs)
+    applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
     const pendingResource = pendingInputResource(result)
     if (pendingResource) {
       if (result.state !== undefined) stateText.value = result.state
@@ -380,12 +373,12 @@ function pendingInputResource(result?: { error?: string; errors?: string }): str
   return match?.[1] ?? ''
 }
 
-function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?: string[]; errors?: string[]; remainingInputText?: string; outputText?: string }>, stdout: string, stderr: string, appendOutputs = false): void {
+function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?: string[]; errors?: string[]; remainingInputText?: string; outputText?: string }>, stdout: string, stderr: string): void {
   const nextLogs: Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }> = {}
   const nextInputs = { ...resourceInputs.value }
   const nextSubmittedInputs = { ...resourceSubmittedInputs.value }
   const nextReady = { ...resourceReady.value }
-  const nextOutputs: Record<string, string> = appendOutputs ? { ...resourceOutputs.value } : {}
+  const nextOutputs: Record<string, string> = { ...resourceOutputs.value }
   for (const log of logs) {
     const normalized = {
       reads: log.reads ?? [],
@@ -401,12 +394,12 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
       nextReady[log.name] = log.remainingInputText.length > 0
     }
     const outputText = log.outputText ?? (normalized.writes.length > 0 ? normalized.writes.join('') : undefined)
-    if (outputText !== undefined) nextOutputs[log.name] = appendOutputs ? `${nextOutputs[log.name] ?? ''}${outputText}` : outputText
+    if (outputText !== undefined) nextOutputs[log.name] = `${nextOutputs[log.name] ?? ''}${outputText}`
   }
   const hasStdoutLog = logs.some(log => log.name === 'stdout' && (log.outputText !== undefined || (log.writes?.length ?? 0) > 0))
   const hasStderrLog = logs.some(log => log.name === 'stderr' && (log.outputText !== undefined || (log.writes?.length ?? 0) > 0))
-  if (stdout && !hasStdoutLog) nextOutputs.stdout = appendOutputs ? `${nextOutputs.stdout ?? ''}${stdout}` : stdout
-  if (stderr && !hasStderrLog) nextOutputs.stderr = appendOutputs ? `${nextOutputs.stderr ?? ''}${stderr}` : stderr
+  if (stdout && !hasStdoutLog) nextOutputs.stdout = `${nextOutputs.stdout ?? ''}${stdout}`
+  if (stderr && !hasStderrLog) nextOutputs.stderr = `${nextOutputs.stderr ?? ''}${stderr}`
   resourceLogs.value = nextLogs
   resourceInputs.value = nextInputs
   resourceSubmittedInputs.value = nextSubmittedInputs
