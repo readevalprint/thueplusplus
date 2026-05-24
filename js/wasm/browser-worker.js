@@ -68,9 +68,10 @@ function buildResources(options) {
           return { error: String(config.readError) };
         }
         if (!buffer.text) {
-          log.errors.push('timeout');
+          const pending = `pending_input:${name}`;
+          log.errors.push(pending);
           log.remainingInputText = buffer.text;
-          return { error: 'timeout' };
+          return { error: pending };
         }
         const line = shiftLine(buffer);
         log.reads.push(line);
@@ -82,6 +83,12 @@ function buildResources(options) {
           log.errors.push(String(config.readError));
           log.remainingInputText = buffer.text;
           return { error: String(config.readError) };
+        }
+        if (!buffer.text) {
+          const pending = `pending_input:${name}`;
+          log.errors.push(pending);
+          log.remainingInputText = buffer.text;
+          return { error: pending };
         }
         const text = buffer.text;
         buffer.text = '';

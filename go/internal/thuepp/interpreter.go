@@ -81,6 +81,7 @@ type Interpreter struct {
 	Bindings           map[string]*Binding
 	MaxEvals           *int
 	MaxStateBytes      *int
+	MaxSteps           *int
 	EvalCount          int
 	Debug              bool
 	Stdout             io.Writer
@@ -1047,6 +1048,7 @@ type stateRow struct {
 }
 
 func (i *Interpreter) Run() (int, error) {
+	appliedSteps := 0
 	for {
 		var rows []stateRow
 		parts := strings.Split(i.State, "\n")
@@ -1176,6 +1178,10 @@ func (i *Interpreter) Run() (int, error) {
 				return 1, err
 			}
 			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
+			appliedSteps++
+			if i.MaxSteps != nil && appliedSteps >= *i.MaxSteps {
+				return 0, nil
+			}
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
 			}
