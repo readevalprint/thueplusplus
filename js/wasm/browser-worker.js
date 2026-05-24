@@ -48,70 +48,61 @@ function shiftLine(buffer) {
 function buildResources(options) {
   const logs = [];
   const resources = {};
-
-  const stdinBuffer = { text: String(options.input || '') };
-  logs.push({ name: 'stdin', reads: [], writes: [], errors: [] });
-  resources.stdin = {
-    readLine() {
-      const line = shiftLine(stdinBuffer);
-      logs[0].reads.push(line);
-      return line;
-    },
-    readAll() {
-      const text = stdinBuffer.text;
-      stdinBuffer.text = '';
-      logs[0].reads.push(text);
-      return text;
-    },
-    write(text) {
-      logs[0].writes.push(String(text));
-      return '';
-    },
-  };
-
-  const configs = Array.isArray(options.resourceConfig) ? options.resourceConfig : [];
-  for (const config of configs) {
+  const configsByName = new Map();
+  for (const config of Array.isArray(options.resourceConfig) ? options.resourceConfig : []) {
     const name = String(config && config.name || '').trim();
-    if (!name) continue;
-    const log = { name, reads: [], writes: [], errors: [] };
-    const readQueue = Array.isArray(config.readLines) ? [...config.readLines] : splitLines(config.readLines || '');
-    const echoBuffer = { text: '' };
+    if (name) configsByName.set(name, config);
+  }
+
+  function addResource(name, fallbackInput = '') {
+    if (resources[name]) return;
+    const config = configsByName.get(name) || {};
+    const buffer = { text: String(config.inputText ?? fallbackInput) };
+    const log = { name, reads: [], writes: [], errors: [], remainingInputText: buffer.text, outputText: '' };
     logs.push(log);
     resources[name] = {
       readLine() {
         if (config.readError) {
           log.errors.push(String(config.readError));
+          log.remainingInputText = buffer.text;
           return { error: String(config.readError) };
         }
-        const value = readQueue.length > 0 ? readQueue.shift() : (echoBuffer.text ? shiftLine(echoBuffer) : undefined);
-        if (value === undefined) {
+        if (!buffer.text) {
           log.errors.push('timeout');
+          log.remainingInputText = buffer.text;
           return { error: 'timeout' };
         }
-        log.reads.push(String(value));
-        return String(value);
+        const line = shiftLine(buffer);
+        log.reads.push(line);
+        log.remainingInputText = buffer.text;
+        return line;
       },
       readAll() {
         if (config.readError) {
           log.errors.push(String(config.readError));
+          log.remainingInputText = buffer.text;
           return { error: String(config.readError) };
         }
-        const queued = readQueue.splice(0).join('\n');
-        const echoText = echoBuffer.text;
-        echoBuffer.text = '';
-        const all = queued && echoText ? `${queued}\n${echoText}` : queued || echoText;
-        log.reads.push(all);
-        return all;
+        const text = buffer.text;
+        buffer.text = '';
+        log.reads.push(text);
+        log.remainingInputText = buffer.text;
+        return text;
       },
       write(text) {
         const value = String(text);
         log.writes.push(value);
-        if (config.echoWrites) echoBuffer.text += value;
+        log.outputText += value;
         return '';
       },
       close() {},
     };
   }
+
+  addResource('stdin', options.input || '');
+  addResource('stdout');
+  addResource('stderr');
+  for (const name of configsByName.keys()) addResource(name);
 
   return { resources, logs };
 }

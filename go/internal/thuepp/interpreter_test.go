@@ -92,3 +92,35 @@ func TestLoadProgramTextRejectsIncludes(t *testing.T) {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
+
+func TestTraceRecordsAppliedRuleStateAndCaptures(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.TraceEnabled = true
+	if err := interp.LoadProgramText("trace.tpp", "^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}\nhello Ada"); err != nil {
+		t.Fatalf("LoadProgramText: %v", err)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d", code)
+	}
+	if len(interp.Trace) != 1 {
+		t.Fatalf("trace length = %d, want 1", len(interp.Trace))
+	}
+	event := interp.Trace[0]
+	if event.Step == 0 || event.RuleIndex != 0 || event.SourcePath != "trace.tpp" || event.LineNumber != 1 || event.Operator != Substitute {
+		t.Fatalf("unexpected event metadata: %#v", event)
+	}
+	if event.StateBefore != "hello Ada" || event.Replacement != "hi Ada" || event.StateAfter != "hi Ada" {
+		t.Fatalf("unexpected state transition: %#v", event)
+	}
+	if event.Groups["name"] != "Ada" {
+		t.Fatalf("groups = %#v", event.Groups)
+	}
+}

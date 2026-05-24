@@ -8,7 +8,11 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "../js/wasm/*.js"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "../js/wasm/*.js"],
+  "exclude": ["src/DesignLab.vue"]
 }

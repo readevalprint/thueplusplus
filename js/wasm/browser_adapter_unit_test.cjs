@@ -93,12 +93,17 @@ async function rejectsWith(promise, pattern) {
   assert.strictEqual(mixedStdin.resources.stdin.readAll(), 'Lovelace\n');
 
   const resource = internals.buildResources({
-    resourceConfig: [{ name: 'echo', readLines: [], echoWrites: true }],
+    resourceConfig: [{ name: 'echo', inputText: '  ping  \nlast' }],
   });
-  resource.resources.echo.write('  ping  \n');
+  resource.resources.echo.write('ignored by reads\n');
   assert.strictEqual(resource.resources.echo.readLine(), '  ping  ');
-  assert.deepStrictEqual(Array.from(resource.logs[1].writes), ['  ping  \n']);
-  assert.deepStrictEqual(Array.from(resource.logs[1].reads), ['  ping  ']);
+  assert.strictEqual(resource.resources.echo.readLine(), 'last');
+  assert.strictEqual(resource.resources.echo.readAll(), '');
+  const echoLog = resource.logs.find((log) => log.name === 'echo');
+  assert.deepStrictEqual(Array.from(echoLog.writes), ['ignored by reads\n']);
+  assert.deepStrictEqual(Array.from(echoLog.reads), ['  ping  ', 'last', '']);
+  assert.strictEqual(echoLog.remainingInputText, '');
+  assert.strictEqual(echoLog.outputText, 'ignored by reads\n');
 
   console.log('browser adapter unit tests ok');
 })().catch((err) => {

@@ -1,7 +1,6 @@
 export interface DemoResourceConfig {
   name: string
-  readLines: string[]
-  echoWrites: boolean
+  inputText: string
   readError?: string
 }
 
@@ -14,6 +13,9 @@ export interface DemoRunRequest {
   coverage: boolean
   include: Record<string, string>
   resources: DemoResourceConfig[]
+  procs?: Record<string, string>
+  trace?: boolean
+  stepLimit?: number
 }
 
 export interface DemoResourceLog {
@@ -21,6 +23,24 @@ export interface DemoResourceLog {
   reads: string[]
   writes: string[]
   errors: string[]
+  remainingInputText?: string
+  outputText?: string
+}
+
+export interface DemoTraceEvent {
+  step: number
+  ruleIndex: number
+  sourcePath: string
+  lineNumber: number
+  operator: string
+  lhs: string
+  matchStart: number
+  matchEnd: number
+  groups: Record<string, string>
+  stateBefore: string
+  replacement: string
+  stateAfter: string
+  exitCode?: number
 }
 
 export interface DemoRunResult {
@@ -32,6 +52,7 @@ export interface DemoRunResult {
   error?: string
   errors?: string
   resourceLogs?: DemoResourceLog[]
+  trace?: DemoTraceEvent[]
 }
 
 interface WorkerClient {
@@ -65,6 +86,9 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
       coverage: request.coverage,
       include: request.include,
       resourceConfig: request.resources,
+      procs: request.procs,
+      trace: request.trace,
+      stepLimit: request.stepLimit,
     })
     return {
       ...result,
