@@ -409,7 +409,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada')
     expect(wrapper.find('[data-test="stdin-send"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="stdin-queue"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="resource-ready-stdin"]').text()).toContain('not ready')
+    expect(wrapper.find('[data-test="resource-ready-stdin"]').exists()).toBe(false)
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 1,
