@@ -395,7 +395,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
 function appendStateDiffs(trace: DemoTraceEvent[]): void {
   const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index))
   if (entries.length === 0) return
-  stateDiffs.value = [...stateDiffs.value, ...entries]
+  stateDiffs.value = [...entries.reverse(), ...stateDiffs.value]
 }
 
 function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] {

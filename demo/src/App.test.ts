@@ -262,6 +262,35 @@ describe('Go-WASM demo UI', () => {
     expect(diffs.text()).not.toContain('z'.repeat(80))
   })
 
+  it('places newer step diffs above older diffs', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
+    await wrapper.get('[data-test="playground-auto"]').setValue(true)
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'done',
+      trace: [
+        { step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' },
+        { step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' },
+      ],
+      resourceLogs: [],
+    })
+
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    const entries = wrapper.findAll('.state-diff-entry')
+    expect(entries).toHaveLength(2)
+    expect(entries[0].text()).toContain('#2 row 2')
+    expect(entries[0].text()).toContain('^middle$ ::= done')
+    expect(entries[1].text()).toContain('#1 row 1')
+    expect(entries[1].text()).toContain('^start$ ::= middle')
+  })
+
   it('keeps resource output as an append-only transcript across steps', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App)
