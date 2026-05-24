@@ -51,6 +51,7 @@ export interface DemoRunResult {
   coverageTSV?: string
   error?: string
   errors?: string
+  state?: string
   resourceLogs?: DemoResourceLog[]
   trace?: DemoTraceEvent[]
 }

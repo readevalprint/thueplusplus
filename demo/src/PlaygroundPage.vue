@@ -10,7 +10,8 @@
         <select v-model="fileParam" aria-label="example file" @change="loadFile(fileParam)">
           <option v-for="file in availableFiles" :key="file" :value="file">{{ file }}</option>
         </select>
-        <button type="button" data-test="playground-run" :disabled="running" @click="runProgram">{{ running ? 'Running…' : 'Run' }}</button>
+        <button type="button" data-test="playground-step" :disabled="running" @click="stepProgram">Step</button>
+        <button type="button" data-test="playground-run" :disabled="running" @click="runProgram">{{ runButtonText }}</button>
       </div>
     </header>
 
@@ -34,7 +35,7 @@
         <section class="playground-pane">
           <div class="panel-heading compact-heading">
             <div>
-              <span class="panel-label">initial state</span>
+              <span class="panel-label">State</span>
             </div>
           </div>
           <textarea v-model="stateText" data-test="playground-state" spellcheck="false" wrap="off" />
@@ -69,6 +70,10 @@
                   wrap="off"
                   @input="setResourceInput(resource.name, ($event.target as HTMLTextAreaElement).value)"
                 />
+                <span class="resource-submit-row">
+                  <button type="button" :data-test="`resource-submit-${resource.name}`" :disabled="running" @click="submitResource(resource.name)">Submit</button>
+                  <span class="resource-ready" :data-test="`resource-ready-${resource.name}`">{{ resourceReadyText(resource.name) }}</span>
+                </span>
               </label>
               <label v-if="showResourceOutput(resource)" class="resource-field">
                 <span>output</span>
@@ -89,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import TestCaseCommand from './TestCaseCommand.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
@@ -121,6 +126,8 @@ const sourcePath = ref(initialFile.replace(/^\.\//, ''))
 const rulesText = ref('')
 const stateText = ref('')
 const resourceInputs = ref<Record<string, string>>({})
+const resourceSubmittedInputs = ref<Record<string, string>>({})
+const resourceReady = ref<Record<string, boolean>>({})
 const resourceLogs = ref<Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }>>({})
 const resourceOutputs = ref<Record<string, string>>({})
 const loadError = ref('')
@@ -129,8 +136,12 @@ const statusText = ref('idle')
 const stdoutText = ref('')
 const stderrText = ref('')
 
-const composedSource = computed(() => composeSource(rulesText.value, stateText.value))
 const resourceSections = computed(() => extractResources(rulesText.value))
+const runButtonText = computed(() => {
+  if (running.value) return 'Running…'
+  if (isPausedForInput()) return 'Continue'
+  return 'Run'
+})
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -168,14 +179,6 @@ function isProgramHeaderLine(line: string): boolean {
     || trimmed.startsWith('@include ')
     || /^[A-Z][A-Z0-9_]*\s*<-/.test(trimmed)
     || /(^|[^\\])::[=<>!%-]/.test(line)
-}
-
-function composeSource(rules: string, state: string): string {
-  const left = rules.replace(/\s+$/g, '')
-  const right = state.replace(/^\s+|\s+$/g, '')
-  if (!left) return right
-  if (!right) return `${left}\n`
-  return `${left}\n\n${right}\n`
 }
 
 function includeMapFor(programPath: string): Record<string, string> {
@@ -226,6 +229,24 @@ function markResource(resources: Map<string, ResourceUsage>, name: string, mode:
 
 function setResourceInput(name: string, value: string): void {
   resourceInputs.value = { ...resourceInputs.value, [name]: value }
+  resourceReady.value = { ...resourceReady.value, [name]: false }
+}
+
+function submitResource(name: string): void {
+  const value = resourceInputs.value[name] ?? ''
+  resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
+  resourceReady.value = { ...resourceReady.value, [name]: value.length > 0 }
+  if (statusText.value === `waiting for ${name}`) statusText.value = `${name} ready`
+}
+
+function resourceReadyText(name: string): string {
+  return resourceReady.value[name] ? 'ready' : 'not ready'
+}
+
+async function focusResourceInput(name: string): Promise<void> {
+  await nextTick()
+  const input = document.querySelector(`[data-test="resource-input-${name}"]`) as HTMLTextAreaElement | null
+  input?.focus()
 }
 
 function showResourceInput(resource: ResourceUsage): boolean {
@@ -243,9 +264,13 @@ function resourceOutputText(name: string): string {
 function resourceConfigs() {
   return resourceSections.value.map(resource => ({
     name: resource.name,
-    inputText: resourceInputs.value[resource.name] ?? '',
+    inputText: resourceReady.value[resource.name] ? (resourceSubmittedInputs.value[resource.name] ?? '') : '',
     readError: undefined,
   }))
+}
+
+function isPausedForInput(): boolean {
+  return /^waiting for [A-Za-z_][A-Za-z0-9_-]*$/.test(statusText.value) || /^[A-Za-z_][A-Za-z0-9_-]* ready$/.test(statusText.value)
 }
 
 function loadFile(file: string): void {
@@ -264,6 +289,7 @@ function loadFile(file: string): void {
   rulesText.value = split.rules
   stateText.value = split.state
   clearRun()
+  resourceInputs.value = {}
   const url = new URL(window.location.href)
   url.searchParams.set('file', normalized)
   window.history.replaceState({}, '', url)
@@ -273,7 +299,9 @@ async function selectTestCase(testCase: TestCaseOption): Promise<void> {
   const file = `./${testCase.programPath}`
   loadFile(file)
   stateText.value = testCase.input
-  setResourceInput('stdin', testCase.stdin ?? '')
+  resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
+  resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, stdin: testCase.stdin ?? '' }
+  resourceReady.value = { ...resourceReady.value, stdin: Boolean(testCase.stdin) }
   const url = new URL(window.location.href)
   url.searchParams.set('test', `./${testCase.manifestPath}`)
   url.searchParams.set('case', testCase.id.split('::').at(-1) ?? testCase.caseName)
@@ -288,35 +316,55 @@ function clearRun(): void {
   stderrText.value = ''
   resourceLogs.value = {}
   resourceOutputs.value = {}
+  resourceSubmittedInputs.value = {}
+  resourceReady.value = {}
 }
 
 async function runProgram(): Promise<void> {
+  await executeProgram({ stepLimit: undefined, status: 'running' })
+}
+
+async function stepProgram(): Promise<void> {
+  await executeProgram({ stepLimit: 1, status: 'stepping' })
+}
+
+async function executeProgram(options: { stepLimit?: number; status: string }): Promise<void> {
   if (running.value) return
+  const appendOutputs = isPausedForInput()
   running.value = true
-  statusText.value = 'running'
+  statusText.value = options.status
   stdoutText.value = ''
   stderrText.value = ''
   resourceLogs.value = {}
-  resourceOutputs.value = {}
+  if (!appendOutputs) resourceOutputs.value = {}
   try {
     const result = await runWithWorker({
-      sourceText: composedSource.value,
+      sourceText: rulesText.value,
       sourcePath: sourcePath.value,
-      input: '',
+      input: stateText.value,
       maxEvals: 10_000,
       maxStateBytes: 1_000_000,
       coverage: false,
       include: includeMapFor(sourcePath.value),
       resources: resourceConfigs(),
-      trace: false,
+      trace: options.stepLimit !== undefined,
+      stepLimit: options.stepLimit,
     })
     stdoutText.value = result.stdout ?? ''
     const stderr = [result.stderr ?? '', result.error ?? '', result.errors ?? ''].filter(Boolean).join('\n')
     stderrText.value = stderr
-    applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
-    const stdinLog = resourceLogs.value.stdin
-    if (stdinLog?.errors.includes('timeout')) statusText.value = 'waiting for stdin'
-    else statusText.value = `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
+    applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr, appendOutputs)
+    const pendingResource = pendingInputResource(result)
+    if (pendingResource) {
+      if (result.state !== undefined) stateText.value = result.state
+      else if (result.trace && result.trace.length > 0) stateText.value = result.trace[result.trace.length - 1].stateAfter
+      statusText.value = `waiting for ${pendingResource}`
+      await focusResourceInput(pendingResource)
+    } else {
+      if (result.state !== undefined) stateText.value = result.state
+      else if (result.trace && result.trace.length > 0) stateText.value = result.trace[result.trace.length - 1].stateAfter
+      statusText.value = options.stepLimit === 1 ? 'stepped' : `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
+    }
   } catch (error) {
     stderrText.value = error instanceof Error ? error.message : String(error)
     resourceOutputs.value = { ...resourceOutputs.value, stderr: stderrText.value }
@@ -326,10 +374,18 @@ async function runProgram(): Promise<void> {
   }
 }
 
-function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?: string[]; errors?: string[]; remainingInputText?: string; outputText?: string }>, stdout: string, stderr: string): void {
+function pendingInputResource(result?: { error?: string; errors?: string }): string {
+  const text = [result?.error ?? '', result?.errors ?? '', ...Object.values(resourceLogs.value).flatMap(log => log.errors)].join('\n')
+  const match = text.match(/pending_input:([A-Za-z_][A-Za-z0-9_-]*)/)
+  return match?.[1] ?? ''
+}
+
+function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?: string[]; errors?: string[]; remainingInputText?: string; outputText?: string }>, stdout: string, stderr: string, appendOutputs = false): void {
   const nextLogs: Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }> = {}
   const nextInputs = { ...resourceInputs.value }
-  const nextOutputs: Record<string, string> = {}
+  const nextSubmittedInputs = { ...resourceSubmittedInputs.value }
+  const nextReady = { ...resourceReady.value }
+  const nextOutputs: Record<string, string> = appendOutputs ? { ...resourceOutputs.value } : {}
   for (const log of logs) {
     const normalized = {
       reads: log.reads ?? [],
@@ -339,14 +395,22 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
       outputText: log.outputText,
     }
     nextLogs[log.name] = normalized
-    if (log.remainingInputText !== undefined) nextInputs[log.name] = log.remainingInputText
-    if (log.outputText !== undefined) nextOutputs[log.name] = log.outputText
-    else if (normalized.writes.length > 0) nextOutputs[log.name] = normalized.writes.join('')
+    if (log.remainingInputText !== undefined && nextReady[log.name]) {
+      nextInputs[log.name] = log.remainingInputText
+      nextSubmittedInputs[log.name] = log.remainingInputText
+      nextReady[log.name] = log.remainingInputText.length > 0
+    }
+    const outputText = log.outputText ?? (normalized.writes.length > 0 ? normalized.writes.join('') : undefined)
+    if (outputText !== undefined) nextOutputs[log.name] = appendOutputs ? `${nextOutputs[log.name] ?? ''}${outputText}` : outputText
   }
-  if (!nextOutputs.stdout && stdout) nextOutputs.stdout = stdout
-  if (!nextOutputs.stderr && stderr) nextOutputs.stderr = stderr
+  const hasStdoutLog = logs.some(log => log.name === 'stdout' && (log.outputText !== undefined || (log.writes?.length ?? 0) > 0))
+  const hasStderrLog = logs.some(log => log.name === 'stderr' && (log.outputText !== undefined || (log.writes?.length ?? 0) > 0))
+  if (stdout && !hasStdoutLog) nextOutputs.stdout = appendOutputs ? `${nextOutputs.stdout ?? ''}${stdout}` : stdout
+  if (stderr && !hasStderrLog) nextOutputs.stderr = appendOutputs ? `${nextOutputs.stderr ?? ''}${stderr}` : stderr
   resourceLogs.value = nextLogs
   resourceInputs.value = nextInputs
+  resourceSubmittedInputs.value = nextSubmittedInputs
+  resourceReady.value = nextReady
   resourceOutputs.value = nextOutputs
 }
 

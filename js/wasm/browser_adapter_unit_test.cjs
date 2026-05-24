@@ -98,10 +98,11 @@ async function rejectsWith(promise, pattern) {
   resource.resources.echo.write('ignored by reads\n');
   assert.strictEqual(resource.resources.echo.readLine(), '  ping  ');
   assert.strictEqual(resource.resources.echo.readLine(), 'last');
-  assert.strictEqual(resource.resources.echo.readAll(), '');
+  assert.strictEqual(resource.resources.echo.readAll().error, 'pending_input:echo');
   const echoLog = resource.logs.find((log) => log.name === 'echo');
   assert.deepStrictEqual(Array.from(echoLog.writes), ['ignored by reads\n']);
-  assert.deepStrictEqual(Array.from(echoLog.reads), ['  ping  ', 'last', '']);
+  assert.deepStrictEqual(Array.from(echoLog.reads), ['  ping  ', 'last']);
+  assert.deepStrictEqual(Array.from(echoLog.errors), ['pending_input:echo']);
   assert.strictEqual(echoLog.remainingInputText, '');
   assert.strictEqual(echoLog.outputText, 'ignored by reads\n');
 

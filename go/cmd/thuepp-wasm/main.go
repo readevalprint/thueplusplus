@@ -57,6 +57,7 @@ type wasmResult struct {
 	Errors      []string
 	CoverageTSV string
 	Trace       []thuepp.TraceEvent
+	State       string
 }
 
 func main() {
@@ -109,6 +110,9 @@ func run(args []js.Value) wasmResult {
 	if err := applyIntOption(opts, "maxStateBytes", &interp.MaxStateBytes); err != nil {
 		return errorResult(err.Error())
 	}
+	if err := applyIntOption(opts, "stepLimit", &interp.MaxSteps); err != nil {
+		return errorResult(err.Error())
+	}
 	interp.TraceEnabled = truthy(opts.Get("trace"))
 	if resources := opts.Get("resources"); resources.Type() == js.TypeObject {
 		keys := js.Global().Get("Object").Call("keys", resources)
@@ -138,9 +142,16 @@ func run(args []js.Value) wasmResult {
 	if err := interp.LoadProgramTextWithInclude(sourcePath, sourceText, includeLoader); err != nil {
 		return resultWithError(stdout.String(), stderr.String(), err.Error())
 	}
+	if input, err := optionalString(opts, "input", ""); err != nil {
+		return errorResult(err.Error())
+	} else if input != "" {
+		if err := interp.ApplyInputOverride(input); err != nil {
+			return resultWithError(stdout.String(), stderr.String(), err.Error())
+		}
+	}
 	exitCode, runErr := interp.Run()
 	interp.Cleanup()
-	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String()}
+	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State}
 	if runErr != nil {
 		res.ExitCode = 1
 		res.Error = runErr.Error()
@@ -177,7 +188,7 @@ func includeLoaderFrom(v js.Value) (thuepp.IncludeLoader, error) {
 }
 
 func resultToJS(r wasmResult) js.Value {
-	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n")}
+	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State}
 	if r.Error != "" {
 		obj["error"] = r.Error
 	}
