@@ -1,0 +1,5 @@
+program = "../invalid-data-operator.tpp"
+
+[expect]
+exit_code = 1
+stderr_contains = ["Invalid rule syntax: ^x$ ::% data"]

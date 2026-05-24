@@ -38,6 +38,13 @@ class Operator(Enum):
     BUILTIN = "::!"
 
 
+@dataclass(frozen=True)
+class SourceRow:
+    text: str
+    source_path: str
+    source_line: int
+
+
 @dataclass
 class Rule:
     """A single thue++ rule."""
@@ -112,6 +119,28 @@ class ThueppInterpreter:
 
     def _alias_line_number(self, fallback_line: int, current_source: tuple[str, int] | None) -> int:
         return current_source[1] if current_source else fallback_line
+
+    def _iter_source_rows(self, content: str) -> list[SourceRow]:
+        rows: list[SourceRow] = []
+        current_source: tuple[str, int] | None = None
+        for line_number, line in enumerate(content.splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith("# thuepp-source: "):
+                marker = stripped[len("# thuepp-source: "):]
+                source_path, sep, source_line = marker.rpartition(":")
+                if sep and source_line.isdigit():
+                    current_source = (source_path, int(source_line))
+                continue
+            source_path, source_line = current_source or (self.program_path, line_number)
+            rows.append(SourceRow(line, source_path, source_line))
+        return rows
+
+    def _annotated_content_from_rows(self, rows: list[SourceRow]) -> str:
+        lines: list[str] = []
+        for row in rows:
+            lines.append(f"# thuepp-source: {row.source_path}:{row.source_line}")
+            lines.append(row.text)
+        return "\n".join(lines)
 
     def _expand_alias_refs(self, pattern: str, aliases: dict[str, str], line_number: int) -> str:
         invalid = INVALID_ALIAS_TOKEN_RE.search(pattern)
@@ -193,13 +222,25 @@ class ThueppInterpreter:
         return '\n'.join(result_lines)
 
     def _parse_program(self, content: str) -> None:
-        """Compile source rules once and load non-rule rows as mutable data."""
-        content = self._expand_patterns(content)
+        """Compile source rules once and load the optional final one-row state."""
+        source_rows = self._iter_source_rows(content)
+        separator_index = next((index for index, row in enumerate(source_rows) if row.text.strip() == "::="), None)
+        if separator_index is not None:
+            prefix_rows = source_rows[:separator_index]
+            state_rows = source_rows[separator_index + 1:]
+            if len(state_rows) > 1:
+                first_extra = state_rows[1]
+                raise RuntimeError(
+                    f"Line {first_extra.source_line}: State section after ::= must contain at most one row"
+                )
+        else:
+            prefix_rows = source_rows
+            state_rows = []
+
+        content = self._expand_patterns(self._annotated_content_from_rows(prefix_rows))
         self.rules = []
-        rows = []
-        sources = []
         current_source: tuple[str, int] | None = None
-        for line_number, line in enumerate(content.split("\n"), 1):
+        for line_number, line in enumerate(content.splitlines(), 1):
             stripped = line.strip()
             if stripped.startswith("# thuepp-source: "):
                 marker = stripped[len("# thuepp-source: "):]
@@ -211,15 +252,10 @@ class ThueppInterpreter:
             rule = self._parse_rule(line, source_line, source_path)
             if rule is not None:
                 self.rules.append(rule)
-            else:
-                rows.append(line)
-                sources.append((source_path, source_line))
-        while rows and rows[-1] == "":
-            rows.pop()
-            sources.pop()
-        self._initial_rows = list(rows)
-        self._row_sources = sources
-        self.state = "\n".join(rows)
+
+        self._initial_rows = [row.text for row in state_rows]
+        self._row_sources = [(row.source_path, row.source_line) for row in state_rows]
+        self.state = state_rows[0].text if state_rows else ""
 
     def apply_input_override(self, value: str) -> None:
         """Replace source data rows with explicit input while preserving compiled rules."""

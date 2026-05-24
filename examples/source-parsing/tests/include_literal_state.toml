@@ -1,0 +1,6 @@
+program = "../include-literal-state.tpp"
+
+[expect]
+exit_code = 0
+stdout = "include-literal"
+stderr = ""

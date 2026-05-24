@@ -26,7 +26,7 @@ function request(worker, message) {
 
   const hello = await thuepp.run({
     sourcePath: 'adapter-hello.tpp',
-    sourceText: '^hello$ ::> stdout Hello, World!\\n\nhello',
+    sourceText: '^hello$ ::> stdout Hello, World!\\n\n::=\nhello',
     coverage: true,
     maxEvals: 10,
   });
@@ -35,7 +35,7 @@ function request(worker, message) {
   assert.match(hello.coverageTSV || '', /adapter-hello\.tpp:1\t1/);
 
   const stdin = await thuepp.run({
-    sourceText: '^start$ ::< 1 stdin\n^(?<name>[A-Za-z]+)$ ::> stdout hello {{name|pctdec}}!\\n\nstart',
+    sourceText: '^start$ ::< 1 stdin\n^(?<name>[A-Za-z]+)$ ::> stdout hello {{name|pctdec}}!\\n\n::=\nstart',
     resources: { stdin: { readLine: () => 'Ada' } },
   });
   assert.strictEqual(stdin.exitCode, 0, JSON.stringify(stdin));
@@ -43,7 +43,7 @@ function request(worker, message) {
 
   const queue = [];
   const roundtrip = await thuepp.run({
-    sourceText: '^start$ ::= WRITE\\nread\n^WRITE$ ::> echo ping\\n\n^read$ ::= response:@R@\n@R@ ::< 1 echo\n^response:(?<value>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*)$ ::> stdout {{value|pctdec}}\n\nstart',
+    sourceText: '^start$ ::= WRITE\\nread\n^WRITE$ ::> echo ping\\n\n^read$ ::= response:@R@\n@R@ ::< 1 echo\n^response:(?<value>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*)$ ::> stdout {{value|pctdec}}\n\n::=\nstart',
     resources: {
       echo: {
         write: (text) => queue.push(text.trim()),
@@ -54,12 +54,12 @@ function request(worker, message) {
   assert.strictEqual(roundtrip.exitCode, 0, JSON.stringify(roundtrip));
   assert.strictEqual(roundtrip.stdout, 'ping');
 
-  const missing = await thuepp.run({ sourceText: '^start$ ::< 5 missing\nstart' });
+  const missing = await thuepp.run({ sourceText: '^start$ ::< 5 missing\n::=\nstart' });
   assert.strictEqual(missing.exitCode, 1, JSON.stringify(missing));
   assert.match(missing.error || '', /Unknown resource 'missing'/);
 
   const timeout = await thuepp.run({
-    sourceText: '^start$ ::< 1 sleepy\nstart',
+    sourceText: '^start$ ::< 1 sleepy\n::=\nstart',
     resources: { sleepy: { readLine: () => ({ error: 'timeout' }) } },
   });
   assert.strictEqual(timeout.exitCode, 1, JSON.stringify(timeout));
@@ -67,7 +67,7 @@ function request(worker, message) {
 
   const inertInclude = await thuepp.run({
     sourcePath: 'main.tpp',
-    sourceText: '@include lib.tpp',
+    sourceText: '::=\n@include lib.tpp',
   });
   assert.strictEqual(inertInclude.exitCode, 0, JSON.stringify(inertInclude));
   assert.strictEqual(inertInclude.stdout, '');
@@ -75,7 +75,7 @@ function request(worker, message) {
 
   const invalidData = await thuepp.run({
     sourcePath: 'bad.tpp',
-    sourceText: '^x$ ::% data\nx',
+    sourceText: '^x$ ::% data\n::=\nx',
   });
   assert.strictEqual(invalidData.exitCode, 1, JSON.stringify(invalidData));
   assert.match(invalidData.error || '', /Invalid rule syntax: \^x\$ ::% data/);
@@ -86,7 +86,7 @@ function request(worker, message) {
   try {
     const workerHello = await request(worker, {
       type: 'run',
-      options: { sourceText: '^hello$ ::> stdout worker\\n\nhello' },
+      options: { sourceText: '^hello$ ::> stdout worker\\n\n::=\nhello' },
     });
     assert.strictEqual(workerHello.exitCode, 0, JSON.stringify(workerHello));
     assert.strictEqual(workerHello.stdout, 'worker\n');

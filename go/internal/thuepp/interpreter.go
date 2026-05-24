@@ -52,6 +52,12 @@ type Rule struct {
 	BuiltinArgs []string
 }
 
+type sourceRow struct {
+	Text       string
+	SourcePath string
+	SourceLine int
+}
+
 type Binding struct {
 	Name          string
 	PathOrCommand string
@@ -180,6 +186,50 @@ func aliasLineNumber(fallbackLine int, currentSourceLine int) int {
 	return fallbackLine
 }
 
+func splitAnnotatedLines(content string) []string {
+	if content == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimSuffix(content, "\n"), "\n")
+}
+
+func iterSourceRows(content string, programPath string) []sourceRow {
+	var rows []sourceRow
+	currentSourcePath := programPath
+	currentSourceLine := 0
+	for lineNumber, line := range splitAnnotatedLines(content) {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "# thuepp-source: ") {
+			marker := strings.TrimPrefix(trimmed, "# thuepp-source: ")
+			if idx := strings.LastIndex(marker, ":"); idx >= 0 {
+				if sourceLine, err := strconv.Atoi(marker[idx+1:]); err == nil {
+					currentSourcePath = marker[:idx]
+					currentSourceLine = sourceLine
+				}
+			}
+			continue
+		}
+		sourceLine := currentSourceLine
+		if sourceLine == 0 {
+			sourceLine = lineNumber + 1
+		}
+		rows = append(rows, sourceRow{Text: line, SourcePath: currentSourcePath, SourceLine: sourceLine})
+	}
+	return rows
+}
+
+func annotatedContentFromRows(rows []sourceRow) string {
+	var b strings.Builder
+	for idx, row := range rows {
+		if idx > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(fmt.Sprintf("# thuepp-source: %s:%d\n", row.SourcePath, row.SourceLine))
+		b.WriteString(row.Text)
+	}
+	return b.String()
+}
+
 func expandAliasRefs(pattern string, aliases map[string]string, lineNumber int) (string, error) {
 	if match := invalidAliasTokenPattern.FindStringSubmatch(pattern); match != nil {
 		name := match[1]
@@ -231,7 +281,7 @@ func expandPatterns(content string) (string, error) {
 	aliases := map[string]string{}
 	var out []string
 	currentSourceLine := 0
-	for idx, line := range strings.Split(content, "\n") {
+	for idx, line := range splitAnnotatedLines(content) {
 		lineNumber := idx + 1
 		stripped := strings.TrimSpace(line)
 		if strings.HasPrefix(stripped, "# thuepp-source: ") {
@@ -280,16 +330,34 @@ func expandPatterns(content string) (string, error) {
 }
 
 func (i *Interpreter) parseProgram(content string) error {
+	sourceRows := iterSourceRows(content, i.ProgramPath)
+	separatorIndex := -1
+	for idx, row := range sourceRows {
+		if strings.TrimSpace(row.Text) == "::=" {
+			separatorIndex = idx
+			break
+		}
+	}
+	prefixRows := sourceRows
+	var stateRows []sourceRow
+	if separatorIndex >= 0 {
+		prefixRows = sourceRows[:separatorIndex]
+		stateRows = sourceRows[separatorIndex+1:]
+		if len(stateRows) > 1 {
+			return fmt.Errorf("Line %d: State section after ::= must contain at most one row", stateRows[1].SourceLine)
+		}
+	}
+
 	var err error
-	content, err = expandPatterns(content)
+	content, err = expandPatterns(annotatedContentFromRows(prefixRows))
 	if err != nil {
 		return err
 	}
 	i.Rules = nil
-	var rows []string
 	currentSourcePath := i.ProgramPath
 	currentSourceLine := 0
-	for lineNumber, line := range strings.Split(content, "\n") {
+	for idx, line := range splitAnnotatedLines(content) {
+		lineNumber := idx + 1
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "# thuepp-source: ") {
 			marker := strings.TrimPrefix(trimmed, "# thuepp-source: ")
@@ -303,7 +371,7 @@ func (i *Interpreter) parseProgram(content string) error {
 		}
 		sourceLine := currentSourceLine
 		if sourceLine == 0 {
-			sourceLine = lineNumber + 1
+			sourceLine = lineNumber
 		}
 		rule, err := parseRule(line, sourceLine, currentSourcePath)
 		if err != nil {
@@ -311,14 +379,13 @@ func (i *Interpreter) parseProgram(content string) error {
 		}
 		if rule != nil {
 			i.Rules = append(i.Rules, *rule)
-		} else {
-			rows = append(rows, line)
 		}
 	}
-	for len(rows) > 0 && rows[len(rows)-1] == "" {
-		rows = rows[:len(rows)-1]
+	if len(stateRows) == 1 {
+		i.State = stateRows[0].Text
+	} else {
+		i.State = ""
 	}
-	i.State = strings.Join(rows, "\n")
 	return nil
 }
 
