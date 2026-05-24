@@ -641,6 +641,89 @@ code {
   resize: none;
   white-space: pre;
 }
+.state-pane {
+  gap: var(--space-3);
+}
+.state-editor {
+  flex: 1 1 0;
+}
+.state-diffs {
+  background: var(--color-code);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex: 0 0 34%;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  min-height: 140px;
+  overflow: auto;
+}
+.state-diffs-heading,
+.state-diffs-empty,
+.state-diff-entry {
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+.state-diffs-heading {
+  color: var(--color-text-muted);
+  flex: 0 0 auto;
+  padding-bottom: var(--space-2);
+  padding-top: var(--space-2);
+  text-transform: lowercase;
+}
+.state-diffs-empty {
+  color: var(--color-text-muted);
+  margin: 0;
+  padding-bottom: var(--space-3);
+}
+.state-diff-entry {
+  border-top: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+  padding-top: var(--space-2);
+}
+.state-diff-meta,
+.state-diff-rule {
+  color: var(--color-text-muted);
+}
+.state-diff-meta {
+  margin-bottom: 0.2rem;
+}
+.state-diff-rule {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 0.25rem;
+}
+.state-diff-line {
+  overflow-wrap: anywhere;
+  padding: 0.05rem 0.25rem;
+  white-space: pre-wrap;
+}
+.state-diff-line.removed {
+  background: rgb(239 68 68 / 0.12);
+}
+.state-diff-line.added {
+  background: rgb(34 197 94 / 0.12);
+}
+.state-diff-sign {
+  color: var(--color-text-muted);
+  display: inline-block;
+  user-select: none;
+  width: 1.1rem;
+}
+.state-diff-char-removed {
+  background: rgb(239 68 68 / 0.34);
+  border-radius: 2px;
+}
+.state-diff-char-added {
+  background: rgb(34 197 94 / 0.34);
+  border-radius: 2px;
+}
+.state-diff-ellipsis {
+  color: var(--color-text-muted);
+}
 .resource-pane {
   overflow: auto;
 }

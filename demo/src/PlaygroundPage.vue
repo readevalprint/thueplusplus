@@ -35,13 +35,27 @@
       <ResizableHandle with-handle />
 
       <ResizablePanel :default-size="22" :min-size="16">
-        <section class="playground-pane">
+        <section class="playground-pane state-pane">
           <div class="panel-heading compact-heading">
             <div>
               <span class="panel-label">State</span>
             </div>
           </div>
-          <textarea v-model="stateText" data-test="playground-state" spellcheck="false" wrap="off" />
+          <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="off" @input="clearDiffs" />
+          <section class="state-diffs" data-test="playground-diffs" aria-label="step diffs">
+            <div class="state-diffs-heading">diffs</div>
+            <p v-if="stateDiffs.length === 0" class="state-diffs-empty">step diffs appear here</p>
+            <article v-for="entry in stateDiffs" :key="entry.key" class="state-diff-entry" :data-test="`playground-diff-${entry.step}`">
+              <div class="state-diff-meta">#{{ entry.step }} row {{ entry.row }}</div>
+              <div class="state-diff-rule" data-test="playground-diff-rule">{{ entry.rule }}</div>
+              <div class="state-diff-line removed">
+                <span class="state-diff-sign">-</span><span v-for="part in entry.before" :key="part.key" :class="partClass(part, 'removed')">{{ part.text }}</span>
+              </div>
+              <div class="state-diff-line added">
+                <span class="state-diff-sign">+</span><span v-for="part in entry.after" :key="part.key" :class="partClass(part, 'added')">{{ part.text }}</span>
+              </div>
+            </article>
+          </section>
         </section>
       </ResizablePanel>
 
@@ -96,11 +110,12 @@
 </template>
 
 <script setup lang="ts">
+import { diffChars } from 'diff'
 import { computed, nextTick, ref } from 'vue'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import TestCaseCommand from './TestCaseCommand.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
-import { runWithWorker } from './wasm'
+import { runWithWorker, type DemoTraceEvent } from './wasm'
 
 const exampleModules = import.meta.glob('../../examples/**/*.tpp', {
   query: '?raw',
@@ -135,6 +150,7 @@ const loadError = ref('')
 const running = ref(false)
 const autoStep = ref(false)
 const statusText = ref('idle')
+const stateDiffs = ref<StateDiffEntry[]>([])
 
 const resourceSections = computed(() => extractResources(rulesText.value))
 
@@ -191,6 +207,27 @@ interface ResourceUsage {
   name: string
   reads: boolean
   writes: boolean
+}
+
+interface DiffPart {
+  key: string
+  text: string
+  changed: boolean
+  ellipsis?: boolean
+}
+
+interface StateDiffEntry {
+  key: string
+  step: number
+  row: number
+  rule: string
+  before: DiffPart[]
+  after: DiffPart[]
+}
+
+interface ChangedRange {
+  start: number
+  end: number
 }
 
 function extractResources(rules: string): ResourceUsage[] {
@@ -305,14 +342,18 @@ function clearRun(): void {
   resourceLogs.value = {}
   resourceOutputs.value = {}
   resourceSubmittedInputs.value = {}
+  clearDiffs()
 }
 
+function clearDiffs(): void {
+  stateDiffs.value = []
+}
 
 async function stepProgram(): Promise<void> {
-  await executeProgram(autoStep.value ? { stepLimit: undefined, status: 'running' } : { stepLimit: 1, status: 'stepping' })
+  await executeProgram(autoStep.value ? { stepLimit: undefined, status: 'running', collectTrace: true } : { stepLimit: 1, status: 'stepping', collectTrace: true })
 }
 
-async function executeProgram(options: { stepLimit?: number; status: string }): Promise<void> {
+async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean }): Promise<void> {
   if (running.value) return
   running.value = true
   statusText.value = options.status
@@ -327,13 +368,14 @@ async function executeProgram(options: { stepLimit?: number; status: string }): 
       coverage: false,
       include: includeMapFor(sourcePath.value),
       resources: resourceConfigs(),
-      trace: options.stepLimit !== undefined,
+      trace: options.collectTrace ?? options.stepLimit !== undefined,
       stepLimit: options.stepLimit,
     })
     const stderr = [result.stderr ?? '', result.error ?? '', result.errors ?? ''].filter(Boolean).join('\n')
     applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
+    appendStateDiffs(result.trace ?? [])
     const pendingResource = pendingInputResource(result)
     if (pendingResource) {
       statusText.value = `waiting for ${pendingResource}`
@@ -347,6 +389,123 @@ async function executeProgram(options: { stepLimit?: number; status: string }): 
     statusText.value = 'errored'
   } finally {
     running.value = false
+  }
+}
+
+function appendStateDiffs(trace: DemoTraceEvent[]): void {
+  const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index))
+  if (entries.length === 0) return
+  stateDiffs.value = [...stateDiffs.value, ...entries]
+}
+
+function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] {
+  if (event.stateBefore === event.stateAfter) return []
+  const { before, after } = compactCharDiff(event.stateBefore, event.stateAfter)
+  return [{
+    key: `${event.step}-${event.lineNumber}-${index}`,
+    step: event.step,
+    row: event.lineNumber,
+    rule: ruleTextForEvent(event),
+    before,
+    after,
+  }]
+}
+
+function ruleTextForEvent(event: DemoTraceEvent): string {
+  const source = sourceTextForTraceEvent(event)
+  const line = source?.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[event.lineNumber - 1]?.trim()
+  if (line) return line
+  return `${event.lhs} ${event.operator} ${event.replacement}`.trim()
+}
+
+function sourceTextForTraceEvent(event: DemoTraceEvent): string | undefined {
+  const cleanEventPath = event.sourcePath.replace(/^\.\//, '')
+  const cleanSourcePath = sourcePath.value.replace(/^\.\//, '')
+  if (cleanEventPath === cleanSourcePath) return rulesText.value
+  const include = includeMapFor(sourcePath.value)
+  if (include[cleanEventPath]) return include[cleanEventPath]
+  const sourceDir = cleanSourcePath.includes('/') ? cleanSourcePath.slice(0, cleanSourcePath.lastIndexOf('/')) : ''
+  if (sourceDir && cleanEventPath.startsWith(`${sourceDir}/`)) return include[cleanEventPath.slice(sourceDir.length + 1)]
+  return repoFiles[cleanEventPath]
+}
+
+function compactCharDiff(before: string, after: string): { before: DiffPart[]; after: DiffPart[] } {
+  const ranges = changedRanges(before, after)
+  const compactBefore = compactAroundRange(before, ranges.before)
+  const compactAfter = compactAroundRange(after, ranges.after)
+  const parts = diffChars(compactBefore.text, compactAfter.text)
+  return {
+    before: parts
+      .filter(part => !part.added)
+      .flatMap((part, index) => splitEllipsisPart(part.value, Boolean(part.removed), `b-${index}`)),
+    after: parts
+      .filter(part => !part.removed)
+      .flatMap((part, index) => splitEllipsisPart(part.value, Boolean(part.added), `a-${index}`)),
+  }
+}
+
+function changedRanges(before: string, after: string): { before: ChangedRange; after: ChangedRange } {
+  const parts = diffChars(before, after)
+  let beforeCursor = 0
+  let afterCursor = 0
+  let beforeStart = before.length
+  let beforeEnd = 0
+  let afterStart = after.length
+  let afterEnd = 0
+  for (const part of parts) {
+    const length = [...part.value].length
+    if (part.removed) {
+      beforeStart = Math.min(beforeStart, beforeCursor)
+      beforeEnd = Math.max(beforeEnd, beforeCursor + length)
+      afterStart = Math.min(afterStart, afterCursor)
+      afterEnd = Math.max(afterEnd, afterCursor)
+      beforeCursor += length
+    } else if (part.added) {
+      beforeStart = Math.min(beforeStart, beforeCursor)
+      beforeEnd = Math.max(beforeEnd, beforeCursor)
+      afterStart = Math.min(afterStart, afterCursor)
+      afterEnd = Math.max(afterEnd, afterCursor + length)
+      afterCursor += length
+    } else {
+      beforeCursor += length
+      afterCursor += length
+    }
+  }
+  return {
+    before: normalizeRange(beforeStart, beforeEnd, before.length),
+    after: normalizeRange(afterStart, afterEnd, after.length),
+  }
+}
+
+function normalizeRange(start: number, end: number, length: number): ChangedRange {
+  if (start <= end && start <= length) return { start, end }
+  return { start: 0, end: length }
+}
+
+function compactAroundRange(value: string, range: ChangedRange): { text: string } {
+  const chars = [...value]
+  const context = 48
+  const maxLength = context * 2 + Math.max(1, range.end - range.start) + 2
+  if (chars.length <= maxLength) return { text: value }
+  const start = Math.max(0, range.start - context)
+  const end = Math.min(chars.length, range.end + context)
+  return { text: `${start > 0 ? '…' : ''}${chars.slice(start, end).join('')}${end < chars.length ? '…' : ''}` }
+}
+
+function splitEllipsisPart(text: string, changed: boolean, keyPrefix: string): DiffPart[] {
+  const chunks = text.split(/(…)/u).filter(chunk => chunk.length > 0)
+  return chunks.map((chunk, index) => ({
+    key: `${keyPrefix}-${index}`,
+    text: chunk,
+    changed: changed && chunk !== '…',
+    ellipsis: chunk === '…',
+  }))
+}
+
+function partClass(part: DiffPart, side: 'removed' | 'added'): Record<string, boolean> {
+  return {
+    [`state-diff-char-${side}`]: part.changed,
+    'state-diff-ellipsis': Boolean(part.ellipsis),
   }
 }
 
