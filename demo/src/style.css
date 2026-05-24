@@ -644,21 +644,34 @@ code {
 .state-pane {
   gap: var(--space-3);
 }
-.state-editor {
+.state-resizable {
   flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.state-editor-panel,
+.state-diffs-panel {
+  display: flex;
+}
+.playground-pane .state-editor {
+  flex: 1 1 0;
+  height: 100%;
   overflow-wrap: anywhere;
   overflow-x: hidden;
   white-space: pre-wrap;
+  width: 100%;
+  word-break: break-word;
 }
 .state-diffs {
   background: var(--color-code);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   display: flex;
-  flex: 0 0 34%;
+  flex: 1 1 0;
   flex-direction: column;
   font-family: var(--font-mono);
   font-size: 0.74rem;
+  height: 100%;
   line-height: 1.45;
   min-height: 140px;
   overflow: auto;

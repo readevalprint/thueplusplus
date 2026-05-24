@@ -41,21 +41,30 @@
               <span class="panel-label">State</span>
             </div>
           </div>
-          <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
-          <section class="state-diffs" data-test="playground-diffs" aria-label="step diffs">
-            <div class="state-diffs-heading">diffs</div>
-            <p v-if="stateDiffs.length === 0" class="state-diffs-empty">step diffs appear here</p>
-            <article v-for="entry in stateDiffs" :key="entry.key" class="state-diff-entry" :data-test="`playground-diff-${entry.step}`">
-              <div class="state-diff-meta">#{{ entry.step }} row {{ entry.row }}</div>
-              <div class="state-diff-rule" data-test="playground-diff-rule">{{ entry.rule }}</div>
-              <div class="state-diff-line removed">
-                <span class="state-diff-sign">-</span><span v-for="part in entry.before" :key="part.key" :class="partClass(part, 'removed')">{{ part.text }}</span>
-              </div>
-              <div class="state-diff-line added">
-                <span class="state-diff-sign">+</span><span v-for="part in entry.after" :key="part.key" :class="partClass(part, 'added')">{{ part.text }}</span>
-              </div>
-            </article>
-          </section>
+          <ResizablePanelGroup direction="vertical" class="state-resizable" data-test="state-resizable">
+            <ResizablePanel :default-size="66" :min-size="20" class="state-editor-panel">
+              <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
+            </ResizablePanel>
+
+            <ResizableHandle with-handle data-test="state-diff-resize-handle" />
+
+            <ResizablePanel :default-size="34" :min-size="16" class="state-diffs-panel">
+              <section class="state-diffs" data-test="playground-diffs" aria-label="step diffs">
+                <div class="state-diffs-heading">diffs</div>
+                <p v-if="stateDiffs.length === 0" class="state-diffs-empty">step diffs appear here</p>
+                <article v-for="entry in stateDiffs" :key="entry.key" class="state-diff-entry" :data-test="`playground-diff-${entry.step}`">
+                  <div class="state-diff-meta">#{{ entry.step }} row {{ entry.row }}</div>
+                  <div class="state-diff-rule" data-test="playground-diff-rule">{{ entry.rule }}</div>
+                  <div class="state-diff-line removed">
+                    <span class="state-diff-sign">-</span><span v-for="part in entry.before" :key="part.key" :class="partClass(part, 'removed')">{{ part.text }}</span>
+                  </div>
+                  <div class="state-diff-line added">
+                    <span class="state-diff-sign">+</span><span v-for="part in entry.after" :key="part.key" :class="partClass(part, 'added')">{{ part.text }}</span>
+                  </div>
+                </article>
+              </section>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </section>
       </ResizablePanel>
 
