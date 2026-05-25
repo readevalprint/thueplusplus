@@ -28,8 +28,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@tailwindcss/vite": "^4.3.0",
     "@vue/test-utils": "latest",
     "jsdom": "latest",
+    "tailwindcss": "^4.3.0",
     "vitest": "latest"
   }
 }
