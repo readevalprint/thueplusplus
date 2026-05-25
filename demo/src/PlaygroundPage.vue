@@ -11,11 +11,35 @@
       <PlaygroundCard title="program rules" class="playground-rules-pane">
         <template #aside>
           <div class="playground-rules-toolbar">
-            <button type="button" data-test="playground-step" :disabled="running" @click="() => stepProgram()">Step</button>
-            <label class="auto-step-toggle">
-              <input v-model="autoStep" type="checkbox" data-test="playground-auto" :disabled="running" />
-              auto
-            </label>
+            <button type="button" data-test="playground-undo" :disabled="isBusy || !canUndo" title="Undo" @click="undoStep">
+              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
+                <path d="M267.5 440.6c9.5 7.9 22.8 9.7 34.1 4.4s18.4-16.6 18.4-29l0-320c0-12.4-7.2-23.7-18.4-29s-24.5-3.6-34.1 4.4l-192 160L64 241 64 96c0-17.7-14.3-32-32-32S0 78.3 0 96L0 416c0 17.7 14.3 32 32 32s32-14.3 32-32l0-145 11.5 9.6 192 160z" />
+              </svg>
+              Undo
+            </button>
+            <button type="button" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">
+              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
+                <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" />
+              </svg>
+              Step
+            </button>
+            <button type="button" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">
+              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512">
+                <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
+              </svg>
+              Continue
+            </button>
+            <button type="button" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
+              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
+                <path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" />
+              </svg>
+              Pause
+            </button>
+            <select v-model.number="continueStepsPerSecond" data-test="playground-continue-speed" :disabled="isBusy" title="Continue speed">
+              <option :value="1">1/s</option>
+              <option :value="5">5/s</option>
+              <option :value="10">10/s</option>
+            </select>
           </div>
         </template>
         <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" />
@@ -26,8 +50,8 @@
           <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
         </PlaygroundCard>
 
-        <PlaygroundCard title="state history" class="playground-diffs-pane">
-          <StateDiffs :entries="stateDiffs" />
+        <PlaygroundCard title="timeline" class="playground-diffs-pane">
+          <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
         </PlaygroundCard>
       </section>
 
@@ -41,7 +65,8 @@
           :resource="resource"
           :input="resourceInputs[resource.name] ?? ''"
           :output="resourceOutputText(resource.name)"
-          :running="running"
+          :attention="resourceAttention[resource.name]"
+          :running="isBusy"
           :show-input="showResourceInput(resource)"
           :show-output="showResourceOutput(resource)"
           @update:input="setResourceInput(resource.name, $event)"
@@ -91,14 +116,27 @@ const resourceInputs = ref<Record<string, string>>({})
 const resourceSubmittedInputs = ref<Record<string, string>>({})
 const resourceLogs = ref<Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }>>({})
 const resourceOutputs = ref<Record<string, string>>({})
+const resourceAttention = ref<Record<string, 'input' | 'output'>>({})
 const loadError = ref('')
 const running = ref(false)
-const autoStep = ref(false)
+const continuing = ref(false)
+const pauseRequested = ref(false)
 const statusText = ref('idle')
 const stateDiffs = ref<StateDiffEntry[]>([])
+const selectedHistoryKey = ref<string | undefined>()
+const baseState = ref('')
+const lastRunMode = ref<'step' | 'continue'>('step')
+const continueStepsPerSecond = ref(10)
+const exitedState = ref<string | undefined>()
 const matchedRuleLine = ref<number | undefined>()
 
 const resourceSections = computed(() => extractResources(rulesText.value))
+const canUndo = computed(() => stateDiffs.value.length > 0 && selectedHistoryKey.value !== '__base__')
+const isBusy = computed(() => running.value || continuing.value)
+const hasExitedCurrentState = computed(() => exitedState.value === stateText.value)
+const canRun = computed(() => !isBusy.value && !hasExitedCurrentState.value)
+const stepTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to step.' : 'Step')
+const continueTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to continue.' : 'Continue')
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -155,8 +193,12 @@ interface StateDiffEntry {
   step: number
   row: number
   rule: string
+  stateBefore: string
+  stateAfter: string
   before: DiffPart[]
   after: DiffPart[]
+  error?: string
+  note?: string
 }
 
 interface ChangedRange {
@@ -202,7 +244,10 @@ function setResourceInput(name: string, value: string): void {
 async function submitResource(name: string): Promise<void> {
   const value = resourceInputs.value[name] ?? ''
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
-  if (statusText.value === `waiting for ${name}`) await stepProgram()
+  if (statusText.value === `waiting for ${name}`) {
+    if (lastRunMode.value === 'continue') await continueProgram()
+    else await stepProgram()
+  }
 }
 
 function isResourceReady(name: string): boolean {
@@ -270,32 +315,71 @@ function selectTestCase(testCase: TestCaseOption): void {
 
 function clearRun(): void {
   running.value = false
+  continuing.value = false
+  pauseRequested.value = false
   statusText.value = 'idle'
   resourceLogs.value = {}
   resourceOutputs.value = {}
+  resourceAttention.value = {}
   resourceSubmittedInputs.value = {}
   clearDiffs()
 }
 
 function clearDiffs(): void {
   stateDiffs.value = []
+  selectedHistoryKey.value = undefined
+  baseState.value = stateText.value
+  exitedState.value = undefined
   matchedRuleLine.value = undefined
 }
 
 async function stepProgram(): Promise<void> {
-  await executeProgram(autoStep.value ? { stepLimit: undefined, status: 'running', collectTrace: true } : { stepLimit: 1, status: 'stepping', collectTrace: true })
+  if (!canRun.value) return
+  pauseRequested.value = false
+  lastRunMode.value = 'step'
+  await executeProgram({ stepLimit: 1, status: 'stepping', collectTrace: true })
 }
 
-async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean }): Promise<void> {
-  if (running.value) return
+async function continueProgram(): Promise<void> {
+  if (!canRun.value) return
+  lastRunMode.value = 'continue'
+  pauseRequested.value = false
+  continuing.value = true
+  try {
+    while (!hasExitedCurrentState.value && !pauseRequested.value) {
+      const status = await executeProgram({ stepLimit: 1, status: 'running', collectTrace: true })
+      if (status !== 'stepped') break
+      if (pauseRequested.value) break
+      await waitForContinueDelay()
+    }
+  } finally {
+    continuing.value = false
+    if (pauseRequested.value && !hasExitedCurrentState.value) statusText.value = 'paused'
+  }
+}
+
+function pauseProgram(): void {
+  if (!continuing.value) return
+  pauseRequested.value = true
+  statusText.value = 'pausing'
+}
+
+type RunStatus = 'stepped' | 'exited' | 'waiting' | 'errored'
+
+async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean }): Promise<RunStatus | undefined> {
+  if (running.value) return undefined
+  if (stateDiffs.value.length === 0) baseState.value = stateText.value
+  pruneFutureHistory()
   running.value = true
   statusText.value = options.status
   resourceLogs.value = {}
+  resourceAttention.value = {}
+  const runState = stateText.value
   try {
     const result = await runWithWorker({
       sourceText: rulesText.value,
       sourcePath: sourcePath.value,
-      input: stateText.value,
+      input: runState,
       maxEvals: 10_000,
       maxStateBytes: 1_000_000,
       coverage: false,
@@ -307,28 +391,119 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
     applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
-    appendStateDiffs(result.trace ?? [])
-    updateMatchedRuleLine(result.trace ?? [])
+    const trace = result.trace ?? []
+    appendStateDiffs(trace)
     const pendingResource = pendingInputResource(result)
+    if (trace.length === 0 && stderr && !pendingResource) appendStepErrorDiff(stderr, runState)
+    updateMatchedRuleLine(trace)
     if (pendingResource) {
       statusText.value = `waiting for ${pendingResource}`
       await focusResourceInput(pendingResource)
+      return 'waiting'
     } else {
-      statusText.value = result.exitCode && result.exitCode !== 0 ? `exited ${result.exitCode}` : (options.stepLimit === 1 ? 'stepped' : `exited ${result.exitCode ?? (stderr ? 1 : 0)}`)
+      const stepped = options.stepLimit === 1 && trace.length > 0 && !result.exitCode && !stderr && !trace.some(event => event.exitCode !== undefined)
+      if (stepped) {
+        statusText.value = 'stepped'
+        return 'stepped'
+      }
+      statusText.value = `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
+      exitedState.value = stateText.value
+      return 'exited'
     }
   } catch (error) {
     const stderr = error instanceof Error ? error.message : String(error)
-    resourceOutputs.value = { ...resourceOutputs.value, stderr: `${resourceOutputs.value.stderr ?? ''}${stderr}` }
+    const nextStderr = `${resourceOutputs.value.stderr ?? ''}${stderr}`
+    resourceAttention.value = nextStderr !== (resourceOutputs.value.stderr ?? '') ? { stderr: 'output' } : {}
+    resourceOutputs.value = { ...resourceOutputs.value, stderr: nextStderr }
     statusText.value = 'errored'
+    exitedState.value = stateText.value
+    return 'errored'
   } finally {
     running.value = false
   }
 }
 
+function waitForContinueDelay(): Promise<void> {
+  const end = Date.now() + (1000 / continueStepsPerSecond.value)
+  return new Promise(resolve => {
+    const tick = () => {
+      if (pauseRequested.value || Date.now() >= end) resolve()
+      else window.setTimeout(tick, 25)
+    }
+    tick()
+  })
+}
+
 function appendStateDiffs(trace: DemoTraceEvent[]): void {
   const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index))
   if (entries.length === 0) return
-  stateDiffs.value = [...entries.reverse(), ...stateDiffs.value]
+  stateDiffs.value = [...stateDiffs.value, ...entries]
+  selectedHistoryKey.value = entries.at(-1)?.key
+}
+
+function appendStepErrorDiff(error: string, state: string): void {
+  const row = lineNumberFromError(error) ?? 1
+  const rule = rulesText.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[row - 1]?.trim() || '(no matching rule trace)'
+  const step = stateDiffs.value.length + 1
+  const entry = {
+    key: `error-${step}-${row}`,
+    step,
+    row,
+    rule,
+    stateBefore: state,
+    stateAfter: state,
+    before: [{ key: 'b-0', text: state, changed: false }],
+    after: [{ key: 'a-0', text: state, changed: false }],
+    error,
+  }
+  stateDiffs.value = [...stateDiffs.value, entry]
+  selectedHistoryKey.value = entry.key
+}
+
+function selectedHistoryIndex(): number {
+  return stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value)
+}
+
+function pruneFutureHistory(): void {
+  if (selectedHistoryKey.value === '__base__') {
+    stateDiffs.value = []
+    selectedHistoryKey.value = undefined
+    return
+  }
+  const index = selectedHistoryIndex()
+  if (index >= 0 && index < stateDiffs.value.length - 1) {
+    stateDiffs.value = stateDiffs.value.slice(0, index + 1)
+  }
+}
+
+function selectHistoryEntry(key: string): void {
+  const entry = stateDiffs.value.find(item => item.key === key)
+  if (!entry) return
+  selectedHistoryKey.value = entry.key
+  stateText.value = entry.stateAfter
+  matchedRuleLine.value = entry.row
+  statusText.value = `checkpoint #${entry.step}`
+}
+
+function undoStep(): void {
+  if (!canUndo.value) return
+  const index = selectedHistoryIndex() >= 0 ? selectedHistoryIndex() : stateDiffs.value.length - 1
+  const previous = index - 1
+  if (previous >= 0) {
+    selectHistoryEntry(stateDiffs.value[previous].key)
+    return
+  }
+  selectedHistoryKey.value = '__base__'
+  stateText.value = baseState.value
+  matchedRuleLine.value = undefined
+  statusText.value = 'checkpoint initial'
+}
+
+function lineNumberFromError(error: string): number | undefined {
+  const match = error.match(/(?:^|\n)Line (\d+):/)
+  if (!match) return undefined
+  const row = Number.parseInt(match[1], 10)
+  return Number.isFinite(row) && row > 0 ? row : undefined
 }
 
 function updateMatchedRuleLine(trace: DemoTraceEvent[]): void {
@@ -338,16 +513,26 @@ function updateMatchedRuleLine(trace: DemoTraceEvent[]): void {
 }
 
 function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] {
-  if (event.stateBefore === event.stateAfter) return []
+  const error = event.error
+  const note = !error && event.stateBefore === event.stateAfter ? stateHistoryNote(event) : undefined
   const { before, after } = compactCharDiff(event.stateBefore, event.stateAfter)
   return [{
     key: `${event.step}-${event.lineNumber}-${index}`,
     step: event.step,
     row: event.lineNumber,
     rule: ruleTextForEvent(event),
+    stateBefore: event.stateBefore,
+    stateAfter: event.stateAfter,
     before,
     after,
+    error,
+    note,
   }]
+}
+
+function stateHistoryNote(event: DemoTraceEvent): string | undefined {
+  if (event.exitCode !== undefined) return `exit ${event.exitCode}`
+  return 'matched without state change'
 }
 
 function ruleTextForEvent(event: DemoTraceEvent): string {
@@ -464,14 +649,37 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
     const outputText = log.outputText ?? (normalized.writes.length > 0 ? normalized.writes.join('') : undefined)
     if (outputText !== undefined) nextOutputs[log.name] = `${nextOutputs[log.name] ?? ''}${outputText}`
   }
-  const hasStdoutLog = logs.some(log => log.name === 'stdout' && (log.outputText !== undefined || (log.writes?.length ?? 0) > 0))
-  const hasStderrLog = logs.some(log => log.name === 'stderr' && (log.outputText !== undefined || (log.writes?.length ?? 0) > 0))
+  const hasStdoutLog = logs.some(log => log.name === 'stdout' && (Boolean(log.outputText) || (log.writes?.length ?? 0) > 0))
+  const hasStderrLog = logs.some(log => log.name === 'stderr' && (Boolean(log.outputText) || (log.writes?.length ?? 0) > 0))
   if (stdout && !hasStdoutLog) nextOutputs.stdout = `${nextOutputs.stdout ?? ''}${stdout}`
-  if (stderr && !hasStderrLog) nextOutputs.stderr = `${nextOutputs.stderr ?? ''}${stderr}`
+  if (stderr && !hasStderrLog) nextOutputs.stderr = appendErrorTranscript(nextOutputs.stderr ?? '', stderr)
+  resourceAttention.value = changedResourceTextareas(resourceInputs.value, nextInputs, resourceOutputs.value, nextOutputs)
   resourceLogs.value = nextLogs
   resourceInputs.value = nextInputs
   resourceSubmittedInputs.value = nextSubmittedInputs
   resourceOutputs.value = nextOutputs
+}
+
+function changedResourceTextareas(
+  previousInputs: Record<string, string>,
+  nextInputs: Record<string, string>,
+  previousOutputs: Record<string, string>,
+  nextOutputs: Record<string, string>,
+): Record<string, 'input' | 'output'> {
+  const attention: Record<string, 'input' | 'output'> = {}
+  for (const [name, next] of Object.entries(nextInputs)) {
+    if ((previousInputs[name] ?? '') !== next) attention[name] = 'input'
+  }
+  for (const [name, next] of Object.entries(nextOutputs)) {
+    if ((previousOutputs[name] ?? '') !== next) attention[name] = 'output'
+  }
+  return attention
+}
+
+function appendErrorTranscript(current: string, next: string): string {
+  if (!current) return next
+  if (current.endsWith('\n') || next.startsWith('\n')) return `${current}${next}`
+  return `${current}\n${next}`
 }
 
 loadFile(fileParam.value)

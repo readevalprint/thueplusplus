@@ -190,3 +190,32 @@ func TestTraceRecordsAppliedRuleStateAndCaptures(t *testing.T) {
 		t.Fatalf("groups = %#v", event.Groups)
 	}
 }
+
+func TestTraceRecordsMatchedRuleError(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.TraceEnabled = true
+	if err := interp.LoadProgramText("builtin-error.tpp", "^div:(?<a>[0-9]+),(?<b>[0-9]+)$ ::! div a b\n::=\ndiv:1,0"); err != nil {
+		t.Fatalf("LoadProgramText: %v", err)
+	}
+	code, err := interp.Run()
+	if err == nil || !strings.Contains(err.Error(), "Builtin 'div' division by zero") {
+		t.Fatalf("Run error = %v, want division by zero", err)
+	}
+	if code != 1 {
+		t.Fatalf("exit code = %d", code)
+	}
+	if len(interp.Trace) != 1 {
+		t.Fatalf("trace length = %d, want 1", len(interp.Trace))
+	}
+	event := interp.Trace[0]
+	if event.LineNumber != 1 || event.Operator != Builtin || event.StateBefore != "div:1,0" || event.StateAfter != "div:1,0" {
+		t.Fatalf("unexpected event: %#v", event)
+	}
+	if event.Error != "Builtin 'div' division by zero" {
+		t.Fatalf("trace error = %q", event.Error)
+	}
+}

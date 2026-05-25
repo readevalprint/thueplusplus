@@ -78,6 +78,7 @@ type TraceEvent struct {
 	Replacement string            `json:"replacement"`
 	StateAfter  string            `json:"stateAfter"`
 	ExitCode    *int              `json:"exitCode,omitempty"`
+	Error       string            `json:"error,omitempty"`
 }
 
 type Interpreter struct {
@@ -933,6 +934,10 @@ func cloneGroups(groups map[string]string) map[string]string {
 }
 
 func (i *Interpreter) recordTrace(rule Rule, ruleIndex int, match matchInfo, stateBefore, replacement string, exitCode *int) {
+	i.recordTraceWithError(rule, ruleIndex, match, stateBefore, replacement, exitCode, "")
+}
+
+func (i *Interpreter) recordTraceWithError(rule Rule, ruleIndex int, match matchInfo, stateBefore, replacement string, exitCode *int, errorMessage string) {
 	if !i.TraceEnabled {
 		return
 	}
@@ -950,6 +955,7 @@ func (i *Interpreter) recordTrace(rule Rule, ruleIndex int, match matchInfo, sta
 		Replacement: replacement,
 		StateAfter:  i.State,
 		ExitCode:    exitCode,
+		Error:       errorMessage,
 	})
 }
 
@@ -1037,30 +1043,40 @@ func (i *Interpreter) Run() (int, error) {
 				var err error
 				repl, err = i.expandTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				i.recordRuleCoverage(rule)
 			case Read:
 				parts := strings.Fields(strings.TrimSpace(rule.RHS))
 				if len(parts) != 2 {
-					return 1, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
+					err := fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
 				}
 				readSpec, resource := parts[0], parts[1]
 				var readTimeout time.Duration
 				seconds, err := strconv.ParseFloat(readSpec, 64)
 				if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
-					return 1, fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
+					err := fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
 				}
 				readTimeout = time.Duration(seconds * float64(time.Second))
 				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
-					return 1, fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
+					err := fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
 				}
 				b := i.Bindings[resource]
 				if b == nil {
-					return 1, fmt.Errorf("Unknown resource '%s'", resource)
+					err := fmt.Errorf("Unknown resource '%s'", resource)
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
 				}
 				content, er := i.readLine(b, readTimeout)
 				if er != "" {
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, er)
 					return 1, errors.New(er)
 				}
 				repl = pctEncode(content)
@@ -1068,6 +1084,7 @@ func (i *Interpreter) Run() (int, error) {
 			case Write:
 				expanded, err := i.expandTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				resource, content := splitResource(expanded)
@@ -1085,13 +1102,16 @@ func (i *Interpreter) Run() (int, error) {
 				for _, arg := range rule.BuiltinArgs {
 					value, ok := groups[arg]
 					if !ok {
-						return 1, fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
+						err := fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
+						i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+						return 1, err
 					}
 					values = append(values, value)
 				}
 				var err error
 				repl, err = evalBuiltin(rule.BuiltinName, values)
 				if err != nil {
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				i.recordRuleCoverage(rule)

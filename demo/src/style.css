@@ -123,7 +123,7 @@ button, .button-link.primary {
 }
 button:hover, .button-link:hover { transform: translateY(-1px); }
 button:active, .button-link:active { transform: translateY(0); }
-button:disabled { cursor: wait; opacity: 0.55; transform: none; }
+button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
 .secondary {
   color: var(--color-text);
   background: var(--color-panel-soft);
@@ -496,10 +496,20 @@ code {
 }
 .playground-route-header button,
 .playground-route-header input[type="search"],
-.playground-rules-toolbar button {
+.playground-rules-toolbar button,
+.playground-rules-toolbar select {
+  align-items: center;
+  display: inline-flex;
   font-size: 0.875rem;
+  gap: var(--space-2);
   min-height: 36px;
   padding: 0 var(--space-3);
+}
+.toolbar-icon {
+  fill: currentcolor;
+  flex: 0 0 auto;
+  height: 0.875rem;
+  width: 0.875rem;
 }
 .playground-route-header .test-case-command {
   justify-self: stretch;
@@ -511,22 +521,6 @@ code {
   align-items: center;
   display: flex;
   gap: var(--space-2);
-}
-.auto-step-toggle {
-  align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  display: inline-flex;
-  font-size: 0.875rem;
-  gap: var(--space-2);
-  min-height: 36px;
-  padding: 0 var(--space-3);
-  white-space: nowrap;
-}
-.auto-step-toggle input {
-  margin: 0;
-  min-height: 0;
-  padding: 0;
 }
 .test-case-command {
   position: relative;
@@ -760,8 +754,22 @@ code {
 }
 .state-diff-entry {
   border-top: 1px solid var(--color-border);
+  cursor: pointer;
   padding-bottom: var(--space-2);
   padding-top: var(--space-2);
+}
+.state-diff-entry:hover,
+.state-diff-entry:focus-visible {
+  background: rgb(255 255 255 / 0.04);
+  outline: none;
+}
+.state-diff-entry.selected {
+  background: rgb(255 255 255 / 0.07);
+  border-left: 3px solid var(--color-text);
+  padding-left: calc(var(--space-3) - 3px);
+}
+.state-diff-entry.future {
+  opacity: 0.55;
 }
 .state-diff-meta,
 .state-diff-rule {
@@ -774,6 +782,19 @@ code {
   margin-bottom: 0.25rem;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+.state-diff-error,
+.state-diff-note {
+  overflow-wrap: anywhere;
+  padding: 0.15rem 0.35rem;
+  white-space: pre-wrap;
+}
+.state-diff-error {
+  background: rgb(239 68 68 / 0.14);
+  color: var(--color-danger);
+}
+.state-diff-note {
+  color: var(--color-text-muted);
 }
 .state-diff-line {
   overflow-wrap: anywhere;
@@ -863,6 +884,12 @@ code {
 .resource-field textarea {
   flex: 1 1 0;
   min-height: 0;
+}
+.resource-field textarea.resource-textarea-attention-input {
+  border-color: rgb(59 130 246 / 0.9);
+}
+.resource-field textarea.resource-textarea-attention-output {
+  border-color: rgb(34 197 94 / 0.85);
 }
 .resource-field button {
   align-self: flex-start;

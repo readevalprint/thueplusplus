@@ -193,6 +193,9 @@ func resultToJS(r wasmResult) js.Value {
 			if event.ExitCode != nil {
 				entry["exitCode"] = *event.ExitCode
 			}
+			if event.Error != "" {
+				entry["error"] = event.Error
+			}
 			trace = append(trace, entry)
 		}
 		obj["trace"] = trace

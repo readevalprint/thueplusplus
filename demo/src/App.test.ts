@@ -186,7 +186,16 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-state-stack"]').element.tagName).toBe('SECTION')
     expect(wrapper.find('[data-test="playground-reset"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-run"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="playground-auto"]').element).toHaveProperty('checked', false)
+    expect(wrapper.find('[data-test="playground-auto"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="playground-undo"]').text()).toContain('Undo')
+    expect(wrapper.get('[data-test="playground-step"]').text()).toContain('Step')
+    expect(wrapper.get('[data-test="playground-continue"]').text()).toContain('Continue')
+    expect(wrapper.get('[data-test="playground-pause"]').text()).toContain('Pause')
+    expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="playground-continue-speed"]').element as HTMLSelectElement).value).toBe('10')
+    expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('1/s')
+    expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('5/s')
+    expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('10/s')
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
     expect(wrapper.find('[data-slot="resizable-panel"]').exists()).toBe(false)
     expect(wrapper.find('[data-slot="resizable-handle"]').exists()).toBe(false)
@@ -259,14 +268,82 @@ describe('Go-WASM demo UI', () => {
       error: "Builtin 'div' division by zero",
       errors: "Builtin 'div' division by zero",
       state: 'div:1,0',
+      trace: [{ step: 1, ruleIndex: 3, sourcePath: 'examples/builtin/builtin.tpp', lineNumber: 6, operator: '::!', lhs: '^div:(?<a>$N),(?<b>$N)$', matchStart: 0, matchEnd: 7, groups: { a: '1', b: '0' }, stateBefore: 'div:1,0', replacement: '', stateAfter: 'div:1,0', error: "Builtin 'div' division by zero" }],
       resourceLogs: [],
     })
 
     await wrapper.get('[data-test="playground-step"]').trigger('click')
     await flush()
 
+    const diffs = wrapper.get('[data-test="playground-diffs"]')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 1')
     expect(wrapper.get('[data-test="resource-output-stderr"]').element).toHaveProperty('value', "Builtin 'div' division by zero")
+    expect(diffs.text()).toContain('#1 row 6')
+    expect(diffs.text()).toContain('Builtin \'div\' division by zero')
+    expect(diffs.find('.state-diff-error').exists()).toBe(true)
+    expect(diffs.find('.state-diff-line.removed').exists()).toBe(false)
+    expect(diffs.find('.state-diff-line.added').exists()).toBe(false)
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toContain('Program exited')
+    expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toContain('Program exited')
+
+    await wrapper.get('[data-test="playground-state"]').setValue('div:2,1')
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toBe('Step')
+    expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toBe('Continue')
+  })
+
+  it('shows parse-time step errors in state history when no trace is available', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-rules"]').setValue('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
+    await wrapper.get('[data-test="playground-state"]').setValue('1,2')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 1,
+      stdout: '',
+      stderr: '',
+      error: "Line 1: Unknown builtin 'nope'",
+      errors: "Line 1: Unknown builtin 'nope'",
+      resourceLogs: [],
+    })
+
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    const diffs = wrapper.get('[data-test="playground-diffs"]')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 1')
+    expect(wrapper.get('[data-test="resource-output-stderr"]').element).toHaveProperty('value', "Line 1: Unknown builtin 'nope'")
+    expect(diffs.text()).toContain('#1 row 1')
+    expect(diffs.text()).toContain('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
+    expect(diffs.text()).toContain("Line 1: Unknown builtin 'nope'")
+    expect(diffs.find('.state-diff-error').exists()).toBe(true)
+  })
+
+  it('shows matched rules in state history even when state does not change', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-rules"]').setValue('^done$ ::> stdout ok\\n')
+    await wrapper.get('[data-test="playground-state"]').setValue('done')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: 'ok\n',
+      stderr: '',
+      state: 'done',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^done$', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: 'done', replacement: '', stateAfter: 'done' }],
+      resourceLogs: [],
+    })
+
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    const diffs = wrapper.get('[data-test="playground-diffs"]')
+    expect(diffs.text()).toContain('#1 row 1')
+    expect(diffs.text()).toContain('^done$ ::> stdout ok\\n')
+    expect(diffs.text()).toContain('matched without state change')
   })
 
   it('shows compact changed context for long state diffs below State', async () => {
@@ -299,33 +376,140 @@ describe('Go-WASM demo UI', () => {
     expect(diffs.text()).not.toContain('z'.repeat(80))
   })
 
-  it('places newer step diffs above older diffs', async () => {
+  it('places newer step diffs below older diffs', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App)
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
-    await wrapper.get('[data-test="playground-auto"]').setValue(true)
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'middle',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
       stdout: '',
       stderr: '',
       state: 'done',
-      trace: [
-        { step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' },
-        { step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' },
-      ],
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' }],
       resourceLogs: [],
     })
-
     await wrapper.get('[data-test="playground-step"]').trigger('click')
     await flush()
 
     const entries = wrapper.findAll('.state-diff-entry')
     expect(entries).toHaveLength(2)
-    expect(entries[0].text()).toContain('#2 row 2')
-    expect(entries[0].text()).toContain('^middle$ ::= done')
-    expect(entries[1].text()).toContain('#1 row 1')
-    expect(entries[1].text()).toContain('^start$ ::= middle')
+    expect(entries[0].text()).toContain('#1 row 1')
+    expect(entries[0].text()).toContain('^start$ ::= middle')
+    expect(entries[1].text()).toContain('#2 row 2')
+    expect(entries[1].text()).toContain('^middle$ ::= done')
+    expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
+  })
+
+  it('keeps Continue and Pause as separate controls', async () => {
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+      const wrapper = mount(App)
+      await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
+      await wrapper.get('[data-test="playground-state"]').setValue('start')
+      await wrapper.get('[data-test="playground-continue-speed"]').setValue('1')
+
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        state: 'middle',
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+        resourceLogs: [],
+      })
+
+      await wrapper.get('[data-test="playground-continue"]').trigger('click')
+      await flush()
+
+      expect(wrapper.get('[data-test="playground-continue"]').text()).toContain('Continue')
+      expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
+      expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(false)
+
+      await wrapper.get('[data-test="playground-pause"]').trigger('click')
+      expect(wrapper.get('[data-test="playground-status"]').text()).toContain('pausing')
+      await vi.advanceTimersByTimeAsync(25)
+      await flush()
+
+      expect(wrapper.get('[data-test="playground-status"]').text()).toContain('paused')
+      expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
+      expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
+      expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('clicks timeline rows to restore state, undo, and prune future rows before stepping', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done\n^middle$ ::= branch')
+    await wrapper.get('[data-test="playground-state"]').setValue('start')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'middle',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'done',
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    const entries = () => wrapper.findAll('.state-diff-entry')
+    expect(entries()).toHaveLength(2)
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'done')
+
+    await entries()[0].trigger('click')
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'middle')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint #1')
+    expect(entries()[0].attributes('data-selected')).toBe('true')
+    expect(entries()[1].attributes('data-future')).toBe('true')
+
+    await wrapper.get('[data-test="playground-undo"]').trigger('click')
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'start')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint initial')
+
+    await entries()[0].trigger('click')
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'branch',
+      trace: [{ step: 3, ruleIndex: 2, sourcePath: 'examples/hello/hello.tpp', lineNumber: 3, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'branch', stateAfter: 'branch' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker.mock.calls[2][0].input).toBe('middle')
+    expect(entries()).toHaveLength(2)
+    expect(entries()[0].text()).toContain('#1 row 1')
+    expect(entries()[1].text()).toContain('#3 row 3')
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'branch')
   })
 
   it('keeps resource output as an append-only transcript across steps', async () => {
@@ -345,6 +529,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-step"]').trigger('click')
     await flush()
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
+    expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
@@ -358,6 +543,7 @@ describe('Go-WASM demo UI', () => {
 
     expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\nB\n')
+    expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
   })
 
   it('step pauses at resource reads and submit resumes automatically', async () => {
@@ -381,6 +567,7 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for random')
+    expect(wrapper.get('[data-test="resource-input-random"]').attributes('data-attention')).toBeUndefined()
     expect(document.activeElement).toBe(wrapper.get('[data-test="resource-input-random"]').element)
     expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'random')).toEqual({ name: 'random', inputText: '', readError: undefined })
 
@@ -407,6 +594,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'GUESS<7|@USER_GUESS@>')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\n')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
+    expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
+    expect(wrapper.get('[data-test="resource-input-random"]').attributes('data-attention')).toBe('input')
+    expect(wrapper.get('[data-test="resource-input-stdin"]').attributes('data-attention')).toBeUndefined()
 
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('x')
 
@@ -482,7 +672,6 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('x\n3\n8\n7')
     await wrapper.get('[data-test="resource-submit-random"]').trigger('click')
     await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
-    await wrapper.get('[data-test="playground-auto"]').setValue(true)
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
@@ -494,7 +683,7 @@ describe('Go-WASM demo UI', () => {
         { name: 'random', reads: ['7'], writes: [], errors: [], remainingInputText: '', outputText: '' },
       ],
     })
-    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await wrapper.get('[data-test="playground-continue"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([
@@ -509,7 +698,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-input-random"]').element).toHaveProperty('value', '')
   })
 
-  it('submit resumes through one Step unless auto is checked', async () => {
+  it('submit resumes with the last step or continue command', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = mount(App, { attachTo: document.body })
 
@@ -560,7 +749,6 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'got:Ada')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
 
-    await wrapper.get('[data-test="playground-auto"]').setValue(true)
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('Grace')
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 1,
@@ -571,7 +759,7 @@ describe('Go-WASM demo UI', () => {
       state: 'got:@IN@',
       resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
     })
-    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await wrapper.get('[data-test="playground-continue"]').trigger('click')
     await flush()
 
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -587,7 +775,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
     await flush()
 
-    expect(mockedRunWithWorker.mock.calls[3][0].stepLimit).toBeUndefined()
+    expect(mockedRunWithWorker.mock.calls[3][0].stepLimit).toBe(1)
     expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Grace\n')
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
