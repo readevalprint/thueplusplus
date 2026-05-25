@@ -31,20 +31,6 @@
                 <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
               </TableCell>
             </TableRow>
-            <TableRow
-              v-if="row.getIsExpanded()"
-              :key="`${row.original.key}-expanded`"
-              class="state-diff-expanded-row"
-              :class="{ future: isFuture(row.original) }"
-              :data-future="isFuture(row.original) || undefined"
-            >
-              <TableCell :colspan="row.getVisibleCells().length">
-                <div class="state-diff-expanded" :data-test="`playground-diff-full-${row.original.step}`">
-                  <div class="state-diff-meta">full state at step #{{ row.original.step }}</div>
-                  <pre class="state-diff-full-state" data-test="playground-diff-full-state">{{ row.original.stateAfter }}</pre>
-                </div>
-              </TableCell>
-            </TableRow>
           </template>
         </template>
         <TableRow v-else>
@@ -56,14 +42,13 @@
 </template>
 
 <script setup lang="ts">
-import type { ColumnDef, ExpandedState, Updater } from '@tanstack/vue-table'
+import type { ColumnDef } from '@tanstack/vue-table'
 import {
   FlexRender,
   getCoreRowModel,
-  getExpandedRowModel,
   useVueTable,
 } from '@tanstack/vue-table'
-import { h, nextTick, ref, watch } from 'vue'
+import { nextTick, h, ref, watch } from 'vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface DiffPart {
@@ -102,44 +87,13 @@ const emit = defineEmits<{
 }>()
 
 const timeline = ref<HTMLElement | null>(null)
-const expanded = ref<ExpandedState>({})
 
 const columns: ColumnDef<StateDiffEntry>[] = [
   {
-    id: 'expand',
-    header: '',
-    cell: ({ row }) => h('button', {
-      type: 'button',
-      class: 'state-diff-expand',
-      'aria-label': row.getIsExpanded() ? 'Collapse full state' : 'Expand full state',
-      'aria-expanded': row.getIsExpanded(),
-      onClick: (event: MouseEvent) => {
-        event.stopPropagation()
-        row.toggleExpanded()
-      },
-      onKeydown: (event: KeyboardEvent) => {
-        event.stopPropagation()
-      },
-    }, row.getIsExpanded() ? '▾' : '▸'),
-    meta: { class: 'state-diff-expand-cell' },
-  },
-  {
-    accessorKey: 'step',
-    header: 'step',
-    cell: ({ row }) => `#${row.original.step} row ${row.original.row}`,
-    meta: { class: 'state-diff-step-cell' },
-  },
-  {
-    accessorKey: 'rule',
-    header: 'rule',
-    cell: ({ row }) => h('div', { class: 'state-diff-rule', 'data-test': 'playground-diff-rule' }, row.original.rule),
-    meta: { class: 'state-diff-rule-cell' },
-  },
-  {
-    id: 'diff',
-    header: 'diff',
-    cell: ({ row }) => diffCell(row.original),
-    meta: { class: 'state-diff-diff-cell' },
+    id: 'entry',
+    header: 'history',
+    cell: ({ row }) => entryCell(row.original),
+    meta: { class: 'state-diff-entry-cell' },
   },
 ]
 
@@ -148,11 +102,6 @@ const table = useVueTable({
   get columns() { return columns },
   getRowId: row => row.key,
   getCoreRowModel: getCoreRowModel(),
-  getExpandedRowModel: getExpandedRowModel(),
-  onExpandedChange: updater => valueUpdater(updater, expanded),
-  state: {
-    get expanded() { return expanded.value },
-  },
 })
 
 watch(() => props.entries.length, async () => {
@@ -160,24 +109,35 @@ watch(() => props.entries.length, async () => {
   if (timeline.value) timeline.value.scrollTop = timeline.value.scrollHeight
 })
 
-function valueUpdater<T>(updaterOrValue: Updater<T>, target: { value: T }): void {
-  target.value = typeof updaterOrValue === 'function'
-    ? (updaterOrValue as (old: T) => T)(target.value)
-    : updaterOrValue
-}
-
 function isFuture(entry: StateDiffEntry): boolean {
   const selectedIndex = props.entries.findIndex(item => item.key === props.selectedKey)
   const entryIndex = props.entries.findIndex(item => item.key === entry.key)
   return selectedIndex >= 0 && entryIndex > selectedIndex
 }
 
+function entryCell(entry: StateDiffEntry) {
+  return h('div', { class: 'state-diff-entry-body' }, [
+    h('div', { class: 'state-diff-meta' }, `#${entry.step} row ${entry.row}`),
+    h('div', { class: 'state-diff-field state-diff-rule-field' }, [
+      h('span', { class: 'state-diff-field-label' }, 'rule'),
+      h('div', { class: 'state-diff-rule', 'data-test': 'playground-diff-rule' }, entry.rule),
+    ]),
+    diffCell(entry),
+  ])
+}
+
 function diffCell(entry: StateDiffEntry) {
   if (entry.error) return h('div', { class: 'state-diff-error', 'data-test': 'playground-diff-error' }, entry.error)
   if (entry.note) return h('div', { class: 'state-diff-note', 'data-test': 'playground-diff-note' }, entry.note)
   return h('div', { class: 'state-diff-lines' }, [
-    diffLine(entry.before, 'removed', '-'),
-    diffLine(entry.after, 'added', '+'),
+    h('div', { class: 'state-diff-field' }, [
+      h('span', { class: 'state-diff-field-label' }, 'before'),
+      diffLine(entry.before, 'removed', '-'),
+    ]),
+    h('div', { class: 'state-diff-field' }, [
+      h('span', { class: 'state-diff-field-label' }, 'after'),
+      diffLine(entry.after, 'added', '+'),
+    ]),
   ])
 }
 
