@@ -1,6 +1,5 @@
 <template>
-  <section class="state-diffs" data-test="playground-diffs" aria-label="step diffs">
-    <p v-if="entries.length === 0" class="state-diffs-empty">step diffs appear here</p>
+  <section class="state-diffs" data-test="playground-diffs" aria-label="state history">
     <article v-for="entry in entries" :key="entry.key" class="state-diff-entry" :data-test="`playground-diff-${entry.step}`">
       <div class="state-diff-meta">#{{ entry.step }} row {{ entry.row }}</div>
       <div class="state-diff-rule" data-test="playground-diff-rule">{{ entry.rule }}</div>

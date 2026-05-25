@@ -10,6 +10,7 @@ async function fillRules(page: Page, value: string): Promise<void> {
 
 test('playground selector searches by path/case but not input', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await page.getByTestId('test-case-command-trigger').click()
   const search = page.getByTestId('test-case-command-input')
 
   await search.fill('closure_binding_flattening zero arg')
@@ -22,14 +23,16 @@ test('playground selector searches by path/case but not input', async ({ page })
   await expect(page.getByTestId('test-case-command-empty')).toBeVisible()
 })
 
-test('clicking a test case loads state and runs through stdio', async ({ page }) => {
+test('clicking a test case loads rules, state, and resources without running', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
 
+  await page.getByTestId('test-case-command-trigger').click()
   await page.getByTestId('test-case-command-input').fill('zero arg closure call still evaluates body')
   await page.getByTestId('test-case-option').first().click()
 
   await expect(page.getByTestId('playground-state')).toHaveValue('((fn () 7))')
-  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('7\n')
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
+  await expect(page.getByTestId('playground-status')).toContainText('idle')
   await expect(page.getByTestId('terminal')).toHaveCount(0)
 })
 

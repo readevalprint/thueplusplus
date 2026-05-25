@@ -6,11 +6,12 @@ vi.mock('./RulesMonacoEditor.vue', async () => {
   const { defineComponent, h } = await import('vue')
   return {
     default: defineComponent({
-      props: { modelValue: { type: String, default: '' } },
+      props: { modelValue: { type: String, default: '' }, highlightLine: { type: Number, default: undefined } },
       emits: ['update:modelValue'],
       setup(props, { emit, attrs }) {
         return () => h('textarea', {
           ...attrs,
+          'data-current-match-line': props.highlightLine || undefined,
           value: props.modelValue,
           spellcheck: 'false',
           wrap: 'off',
@@ -53,6 +54,7 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/')
     document.body.innerHTML = ''
     mockedRunWithWorker.mockReset()
+    if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(undefined),
@@ -234,6 +236,7 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
     expect(mockedRunWithWorker.mock.calls[0][0].trace).toBe(true)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'middle')
+    expect(wrapper.get('[data-test="playground-rules"]').attributes('data-current-match-line')).toBe('1')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('#1 row 1')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('^start$ ::= middle')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('-start')
@@ -242,6 +245,28 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('.state-diff-char-removed').exists()).toBe(true)
     expect(wrapper.find('.state-diff-char-added').exists()).toBe(true)
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
+  })
+
+  it('shows failed step exit status and stderr instead of reporting a successful step', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/builtin/builtin.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-state"]').setValue('div:1,0')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 1,
+      stdout: '',
+      stderr: '',
+      error: "Builtin 'div' division by zero",
+      errors: "Builtin 'div' division by zero",
+      state: 'div:1,0',
+      resourceLogs: [],
+    })
+
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 1')
+    expect(wrapper.get('[data-test="resource-output-stderr"]').element).toHaveProperty('value', "Builtin 'div' division by zero")
   })
 
   it('shows compact changed context for long state diffs below State', async () => {
@@ -409,7 +434,9 @@ describe('Go-WASM demo UI', () => {
 
   it('filters manifest test cases by path or case name without searching input text', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('[data-test="test-case-command-trigger"]').trigger('click')
+    await flush()
     const input = wrapper.get('[data-test="test-case-command-input"]')
 
     await input.setValue('closure_binding_flattening zero arg')
@@ -423,19 +450,21 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="test-case-command-empty"]').text()).toContain('No test cases found')
   })
 
-  it('selecting a manifest test case loads its state and runs through unified resources', async () => {
+  it('selecting a manifest test case loads rules, state, and resources without running', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
-    mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: '7\n', stderr: '', resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: [] }] })
+    const wrapper = mount(App, { attachTo: document.body })
 
+    await wrapper.get('[data-test="test-case-command-trigger"]').trigger('click')
+    await flush()
     await wrapper.get('[data-test="test-case-command-input"]').setValue('zero arg closure call still evaluates body')
-    await wrapper.get('[data-test="test-case-option"]').trigger('mousedown')
+    await wrapper.get('[data-test="test-case-option"]').trigger('click')
     await flush()
 
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('VPRIM')
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('((fn () 7))')
-    expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
-    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '7\n')
+    expect(mockedRunWithWorker).not.toHaveBeenCalled()
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('idle')
     expect(wrapper.find('[data-test="fixture-panel"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
@@ -445,8 +474,8 @@ describe('Go-WASM demo UI', () => {
     const wrapper = mount(App)
 
     expect(wrapper.get('[data-test="resource-section-random"]').text()).toContain('random')
-    expect(wrapper.get('[data-test="resource-section-random"]').text()).toContain('read')
-    expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('write')
+    expect(wrapper.get('[data-test="resource-section-random"]').text()).not.toContain('read')
+    expect(wrapper.get('[data-test="resource-section-stdout"]').text()).not.toContain('write')
     expect(wrapper.find('[data-test="playground-js-procs"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="resource-input-random"]').setValue('7')
@@ -469,8 +498,8 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([
-      { name: 'stdin', inputText: 'x\n3\n8\n7', readError: undefined },
       { name: 'stdout', inputText: '', readError: undefined },
+      { name: 'stdin', inputText: 'x\n3\n8\n7', readError: undefined },
       { name: 'stderr', inputText: '', readError: undefined },
       { name: 'random', inputText: '7', readError: undefined },
     ])

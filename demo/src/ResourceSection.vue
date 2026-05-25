@@ -2,14 +2,9 @@
   <section class="resource-section" :data-test="`resource-section-${resource.name}`">
     <div class="resource-section-header">
       <code>{{ resource.name }}</code>
-      <span class="resource-modes">
-        <Badge v-if="resource.reads" variant="outline" class="resource-mode">read</Badge>
-        <Badge v-if="resource.writes" variant="outline" class="resource-mode">write</Badge>
-      </span>
     </div>
 
     <div v-if="showInput" class="resource-field">
-      <label :for="inputId">input</label>
       <textarea
         :id="inputId"
         :value="input"
@@ -22,7 +17,6 @@
     </div>
 
     <div v-if="showOutput" class="resource-field">
-      <label :for="outputId">output</label>
       <textarea
         :id="outputId"
         :value="output"
@@ -37,7 +31,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 interface ResourceUsage {

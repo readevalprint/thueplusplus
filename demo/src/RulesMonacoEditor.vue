@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" class="monaco-rules-editor" />
+  <div ref="container" class="monaco-rules-editor" :data-current-match-line="highlightLine || undefined" />
 </template>
 
 <script setup lang="ts">
@@ -10,6 +10,7 @@ import { thueppLanguageConfiguration, thueppMonarchLanguage } from './thueppMona
 
 const props = defineProps<{
   modelValue: string
+  highlightLine?: number
 }>()
 
 const emit = defineEmits<{
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 
 const container = ref<HTMLElement | null>(null)
 let editor: monaco.editor.IStandaloneCodeEditor | undefined
+let matchDecorations: monaco.editor.IEditorDecorationsCollection | undefined
 let resizeObserver: ResizeObserver | undefined
 let applyingExternalValue = false
 
@@ -87,6 +89,8 @@ onMounted(() => {
     if (applyingExternalValue || !editor) return
     emit('update:modelValue', editor.getValue())
   })
+  matchDecorations = editor.createDecorationsCollection()
+  updateMatchedRuleDecoration(props.highlightLine)
   ;(container.value as RulesEditorElement).__thueppSetValue = (value: string) => {
     if (!editor) return
     editor.setValue(value)
@@ -101,7 +105,34 @@ watch(() => props.modelValue, value => {
   applyingExternalValue = true
   editor.setValue(value)
   applyingExternalValue = false
+  updateMatchedRuleDecoration(props.highlightLine)
 })
+
+watch(() => props.highlightLine, line => {
+  updateMatchedRuleDecoration(line)
+})
+
+function updateMatchedRuleDecoration(line: number | undefined): void {
+  if (!editor || !matchDecorations) return
+  const model = editor.getModel()
+  if (!line || !model || line < 1 || line > model.getLineCount()) {
+    matchDecorations.set([])
+    return
+  }
+  matchDecorations.set([{
+    range: new monaco.Range(line, 1, line, model.getLineMaxColumn(line)),
+    options: {
+      isWholeLine: true,
+      className: 'matched-rule-line',
+      linesDecorationsClassName: 'matched-rule-line-gutter',
+      overviewRuler: {
+        color: 'rgba(251, 191, 36, 0.85)',
+        position: monaco.editor.OverviewRulerLane.Center,
+      },
+    },
+  }])
+  editor.revealLineInCenterIfOutsideViewport(line, monaco.editor.ScrollType.Smooth)
+}
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
