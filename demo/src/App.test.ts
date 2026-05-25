@@ -181,20 +181,32 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-rules"]').attributes('wrap')).toBe('off')
     expect(wrapper.get('[data-test="playground-state"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="playground-state"]').attributes('wrap')).toBe('soft')
-    expect(wrapper.get('[data-test="playground-step"]').text()).toContain('Step')
+    expect(wrapper.get('[data-test="playground-step"]').attributes('aria-label')).toBe('Step forward')
     expect(wrapper.get('[data-test="resource-sections"]').attributes('data-slot')).toBe('card')
+    expect(wrapper.get('[data-test="playground-status"]').attributes('data-slot')).toBe('badge')
+    expect(wrapper.get('[data-test="playground-status"]').element.closest('.playground-state-pane')).not.toBeNull()
+    expect(wrapper.get('[data-test="playground-status"]').element.closest('.playground-resources-pane')).toBeNull()
     expect(wrapper.get('[data-test="playground-state-stack"]').element.tagName).toBe('DIV')
-    expect(wrapper.find('[data-test="playground-reset"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="playground-reset"]').attributes('aria-label')).toBe('Reset to first state')
+    expect((wrapper.get('[data-test="playground-reset"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.find('[data-test="playground-run"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-auto"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="playground-undo"]').text()).toContain('Undo')
-    expect(wrapper.get('[data-test="playground-step"]').text()).toContain('Step')
-    expect(wrapper.get('[data-test="playground-continue"]').text()).toContain('Continue')
-    expect(wrapper.get('[data-test="playground-end"]').text()).toContain('End')
-    expect(wrapper.get('[data-test="playground-pause"]').text()).toContain('Pause')
+    expect(wrapper.get('[data-test="playground-undo"]').attributes('aria-label')).toBe('Step back')
+    expect(wrapper.get('[data-test="playground-step"]').text()).toBe('')
+    expect(wrapper.get('[data-test="playground-continue"]').attributes('aria-label')).toBe('Play')
+    expect(wrapper.get('[data-test="playground-end"]').text()).toBe('')
+    expect(wrapper.get('[data-test="playground-pause"]').attributes('aria-label')).toBe('Pause')
     expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(true)
-    expect(wrapper.get('[data-test="playground-continue-speed"]').attributes('data-slot')).toBe('select-trigger')
-    expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('medium · 10/s')
+    expect(wrapper.find('[data-test="playground-continue-speed"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="playground-speed-1"]').text()).toBe('1/s')
+    expect(wrapper.get('[data-test="playground-speed-10"]').text()).toBe('10/s')
+    expect(wrapper.get('[data-test="playground-speed-100"]').text()).toBe('100/s')
+    expect(wrapper.get('[data-test="playground-speed-10"]').attributes('data-selected')).toBe('true')
+    expect(wrapper.get('[data-test="playground-max-steps"]').text()).toContain('max steps:')
+    expect(wrapper.get('[data-test="playground-max-steps-1000"]').text()).toBe('1000')
+    expect(wrapper.get('[data-test="playground-max-steps-10000"]').text()).toBe('10000')
+    expect(wrapper.get('[data-test="playground-max-steps-100000"]').text()).toBe('100000')
+    expect(wrapper.get('[data-test="playground-max-steps-10000"]').attributes('data-selected')).toBe('true')
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBeGreaterThanOrEqual(5)
     expect(wrapper.findAll('[data-slot="resizable-handle"]').length).toBeGreaterThanOrEqual(3)
@@ -319,20 +331,21 @@ describe('Go-WASM demo UI', () => {
     expect(entries[1].find('.state-diff-error').exists()).toBe(true)
     expect(entries[1].find('.state-diff-line.removed').exists()).toBe(false)
     expect(entries[1].find('.state-diff-line.added').exists()).toBe(false)
-    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
-    expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
-    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(true)
-    expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toContain('Program exited')
-    expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toContain('Program exited')
-    expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toContain('Program exited')
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-reset"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-undo"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toBe('Step forward')
+    expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toBe('Play')
+    expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toBe('End without rendering intermediate states (max 10000 steps)')
 
     await wrapper.get('[data-test="playground-state"]').setValue('div:2,1')
     expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
     expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
     expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(false)
-    expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toBe('Step')
-    expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toBe('Continue')
-    expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toBe('End without rendering intermediate states')
+    expect((wrapper.get('[data-test="playground-reset"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="playground-undo"]').element as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('shows parse-time step errors in state history when no trace is available', async () => {
@@ -460,6 +473,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
     await wrapper.get('[data-test="playground-state"]').setValue('start')
 
+    await wrapper.get('[data-test="playground-max-steps-100000"]').trigger('click')
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
       stdout: '',
@@ -472,7 +486,8 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     const request = mockedRunWithWorker.mock.calls[0][0]
-    expect(request.stepLimit).toBeUndefined()
+    expect(request.stepLimit).toBe(100000)
+    expect(request.maxEvals).toBe(100000)
     expect(request.trace).toBe(false)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'done')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 0')
@@ -487,7 +502,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-rules"]').attributes('data-current-match-line')).toBeUndefined()
   })
 
-  it('keeps Continue and Pause as separate controls', async () => {
+  it('uses media controls for play and stop', async () => {
     vi.useFakeTimers()
     try {
       window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
@@ -507,7 +522,8 @@ describe('Go-WASM demo UI', () => {
       await wrapper.get('[data-test="playground-continue"]').trigger('click')
       await flush()
 
-      expect(wrapper.get('[data-test="playground-continue"]').text()).toContain('Continue')
+      expect(wrapper.get('[data-test="playground-continue"]').text()).toBe('')
+      expect(wrapper.get('[data-test="playground-continue"]').attributes('aria-label')).toBe('Play')
       expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
       expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(false)
 
@@ -564,9 +580,8 @@ describe('Go-WASM demo UI', () => {
     expect(entries()[0].attributes('data-selected')).toBe('true')
     expect(entries()[1].attributes('data-future')).toBe('true')
 
-    await wrapper.get('[data-test="playground-undo"]').trigger('click')
-    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'start')
-    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint initial')
+    expect((wrapper.get('[data-test="playground-undo"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="playground-reset"]').element as HTMLButtonElement).disabled).toBe(true)
 
     await entries()[1].trigger('click')
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -586,6 +601,11 @@ describe('Go-WASM demo UI', () => {
     expect(entries()[1].text()).toContain('#1 row 1')
     expect(entries()[2].text()).toContain('#3 row 3')
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'branch')
+
+    await wrapper.get('[data-test="playground-reset"]').trigger('click')
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'start')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint initial')
+    expect(entries()[0].attributes('data-selected')).toBe('true')
   })
 
   it('keeps resource output as an append-only transcript across steps', async () => {
