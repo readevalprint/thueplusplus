@@ -40,6 +40,8 @@ The playground treats the program editor as an exact source view. Loading a bund
 
 The state textarea is derived only from an explicit first bare `::=` separator followed by at most one state row, or from a selected manifest case input. Files without a separator start with an empty state. Clearing the state textarea sends an explicit empty input override to the Go-WASM runner; it must not fall back to hidden state embedded in the source text.
 
+The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row still restores that checkpoint, and rows after the selected checkpoint remain marked as future/stale until the next step prunes them.
+
 ## Boundaries
 
 - Native Python/Go TOML manifests remain the semantic conformance suite (`make test`).
