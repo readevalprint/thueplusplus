@@ -658,17 +658,29 @@ code {
   padding: 0;
 }
 .playground-layout {
-  display: grid;
-  gap: var(--space-5);
-  grid-template-columns: minmax(20rem, 1.25fr) minmax(18rem, 0.85fr) minmax(18rem, 0.85fr);
+  display: flex;
+  gap: 0;
   min-height: calc(100vh - 64px);
   overflow: hidden;
   padding: var(--space-4) var(--space-6) var(--space-6);
 }
-.playground-state-stack {
-  display: grid;
-  gap: var(--space-5);
-  grid-template-rows: minmax(0, 1fr) minmax(10rem, 0.72fr);
+.playground-column,
+.playground-row,
+.resource-panel {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.playground-state-stack,
+.resource-list {
+  display: flex;
+  gap: 0;
+  min-height: 0;
+  min-width: 0;
+}
+.resource-list-wrap {
+  display: flex;
+  flex: 1 1 0;
   min-height: 0;
 }
 .playground-card {
@@ -828,10 +840,10 @@ code {
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 0;
   min-height: 0;
-  overflow: auto;
-  padding-right: var(--space-1);
+  overflow: hidden;
+  padding-right: 0;
 }
 .resource-empty {
   color: var(--color-text-muted);
@@ -913,18 +925,9 @@ code {
     padding-right: var(--space-4);
   }
   .playground-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.42fr);
-    grid-template-areas:
-      "rules resources"
-      "state resources";
-    grid-template-rows: minmax(24rem, 1fr) minmax(18rem, 0.82fr);
-    min-height: calc(100vh - 64px);
     padding-left: var(--space-4);
     padding-right: var(--space-4);
   }
-  .playground-rules-pane { grid-area: rules; }
-  .playground-state-stack { grid-area: state; }
-  .playground-resources-pane { grid-area: resources; }
 }
 
 @media (max-width: 760px) {
@@ -939,10 +942,8 @@ code {
     grid-column: 1;
   }
   .playground-layout {
-    display: flex;
-    flex-direction: column;
     min-height: 0;
-    overflow: visible;
+    overflow: auto;
     padding: var(--space-4);
   }
   .playground-card {
@@ -951,14 +952,12 @@ code {
   .playground-rules-pane {
     min-height: 26rem;
   }
-  .playground-state-stack {
-    display: contents;
-  }
   .playground-resources-pane {
     min-height: 0;
   }
   .playground-resources-pane .playground-card-content,
-  .playground-resources-pane .resource-list {
+  .playground-resources-pane .resource-list,
+  .playground-resources-pane .resource-list-wrap {
     flex: 0 0 auto;
     min-height: auto;
   }

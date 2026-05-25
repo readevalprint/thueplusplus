@@ -15,7 +15,7 @@
         wrap="off"
         @input="$emit('update:input', ($event.target as HTMLTextAreaElement).value)"
       />
-      <Button type="button" size="sm" :data-test="`resource-submit-${resource.name}`" :disabled="running" @click="$emit('submit')">Submit</Button>
+      <Button type="button" size="sm" :data-test="`resource-submit-${resource.name}`" :disabled="running || !canSubmit" @click="$emit('submit')">Submit</Button>
     </div>
 
     <div v-if="showOutput" class="resource-field">
@@ -49,6 +49,7 @@ const props = defineProps<{
   input: string
   output: string
   running: boolean
+  canSubmit: boolean
   showInput: boolean
   showOutput: boolean
   attention?: 'input' | 'output'

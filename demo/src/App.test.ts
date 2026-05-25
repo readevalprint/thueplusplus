@@ -183,7 +183,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-state"]').attributes('wrap')).toBe('soft')
     expect(wrapper.get('[data-test="playground-step"]').text()).toContain('Step')
     expect(wrapper.get('[data-test="resource-sections"]').element.tagName).toBe('SECTION')
-    expect(wrapper.get('[data-test="playground-state-stack"]').element.tagName).toBe('SECTION')
+    expect(wrapper.get('[data-test="playground-state-stack"]').element.tagName).toBe('DIV')
     expect(wrapper.find('[data-test="playground-reset"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-run"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-auto"]').exists()).toBe(false)
@@ -197,8 +197,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('5/s')
     expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('10/s')
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
-    expect(wrapper.find('[data-slot="resizable-panel"]').exists()).toBe(false)
-    expect(wrapper.find('[data-slot="resizable-handle"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBeGreaterThanOrEqual(6)
+    expect(wrapper.findAll('[data-slot="resizable-handle"]').length).toBeGreaterThanOrEqual(4)
     expect(wrapper.get('[data-test="resource-section-stdin"]').text()).toContain('stdin')
     expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
     expect(wrapper.get('[data-test="resource-section-stderr"]').text()).toContain('stderr')
@@ -276,13 +276,14 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     const diffs = wrapper.get('[data-test="playground-diffs"]')
+    const entries = wrapper.findAll('.state-diff-entry')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 1')
     expect(wrapper.get('[data-test="resource-output-stderr"]').element).toHaveProperty('value', "Builtin 'div' division by zero")
     expect(diffs.text()).toContain('#1 row 6')
     expect(diffs.text()).toContain('Builtin \'div\' division by zero')
-    expect(diffs.find('.state-diff-error').exists()).toBe(true)
-    expect(diffs.find('.state-diff-line.removed').exists()).toBe(false)
-    expect(diffs.find('.state-diff-line.added').exists()).toBe(false)
+    expect(entries[1].find('.state-diff-error').exists()).toBe(true)
+    expect(entries[1].find('.state-diff-line.removed').exists()).toBe(false)
+    expect(entries[1].find('.state-diff-line.added').exists()).toBe(false)
     expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
     expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toContain('Program exited')
@@ -404,11 +405,13 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     const entries = wrapper.findAll('.state-diff-entry')
-    expect(entries).toHaveLength(2)
-    expect(entries[0].text()).toContain('#1 row 1')
-    expect(entries[0].text()).toContain('^start$ ::= middle')
-    expect(entries[1].text()).toContain('#2 row 2')
-    expect(entries[1].text()).toContain('^middle$ ::= done')
+    expect(entries).toHaveLength(3)
+    expect(entries[0].text()).toContain('#0 row 0')
+    expect(entries[0].text()).toContain('initial state')
+    expect(entries[1].text()).toContain('#1 row 1')
+    expect(entries[1].text()).toContain('^start$ ::= middle')
+    expect(entries[2].text()).toContain('#2 row 2')
+    expect(entries[2].text()).toContain('^middle$ ::= done')
     expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
   })
 
@@ -480,12 +483,13 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     const entries = () => wrapper.findAll('.state-diff-entry')
-    expect(entries()).toHaveLength(2)
+    expect(entries()).toHaveLength(3)
+    expect(entries()[0].text()).toContain('initial state')
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'done')
 
     await entries()[0].trigger('click')
-    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'middle')
-    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint #1')
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'start')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint initial')
     expect(entries()[0].attributes('data-selected')).toBe('true')
     expect(entries()[1].attributes('data-future')).toBe('true')
 
@@ -493,7 +497,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'start')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint initial')
 
-    await entries()[0].trigger('click')
+    await entries()[1].trigger('click')
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
       stdout: '',
@@ -506,9 +510,10 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[2][0].input).toBe('middle')
-    expect(entries()).toHaveLength(2)
-    expect(entries()[0].text()).toContain('#1 row 1')
-    expect(entries()[1].text()).toContain('#3 row 3')
+    expect(entries()).toHaveLength(3)
+    expect(entries()[0].text()).toContain('#0 row 0')
+    expect(entries()[1].text()).toContain('#1 row 1')
+    expect(entries()[2].text()).toContain('#3 row 3')
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'branch')
   })
 
@@ -567,6 +572,8 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for random')
+    expect((wrapper.get('[data-test="resource-submit-random"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.get('[data-test="resource-input-random"]').attributes('data-attention')).toBeUndefined()
     expect(document.activeElement).toBe(wrapper.get('[data-test="resource-input-random"]').element)
     expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'random')).toEqual({ name: 'random', inputText: '', readError: undefined })
@@ -594,6 +601,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'GUESS<7|@USER_GUESS@>')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\n')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
+    expect((wrapper.get('[data-test="resource-submit-random"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(false)
     expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
     expect(wrapper.get('[data-test="resource-input-random"]').attributes('data-attention')).toBe('input')
     expect(wrapper.get('[data-test="resource-input-stdin"]').attributes('data-attention')).toBeUndefined()
@@ -659,13 +668,17 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 
-  it('derives resource sections from playground rules and uses raw input buffers', async () => {
+  it('derives resource sections from playground rules and keeps resource inputs gated by requests', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.tpp')
     const wrapper = mount(App)
 
     expect(wrapper.get('[data-test="resource-section-random"]').text()).toContain('random')
     expect(wrapper.get('[data-test="resource-section-random"]').text()).not.toContain('read')
     expect(wrapper.get('[data-test="resource-section-stdout"]').text()).not.toContain('write')
+    expect(wrapper.get('[data-test="resource-input-random"]').element.tagName).toBe('TEXTAREA')
+    expect(wrapper.get('[data-test="resource-input-stdin"]').element.tagName).toBe('TEXTAREA')
+    expect((wrapper.get('[data-test="resource-submit-random"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.find('[data-test="playground-js-procs"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="resource-input-random"]').setValue('7')
@@ -688,14 +701,14 @@ describe('Go-WASM demo UI', () => {
 
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([
       { name: 'stdout', inputText: '', readError: undefined },
-      { name: 'stdin', inputText: 'x\n3\n8\n7', readError: undefined },
+      { name: 'stdin', inputText: '', readError: undefined },
       { name: 'stderr', inputText: '', readError: undefined },
-      { name: 'random', inputText: '7', readError: undefined },
+      { name: 'random', inputText: '', readError: undefined },
     ])
     expect(mockedRunWithWorker.mock.calls[0][0].procs).toBeUndefined()
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n')
-    expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
-    expect(wrapper.get('[data-test="resource-input-random"]').element).toHaveProperty('value', '')
+    expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', 'x\n3\n8\n7')
+    expect(wrapper.get('[data-test="resource-input-random"]').element).toHaveProperty('value', '7')
   })
 
   it('submit resumes with the last step or continue command', async () => {
