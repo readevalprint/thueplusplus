@@ -20,7 +20,6 @@ export const thueppMonarchLanguage = {
     ['{{', '}}', 'delimiter.curly'],
     ['(', ')', 'delimiter.parenthesis'],
     ['[', ']', 'delimiter.square'],
-    ['<', '>', 'delimiter.angle'],
   ],
 
   tokenizer: {
@@ -37,6 +36,11 @@ export const thueppMonarchLanguage = {
         'operator',
       ]],
 
+      // Inert prose rows with no unescaped rule operator are executable
+      // documentation. Color them as comments without reintroducing `#`
+      // comment syntax or hiding invalid `::x` / stale `<|ALIAS|>` markers.
+      [/^(?=\s*\S)(?!\s*[A-Z][A-Z0-9_]*\s*<-)(?!.*(?:^|[^\\])::)(?!.*<\|[A-Z][A-Z0-9_]*\|>).+$/, 'comment'],
+
       { include: '@source' },
     ],
 
@@ -48,7 +52,7 @@ export const thueppMonarchLanguage = {
       // to the interpreter, but highlighting it as an operator is useful for
       // spotting generated operation markers.
       [/::[=<>!-]/, 'operator'],
-      [/::[^\s\w=<>!-]+/, 'invalid'],
+      [/::(?![=<>!-])\S*/, 'invalid'],
 
       // Replacement template fields.
       [/\{\{\s*(rule_index|[A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*(pctenc|pctdec|[A-Za-z_][A-Za-z0-9_]*)\s*)?\}\}/, 'variable'],
@@ -59,9 +63,9 @@ export const thueppMonarchLanguage = {
       [/\$[A-Z][A-Z0-9_]*/, 'type.identifier'],
 
       // RE2-ish regex surface used in LHS and aliases.
-      [/(\(\?<)([A-Za-z_][A-Za-z0-9_]*)(>)/, ['regexp', 'variable', 'regexp']],
-      [/(\(\?P<)([A-Za-z_][A-Za-z0-9_]*)(>)/, ['regexp', 'variable', 'regexp']],
-      [/\(\?[:imsU-]+/, 'regexp'],
+      [/(\()(\?<)([A-Za-z_][A-Za-z0-9_]*)(>)/, ['@brackets', 'regexp', 'variable', 'regexp']],
+      [/(\()(\?P<)([A-Za-z_][A-Za-z0-9_]*)(>)/, ['@brackets', 'regexp', 'variable', 'regexp']],
+      [/(\()(\?[:imsU-]+)/, ['@brackets', 'regexp']],
       [/\[(?:\\.|[^\]\\])*\]/, 'regexp'],
       [/\\[ntr\\dDsSwWbB.+*?^$()[\]{}|/<>-]/, 'regexp.escape'],
       [/[?*+|^$]/, 'regexp'],
@@ -74,9 +78,9 @@ export const thueppMonarchLanguage = {
       [/\b(?:true|false)\b/, 'constant'],
       [/\bERR<[A-Za-z0-9_]+>/, 'invalid'],
 
-      [/[{}()\[\]<>]/, '@brackets'],
+      [/[{}()\[\]]/, '@brackets'],
       [/\s+/, 'white'],
-      [/[^\s{}()\[\]<>$%\\:?*+|^\r\n]+/, 'source'],
+      [/[^\s{}()\[\]$%\\:?*+|^\r\n]+/, 'source'],
       [/./, 'source'],
     ],
 
@@ -97,18 +101,15 @@ export const thueppLanguageConfiguration = {
     ['{{', '}}'],
     ['(', ')'],
     ['[', ']'],
-    ['<', '>'],
   ],
   autoClosingPairs: [
     { open: '{{', close: '}}' },
     { open: '(', close: ')' },
     { open: '[', close: ']' },
-    { open: '<', close: '>' },
   ],
   surroundingPairs: [
     { open: '{{', close: '}}' },
     { open: '(', close: ')' },
     { open: '[', close: ']' },
-    { open: '<', close: '>' },
   ],
 };
