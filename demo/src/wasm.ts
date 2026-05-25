@@ -40,6 +40,7 @@ export interface DemoTraceEvent {
   replacement: string
   stateAfter: string
   exitCode?: number
+  error?: string
 }
 
 export interface DemoRunResult {
