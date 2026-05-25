@@ -10,51 +10,74 @@
     <ResizablePanelGroup direction="horizontal" class="playground-layout" auto-save-id="playground-columns">
       <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
         <Card class="playground-rules-pane">
-          <CardHeader>
+          <CardHeader class="playground-rules-header">
             <CardTitle>program rules</CardTitle>
             <div class="playground-rules-toolbar">
-              <Button type="button" variant="secondary" size="sm" data-test="playground-undo" :disabled="isBusy || !canUndo" title="Undo" @click="undoStep">
+              <Button type="button" variant="secondary" size="icon" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" aria-label="Reset to first state" @click="resetToFirstState">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M11 5v14l-9-7 9-7zm11 0v14l-9-7 9-7z" />
+                </svg>
+              </Button>
+              <Button type="button" variant="secondary" size="icon" data-test="playground-undo" :disabled="!canUndo" title="Step back" aria-label="Step back" @click="undoStep">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
                   <path d="M267.5 440.6c9.5 7.9 22.8 9.7 34.1 4.4s18.4-16.6 18.4-29l0-320c0-12.4-7.2-23.7-18.4-29s-24.5-3.6-34.1 4.4l-192 160L64 241 64 96c0-17.7-14.3-32-32-32S0 78.3 0 96L0 416c0 17.7 14.3 32 32 32s32-14.3 32-32l0-145 11.5 9.6 192 160z" />
                 </svg>
-                Undo
               </Button>
-              <Button type="button" variant="secondary" size="sm" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
-                  <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" />
-                </svg>
-                Step
-              </Button>
-              <ButtonGroup class="continue-speed-group">
-                <Button type="button" variant="secondary" size="sm" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">
-                  <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512">
-                    <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
-                  </svg>
-                  Continue
-                </Button>
-                <Select v-model="continueSpeed" :disabled="isBusy">
-                  <SelectTrigger class="continue-speed-trigger h-8 border-transparent bg-secondary py-0 font-medium text-secondary-foreground hover:bg-secondary/80" data-test="playground-continue-speed" title="Continue speed" aria-label="Continue speed">
-                    {{ continueSpeedLabel }}
-                  </SelectTrigger>
-                  <SelectContent class="continue-speed-content" align="end" :side-offset="4">
-                    <SelectItem v-for="option in continueSpeedOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </ButtonGroup>
-              <Button type="button" variant="secondary" size="sm" data-test="playground-end" :disabled="!canRun" :title="endTitle" @click="() => endProgram()">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 512 512">
-                  <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4L256 241l0-161c0-17.4 9.4-33.4 24.5-41.9s33.7-8.1 48.5 .9l160 96c14.5 8.7 23 24.3 23 41l0 160c0 16.7-8.7 32.2-23 41L329 473c-14.8 9.1-33.4 9.4-48.5 .9S256 449.4 256 432l0-161L52.5 440.6z" />
-                </svg>
-                End
-              </Button>
-              <Button type="button" variant="secondary" size="sm" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
+              <Button type="button" variant="secondary" size="icon" data-test="playground-pause" :disabled="!continuing" title="Pause" aria-label="Pause" @click="pauseProgram">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
                   <path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" />
                 </svg>
-                Pause
               </Button>
+              <Button type="button" variant="secondary" size="icon" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512">
+                  <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
+                </svg>
+              </Button>
+              <Button type="button" variant="secondary" size="icon" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
+                  <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" />
+                </svg>
+              </Button>
+              <Button type="button" variant="secondary" size="icon" data-test="playground-end" :disabled="!canRun" :title="endTitle" aria-label="End" @click="() => endProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M13 5v14l9-7-9-7zM2 5v14l9-7-9-7z" />
+                </svg>
+              </Button>
+            </div>
+            <div class="playground-rules-options">
+              <ButtonGroup class="playground-speed-links" aria-label="Step speed">
+                <Button
+                  v-for="option in continueSpeedOptions"
+                  :key="option.value"
+                  type="button"
+                  :variant="continueSpeed === option.value ? 'secondary' : 'ghost'"
+                  size="sm"
+                  :data-selected="continueSpeed === option.value"
+                  :data-test="`playground-speed-${option.value}`"
+                  :disabled="isBusy"
+                  @click="continueSpeed = option.value"
+                >
+                  {{ option.label }}
+                </Button>
+              </ButtonGroup>
+              <div class="playground-max-steps" data-test="playground-max-steps">
+                <span>max steps:</span>
+                <ButtonGroup aria-label="Max steps">
+                  <Button
+                    v-for="option in maxStepOptions"
+                    :key="option"
+                    type="button"
+                    :variant="maxSteps === option ? 'secondary' : 'ghost'"
+                    size="sm"
+                    :data-selected="maxSteps === option"
+                    :data-test="`playground-max-steps-${option}`"
+                    :disabled="isBusy"
+                    @click="maxSteps = option"
+                  >
+                    {{ option }}
+                  </Button>
+                </ButtonGroup>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -69,7 +92,10 @@
         <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
           <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row">
             <Card class="playground-state-pane">
-              <CardHeader><CardTitle>program state</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>program state</CardTitle>
+                <Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge>
+              </CardHeader>
               <CardContent>
                 <Textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
               </CardContent>
@@ -95,7 +121,6 @@
         <Card class="playground-resources-pane" data-test="resource-sections">
           <CardHeader>
             <CardTitle>resources</CardTitle>
-            <span class="run-status" data-test="playground-status">{{ statusText }}</span>
           </CardHeader>
           <CardContent class="resource-list">
             <ResourceSection
@@ -123,10 +148,10 @@
 import { diffChars } from 'diff'
 import { computed, nextTick, ref } from 'vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
@@ -156,13 +181,14 @@ const repoFiles = Object.fromEntries([
 const testCaseOptions = flattenTestManifests(Object.fromEntries(Object.entries(manifestModules).map(([key, value]) => [toPublicExamplePath(key), value])))
 const initialFile = normalizeFileParam(new URLSearchParams(window.location.search).get('file'))
 
-type ContinueSpeed = 'slow' | 'medium' | 'fast'
+type ContinueSpeed = '1' | '10' | '100'
 
 const continueSpeedOptions: Array<{ value: ContinueSpeed; label: string; delayMs: number }> = [
-  { value: 'slow', label: 'slow · 1/s', delayMs: 1000 },
-  { value: 'medium', label: 'medium · 10/s', delayMs: 100 },
-  { value: 'fast', label: 'fast · no pause', delayMs: 0 },
+  { value: '1', label: '1/s', delayMs: 1000 },
+  { value: '10', label: '10/s', delayMs: 100 },
+  { value: '100', label: '100/s', delayMs: 10 },
 ]
+const maxStepOptions = [1000, 10000, 100000]
 
 const fileParam = ref(initialFile)
 const sourcePath = ref(initialFile.replace(/^\.\//, ''))
@@ -182,20 +208,20 @@ const stateDiffs = ref<StateDiffEntry[]>([])
 const selectedHistoryKey = ref<string | undefined>()
 const baseState = ref('')
 const lastRunMode = ref<'step' | 'continue' | 'end'>('step')
-const continueSpeed = ref<ContinueSpeed>('medium')
-const exitedState = ref<string | undefined>()
+const continueSpeed = ref<ContinueSpeed>('10')
+const maxSteps = ref(10000)
 const matchedRuleLine = ref<number | undefined>()
 
 const resourceSections = computed(() => extractResources(rulesText.value))
-const canUndo = computed(() => stateDiffs.value.length > 0 && selectedHistoryKey.value !== '__base__')
+const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
 const isBusy = computed(() => running.value || continuing.value)
-const hasExitedCurrentState = computed(() => exitedState.value === stateText.value)
-const canRun = computed(() => !isBusy.value && !hasExitedCurrentState.value)
+const canReset = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
+const canUndo = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
+const canRun = computed(() => !isBusy.value)
 const requestedResourceName = computed(() => statusText.value.match(/^waiting for ([A-Za-z_][A-Za-z0-9_-]*)$/)?.[1])
-const stepTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to step.' : 'Step')
-const continueTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to continue.' : 'Continue')
-const endTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to end.' : 'End without rendering intermediate states')
-const continueSpeedLabel = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.label ?? 'medium · 10/s')
+const stepTitle = computed(() => 'Step forward')
+const continueTitle = computed(() => 'Play')
+const endTitle = computed(() => `End without rendering intermediate states (max ${maxSteps.value} steps)`)
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
 
 function toPublicExamplePath(globPath: string): string {
@@ -364,7 +390,6 @@ function clearDiffs(): void {
   stateDiffs.value = []
   selectedHistoryKey.value = undefined
   baseState.value = stateText.value
-  exitedState.value = undefined
   matchedRuleLine.value = undefined
 }
 
@@ -381,15 +406,18 @@ async function continueProgram(): Promise<void> {
   pauseRequested.value = false
   continuing.value = true
   try {
-    while (!hasExitedCurrentState.value && !pauseRequested.value) {
+    let steps = 0
+    while (!pauseRequested.value && steps < maxSteps.value) {
       const status = await executeProgram({ stepLimit: 1, status: 'running', collectTrace: true })
       if (status !== 'stepped') break
+      steps += 1
       if (pauseRequested.value) break
       await waitForContinueDelay()
     }
+    if (steps >= maxSteps.value && !pauseRequested.value) statusText.value = `paused at max steps ${maxSteps.value}`
   } finally {
     continuing.value = false
-    if (pauseRequested.value && !hasExitedCurrentState.value) statusText.value = 'paused'
+    if (pauseRequested.value) statusText.value = 'paused'
   }
 }
 
@@ -397,7 +425,7 @@ async function endProgram(): Promise<void> {
   if (!canRun.value) return
   lastRunMode.value = 'end'
   pauseRequested.value = false
-  await executeProgram({ status: 'ending', collectTrace: false, collapsedHistory: true })
+  await executeProgram({ stepLimit: maxSteps.value, status: 'ending', collectTrace: false, collapsedHistory: true })
 }
 
 function pauseProgram(): void {
@@ -425,7 +453,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       sourceText: rulesText.value,
       sourcePath: sourcePath.value,
       input: runState,
-      maxEvals: 10_000,
+      maxEvals: maxSteps.value,
       maxStateBytes: 1_000_000,
       coverage: false,
       resources: resourceConfigs(),
@@ -453,7 +481,6 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
         return 'stepped'
       }
       statusText.value = `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
-      exitedState.value = stateText.value
       return 'exited'
     }
   } catch (error) {
@@ -462,7 +489,6 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
     resourceAttention.value = nextStderr !== (resourceOutputs.value.stderr ?? '') ? { stderr: 'output' } : {}
     resourceOutputs.value = { ...resourceOutputs.value, stderr: nextStderr }
     statusText.value = 'errored'
-    exitedState.value = stateText.value
     return 'errored'
   } finally {
     running.value = false
@@ -542,17 +568,8 @@ function appendStepErrorDiff(error: string, state: string): void {
   selectedHistoryKey.value = entry.key
 }
 
-function selectedHistoryIndex(): number {
-  return stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value)
-}
-
 function pruneFutureHistory(): void {
-  if (selectedHistoryKey.value === '__base__') {
-    stateDiffs.value = []
-    selectedHistoryKey.value = undefined
-    return
-  }
-  const index = selectedHistoryIndex()
+  const index = selectedHistoryCursor.value
   if (index >= 0 && index < stateDiffs.value.length - 1) {
     stateDiffs.value = stateDiffs.value.slice(0, index + 1)
   }
@@ -564,23 +581,17 @@ function selectHistoryEntry(key: string): void {
   selectedHistoryKey.value = entry.key
   stateText.value = entry.stateAfter
   matchedRuleLine.value = entry.row > 0 ? entry.row : undefined
-  exitedState.value = undefined
   statusText.value = entry.step === 0 ? 'checkpoint initial' : `checkpoint #${entry.step}`
+}
+
+function resetToFirstState(): void {
+  if (!canReset.value) return
+  selectHistoryEntry(stateDiffs.value[0].key)
 }
 
 function undoStep(): void {
   if (!canUndo.value) return
-  const index = selectedHistoryIndex() >= 0 ? selectedHistoryIndex() : stateDiffs.value.length - 1
-  const previous = index - 1
-  if (previous >= 0) {
-    selectHistoryEntry(stateDiffs.value[previous].key)
-    return
-  }
-  selectedHistoryKey.value = '__base__'
-  stateText.value = baseState.value
-  matchedRuleLine.value = undefined
-  exitedState.value = undefined
-  statusText.value = 'checkpoint initial'
+  selectHistoryEntry(stateDiffs.value[selectedHistoryCursor.value - 1].key)
 }
 
 function lineNumberFromError(error: string): number | undefined {
