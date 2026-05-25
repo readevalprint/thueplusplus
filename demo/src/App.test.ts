@@ -205,7 +205,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-input-stdin"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="resource-output-stderr"]').element.tagName).toBe('TEXTAREA')
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Hello, World')
+    const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
+    expect(loadedSource).toContain('Hello, World')
+    expect(loadedSource).toContain('\n::=\nSTART\n')
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
@@ -644,6 +646,11 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="test-case-option-name"]').text()).toContain('zero arg')
     expect(wrapper.get('[data-test="test-case-option-input-preview"]').text()).toContain('fn')
 
+    await input.setValue('source row beginning with hash')
+    expect(wrapper.findAll('[data-test="test-case-option"]').length).toBeGreaterThan(0)
+    expect(wrapper.get('[data-test="test-case-option-path"]').text()).toContain('source_hash_rule.toml')
+    expect(wrapper.get('[data-test="test-case-option-name"]').text()).toContain('source row beginning with hash can be a rule')
+
     await input.setValue('100')
     expect(wrapper.find('[data-test="test-case-option"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="test-case-command-empty"]').text()).toContain('No test cases found')
@@ -666,6 +673,23 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('idle')
     expect(wrapper.find('[data-test="fixture-panel"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
+  })
+
+  it('selecting a top-level manifest test preserves exact source rows in rules', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App, { attachTo: document.body })
+
+    await wrapper.get('[data-test="test-case-command-trigger"]').trigger('click')
+    await flush()
+    await wrapper.get('[data-test="test-case-command-input"]').setValue('source row beginning with hash')
+    await wrapper.get('[data-test="test-case-option"]').trigger('click')
+    await flush()
+
+    const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
+    expect(loadedSource).toContain('#x ::= y')
+    expect(loadedSource).toContain('^y$ ::> stdout source-row-rule\\n')
+    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('#x')
+    expect(wrapper.get('[data-test="test-case-command-current"]').text()).toContain('source_hash_rule.toml')
   })
 
   it('derives resource sections from playground rules and keeps resource inputs gated by requests', async () => {

@@ -175,20 +175,34 @@ function normalizeFileParam(value: string | null): string {
 }
 
 function splitProgram(source: string): { rules: string; state: string } {
-  const rules: string[] = []
+  return { rules: source, state: initialStateFromSource(source) }
+}
+
+function initialStateFromSource(source: string): string {
+  const lines = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  let finalSeparator = -1
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index].trim() === '::=') {
+      finalSeparator = index
+      break
+    }
+  }
+  if (finalSeparator >= 0) {
+    const state = lines.slice(finalSeparator + 1)
+    while (state.length > 0 && state[state.length - 1] === '') state.pop()
+    return state.join('\n')
+  }
+
   const state: string[] = []
   let inState = false
-  for (const line of source.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')) {
+  for (const line of lines) {
     if (!inState && line.trim() === '') continue
-    if (!inState && isProgramHeaderLine(line)) {
-      rules.push(line)
-      continue
-    }
+    if (!inState && isProgramHeaderLine(line)) continue
     inState = true
     state.push(line)
   }
   while (state.length > 0 && state[state.length - 1] === '') state.pop()
-  return { rules: rules.join('\n'), state: state.join('\n') }
+  return state.join('\n')
 }
 
 function isProgramHeaderLine(line: string): boolean {

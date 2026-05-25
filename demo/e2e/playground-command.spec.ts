@@ -36,6 +36,19 @@ test('clicking a test case loads rules, state, and resources without running', a
   await expect(page.getByTestId('terminal')).toHaveCount(0)
 })
 
+test('command palette can load top-level manifest tests without dropping hash-prefixed source rows', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+
+  await page.getByTestId('test-case-command-trigger').click()
+  await page.getByTestId('test-case-command-input').fill('source row beginning with hash')
+  await page.getByTestId('test-case-option').first().click()
+
+  await expect(page.getByTestId('test-case-command-current')).toContainText('source_hash_rule.toml')
+  await expect(page.getByTestId('playground-rules')).toContainText('#x ::= y')
+  await expect(page.getByTestId('playground-rules')).toContainText('^y$ ::> stdout source-row-rule\\n')
+  await expect(page.getByTestId('playground-state')).toHaveValue('#x')
+})
+
 test('step button writes stdout without a shell simulator', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, 'hello ::> stdout Hello, World!\\n\ndone ::- 0\n\n::=')

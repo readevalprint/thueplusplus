@@ -34,8 +34,12 @@ interface RawManifestCase {
 }
 
 interface RawManifest {
+  name?: unknown
   program?: unknown
+  input?: unknown
+  stdin?: unknown
   args?: unknown
+  expect?: unknown
   case?: unknown
 }
 
@@ -99,15 +103,32 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
     if (typeof parsed.program !== 'string') continue
     const programPath = resolveManifestProgram(manifestPath, parsed.program)
     const manifestArgs = asStringArray(parsed.args)
+    const label = manifestLabel(manifestPath)
     const cases = Array.isArray(parsed.case) ? parsed.case as RawManifestCase[] : []
+    if (cases.length === 0) {
+      const caseName = typeof parsed.name === 'string' ? parsed.name : label
+      const input = typeof parsed.input === 'string' ? parsed.input : ''
+      const args = withDefaultMaxEvals(manifestArgs)
+      const searchableText = [manifestPath, label, caseName].join(' ')
+      options.push({
+        id: `${manifestPath}::${slug(caseName) || 'default'}`,
+        manifestPath,
+        manifestLabel: label,
+        programPath,
+        caseName,
+        input,
+        inputPreview: inputPreview(input),
+        args,
+        stdin: typeof parsed.stdin === 'string' ? parsed.stdin : undefined,
+        expect: expectObject(parsed.expect),
+        searchableText,
+      })
+      continue
+    }
     for (const [index, testCase] of cases.entries()) {
       const caseName = typeof testCase.name === 'string' ? testCase.name : `case ${index + 1}`
       const input = typeof testCase.input === 'string' ? testCase.input : ''
-      const args = [...manifestArgs, ...asStringArray(testCase.args)]
-      if (!args.some(arg => arg === '--max-evals' || arg.startsWith('--max-evals='))) {
-        args.push('--max-evals', String(DEFAULT_MAX_EVALS))
-      }
-      const label = manifestLabel(manifestPath)
+      const args = withDefaultMaxEvals([...manifestArgs, ...asStringArray(testCase.args)])
       const searchableText = [manifestPath, label, caseName].join(' ')
       options.push({
         id: `${manifestPath}::${slug(caseName)}`,
@@ -125,5 +146,13 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
     }
   }
   return options
+}
+
+function withDefaultMaxEvals(args: string[]): string[] {
+  const result = [...args]
+  if (!result.some(arg => arg === '--max-evals' || arg.startsWith('--max-evals='))) {
+    result.push('--max-evals', String(DEFAULT_MAX_EVALS))
+  }
+  return result
 }
 
