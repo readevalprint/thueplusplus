@@ -512,8 +512,7 @@ code {
   padding: 0 var(--space-3);
 }
 .playground-route-header button,
-.playground-route-header input[type="search"],
-[data-slot="select-trigger"] {
+.playground-route-header input[type="search"] {
   min-height: 36px;
   padding: 0 var(--space-3);
 }
@@ -524,8 +523,61 @@ code {
   gap: var(--space-2);
 }
 [data-slot="button-group"] {
+  align-items: center;
   border-radius: var(--radius-sm);
   display: inline-flex;
+}
+[data-slot="select-trigger"] {
+  align-items: center;
+  background: var(--color-panel-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.875rem;
+  gap: var(--space-2);
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  white-space: nowrap;
+}
+[data-slot="select-trigger"] svg {
+  color: var(--color-text-muted);
+  height: 1rem;
+  width: 1rem;
+}
+[data-slot="select-content"] {
+  background: var(--color-panel-soft);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 0.35);
+  color: var(--color-text);
+  min-width: 8rem;
+  overflow: hidden;
+  z-index: 50;
+}
+[data-slot="select-viewport"] {
+  padding: 4px;
+}
+[data-slot="select-item"] {
+  align-items: center;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: default;
+  display: flex;
+  font-size: 0.875rem;
+  gap: var(--space-2);
+  outline: none;
+  padding: 6px 32px 6px 8px;
+  position: relative;
+  user-select: none;
+}
+[data-slot="select-item"][data-highlighted] {
+  background: var(--color-border);
+}
+[data-slot="select-item"] svg {
+  color: var(--color-text-muted);
+  height: 1rem;
+  width: 1rem;
 }
 [data-slot="button-group"] > [data-slot="button"],
 [data-slot="button-group"] > [data-slot="select-trigger"] {
@@ -541,14 +593,8 @@ code {
   border-bottom-right-radius: var(--radius-sm);
   border-top-right-radius: var(--radius-sm);
 }
-.continue-speed-group [data-slot="select-trigger"] {
-  background: var(--color-code);
-  border-color: var(--color-border-strong);
-  color: var(--color-text-muted);
+.continue-speed-trigger {
   min-width: 8.5rem;
-}
-.continue-speed-group [data-slot="button"] {
-  border-color: var(--color-border-strong);
 }
 .toolbar-icon {
   fill: currentcolor;
