@@ -32,9 +32,16 @@
                   </svg>
                   Continue
                 </Button>
-                <select v-model="continueSpeed" data-slot="select-trigger" data-test="playground-continue-speed" :disabled="isBusy" title="Continue speed" aria-label="Continue speed">
-                  <option v-for="option in continueSpeedOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                </select>
+                <Select v-model="continueSpeed" :disabled="isBusy">
+                  <SelectTrigger class="continue-speed-trigger" data-test="playground-continue-speed" title="Continue speed" aria-label="Continue speed">
+                    {{ continueSpeedLabel }}
+                  </SelectTrigger>
+                  <SelectContent class="continue-speed-content" align="end" :side-offset="4">
+                    <SelectItem v-for="option in continueSpeedOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </ButtonGroup>
               <Button type="button" variant="secondary" size="sm" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
