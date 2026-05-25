@@ -190,6 +190,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-undo"]').text()).toContain('Undo')
     expect(wrapper.get('[data-test="playground-step"]').text()).toContain('Step')
     expect(wrapper.get('[data-test="playground-continue"]').text()).toContain('Continue')
+    expect(wrapper.get('[data-test="playground-end"]').text()).toContain('End')
     expect(wrapper.get('[data-test="playground-pause"]').text()).toContain('Pause')
     expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.get('[data-test="playground-continue-speed"]').attributes('data-slot')).toBe('select-trigger')
@@ -320,14 +321,18 @@ describe('Go-WASM demo UI', () => {
     expect(entries[1].find('.state-diff-line.added').exists()).toBe(false)
     expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
     expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toContain('Program exited')
     expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toContain('Program exited')
+    expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toContain('Program exited')
 
     await wrapper.get('[data-test="playground-state"]').setValue('div:2,1')
     expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
     expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(false)
     expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toBe('Step')
     expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toBe('Continue')
+    expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toBe('End without rendering intermediate states')
   })
 
   it('shows parse-time step errors in state history when no trace is available', async () => {
@@ -447,6 +452,39 @@ describe('Go-WASM demo UI', () => {
     expect(entries[2].text()).toContain('#2 row 2')
     expect(entries[2].text()).toContain('^middle$ ::= done')
     expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
+  })
+
+  it('ends a run in one worker call and appends only a collapsed final history row', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
+    await wrapper.get('[data-test="playground-state"]').setValue('start')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'done',
+      evalCount: 3,
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-end"]').trigger('click')
+    await flush()
+
+    const request = mockedRunWithWorker.mock.calls[0][0]
+    expect(request.stepLimit).toBeUndefined()
+    expect(request.trace).toBe(false)
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'done')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 0')
+    const entries = wrapper.findAll('.state-diff-entry')
+    expect(entries).toHaveLength(2)
+    expect(entries[0].text()).toContain('#0 row 0')
+    expect(entries[1].text()).toContain('#3 row 0')
+    expect(entries[1].text()).toContain('end: skipped intermediate states')
+    expect(entries[1].text()).toContain('-start')
+    expect(entries[1].text()).toContain('+done')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('^start$ ::= middle')
+    expect(wrapper.get('[data-test="playground-rules"]').attributes('data-current-match-line')).toBeUndefined()
   })
 
   it('keeps Continue and Pause as separate controls', async () => {

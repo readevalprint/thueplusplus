@@ -57,6 +57,7 @@ type wasmResult struct {
 	CoverageTSV string
 	Trace       []thuepp.TraceEvent
 	State       string
+	EvalCount   int
 }
 
 func main() {
@@ -148,7 +149,7 @@ func run(args []js.Value) wasmResult {
 	}
 	exitCode, runErr := interp.Run()
 	interp.Cleanup()
-	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State}
+	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount}
 	if runErr != nil {
 		res.ExitCode = 1
 		res.Error = runErr.Error()
@@ -164,7 +165,7 @@ func run(args []js.Value) wasmResult {
 }
 
 func resultToJS(r wasmResult) js.Value {
-	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State}
+	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCount": r.EvalCount}
 	if r.Error != "" {
 		obj["error"] = r.Error
 	}

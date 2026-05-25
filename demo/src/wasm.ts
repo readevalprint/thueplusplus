@@ -52,6 +52,7 @@ export interface DemoRunResult {
   error?: string
   errors?: string
   state?: string
+  evalCount?: number
   resourceLogs?: DemoResourceLog[]
   trace?: DemoTraceEvent[]
 }
