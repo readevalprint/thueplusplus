@@ -646,44 +646,27 @@ code {
 .state-diff-row.selected { background: rgb(255 255 255 / 0.07); }
 .state-diff-row.selected > :first-child { border-left: 3px solid var(--color-text); padding-left: calc(var(--space-2) - 3px); }
 .state-diff-row.future { opacity: 0.55; }
-.state-diff-expanded-row { background: rgb(255 255 255 / 0.03); }
-.state-diff-expanded-row.future { opacity: 0.55; }
-.state-diff-expand-cell { width: 2rem; }
-.state-diff-step-cell { width: 5.25rem; }
-.state-diff-rule-cell { width: 28%; }
-.state-diff-expand {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  display: inline-flex;
-  height: 1.5rem;
-  justify-content: center;
-  padding: 0;
-  width: 1.5rem;
-}
-.state-diff-expand:hover,
-.state-diff-expand:focus-visible { background: rgb(255 255 255 / 0.07); color: var(--color-text); outline: none; }
+.state-diff-entry-cell { width: auto; }
 .state-diff-lines,
-.state-diff-expanded { display: flex; flex-direction: column; gap: 0.2rem; }
+.state-diff-entry-body,
+.state-diff-field { display: flex; flex-direction: column; gap: 0.2rem; width: 100%; }
 .state-diff-empty { color: var(--color-text-muted); padding: var(--space-6); text-align: center; }
-.state-diff-full-state {
-  color: var(--color-text);
-  margin: 0;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
 .state-diff-meta,
+.state-diff-field-label,
 .state-diff-rule,
 .state-diff-note,
 .state-diff-sign,
 .state-diff-ellipsis { color: var(--color-text-muted); }
+.state-diff-field-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: lowercase;
+}
 .state-diff-rule,
 .state-diff-error,
 .state-diff-note,
-.state-diff-line { overflow-wrap: anywhere; white-space: pre-wrap; }
+.state-diff-line { box-sizing: border-box; overflow-wrap: anywhere; white-space: pre-wrap; width: 100%; }
 .state-diff-error { background: rgb(239 68 68 / 0.14); color: var(--color-danger); padding: 0.15rem 0.35rem; }
 .state-diff-line { padding: 0.05rem 0.25rem; }
 .state-diff-line.removed { background: rgb(239 68 68 / 0.12); }

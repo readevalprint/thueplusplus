@@ -1,5 +1,5 @@
 Lisp evaluator guide
-This file is executable documentation written as Thueplusplus rewrite rules.
+This file is executable docutation written as Thueplusplus rewrite rules.
 Rows like this one are inert prose rows, not hash comments and not rules.
 The evaluator reads Lisp source, protects strings, freezes lists inside out as L pct payloads, and then evaluates typed V values through explicit continuations.
 Runtime value families are numbers, booleans, strings, lists, symbols, closures, and primitive callable handles.

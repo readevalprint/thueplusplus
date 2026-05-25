@@ -288,9 +288,6 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('examples/hello/hello.tpp')
     expect(wrapper.find('.state-diff-char-removed').exists()).toBe(true)
     expect(wrapper.find('.state-diff-char-added').exists()).toBe(true)
-    await wrapper.get('[data-test="playground-diff-1"] .state-diff-expand').trigger('click')
-    expect(wrapper.get('[data-test="playground-diff-full-1"]').text()).toContain('full state at step #1')
-    expect(wrapper.get('[data-test="playground-diff-full-state"]').text()).toBe('middle')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
   })
 
@@ -417,9 +414,6 @@ describe('Go-WASM demo UI', () => {
     expect(diffs.text()).not.toContain('examples/hello/hello.tpp')
     expect(diffs.text()).not.toContain('a'.repeat(80))
     expect(diffs.text()).not.toContain('z'.repeat(80))
-
-    await wrapper.get('[data-test="playground-diff-4"] .state-diff-expand').trigger('click')
-    expect(wrapper.get('[data-test="playground-diff-full-state"]').text()).toBe(after)
   })
 
   it('places newer step diffs below older diffs', async () => {
@@ -482,7 +476,7 @@ describe('Go-WASM demo UI', () => {
     expect(request.trace).toBe(false)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'done')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 0')
-    const entries = wrapper.findAll('.state-diff-entry')
+    const entries = wrapper.findAll('.state-diff-row')
     expect(entries).toHaveLength(2)
     expect(entries[0].text()).toContain('#0 row 0')
     expect(entries[1].text()).toContain('#3 row 0')
@@ -569,14 +563,6 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint initial')
     expect(entries()[0].attributes('data-selected')).toBe('true')
     expect(entries()[1].attributes('data-future')).toBe('true')
-
-    await entries()[1].find('.state-diff-expand').trigger('keydown.enter')
-    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'start')
-    expect(entries()[1].attributes('data-selected')).toBeUndefined()
-
-    await entries()[1].find('.state-diff-expand').trigger('click')
-    expect(wrapper.get('[data-test="playground-diff-full-1"]').text()).toContain('middle')
-    expect(wrapper.find('.state-diff-expanded-row').attributes('data-future')).toBe('true')
 
     await wrapper.get('[data-test="playground-undo"]').trigger('click')
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'start')
