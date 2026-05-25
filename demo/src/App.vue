@@ -10,7 +10,7 @@
           The browser shows stdin, stdout, stderr, resources, and traces around the runtime.
         </p>
         <div class="hero-actions">
-          <a class="button-link primary" href="#playground">Try an example</a>
+          <Button as="a" href="#playground">Try an example</Button>
           <span class="runtime-note">Go-WASM semantics, not a JavaScript rule evaluator.</span>
         </div>
       </div>
@@ -43,9 +43,9 @@
             limits, traces, and source inspection available without making the first screen feel like an IDE.
           </p>
         </div>
-        <button data-test="run-demo" :disabled="running" @click="() => runProgram()">
+        <Button data-test="run-demo" :disabled="running" @click="() => runProgram()">
           {{ running ? 'Running…' : 'Run Program' }}
-        </button>
+        </Button>
       </div>
 
       <nav class="starter-tabs" aria-label="starter examples">
@@ -88,7 +88,7 @@
                 <p class="kicker compact">stdout</p>
                 <h2>stdout</h2>
               </div>
-              <button type="button" class="secondary" data-copy="stdout" @click="copyText('stdout', result.stdout || '')">Copy</button>
+              <Button type="button" variant="secondary" data-copy="stdout" @click="copyText('stdout', result.stdout || '')">Copy</Button>
             </div>
             <pre>{{ result.stdout || outputFor(selectedId) }}</pre>
             <p class="hint">{{ explanationFor(selectedId) }}</p>
@@ -151,14 +151,14 @@
               <p class="kicker compact">run details</p>
               <h2>Run output</h2>
             </div>
-            <button v-if="activeTab === 'stdout'" type="button" class="secondary" data-copy="stdout" @click="copyText('stdout', result.stdout || '')">Copy stdout</button>
-            <button v-else-if="activeTab === 'coverage'" type="button" class="secondary" data-copy="coverage" @click="copyText('coverage TSV', coverageText)">Copy coverage</button>
-            <button v-else-if="activeTab === 'source'" type="button" class="secondary" data-copy="source" @click="copyText('source', composedSource)">Copy source</button>
+            <Button v-if="activeTab === 'stdout'" type="button" variant="secondary" data-copy="stdout" @click="copyText('stdout', result.stdout || '')">Copy stdout</Button>
+            <Button v-else-if="activeTab === 'coverage'" type="button" variant="secondary" data-copy="coverage" @click="copyText('coverage TSV', coverageText)">Copy coverage</Button>
+            <Button v-else-if="activeTab === 'source'" type="button" variant="secondary" data-copy="source" @click="copyText('source', composedSource)">Copy source</Button>
           </div>
           <nav class="tabs" aria-label="result tabs">
-            <button v-for="tab in resultTabs" :key="tab.id" type="button" :class="{ active: activeTab === tab.id }" :data-result-tab="tab.id" @click="activeTab = tab.id">
+            <Button v-for="tab in resultTabs" :key="tab.id" type="button" variant="secondary" :class="{ active: activeTab === tab.id }" :data-result-tab="tab.id" @click="activeTab = tab.id">
               {{ tab.label }}
-            </button>
+            </Button>
           </nav>
           <p v-if="copyNotice" class="copy-notice">{{ copyNotice }}</p>
 
@@ -213,6 +213,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { Button } from '@/components/ui/button'
 import { examples, type DemoResourceExample } from './examples'
 import PlaygroundPage from './PlaygroundPage.vue'
 import { splitProgramSource } from './thueSource'

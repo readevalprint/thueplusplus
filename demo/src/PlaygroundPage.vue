@@ -33,7 +33,7 @@
                   Continue
                 </Button>
                 <Select v-model="continueSpeed" :disabled="isBusy">
-                  <SelectTrigger class="continue-speed-trigger" data-test="playground-continue-speed" title="Continue speed" aria-label="Continue speed">
+                  <SelectTrigger class="continue-speed-trigger h-8 border-transparent bg-secondary py-0 font-medium text-secondary-foreground hover:bg-secondary/80" data-test="playground-continue-speed" title="Continue speed" aria-label="Continue speed">
                     {{ continueSpeedLabel }}
                   </SelectTrigger>
                   <SelectContent class="continue-speed-content" align="end" :side-offset="4">
