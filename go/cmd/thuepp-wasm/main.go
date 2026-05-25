@@ -137,9 +137,11 @@ func run(args []js.Value) wasmResult {
 	if err := interp.LoadProgramText(sourcePath, sourceText); err != nil {
 		return resultWithError(stdout.String(), stderr.String(), err.Error())
 	}
-	if input, err := optionalString(opts, "input", ""); err != nil {
-		return errorResult(err.Error())
-	} else if input != "" {
+	if hasOwnProperty(opts, "input") {
+		input, err := requiredString(opts, "input")
+		if err != nil {
+			return errorResult(err.Error())
+		}
 		if err := interp.ApplyInputOverride(input); err != nil {
 			return resultWithError(stdout.String(), stderr.String(), err.Error())
 		}
@@ -208,6 +210,10 @@ func resultWithError(stdout, stderr, msg string) wasmResult {
 	return wasmResult{ExitCode: 1, Stdout: stdout, Stderr: stderr, Error: msg, Errors: []string{msg}}
 }
 
+func hasOwnProperty(obj js.Value, key string) bool {
+	return js.Global().Get("Object").Get("prototype").Get("hasOwnProperty").Call("call", obj, key).Bool()
+}
+
 func jsValueToString(v js.Value) (string, error) {
 	if v.Type() == js.TypeString {
 		return v.String(), nil
@@ -222,7 +228,10 @@ func jsValueToString(v js.Value) (string, error) {
 }
 
 func requiredString(obj js.Value, key string) (string, error) {
-	v := obj.Get(key)
+	return jsValueToRequiredString(obj.Get(key), key)
+}
+
+func jsValueToRequiredString(v js.Value, key string) (string, error) {
 	if v.Type() != js.TypeString {
 		return "", fmt.Errorf("%s is required", key)
 	}

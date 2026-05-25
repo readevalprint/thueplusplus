@@ -215,6 +215,7 @@
 import { computed, reactive, ref } from 'vue'
 import { examples, type DemoResourceExample } from './examples'
 import PlaygroundPage from './PlaygroundPage.vue'
+import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoRunResult } from './wasm'
 
 interface ResourceState extends DemoResourceExample { key: number }
@@ -304,45 +305,6 @@ const formattedResourceLogs = computed(() => {
   ].join('\n')).join('\n\n')
 })
 
-function splitProgram(source: string): { rules: string; state: string } {
-  return { rules: source, state: initialStateFromSource(source) }
-}
-
-function initialStateFromSource(source: string): string {
-  const lines = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
-  let finalSeparator = -1
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim() === '::=') {
-      finalSeparator = index
-      break
-    }
-  }
-  if (finalSeparator >= 0) {
-    const state = lines.slice(finalSeparator + 1)
-    while (state.length > 0 && state[state.length - 1] === '') state.pop()
-    return state.join('\n')
-  }
-
-  const state: string[] = []
-  let inState = false
-  for (const line of lines) {
-    if (!inState && line.trim() === '') continue
-    if (!inState && isProgramHeaderLine(line)) continue
-    inState = true
-    state.push(line)
-  }
-  while (state.length > 0 && state[state.length - 1] === '') state.pop()
-  return state.join('\n')
-}
-
-function isProgramHeaderLine(line: string): boolean {
-  const trimmed = line.trim()
-  return trimmed === ''
-    || trimmed.startsWith('#')
-    || /^[A-Z][A-Z0-9_]*\s*<-/.test(trimmed)
-    || /(^|[^\\])::[=<>!-]/.test(line)
-}
-
 function cloneResources(items: DemoResourceExample[]): ResourceState[] {
   return items.map(item => ({ ...item, key: nextKey++ }))
 }
@@ -386,7 +348,7 @@ function selectExample(id: string): void {
 
 function loadSelectedExample(): void {
   const example = selectedExample.value
-  const split = splitProgram(example.sourceText)
+  const split = splitProgramSource(example.sourceText)
   sourcePath.value = example.sourcePath
   rulesText.value = split.rules
   stateText.value = split.state

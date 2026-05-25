@@ -68,12 +68,9 @@ test('empty history and resources do not show helper labels', async ({ page }) =
   await page.goto('/playground?file=./examples/hello/hello.tpp')
 
   await expect(page.getByTestId('playground-diffs')).not.toContainText('step diffs appear here')
-  await expect(page.getByTestId('playground-continue-speed')).toHaveValue('10')
+  await expect(page.getByTestId('playground-continue-speed')).toContainText('medium · 10/s')
   await expect(page.getByTestId('playground-pause')).toContainText('Pause')
   await expect(page.getByTestId('playground-pause')).toBeDisabled()
-  await expect(page.getByTestId('playground-continue-speed')).toContainText('1/s')
-  await expect(page.getByTestId('playground-continue-speed')).toContainText('5/s')
-  await expect(page.getByTestId('playground-continue-speed')).toContainText('10/s')
   await expect(page.getByTestId('resource-section-stdin')).toContainText('stdin')
   await expect(page.getByTestId('resource-section-stdin')).not.toContainText('input')
   await expect(page.getByTestId('resource-section-stdin')).not.toContainText('read')

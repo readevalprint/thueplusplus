@@ -20,28 +20,35 @@ async function runSmoke(cases) {
 }
 
 (async () => {
-  const [hello, resource, missing, proc, callbackError] = await runSmoke([
+  const [hello, emptyOverride, resource, missing, proc, callbackError] = await runSmoke([
     {
       sourcePath: 'hello.tpp',
-      sourceText: '^hello$ ::> stdout hello\\n\nhello',
+      sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
       coverage: true,
       maxEvals: 10,
     },
     {
-      sourceText: '^start$ ::< 1 input\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\nstart',
+      sourcePath: 'empty-override.tpp',
+      sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
+      input: '',
+      coverage: true,
+      maxEvals: 10,
+    },
+    {
+      sourceText: '^start$ ::< 1 input\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nstart',
       resources: {
         input: { readLine: () => 'from-callback' },
       },
     },
     {
-      sourceText: '^start$ ::< 5 missing\nstart',
+      sourceText: '^start$ ::< 5 missing\n::=\nstart',
     },
     {
-      sourceText: '^start$ ::< 5 sh\nstart',
+      sourceText: '^start$ ::< 5 sh\n::=\nstart',
       procs: { sh: 'printf nope' },
     },
     {
-      sourceText: '^start$ ::< 1 input\nstart',
+      sourceText: '^start$ ::< 1 input\n::=\nstart',
       resources: {
         input: { readLine: () => ({ error: 'callback boom' }) },
       },
@@ -51,6 +58,9 @@ async function runSmoke(cases) {
   assert.strictEqual(hello.exitCode, 0, JSON.stringify(hello));
   assert.strictEqual(hello.stdout, 'hello\n');
   assert.match(hello.coverageTSV || '', /hello\.tpp:1\t1/);
+
+  assert.strictEqual(emptyOverride.exitCode, 0, JSON.stringify(emptyOverride));
+  assert.strictEqual(emptyOverride.stdout, '');
 
   assert.strictEqual(resource.exitCode, 0, JSON.stringify(resource));
   assert.strictEqual(resource.stdout, 'from-callback\n');
