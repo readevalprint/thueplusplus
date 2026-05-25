@@ -12,6 +12,7 @@
     "smoke:dist": "node scripts/check-dist.mjs"
   },
   "dependencies": {
+    "@tanstack/vue-table": "^8.21.3",
     "@vitejs/plugin-vue": "latest",
     "@vue/tsconfig": "latest",
     "class-variance-authority": "^0.7.1",

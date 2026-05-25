@@ -618,21 +618,63 @@ code {
 .state-diffs {
   border: 0;
   border-radius: 0;
-  display: flex;
-  flex-direction: column;
   font-size: 0.74rem;
   line-height: 1.45;
   overflow: auto;
 }
-.state-diff-entry {
-  border-top: 1px solid var(--color-border);
-  cursor: pointer;
-  padding: var(--space-2) var(--space-3);
+.state-diffs [data-slot="table-container"] { overflow: visible; }
+.state-diffs [data-slot="table"] { table-layout: fixed; }
+.state-diffs [data-slot="table-head"],
+.state-diffs [data-slot="table-cell"] {
+  padding: var(--space-2);
+  vertical-align: top;
+  white-space: normal;
 }
-.state-diff-entry:hover,
-.state-diff-entry:focus-visible { background: rgb(255 255 255 / 0.04); outline: none; }
-.state-diff-entry.selected { background: rgb(255 255 255 / 0.07); border-left: 3px solid var(--color-text); padding-left: calc(var(--space-3) - 3px); }
-.state-diff-entry.future { opacity: 0.55; }
+.state-diffs [data-slot="table-head"] {
+  background: var(--color-code);
+  color: var(--color-text-muted);
+  position: sticky;
+  text-transform: lowercase;
+  top: 0;
+  z-index: 1;
+}
+.state-diff-row {
+  cursor: pointer;
+}
+.state-diff-row:hover,
+.state-diff-row:focus-visible { background: rgb(255 255 255 / 0.04); outline: none; }
+.state-diff-row.selected { background: rgb(255 255 255 / 0.07); }
+.state-diff-row.selected > :first-child { border-left: 3px solid var(--color-text); padding-left: calc(var(--space-2) - 3px); }
+.state-diff-row.future { opacity: 0.55; }
+.state-diff-expanded-row { background: rgb(255 255 255 / 0.03); }
+.state-diff-expanded-row.future { opacity: 0.55; }
+.state-diff-expand-cell { width: 2rem; }
+.state-diff-step-cell { width: 5.25rem; }
+.state-diff-rule-cell { width: 28%; }
+.state-diff-expand {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 1.5rem;
+  justify-content: center;
+  padding: 0;
+  width: 1.5rem;
+}
+.state-diff-expand:hover,
+.state-diff-expand:focus-visible { background: rgb(255 255 255 / 0.07); color: var(--color-text); outline: none; }
+.state-diff-lines,
+.state-diff-expanded { display: flex; flex-direction: column; gap: 0.2rem; }
+.state-diff-empty { color: var(--color-text-muted); padding: var(--space-6); text-align: center; }
+.state-diff-full-state {
+  color: var(--color-text);
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
 .state-diff-meta,
 .state-diff-rule,
 .state-diff-note,
