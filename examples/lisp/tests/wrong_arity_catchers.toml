@@ -69,8 +69,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "bare set-var fails wrong arity"
-input = '(set-var)'
+name = "bare set fails wrong arity"
+input = '(set)'
 
 [case.expect]
 exit_code = 2
@@ -78,8 +78,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "set-var with one operand fails wrong arity"
-input = '(let ((x 1)) (set-var x))'
+name = "set with one operand fails wrong arity"
+input = '(let ((x 1)) (set x))'
 
 [case.expect]
 exit_code = 2
@@ -87,8 +87,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "set-var with three operands fails wrong arity"
-input = '(let ((x 1)) (set-var x 2 3))'
+name = "set with three operands fails wrong arity"
+input = '(let ((x 1)) (set x 2 3))'
 
 [case.expect]
 exit_code = 2

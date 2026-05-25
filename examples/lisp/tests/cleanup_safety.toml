@@ -55,8 +55,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "do preserves set-var env update"
-input = '(let ((x 0)) (do (set-var x 1) x))'
+name = "do preserves set env update"
+input = '(let ((x 0)) (do (set x 1) x))'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -64,7 +64,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "while mutation feeds later reads deterministically"
-input = '(let ((x 0)) (do (while (lt x 2) (set-var x (add x 1))) x))'
+input = '(let ((x 0)) (do (while (lt x 2) (set x (add x 1))) x))'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -72,7 +72,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "list args evaluate left to right with side effects"
-input = '(let ((x 0)) (list (set-var x 1) x))'
+input = '(let ((x 0)) (list (set x 1) x))'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -80,7 +80,7 @@ stdout_stripped = "(1 1)"
 
 [[case]]
 name = "call args evaluate left to right with side effects"
-input = '(let ((x 0)) ((fn (a b) (list a b)) (set-var x 1) x))'
+input = '(let ((x 0)) ((fn (a b) (list a b)) (set x 1) x))'
 [case.expect]
 exit_code = 0
 stderr = ""

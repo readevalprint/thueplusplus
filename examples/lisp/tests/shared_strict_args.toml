@@ -5,7 +5,7 @@ args = ["--max-evals", "60000"]
 
 [[case]]
 name = "list evaluates args left-to-right with mutation"
-input = '(let ((x 0)) (list (set-var x 1) x))'
+input = '(let ((x 0)) (list (set x 1) x))'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -13,7 +13,7 @@ stdout_stripped = "(1 1)"
 
 [[case]]
 name = "call evaluates args left-to-right with mutation"
-input = '(let ((x 0)) ((fn (a b) (list a b)) (set-var x 1) x))'
+input = '(let ((x 0)) ((fn (a b) (list a b)) (set x 1) x))'
 [case.expect]
 exit_code = 0
 stderr = ""
