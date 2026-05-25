@@ -529,12 +529,13 @@ code {
 }
 [data-slot="select-trigger"] {
   align-items: center;
-  background: var(--color-panel-soft);
-  border: 1px solid var(--color-border-strong);
+  background: var(--color-accent);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--color-text);
+  color: var(--color-accent-ink);
   display: inline-flex;
   font-size: 0.875rem;
+  font-weight: 800;
   gap: var(--space-2);
   justify-content: space-between;
   min-height: 36px;
@@ -542,7 +543,7 @@ code {
   white-space: nowrap;
 }
 [data-slot="select-trigger"] svg {
-  color: var(--color-text-muted);
+  color: var(--color-accent-ink);
   height: 1rem;
   width: 1rem;
 }
