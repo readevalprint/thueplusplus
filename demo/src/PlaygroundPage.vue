@@ -186,6 +186,7 @@ const canRun = computed(() => !isBusy.value && !hasExitedCurrentState.value)
 const requestedResourceName = computed(() => statusText.value.match(/^waiting for ([A-Za-z_][A-Za-z0-9_-]*)$/)?.[1])
 const stepTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to step.' : 'Step')
 const continueTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to continue.' : 'Continue')
+const continueSpeedLabel = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.label ?? 'medium · 10/s')
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
 
 function toPublicExamplePath(globPath: string): string {
