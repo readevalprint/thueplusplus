@@ -2,27 +2,31 @@
   <main class="playground-route">
     <header class="playground-route-header">
       <h1>THUE++ Playground</h1>
-      <button type="button" data-test="playground-step" :disabled="running" @click="() => stepProgram()">Step</button>
-      <label class="auto-step-toggle">
-        <input v-model="autoStep" type="checkbox" data-test="playground-auto" :disabled="running" />
-        auto
-      </label>
       <TestCaseCommand :options="testCaseOptions" @select="selectTestCase" />
     </header>
 
     <p v-if="loadError" class="error-text">{{ loadError }}</p>
 
     <div class="playground-layout">
-      <PlaygroundCard title="rules" class="playground-rules-pane">
-        <RulesMonacoEditor v-model="rulesText" data-test="playground-rules" />
+      <PlaygroundCard title="program rules" class="playground-rules-pane">
+        <template #aside>
+          <div class="playground-rules-toolbar">
+            <button type="button" data-test="playground-step" :disabled="running" @click="() => stepProgram()">Step</button>
+            <label class="auto-step-toggle">
+              <input v-model="autoStep" type="checkbox" data-test="playground-auto" :disabled="running" />
+              auto
+            </label>
+          </div>
+        </template>
+        <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" />
       </PlaygroundCard>
 
       <section class="playground-state-stack" data-test="playground-state-stack">
-        <PlaygroundCard title="state" class="playground-state-pane">
+        <PlaygroundCard title="program state" class="playground-state-pane">
           <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
         </PlaygroundCard>
 
-        <PlaygroundCard title="diffs" class="playground-diffs-pane">
+        <PlaygroundCard title="state history" class="playground-diffs-pane">
           <StateDiffs :entries="stateDiffs" />
         </PlaygroundCard>
       </section>
@@ -92,6 +96,7 @@ const running = ref(false)
 const autoStep = ref(false)
 const statusText = ref('idle')
 const stateDiffs = ref<StateDiffEntry[]>([])
+const matchedRuleLine = ref<number | undefined>()
 
 const resourceSections = computed(() => extractResources(rulesText.value))
 
@@ -172,7 +177,7 @@ function extractResources(rules: string): ResourceUsage[] {
     const write = rawLine.match(/::\s*>\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
     if (write) markResource(byName, write[1], 'write')
   }
-  const stdioOrder = new Map([['stdin', 0], ['stdout', 1], ['stderr', 2]])
+  const stdioOrder = new Map([['stdout', 0], ['stdin', 1], ['stderr', 2]])
   return [...byName.values()].sort((a, b) => {
     const left = stdioOrder.get(a.name)
     const right = stdioOrder.get(b.name)
@@ -252,17 +257,15 @@ function loadFile(file: string): void {
   window.history.replaceState({}, '', url)
 }
 
-async function selectTestCase(testCase: TestCaseOption): Promise<void> {
+function selectTestCase(testCase: TestCaseOption): void {
   const file = `./${testCase.programPath}`
   loadFile(file)
   stateText.value = testCase.input
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
-  resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, stdin: testCase.stdin ?? '' }
   const url = new URL(window.location.href)
   url.searchParams.set('test', `./${testCase.manifestPath}`)
   url.searchParams.set('case', testCase.id.split('::').at(-1) ?? testCase.caseName)
   window.history.replaceState({}, '', url)
-  await executeProgram({ stepLimit: undefined, status: 'running' })
 }
 
 function clearRun(): void {
@@ -276,6 +279,7 @@ function clearRun(): void {
 
 function clearDiffs(): void {
   stateDiffs.value = []
+  matchedRuleLine.value = undefined
 }
 
 async function stepProgram(): Promise<void> {
@@ -299,17 +303,18 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       trace: options.collectTrace ?? options.stepLimit !== undefined,
       stepLimit: options.stepLimit,
     })
-    const stderr = [result.stderr ?? '', result.error ?? '', result.errors ?? ''].filter(Boolean).join('\n')
+    const stderr = [...new Set([result.stderr, result.error, result.errors].filter(Boolean))].join('\n')
     applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
     appendStateDiffs(result.trace ?? [])
+    updateMatchedRuleLine(result.trace ?? [])
     const pendingResource = pendingInputResource(result)
     if (pendingResource) {
       statusText.value = `waiting for ${pendingResource}`
       await focusResourceInput(pendingResource)
     } else {
-      statusText.value = options.stepLimit === 1 ? 'stepped' : `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
+      statusText.value = result.exitCode && result.exitCode !== 0 ? `exited ${result.exitCode}` : (options.stepLimit === 1 ? 'stepped' : `exited ${result.exitCode ?? (stderr ? 1 : 0)}`)
     }
   } catch (error) {
     const stderr = error instanceof Error ? error.message : String(error)
@@ -324,6 +329,12 @@ function appendStateDiffs(trace: DemoTraceEvent[]): void {
   const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index))
   if (entries.length === 0) return
   stateDiffs.value = [...entries.reverse(), ...stateDiffs.value]
+}
+
+function updateMatchedRuleLine(trace: DemoTraceEvent[]): void {
+  const cleanSourcePath = sourcePath.value.replace(/^\.\//, '')
+  const event = [...trace].reverse().find(item => item.sourcePath.replace(/^\.\//, '') === cleanSourcePath)
+  matchedRuleLine.value = event?.lineNumber
 }
 
 function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] {
