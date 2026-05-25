@@ -9,42 +9,45 @@
 
     <ResizablePanelGroup direction="horizontal" class="playground-layout" auto-save-id="playground-columns">
       <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
-        <PlaygroundCard title="program rules" class="playground-rules-pane">
-          <template #aside>
+        <Card class="playground-rules-pane">
+          <CardHeader>
+            <CardTitle>program rules</CardTitle>
             <div class="playground-rules-toolbar">
-              <button type="button" data-test="playground-undo" :disabled="isBusy || !canUndo" title="Undo" @click="undoStep">
+              <Button type="button" variant="secondary" size="sm" data-test="playground-undo" :disabled="isBusy || !canUndo" title="Undo" @click="undoStep">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
                   <path d="M267.5 440.6c9.5 7.9 22.8 9.7 34.1 4.4s18.4-16.6 18.4-29l0-320c0-12.4-7.2-23.7-18.4-29s-24.5-3.6-34.1 4.4l-192 160L64 241 64 96c0-17.7-14.3-32-32-32S0 78.3 0 96L0 416c0 17.7 14.3 32 32 32s32-14.3 32-32l0-145 11.5 9.6 192 160z" />
                 </svg>
                 Undo
-              </button>
-              <button type="button" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">
+              </Button>
+              <Button type="button" variant="secondary" size="sm" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
                   <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" />
                 </svg>
                 Step
-              </button>
-              <button type="button" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512">
-                  <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
-                </svg>
-                Continue
-              </button>
-              <button type="button" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
+              </Button>
+              <ButtonGroup class="continue-speed-group">
+                <Button type="button" variant="secondary" size="sm" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">
+                  <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512">
+                    <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
+                  </svg>
+                  Continue
+                </Button>
+                <select v-model="continueSpeed" data-slot="select-trigger" data-test="playground-continue-speed" :disabled="isBusy" title="Continue speed" aria-label="Continue speed">
+                  <option v-for="option in continueSpeedOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </ButtonGroup>
+              <Button type="button" variant="secondary" size="sm" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
                   <path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" />
                 </svg>
                 Pause
-              </button>
-              <select v-model.number="continueStepsPerSecond" data-test="playground-continue-speed" :disabled="isBusy" title="Continue speed">
-                <option :value="1">1/s</option>
-                <option :value="5">5/s</option>
-                <option :value="10">10/s</option>
-              </select>
+              </Button>
             </div>
-          </template>
-          <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" />
-        </PlaygroundCard>
+          </CardHeader>
+          <CardContent>
+            <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" />
+          </CardContent>
+        </Card>
       </ResizablePanel>
 
       <ResizableHandle />
@@ -52,17 +55,23 @@
       <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-state-column">
         <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
           <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row">
-            <PlaygroundCard title="program state" class="playground-state-pane">
-              <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
-            </PlaygroundCard>
+            <Card class="playground-state-pane">
+              <CardHeader><CardTitle>program state</CardTitle></CardHeader>
+              <CardContent>
+                <Textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
+              </CardContent>
+            </Card>
           </ResizablePanel>
 
           <ResizableHandle />
 
           <ResizablePanel :default-size="42" :min-size="18" class="playground-row playground-timeline-row">
-            <PlaygroundCard title="timeline" class="playground-diffs-pane">
-              <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
-            </PlaygroundCard>
+            <Card class="playground-diffs-pane">
+              <CardHeader><CardTitle>timeline</CardTitle></CardHeader>
+              <CardContent>
+                <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+              </CardContent>
+            </Card>
           </ResizablePanel>
         </ResizablePanelGroup>
       </ResizablePanel>
@@ -70,30 +79,28 @@
       <ResizableHandle />
 
       <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-resources-column">
-        <PlaygroundCard title="resources" class="playground-resources-pane" data-test="resource-sections" content-class="resource-list-wrap">
-          <template #aside>
+        <Card class="playground-resources-pane" data-test="resource-sections">
+          <CardHeader>
+            <CardTitle>resources</CardTitle>
             <span class="run-status" data-test="playground-status">{{ statusText }}</span>
-          </template>
-          <ResizablePanelGroup direction="vertical" class="resource-list" auto-save-id="playground-resource-rows">
-            <template v-for="(resource, index) in resourceSections" :key="resource.name">
-              <ResizablePanel :default-size="100 / resourceSections.length" :min-size="12" :order="index + 1" class="resource-panel">
-                <ResourceSection
-                  :resource="resource"
-                  :input="resourceInputs[resource.name] ?? ''"
-                  :output="resourceOutputText(resource.name)"
-                  :attention="resourceAttention[resource.name]"
-                  :running="isBusy"
-                  :can-submit="requestedResourceName === resource.name"
-                  :show-input="showResourceInput(resource)"
-                  :show-output="showResourceOutput(resource)"
-                  @update:input="setResourceInput(resource.name, $event)"
-                  @submit="submitResource(resource.name)"
-                />
-              </ResizablePanel>
-              <ResizableHandle v-if="index < resourceSections.length - 1" />
-            </template>
-          </ResizablePanelGroup>
-        </PlaygroundCard>
+          </CardHeader>
+          <CardContent class="resource-list">
+            <ResourceSection
+              v-for="resource in resourceSections"
+              :key="resource.name"
+              :resource="resource"
+              :input="resourceInputs[resource.name] ?? ''"
+              :output="resourceOutputText(resource.name)"
+              :attention="resourceAttention[resource.name]"
+              :running="isBusy"
+              :can-submit="requestedResourceName === resource.name"
+              :show-input="showResourceInput(resource)"
+              :show-output="showResourceOutput(resource)"
+              @update:input="setResourceInput(resource.name, $event)"
+              @submit="submitResource(resource.name)"
+            />
+          </CardContent>
+        </Card>
       </ResizablePanel>
     </ResizablePanelGroup>
   </main>
@@ -102,8 +109,11 @@
 <script setup lang="ts">
 import { diffChars } from 'diff'
 import { computed, nextTick, ref } from 'vue'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
-import PlaygroundCard from './PlaygroundCard.vue'
+import { Textarea } from '@/components/ui/textarea'
 import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
@@ -131,6 +141,14 @@ const repoFiles = Object.fromEntries([
 const testCaseOptions = flattenTestManifests(Object.fromEntries(Object.entries(manifestModules).map(([key, value]) => [toPublicExamplePath(key), value])))
 const initialFile = normalizeFileParam(new URLSearchParams(window.location.search).get('file'))
 
+type ContinueSpeed = 'slow' | 'medium' | 'fast'
+
+const continueSpeedOptions: Array<{ value: ContinueSpeed; label: string; delayMs: number }> = [
+  { value: 'slow', label: 'slow · 1/s', delayMs: 1000 },
+  { value: 'medium', label: 'medium · 10/s', delayMs: 100 },
+  { value: 'fast', label: 'fast · no pause', delayMs: 0 },
+]
+
 const fileParam = ref(initialFile)
 const sourcePath = ref(initialFile.replace(/^\.\//, ''))
 const rulesText = ref('')
@@ -149,7 +167,7 @@ const stateDiffs = ref<StateDiffEntry[]>([])
 const selectedHistoryKey = ref<string | undefined>()
 const baseState = ref('')
 const lastRunMode = ref<'step' | 'continue'>('step')
-const continueStepsPerSecond = ref(10)
+const continueSpeed = ref<ContinueSpeed>('medium')
 const exitedState = ref<string | undefined>()
 const matchedRuleLine = ref<number | undefined>()
 
@@ -161,6 +179,7 @@ const canRun = computed(() => !isBusy.value && !hasExitedCurrentState.value)
 const requestedResourceName = computed(() => statusText.value.match(/^waiting for ([A-Za-z_][A-Za-z0-9_-]*)$/)?.[1])
 const stepTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to step.' : 'Step')
 const continueTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to continue.' : 'Continue')
+const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -464,7 +483,9 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
 }
 
 function waitForContinueDelay(): Promise<void> {
-  const end = Date.now() + (1000 / continueStepsPerSecond.value)
+  const delayMs = continueDelayMs.value
+  if (delayMs <= 0 || pauseRequested.value) return Promise.resolve()
+  const end = Date.now() + delayMs
   return new Promise(resolve => {
     const tick = () => {
       if (pauseRequested.value || Date.now() >= end) resolve()
