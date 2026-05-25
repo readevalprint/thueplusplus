@@ -34,6 +34,12 @@ The focused Vitest tests mount the Vue app and exercise the browser-facing contr
 
 These tests intentionally do not run `examples/**/tests/*.toml`. The semantic conformance suite remains `make test` at the repository root.
 
+## Playground source and state
+
+The playground treats the program editor as an exact source view. Loading a bundled `.tpp` file must preserve blank lines, hash-prefixed rows, aliases, and the final bare `::=` state block in the Program rules panel. `#` is ordinary Thue++ source text, not a browser-demo comment marker.
+
+The state textarea is derived only from an explicit first bare `::=` separator followed by at most one state row, or from a selected manifest case input. Files without a separator start with an empty state. Clearing the state textarea sends an explicit empty input override to the Go-WASM runner; it must not fall back to hidden state embedded in the source text.
+
 ## Boundaries
 
 - Native Python/Go TOML manifests remain the semantic conformance suite (`make test`).

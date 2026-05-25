@@ -221,7 +221,41 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-step"]').trigger('click')
     await flush()
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
+    expect(mockedRunWithWorker.mock.calls[0][0].sourceText).toContain('\n::=\nSTART\n')
+    expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('START')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello, World!\n')
+  })
+
+  it('uses the visible empty state instead of falling back to embedded source state', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-state"]').setValue('')
+
+    mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '', state: '', resourceLogs: [] })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
+    expect(mockedRunWithWorker.mock.calls[0][0].sourceText).toContain('\n::=\nSTART\n')
+    expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('')
+  })
+
+  it('loads hash-prefixed source rows exactly and keeps state empty without a separator heuristic', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hash-data/source-hash-rule.tpp')
+    const wrapper = mount(App)
+
+    const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
+    expect(loadedSource).toContain('#x ::= y')
+    expect(loadedSource).toContain('^y$ ::> stdout source-row-rule\\n')
+    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('discovers resources from hash-prefixed rule rows', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-rules"]').setValue('#read ::< @VALUE custom\n#done ::> custom done\n')
+
+    expect(wrapper.get('[data-test="resource-section-custom"]').text()).toContain('custom')
   })
 
   it('steps one rule and updates State as the current state', async () => {

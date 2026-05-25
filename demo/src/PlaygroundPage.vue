@@ -127,6 +127,7 @@ import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
 import TestCaseCommand from './TestCaseCommand.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
+import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
 
 const exampleModules = import.meta.glob('../../examples/**/*.tpp', {
@@ -202,45 +203,6 @@ function normalizeFileParam(value: string | null): string {
   return fallback
 }
 
-function splitProgram(source: string): { rules: string; state: string } {
-  return { rules: source, state: initialStateFromSource(source) }
-}
-
-function initialStateFromSource(source: string): string {
-  const lines = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
-  let finalSeparator = -1
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim() === '::=') {
-      finalSeparator = index
-      break
-    }
-  }
-  if (finalSeparator >= 0) {
-    const state = lines.slice(finalSeparator + 1)
-    while (state.length > 0 && state[state.length - 1] === '') state.pop()
-    return state.join('\n')
-  }
-
-  const state: string[] = []
-  let inState = false
-  for (const line of lines) {
-    if (!inState && line.trim() === '') continue
-    if (!inState && isProgramHeaderLine(line)) continue
-    inState = true
-    state.push(line)
-  }
-  while (state.length > 0 && state[state.length - 1] === '') state.pop()
-  return state.join('\n')
-}
-
-function isProgramHeaderLine(line: string): boolean {
-  const trimmed = line.trim()
-  return trimmed === ''
-    || trimmed.startsWith('#')
-    || /^[A-Z][A-Z0-9_]*\s*<-/.test(trimmed)
-    || /(^|[^\\])::[=<>!-]/.test(line)
-}
-
 interface ResourceUsage {
   name: string
   reads: boolean
@@ -279,7 +241,7 @@ function extractResources(rules: string): ResourceUsage[] {
   markResource(byName, 'stderr', 'write')
   for (const rawLine of rules.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')) {
     const line = rawLine.trim()
-    if (!line || line.startsWith('#')) continue
+    if (!line) continue
     const read = rawLine.match(/::\s*<\s+\S+\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
     if (read) markResource(byName, read[1], 'read')
     const write = rawLine.match(/::\s*>\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
@@ -356,10 +318,10 @@ function loadFile(file: string): void {
     stateText.value = ''
     return
   }
-  loadError.value = ''
-  const split = splitProgram(source)
+  const split = splitProgramSource(source)
   rulesText.value = split.rules
   stateText.value = split.state
+  loadError.value = split.error
   clearRun()
   resourceInputs.value = {}
   const url = new URL(window.location.href)
