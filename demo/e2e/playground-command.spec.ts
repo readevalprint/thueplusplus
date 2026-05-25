@@ -1,4 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+async function fillRules(page: Page, value: string): Promise<void> {
+  await page.getByTestId('playground-rules').evaluate((element, text) => {
+    const editorElement = element as HTMLElement & { __thueppSetValue?: (value: string) => void }
+    if (!editorElement.__thueppSetValue) throw new Error('rules Monaco editor is not ready')
+    editorElement.__thueppSetValue(text)
+  }, value)
+}
 
 test('playground selector searches by path/case but not input', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
@@ -27,6 +35,8 @@ test('clicking a test case loads state and runs through stdio', async ({ page })
 
 test('step button writes stdout without a shell simulator', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await fillRules(page, 'hello ::> stdout Hello, World!\\n\ndone ::- 0\n\n::=')
+  await page.getByTestId('playground-state').fill('hello\ndone')
 
   await expect(page.getByTestId('playground-run')).toHaveCount(0)
   await page.getByTestId('playground-step').click()
@@ -38,7 +48,7 @@ test('step button writes stdout without a shell simulator', async ({ page }) => 
 
 test('stdin submit respects the auto checkbox', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
-  await page.getByTestId('playground-rules').fill('PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30 stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
+  await fillRules(page, 'PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30 stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
   await page.getByTestId('playground-state').fill('read')
 
   await page.getByTestId('resource-input-stdin').fill('Ada')
