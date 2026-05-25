@@ -43,6 +43,12 @@
                   </SelectContent>
                 </Select>
               </ButtonGroup>
+              <Button type="button" variant="secondary" size="sm" data-test="playground-end" :disabled="!canRun" :title="endTitle" @click="() => endProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 512 512">
+                  <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4L256 241l0-161c0-17.4 9.4-33.4 24.5-41.9s33.7-8.1 48.5 .9l160 96c14.5 8.7 23 24.3 23 41l0 160c0 16.7-8.7 32.2-23 41L329 473c-14.8 9.1-33.4 9.4-48.5 .9S256 449.4 256 432l0-161L52.5 440.6z" />
+                </svg>
+                End
+              </Button>
               <Button type="button" variant="secondary" size="sm" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
                   <path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" />
@@ -175,7 +181,7 @@ const statusText = ref('idle')
 const stateDiffs = ref<StateDiffEntry[]>([])
 const selectedHistoryKey = ref<string | undefined>()
 const baseState = ref('')
-const lastRunMode = ref<'step' | 'continue'>('step')
+const lastRunMode = ref<'step' | 'continue' | 'end'>('step')
 const continueSpeed = ref<ContinueSpeed>('medium')
 const exitedState = ref<string | undefined>()
 const matchedRuleLine = ref<number | undefined>()
@@ -188,6 +194,7 @@ const canRun = computed(() => !isBusy.value && !hasExitedCurrentState.value)
 const requestedResourceName = computed(() => statusText.value.match(/^waiting for ([A-Za-z_][A-Za-z0-9_-]*)$/)?.[1])
 const stepTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to step.' : 'Step')
 const continueTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to continue.' : 'Continue')
+const endTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to end.' : 'End without rendering intermediate states')
 const continueSpeedLabel = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.label ?? 'medium · 10/s')
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
 
@@ -273,7 +280,8 @@ async function submitResource(name: string): Promise<void> {
   if (requestedResourceName.value !== name) return
   const value = resourceInputs.value[name] ?? ''
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
-  if (lastRunMode.value === 'continue') await continueProgram()
+  if (lastRunMode.value === 'end') await endProgram()
+  else if (lastRunMode.value === 'continue') await continueProgram()
   else await stepProgram()
 }
 
@@ -385,6 +393,13 @@ async function continueProgram(): Promise<void> {
   }
 }
 
+async function endProgram(): Promise<void> {
+  if (!canRun.value) return
+  lastRunMode.value = 'end'
+  pauseRequested.value = false
+  await executeProgram({ status: 'ending', collectTrace: false, collapsedHistory: true })
+}
+
 function pauseProgram(): void {
   if (!continuing.value) return
   pauseRequested.value = true
@@ -393,7 +408,7 @@ function pauseProgram(): void {
 
 type RunStatus = 'stepped' | 'exited' | 'waiting' | 'errored'
 
-async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean }): Promise<RunStatus | undefined> {
+async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean; collapsedHistory?: boolean }): Promise<RunStatus | undefined> {
   if (running.value) return undefined
   if (stateDiffs.value.length === 0) {
     baseState.value = stateText.value
@@ -423,6 +438,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
     if (nextState !== undefined) stateText.value = nextState
     const trace = result.trace ?? []
     appendStateDiffs(trace)
+    if (options.collapsedHistory) appendCollapsedEndDiff(runState, nextState ?? runState, result.evalCount)
     const pendingResource = pendingInputResource(result)
     if (trace.length === 0 && stderr && !pendingResource) appendStepErrorDiff(stderr, runState)
     updateMatchedRuleLine(trace)
@@ -464,6 +480,25 @@ function waitForContinueDelay(): Promise<void> {
     }
     tick()
   })
+}
+
+function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, evalCount?: number): void {
+  const previousStep = Math.max(0, ...stateDiffs.value.map(entry => entry.step))
+  const step = Math.max(previousStep + 1, evalCount ?? previousStep + 1)
+  const { before, after } = compactCharDiff(stateBefore, stateAfter)
+  const entry = {
+    key: `end-${step}`,
+    step,
+    row: 0,
+    rule: 'end: skipped intermediate states',
+    stateBefore,
+    stateAfter,
+    before,
+    after,
+    note: stateBefore === stateAfter ? 'no state change' : undefined,
+  }
+  stateDiffs.value = [...stateDiffs.value, entry]
+  selectedHistoryKey.value = entry.key
 }
 
 function appendInitialStateDiff(state: string): void {
