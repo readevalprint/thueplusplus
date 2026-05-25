@@ -45,6 +45,12 @@ function shiftLine(buffer) {
   return line.endsWith('\r') ? line.slice(0, -1) : line;
 }
 
+function shiftSubmittedValue(buffer) {
+  const value = buffer.text;
+  buffer.text = '';
+  return value;
+}
+
 function buildResources(options) {
   const logs = [];
   const resources = {};
@@ -58,6 +64,7 @@ function buildResources(options) {
     if (resources[name]) return;
     const config = configsByName.get(name) || {};
     const buffer = { text: String(config.inputText ?? fallbackInput) };
+    const submittedValueMode = Object.prototype.hasOwnProperty.call(config, 'inputText');
     const log = { name, reads: [], writes: [], errors: [], remainingInputText: buffer.text, outputText: '' };
     logs.push(log);
     resources[name] = {
@@ -73,7 +80,7 @@ function buildResources(options) {
           log.remainingInputText = buffer.text;
           return { error: pending };
         }
-        const line = shiftLine(buffer);
+        const line = submittedValueMode ? shiftSubmittedValue(buffer) : shiftLine(buffer);
         log.reads.push(line);
         log.remainingInputText = buffer.text;
         return line;

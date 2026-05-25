@@ -7,79 +7,102 @@
 
     <p v-if="loadError" class="error-text">{{ loadError }}</p>
 
-    <div class="playground-layout">
-      <PlaygroundCard title="program rules" class="playground-rules-pane">
-        <template #aside>
-          <div class="playground-rules-toolbar">
-            <button type="button" data-test="playground-undo" :disabled="isBusy || !canUndo" title="Undo" @click="undoStep">
-              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
-                <path d="M267.5 440.6c9.5 7.9 22.8 9.7 34.1 4.4s18.4-16.6 18.4-29l0-320c0-12.4-7.2-23.7-18.4-29s-24.5-3.6-34.1 4.4l-192 160L64 241 64 96c0-17.7-14.3-32-32-32S0 78.3 0 96L0 416c0 17.7 14.3 32 32 32s32-14.3 32-32l0-145 11.5 9.6 192 160z" />
-              </svg>
-              Undo
-            </button>
-            <button type="button" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">
-              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
-                <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" />
-              </svg>
-              Step
-            </button>
-            <button type="button" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">
-              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512">
-                <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
-              </svg>
-              Continue
-            </button>
-            <button type="button" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
-              <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
-                <path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" />
-              </svg>
-              Pause
-            </button>
-            <select v-model.number="continueStepsPerSecond" data-test="playground-continue-speed" :disabled="isBusy" title="Continue speed">
-              <option :value="1">1/s</option>
-              <option :value="5">5/s</option>
-              <option :value="10">10/s</option>
-            </select>
-          </div>
-        </template>
-        <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" />
-      </PlaygroundCard>
-
-      <section class="playground-state-stack" data-test="playground-state-stack">
-        <PlaygroundCard title="program state" class="playground-state-pane">
-          <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
+    <ResizablePanelGroup direction="horizontal" class="playground-layout" auto-save-id="playground-columns">
+      <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
+        <PlaygroundCard title="program rules" class="playground-rules-pane">
+          <template #aside>
+            <div class="playground-rules-toolbar">
+              <button type="button" data-test="playground-undo" :disabled="isBusy || !canUndo" title="Undo" @click="undoStep">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
+                  <path d="M267.5 440.6c9.5 7.9 22.8 9.7 34.1 4.4s18.4-16.6 18.4-29l0-320c0-12.4-7.2-23.7-18.4-29s-24.5-3.6-34.1 4.4l-192 160L64 241 64 96c0-17.7-14.3-32-32-32S0 78.3 0 96L0 416c0 17.7 14.3 32 32 32s32-14.3 32-32l0-145 11.5 9.6 192 160z" />
+                </svg>
+                Undo
+              </button>
+              <button type="button" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
+                  <path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" />
+                </svg>
+                Step
+              </button>
+              <button type="button" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512">
+                  <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
+                </svg>
+                Continue
+              </button>
+              <button type="button" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512">
+                  <path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" />
+                </svg>
+                Pause
+              </button>
+              <select v-model.number="continueStepsPerSecond" data-test="playground-continue-speed" :disabled="isBusy" title="Continue speed">
+                <option :value="1">1/s</option>
+                <option :value="5">5/s</option>
+                <option :value="10">10/s</option>
+              </select>
+            </div>
+          </template>
+          <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" />
         </PlaygroundCard>
+      </ResizablePanel>
 
-        <PlaygroundCard title="timeline" class="playground-diffs-pane">
-          <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+      <ResizableHandle />
+
+      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-state-column">
+        <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
+          <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row">
+            <PlaygroundCard title="program state" class="playground-state-pane">
+              <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
+            </PlaygroundCard>
+          </ResizablePanel>
+
+          <ResizableHandle />
+
+          <ResizablePanel :default-size="42" :min-size="18" class="playground-row playground-timeline-row">
+            <PlaygroundCard title="timeline" class="playground-diffs-pane">
+              <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+            </PlaygroundCard>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </ResizablePanel>
+
+      <ResizableHandle />
+
+      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-resources-column">
+        <PlaygroundCard title="resources" class="playground-resources-pane" data-test="resource-sections" content-class="resource-list-wrap">
+          <template #aside>
+            <span class="run-status" data-test="playground-status">{{ statusText }}</span>
+          </template>
+          <ResizablePanelGroup direction="vertical" class="resource-list" auto-save-id="playground-resource-rows">
+            <template v-for="(resource, index) in resourceSections" :key="resource.name">
+              <ResizablePanel :default-size="100 / resourceSections.length" :min-size="12" :order="index + 1" class="resource-panel">
+                <ResourceSection
+                  :resource="resource"
+                  :input="resourceInputs[resource.name] ?? ''"
+                  :output="resourceOutputText(resource.name)"
+                  :attention="resourceAttention[resource.name]"
+                  :running="isBusy"
+                  :can-submit="requestedResourceName === resource.name"
+                  :show-input="showResourceInput(resource)"
+                  :show-output="showResourceOutput(resource)"
+                  @update:input="setResourceInput(resource.name, $event)"
+                  @submit="submitResource(resource.name)"
+                />
+              </ResizablePanel>
+              <ResizableHandle v-if="index < resourceSections.length - 1" />
+            </template>
+          </ResizablePanelGroup>
         </PlaygroundCard>
-      </section>
-
-      <PlaygroundCard title="resources" class="playground-resources-pane" data-test="resource-sections" content-class="resource-list">
-        <template #aside>
-          <span class="run-status" data-test="playground-status">{{ statusText }}</span>
-        </template>
-        <ResourceSection
-          v-for="resource in resourceSections"
-          :key="resource.name"
-          :resource="resource"
-          :input="resourceInputs[resource.name] ?? ''"
-          :output="resourceOutputText(resource.name)"
-          :attention="resourceAttention[resource.name]"
-          :running="isBusy"
-          :show-input="showResourceInput(resource)"
-          :show-output="showResourceOutput(resource)"
-          @update:input="setResourceInput(resource.name, $event)"
-          @submit="submitResource(resource.name)"
-        />
-      </PlaygroundCard>
-    </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   </main>
 </template>
 
 <script setup lang="ts">
 import { diffChars } from 'diff'
 import { computed, nextTick, ref } from 'vue'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import PlaygroundCard from './PlaygroundCard.vue'
 import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
@@ -135,6 +158,7 @@ const canUndo = computed(() => stateDiffs.value.length > 0 && selectedHistoryKey
 const isBusy = computed(() => running.value || continuing.value)
 const hasExitedCurrentState = computed(() => exitedState.value === stateText.value)
 const canRun = computed(() => !isBusy.value && !hasExitedCurrentState.value)
+const requestedResourceName = computed(() => statusText.value.match(/^waiting for ([A-Za-z_][A-Za-z0-9_-]*)$/)?.[1])
 const stepTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to step.' : 'Step')
 const continueTitle = computed(() => hasExitedCurrentState.value ? 'Program exited. Change state or select an earlier timeline row to continue.' : 'Continue')
 
@@ -242,12 +266,11 @@ function setResourceInput(name: string, value: string): void {
 }
 
 async function submitResource(name: string): Promise<void> {
+  if (requestedResourceName.value !== name) return
   const value = resourceInputs.value[name] ?? ''
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
-  if (statusText.value === `waiting for ${name}`) {
-    if (lastRunMode.value === 'continue') await continueProgram()
-    else await stepProgram()
-  }
+  if (lastRunMode.value === 'continue') await continueProgram()
+  else await stepProgram()
 }
 
 function isResourceReady(name: string): boolean {
@@ -368,7 +391,10 @@ type RunStatus = 'stepped' | 'exited' | 'waiting' | 'errored'
 
 async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean }): Promise<RunStatus | undefined> {
   if (running.value) return undefined
-  if (stateDiffs.value.length === 0) baseState.value = stateText.value
+  if (stateDiffs.value.length === 0) {
+    baseState.value = stateText.value
+    appendInitialStateDiff(stateText.value)
+  }
   pruneFutureHistory()
   running.value = true
   statusText.value = options.status
@@ -434,6 +460,21 @@ function waitForContinueDelay(): Promise<void> {
   })
 }
 
+function appendInitialStateDiff(state: string): void {
+  const { before, after } = compactCharDiff('', state)
+  stateDiffs.value = [{
+    key: 'initial-0',
+    step: 0,
+    row: 0,
+    rule: 'initial state',
+    stateBefore: '',
+    stateAfter: state,
+    before,
+    after,
+  }]
+  selectedHistoryKey.value = 'initial-0'
+}
+
 function appendStateDiffs(trace: DemoTraceEvent[]): void {
   const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index))
   if (entries.length === 0) return
@@ -444,7 +485,7 @@ function appendStateDiffs(trace: DemoTraceEvent[]): void {
 function appendStepErrorDiff(error: string, state: string): void {
   const row = lineNumberFromError(error) ?? 1
   const rule = rulesText.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[row - 1]?.trim() || '(no matching rule trace)'
-  const step = stateDiffs.value.length + 1
+  const step = stateDiffs.value.length
   const entry = {
     key: `error-${step}-${row}`,
     step,
@@ -481,8 +522,9 @@ function selectHistoryEntry(key: string): void {
   if (!entry) return
   selectedHistoryKey.value = entry.key
   stateText.value = entry.stateAfter
-  matchedRuleLine.value = entry.row
-  statusText.value = `checkpoint #${entry.step}`
+  matchedRuleLine.value = entry.row > 0 ? entry.row : undefined
+  exitedState.value = undefined
+  statusText.value = entry.step === 0 ? 'checkpoint initial' : `checkpoint #${entry.step}`
 }
 
 function undoStep(): void {
@@ -496,6 +538,7 @@ function undoStep(): void {
   selectedHistoryKey.value = '__base__'
   stateText.value = baseState.value
   matchedRuleLine.value = undefined
+  exitedState.value = undefined
   statusText.value = 'checkpoint initial'
 }
 
