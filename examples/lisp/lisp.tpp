@@ -23,7 +23,7 @@ PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse
 PRIM2 <- cons|nth|contains|dissoc|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
-SPECIAL_WRONG_ARITY <- do|eval|quote|quasiquote|set-var|fn|if|and|or|let|while
+SPECIAL_WRONG_ARITY <- do|eval|quote|quasiquote|set|fn|if|and|or|let|while
 UNSUPPORTED_FORM <- break|continue|map|unquote|splice|define|letrec
 NODE <- (?:$NUM|true|false|$VSTR|$VLIST|$VSYM|L<$PCT>)
 VAL <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
@@ -126,8 +126,8 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^RET<(?<bad>$NONBOOL)\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILEBODY<(?<cond>$PCT)\^(?<body>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} {{body|pctdec}}|{{env}}|{{k}}>
 
-^EENV<set-var (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
-^EENV<set-var (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<set (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
+^EENV<set (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^RET<(?<v>$VAL)\|KSET<(?<name>$NAME)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SETENV<{{name}}|{{v}}|{{env}}|{{k}}|>
 ^SETENV<(?<name>$NAME)\|(?<v>$VAL)\|\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= ERR<unbound_name>
 ^SETENV<(?<want>$NAME)\|(?<v>$VAL)\|(?<got>$NAME)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQTEST<{{want}}|{{got}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>

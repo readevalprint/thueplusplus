@@ -21,7 +21,7 @@ Compound forms:
 - boolean control: `if`, `and`, `or`;
 - sequencing: `do`;
 - lexical binding: `let`;
-- bounded iteration/state update: `while` and `set-var`;
+- bounded iteration/state update: `while` and `set`;
 - functions: `fn` and direct application;
 - lists: `list`, `first`, `rest`;
 - code-as-data lists: `quote`, quote-family reader shorthand, `quasiquote`, `unquote`, `splice`, `parse`, `unparse`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth`;
@@ -63,7 +63,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set-var`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -72,8 +72,8 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 `body` expression only while the condition is boolean `true`; use `(do ...)` as
 that one body expression when sequencing is needed.
 - A false-initial or normally exhausted `while` returns `()`. Loop-side state is
-observed through bindings updated by `set-var`.
-- `(set-var name expr)` updates the nearest existing lexical binding and returns the
+observed through bindings updated by `set`.
+- `(set name expr)` updates the nearest existing lexical binding and returns the
 assigned value; setting an unbound name fails with `unbound_name`.
 - Arithmetic, comparison, collection, alist, and type-inspection primitive callables are strict for the operands they require and have exact arity.
 
@@ -178,16 +178,16 @@ returns `8`. `nth` accepts non-negative integer indices. Negative integer indice
 
 returns `(1 9 3)`. It replaces the item at a zero-based integer index and returns a new list value. It does not insert, delete, or mutate an existing list object.
 
-To update a variable, explicitly rebind it with `set-var`:
+To update a variable, explicitly rebind it with `set`:
 
 ```lisp
 (let ((xs (list 1 2 3)))
   (do
-    (set-var xs (set-nth xs 1 9))
+    (set xs (set-nth xs 1 9))
     xs))
 ```
 
-returns `(1 9 3)`. Without the `set-var`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(set-nth (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
+returns `(1 9 3)`. Without the `set`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(set-nth (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
 
 Reader shorthand is syntax only and canonicalizes to long-form code-as-data. `'x` reads as `(quote x)`, ``(1 ,x)` reads as `(quasiquote (1 (unquote x)))`, and `,@xs` reads as `(splice xs)`. The `splice` name remains the only long-form splicing form; there is no `unquote-splicing` form. Canonical rendering with `unparse` remains long-form/list syntax rather than source-preserving shorthand.
 
