@@ -192,10 +192,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-continue"]').text()).toContain('Continue')
     expect(wrapper.get('[data-test="playground-pause"]').text()).toContain('Pause')
     expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(true)
-    expect((wrapper.get('[data-test="playground-continue-speed"]').element as HTMLSelectElement).value).toBe('medium')
-    expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('slow · 1/s')
+    expect(wrapper.get('[data-test="playground-continue-speed"]').attributes('data-slot')).toBe('select-trigger')
     expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('medium · 10/s')
-    expect(wrapper.get('[data-test="playground-continue-speed"]').text()).toContain('fast · no pause')
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBeGreaterThanOrEqual(5)
     expect(wrapper.findAll('[data-slot="resizable-handle"]').length).toBeGreaterThanOrEqual(3)
@@ -424,7 +422,6 @@ describe('Go-WASM demo UI', () => {
       const wrapper = mount(App)
       await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
       await wrapper.get('[data-test="playground-state"]').setValue('start')
-      await wrapper.get('[data-test="playground-continue-speed"]').setValue('slow')
 
       mockedRunWithWorker.mockResolvedValueOnce({
         exitCode: 0,
