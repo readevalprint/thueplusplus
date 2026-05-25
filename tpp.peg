@@ -1,0 +1,24 @@
+# PEG grammar for thue++ source syntax.
+
+Program      <- Prefix State? EOF
+Prefix       <- (PrefixRow NL)* PrefixRow?
+State        <- Sep (NL StateRow)? NL?
+
+PrefixRow    <- !Sep (Rule / Alias / EmptyOperator / Inert)
+StateRow     <- (!NL .)*
+
+Sep          <- H* '::=' H* &(NL / EOF)
+Alias        <- H* Name H* '<-' H* Rest
+Rule         <- &((!OpStart !NL .)* !H (!OpStart !NL .)* Op) LHS Op Rest
+EmptyOperator <- H* Op Rest
+Inert        <- (!OpStart !NL .)*
+
+LHS          <- (!OpStart !NL .)+
+Op           <- '::=' / '::<' / '::>' / '::-' / '::!'
+OpStart      <- !'\\' '::'
+
+Name         <- [A-Z] [A-Z0-9_]*
+Rest         <- (!NL .)*
+H            <- [ \t]
+NL           <- '\r\n' / '\n' / '\r'
+EOF          <- !.

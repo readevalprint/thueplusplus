@@ -1,127 +1,60 @@
 <template>
   <main class="playground-route">
     <header class="playground-route-header">
-      <div>
-        <p class="kicker">browser playground</p>
-        <h1>Playground</h1>
-      </div>
-      <div class="playground-route-actions">
-        <TestCaseCommand :options="testCaseOptions" @select="selectTestCase" />
-        <select v-model="fileParam" aria-label="example file" @change="loadFile(fileParam)">
-          <option v-for="file in availableFiles" :key="file" :value="file">{{ file }}</option>
-        </select>
-        <button type="button" data-test="playground-step" :disabled="running" @click="() => stepProgram()">Step</button>
-        <label class="auto-step-toggle">
-          <input v-model="autoStep" type="checkbox" data-test="playground-auto" :disabled="running" />
-          auto
-        </label>
-      </div>
+      <h1>THUE++ Playground</h1>
+      <button type="button" data-test="playground-step" :disabled="running" @click="() => stepProgram()">Step</button>
+      <label class="auto-step-toggle">
+        <input v-model="autoStep" type="checkbox" data-test="playground-auto" :disabled="running" />
+        auto
+      </label>
+      <TestCaseCommand :options="testCaseOptions" @select="selectTestCase" />
     </header>
 
     <p v-if="loadError" class="error-text">{{ loadError }}</p>
 
-    <ResizablePanelGroup direction="horizontal" class="playground-resizable">
-      <ResizablePanel :default-size="34" :min-size="20">
-        <section class="playground-pane">
-          <div class="panel-heading compact-heading">
-            <div>
-              <span class="panel-label">rules</span>
-            </div>
-          </div>
-          <textarea v-model="rulesText" data-test="playground-rules" spellcheck="false" wrap="off" />
-        </section>
-      </ResizablePanel>
+    <div class="playground-layout">
+      <PlaygroundCard title="rules" class="playground-rules-pane">
+        <RulesMonacoEditor v-model="rulesText" data-test="playground-rules" />
+      </PlaygroundCard>
 
-      <ResizableHandle with-handle />
+      <section class="playground-state-stack" data-test="playground-state-stack">
+        <PlaygroundCard title="state" class="playground-state-pane">
+          <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
+        </PlaygroundCard>
 
-      <ResizablePanel :default-size="22" :min-size="16">
-        <section class="playground-pane state-pane">
-          <div class="panel-heading compact-heading">
-            <div>
-              <span class="panel-label">State</span>
-            </div>
-          </div>
-          <ResizablePanelGroup direction="vertical" class="state-resizable" data-test="state-resizable">
-            <ResizablePanel :default-size="66" :min-size="20" class="state-editor-panel">
-              <textarea v-model="stateText" class="state-editor" data-test="playground-state" spellcheck="false" wrap="soft" @input="clearDiffs" />
-            </ResizablePanel>
+        <PlaygroundCard title="diffs" class="playground-diffs-pane">
+          <StateDiffs :entries="stateDiffs" />
+        </PlaygroundCard>
+      </section>
 
-            <ResizableHandle with-handle class="state-diff-resize-handle" data-test="state-diff-resize-handle" />
-
-            <ResizablePanel :default-size="34" :min-size="16" class="state-diffs-panel">
-              <section class="state-diffs" data-test="playground-diffs" aria-label="step diffs">
-                <div class="state-diffs-heading">diffs</div>
-                <p v-if="stateDiffs.length === 0" class="state-diffs-empty">step diffs appear here</p>
-                <article v-for="entry in stateDiffs" :key="entry.key" class="state-diff-entry" :data-test="`playground-diff-${entry.step}`">
-                  <div class="state-diff-meta">#{{ entry.step }} row {{ entry.row }}</div>
-                  <div class="state-diff-rule" data-test="playground-diff-rule">{{ entry.rule }}</div>
-                  <div class="state-diff-line removed">
-                    <span class="state-diff-sign">-</span><span v-for="part in entry.before" :key="part.key" :class="partClass(part, 'removed')">{{ part.text }}</span>
-                  </div>
-                  <div class="state-diff-line added">
-                    <span class="state-diff-sign">+</span><span v-for="part in entry.after" :key="part.key" :class="partClass(part, 'added')">{{ part.text }}</span>
-                  </div>
-                </article>
-              </section>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </section>
-      </ResizablePanel>
-
-      <ResizableHandle with-handle />
-
-      <ResizablePanel :default-size="44" :min-size="26">
-        <section class="playground-pane resource-pane" data-test="resource-sections">
-          <div class="panel-heading compact-heading">
-            <div>
-              <span class="panel-label">resources</span>
-            </div>
-            <span class="run-status" data-test="playground-status">{{ statusText }}</span>
-          </div>
-          <div class="resource-list">
-            <section v-for="resource in resourceSections" :key="resource.name" class="resource-section" :data-test="`resource-section-${resource.name}`">
-              <div class="resource-section-header">
-                <code>{{ resource.name }}</code>
-                <span class="resource-modes">
-                  <span v-if="resource.reads" class="resource-mode">read</span>
-                  <span v-if="resource.writes" class="resource-mode">write</span>
-                </span>
-              </div>
-              <label v-if="showResourceInput(resource)" class="resource-field">
-                <span>input</span>
-                <textarea
-                  :value="resourceInputs[resource.name] ?? ''"
-                  :data-test="`resource-input-${resource.name}`"
-                  spellcheck="false"
-                  wrap="off"
-                  @input="setResourceInput(resource.name, ($event.target as HTMLTextAreaElement).value)"
-                />
-                <span class="resource-submit-row">
-                  <button type="button" :data-test="`resource-submit-${resource.name}`" :disabled="running" @click="submitResource(resource.name)">Submit</button>
-                </span>
-              </label>
-              <label v-if="showResourceOutput(resource)" class="resource-field">
-                <span>output</span>
-                <textarea
-                  :value="resourceOutputText(resource.name)"
-                  :data-test="`resource-output-${resource.name}`"
-                  readonly
-                  spellcheck="false"
-                  wrap="off"
-                />
-              </label>
-            </section>
-          </div>
-        </section>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      <PlaygroundCard title="resources" class="playground-resources-pane" data-test="resource-sections" content-class="resource-list">
+        <template #aside>
+          <span class="run-status" data-test="playground-status">{{ statusText }}</span>
+        </template>
+        <ResourceSection
+          v-for="resource in resourceSections"
+          :key="resource.name"
+          :resource="resource"
+          :input="resourceInputs[resource.name] ?? ''"
+          :output="resourceOutputText(resource.name)"
+          :running="running"
+          :show-input="showResourceInput(resource)"
+          :show-output="showResourceOutput(resource)"
+          @update:input="setResourceInput(resource.name, $event)"
+          @submit="submitResource(resource.name)"
+        />
+      </PlaygroundCard>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
 import { diffChars } from 'diff'
 import { computed, nextTick, ref } from 'vue'
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import PlaygroundCard from './PlaygroundCard.vue'
+import ResourceSection from './ResourceSection.vue'
+import RulesMonacoEditor from './RulesMonacoEditor.vue'
+import StateDiffs from './StateDiffs.vue'
 import TestCaseCommand from './TestCaseCommand.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
@@ -143,7 +76,6 @@ const repoFiles = Object.fromEntries([
   ...Object.entries(exampleModules),
   ...Object.entries(manifestModules),
 ].map(([key, value]) => [key.replace(/^\.\.\/\.\.\//, ''), value]))
-const availableFiles = Object.keys(examplesByPublicPath).sort()
 const testCaseOptions = flattenTestManifests(Object.fromEntries(Object.entries(manifestModules).map(([key, value]) => [toPublicExamplePath(key), value])))
 const initialFile = normalizeFileParam(new URLSearchParams(window.location.search).get('file'))
 
@@ -492,13 +424,6 @@ function splitEllipsisPart(text: string, changed: boolean, keyPrefix: string): D
     changed: changed && chunk !== '…',
     ellipsis: chunk === '…',
   }))
-}
-
-function partClass(part: DiffPart, side: 'removed' | 'added'): Record<string, boolean> {
-  return {
-    [`state-diff-char-${side}`]: part.changed,
-    'state-diff-ellipsis': Boolean(part.ellipsis),
-  }
 }
 
 function pendingInputResource(result?: { error?: string; errors?: string }): string {

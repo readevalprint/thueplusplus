@@ -1,7 +1,27 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import App from './App.vue'
 import { runWithWorker, type DemoRunRequest, type DemoRunResult } from './wasm'
+
+vi.mock('./RulesMonacoEditor.vue', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    default: defineComponent({
+      props: { modelValue: { type: String, default: '' } },
+      emits: ['update:modelValue'],
+      setup(props, { emit, attrs }) {
+        return () => h('textarea', {
+          ...attrs,
+          value: props.modelValue,
+          spellcheck: 'false',
+          wrap: 'off',
+          onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLTextAreaElement).value),
+        })
+      },
+    }),
+  }
+})
+
+import App from './App.vue'
 
 vi.mock('./wasm', async () => {
   return {
@@ -153,27 +173,27 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App)
 
-    expect(wrapper.text()).toContain('Playground')
-    expect(wrapper.text()).toContain('State')
+    expect(wrapper.text()).toContain('THUE++ Playground')
+    expect(wrapper.text()).toContain('state')
     expect(wrapper.get('[data-test="playground-rules"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('wrap')).toBe('off')
     expect(wrapper.get('[data-test="playground-state"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="playground-state"]').attributes('wrap')).toBe('soft')
     expect(wrapper.get('[data-test="playground-step"]').text()).toContain('Step')
     expect(wrapper.get('[data-test="resource-sections"]').element.tagName).toBe('SECTION')
+    expect(wrapper.get('[data-test="playground-state-stack"]').element.tagName).toBe('SECTION')
     expect(wrapper.find('[data-test="playground-reset"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-run"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-auto"]').element).toHaveProperty('checked', false)
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-slot="resizable-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-slot="resizable-handle"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="resource-section-stdin"]').text()).toContain('stdin')
     expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
     expect(wrapper.get('[data-test="resource-section-stderr"]').text()).toContain('stderr')
     expect(wrapper.get('[data-test="resource-input-stdin"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="resource-output-stderr"]').element.tagName).toBe('TEXTAREA')
-    expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBe(5)
-    expect(wrapper.get('[data-test="state-resizable"]').attributes('data-orientation')).toBe('vertical')
-    expect(wrapper.get('[data-test="state-diff-resize-handle"]').attributes('data-orientation')).toBe('vertical')
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Hello, World')
 
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -412,7 +432,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="test-case-option"]').trigger('mousedown')
     await flush()
 
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Lisp')
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('VPRIM')
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('((fn () 7))')
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '7\n')

@@ -364,6 +364,7 @@ learnings/       Preserved design notes and failed attempts worth not repeating
 - `examples/forth/README.md` — compact stack-language example
 - `examples/lisp/README.md` — Lisp evaluator contract
 - `examples/lisp/tests/sandbox_demo.toml` — explicit-scope sandbox demo
+- `docs/rfc-language.md` — standalone thue++ language contract
 - `docs/numeric-builtins.md` — exact numeric grammar and display policy
 - `docs/string-escape-builtins.md` — escape/unescape contract
 - `docs/typed-values.md` — readable typed value wrappers
