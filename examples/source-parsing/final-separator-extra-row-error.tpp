@@ -1,4 +1,0 @@
-^state$ ::= ok
-::=
-state
-extra

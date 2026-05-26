@@ -1,0 +1,6 @@
+program = "../post-state-rule-as-state.tpp"
+
+[expect]
+exit_code = 0
+stdout = ""
+stderr = ""

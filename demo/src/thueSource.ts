@@ -11,14 +11,7 @@ export function splitProgramSource(source: string): SplitProgramSourceResult {
 
   const stateRows = lines.slice(separator + 1)
   while (stateRows.length > 0 && stateRows[stateRows.length - 1] === '') stateRows.pop()
-  if (stateRows.length > 1) {
-    return {
-      rules: source,
-      state: '',
-      error: `State section after ::= must contain at most one row; found ${stateRows.length}`,
-    }
-  }
-  return { rules: source, state: stateRows[0] ?? '', error: '' }
+  return { rules: source, state: stateRows.join('\n'), error: '' }
 }
 
 function normalizedLines(source: string): string[] {

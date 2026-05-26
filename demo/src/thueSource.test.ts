@@ -12,7 +12,7 @@ describe('splitProgramSource', () => {
     })
   })
 
-  it('derives a one-row state from the first bare separator', () => {
+  it('derives state from the first bare separator', () => {
     const source = '\n^START$ ::= done\n::=\nSTART\n'
 
     expect(splitProgramSource(source)).toEqual({
@@ -37,13 +37,13 @@ describe('splitProgramSource', () => {
     expect(split.error).toBe('')
   })
 
-  it('uses the first separator and fails loudly for additional state rows', () => {
+  it('uses the first separator and preserves multiline state', () => {
     const source = '^x$ ::= y\n::=\nx\n::=\ny\n'
     const split = splitProgramSource(source)
 
     expect(split.rules).toBe(source)
-    expect(split.state).toBe('')
-    expect(split.error).toBe('State section after ::= must contain at most one row; found 3')
+    expect(split.state).toBe('x\n::=\ny')
+    expect(split.error).toBe('')
   })
 
   it('normalizes CRLF and CR newlines for state detection only', () => {

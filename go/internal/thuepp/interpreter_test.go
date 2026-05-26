@@ -144,18 +144,17 @@ func TestNoSeparatorMeansEmptyInitialState(t *testing.T) {
 	}
 }
 
-func TestFinalSeparatorRejectsAdditionalRows(t *testing.T) {
+func TestFinalSeparatorPreservesMultilineState(t *testing.T) {
 	interp := NewWithHostResources(HostResources{
 		Stdin:  strings.NewReader(""),
 		Stdout: &bytes.Buffer{},
 		Stderr: &bytes.Buffer{},
 	})
-	err := interp.LoadProgramText("virtual/main.tpp", "^x$ ::= y\n::=\nx\ny\n")
-	if err == nil {
-		t.Fatal("LoadProgramText succeeded, want state section row-count error")
+	if err := interp.LoadProgramText("virtual/main.tpp", "^x$ ::= y\n^z$ ::= q\n::=\nx\nz\n"); err != nil {
+		t.Fatal(err)
 	}
-	if got, want := err.Error(), "Line 4: State section after ::= must contain at most one row"; got != want {
-		t.Fatalf("error = %q, want %q", got, want)
+	if got, want := interp.State, "x\nz"; got != want {
+		t.Fatalf("state = %q, want %q", got, want)
 	}
 }
 

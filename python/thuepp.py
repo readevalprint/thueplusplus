@@ -228,11 +228,6 @@ class ThueppInterpreter:
         if separator_index is not None:
             prefix_rows = source_rows[:separator_index]
             state_rows = source_rows[separator_index + 1:]
-            if len(state_rows) > 1:
-                first_extra = state_rows[1]
-                raise RuntimeError(
-                    f"Line {first_extra.source_line}: State section after ::= must contain at most one row"
-                )
         else:
             prefix_rows = source_rows
             state_rows = []
@@ -255,7 +250,7 @@ class ThueppInterpreter:
 
         self._initial_rows = [row.text for row in state_rows]
         self._row_sources = [(row.source_path, row.source_line) for row in state_rows]
-        self.state = state_rows[0].text if state_rows else ""
+        self.state = "\n".join(row.text for row in state_rows)
 
     def apply_input_override(self, value: str) -> None:
         """Replace source data rows with explicit input while preserving compiled rules."""

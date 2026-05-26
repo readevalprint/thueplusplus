@@ -1,0 +1,6 @@
+program = "../final-separator-multiline-state.tpp"
+
+[expect]
+exit_code = 0
+stdout = "multiline\n"
+stderr = ""

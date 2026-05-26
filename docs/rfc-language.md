@@ -42,10 +42,11 @@ Execution scans rules top-to-bottom. The first rule whose pattern matches acts o
 PEG Grammer Summary. See [tpp.peg](../tpp.peg) for more details.
 
 ```peg
-Language <- Row+ (Sep State?)?
-Row      <- Rule / Alias / Comment
-Sep      <- '::='
-State    <- text
+Language   <- PrefixRows (Sep StateText?)?
+PrefixRows <- Row*
+Row        <- Rule / Alias / Comment
+Sep        <- trimmed source row exactly '::='
+StateText  <- remaining source text after Sep, preserving newlines
 Alias    <- Name '<-' Regex
 Rule     <- LHS Op RHS
 Comment  <- text
@@ -53,7 +54,11 @@ Comment  <- text
 Op       <- '::=' / '::<' / '::>' / '::-' / '::!'
 ```
 
-Rows are trimmed for classification. `Sep` is the first row exactly `::=`; it is not a rule. `State` is the optional single row after `Sep`; extra state rows are parse errors. Rows before `Sep` that are not aliases or rules are comments and have no effect. `#` has no special status. A host input override replaces only `State`.
+Rows before the initial-state separator are trimmed only for classification. `Sep` is the first source row whose trimmed text is exactly `::=`; it is not a rule. Rows before `Sep` that are not aliases or rules are comments and have no effect. `#` has no special status.
+
+If `Sep` is present, the initial state is the exact remaining source text after the separator row, preserving embedded newlines. The separator row and its terminating newline are not part of state. If there is no text after `Sep`, the initial state is the empty string. If `Sep` is absent, the initial state is empty.
+
+A host input override replaces the entire initial state string. The replacement may contain newlines.
 
 ## 3. Aliases
 
@@ -65,9 +70,30 @@ Valid operators are `::=` replace, `::<` read, `::>` write, `::-` exit, and `::!
 
 ## 5. Patterns
 
-`LHS` is an RE2-compatible regex evaluated as if prefixed by `(?m)`.
+`LHS` is an RE2-compatible regex evaluated against the entire current state string as if prefixed by `(?m)`.
 
-Required behavior: `^`/`$` match state row boundaries; `.` does not match newline unless dotall is explicitly enabled; named captures use `(?<name>...)`; capture names match `[A-Za-z_][A-Za-z0-9_]*`. Programs must not depend on backreferences, lookaround, recursive regex, or host-specific regex features.
+Required behavior: state is one mutable string and may contain newlines. `^`/`$` match line boundaries within that string; `.` does not match newline unless dotall is explicitly enabled. Patterns may match across newlines when they explicitly allow newline, for example with `\n` or a character class that includes newline. Named captures use `(?<name>...)`; capture names match `[A-Za-z_][A-Za-z0-9_]*`. Programs must not depend on backreferences, lookaround, recursive regex, or host-specific regex features.
+
+For example, this source has initial state `a\nb`:
+
+```thuepp
+^a$ ::= A
+^b$ ::= B
+
+::=
+a
+b
+```
+
+The first rule can match only the first line, then the second rule can match only the second line. A pattern can also match across the newline when it says so explicitly:
+
+```thuepp
+a\nb ::= joined
+
+::=
+a
+b
+```
 
 ## 6. Templates
 
@@ -90,7 +116,7 @@ loop:
   return 0
 ```
 
-Only one span is replaced per action. A host may set max rule probes; every examined rule counts. A host may set max state bytes; check it after replacement.
+Only one span is replaced per action. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set max rule probes; every examined rule counts. A host may set max state bytes; check it after replacement.
 
 ## 8. Operators
 

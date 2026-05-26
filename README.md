@@ -29,7 +29,7 @@ The rest of this README builds up from there: one rule, then captures, then IO, 
 hello
 ```
 
-The final `::=` separator introduces the optional source-provided initial state. The separator itself is not part of state; at most one row may follow it. The rule rewrites `hello` to `world`.
+The final separator row `::=` introduces the optional source-provided initial state. The separator itself is not part of state; all text after it is the initial state, preserving newlines. The rule rewrites `hello` to `world`.
 
 Rules scan top to bottom; after a match, scanning restarts.
 
@@ -321,9 +321,10 @@ uv run python tools/check_contract.py --update-readme
 - predefined resources: `stdin`, `stdout`, `stderr`
 - runner-provided process/resource bindings
 - source rules are parsed once; execution rewrites only the mutable state string
-- source-provided initial state is an optional final section: a final `::=` separator may be followed by zero or one state row; without that separator the initial state is empty
-- `#` has no special language meaning: a source row is a rule only when it contains a valid operator, and runtime state rows beginning with `#` are ordinary matchable text
-- `--input` replaces source-provided state for runners that expose the CLI contract
+- state is one string and may contain newlines; matching scans the whole state string in multiline regex mode
+- source-provided initial state is an optional final section: a final separator row `::=` makes all following text the initial state; without that separator the initial state is empty
+- `#` has no special language meaning: a source row is a rule only when it contains a valid operator, and runtime state text beginning with `#` is ordinary matchable text
+- `--input` replaces the entire source-provided state string for runners that expose the CLI contract
 - resource reads: `::< {timeout} name` reads one newline-delimited message and PCT-encodes the payload; timeout must be positive
 - execution limits such as `--max-evals` and `--max-state-bytes`
 - exact rational numeric builtins, not floating-point approximation
