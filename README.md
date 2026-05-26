@@ -16,9 +16,9 @@ Thue++, based on John Colagioia's esolang [Thue](https://github.com/jcolag/Thue)
 ^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}
 ```
 
-A rule sees text. If the pattern matches, it rewrites with the template. Then the machine starts over.
+A rule sees text. If the pattern matches, it rewrites with the template. Then it starts over from the top.
 
-The rest of this README builds up from there: one rule, then captures, then IO, then state machines, then Lisp.
+The rest of this README builds up from there: one rule, then captures, then IO, then state machines, then Lisp, with quotes, eval, and macros.
 
 ## One rule
 
@@ -212,14 +212,14 @@ child
 
 The point is not that thue++ is a database language. The point is that plain rewrite state can encode protocols, stacks, tombstones, lookup order, and transactional boundaries while remaining executable text.
 
-## A language inside the language: Lisp with a sandbox.
+## A language inside the language: Lisp
 
-Apparently, you can write a powerful Lisp in under 500 lines of regex.
+Apparently, you can write a powerful Lisp as regex rewrite rules. `examples/lisp/lisp.tpp` is still only thue++ rules: the Python and Go backends provide the generic runner plus primitive builtins, while the reader, typed values, lexical scope, closures, lists, quote, eval, and macro expansion live in `.tpp`.
 
-Go check out [`examples/lisp/lisp.tpp`](examples/lisp/lisp.tpp) real quick. It is a Lisp evaluator implemented entirely as thue++ rewrite rules. The backend provides only the generic thue++ interpreter and simple math builtins; the Lisp reader, typed runtime values, lexical environments, closures, lists, association-list helpers, parse/unparse, and explicit `eval` contract live in `.tpp` rules.
+State:
 
-```bash
-uv run python python/thuepp.py examples/lisp/lisp.tpp --input '(add (mul 2 3) 4)'
+```lisp
+(add (mul 2 3) 4)
 ```
 
 Expected output:
@@ -228,13 +228,133 @@ Expected output:
 10
 ```
 
-## Yo dawg, I heard you like lisp...
+The important trick is the boundary between source text and runtime state. The reader first protects strings, expands shorthand, and freezes lists into pct-encoded `L<...>` payloads. A leading `'` is reader syntax for `quote`: `'x` reads as `(quote x)`, and `'(add 1 2)` reads as `(quote (add 1 2))` before evaluation sees it.
 
-This Lisp example can parse source strings into code-as-data and evaluate them with an explicit association-list scope. This is the sandbox boundary: evaluated user code gets exactly the names supplied by the scope.
+```thuepp
+^READ<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quote {{datum}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quasiquote {{datum}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(unquote {{datum}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*),@(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(splice {{datum}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}L<{{inner|pctenc}}>{{post}}> {{k}}
+```
 
-`(eval code scope)` evaluates `code` with the `scope` as the explicit environment.
+Top-level input then boots an explicit environment. Primitive functions are just values in that environment (`VPRIM<add>`, `VPRIM<parse>`, `VPRIM<macroexpand>`, and friends), so they can be passed around, shadowed, or omitted from later explicit eval scopes.
 
-This demo sandbox can take a source string, build its allowed scope internally, eval the parsed code, and return the value:
+```thuepp
+^READ<L<(?<payload>$PCT)>> KTOP$ ::= CBOOT<{{payload|pctdec}}|KDONE>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;mul=VPRIM%3Cmul%3E;parse=VPRIM%3Cparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;write=VPRIM%3Cwrite%3E;|{{k}}>
+```
+
+The real rule is longer because the core environment has more primitives; the shape above is the important part.
+
+## Lisp quotes: code as data
+
+`quote` is lazy: it returns source as data instead of evaluating it. Symbols become `VSYM<...>` internally, and lists become `VLIST<...>` values with pct-encoded items. Successful output renders those values back as readable Lisp syntax.
+
+```thuepp
+^EENV<quote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
+^QUOTE<(?<sym>$SYM)\|(?<k>.*)>$ ::= RET<VSYM<{{sym|pctenc}}>|{{k}}>
+^QUOTE<L<(?<payload>$PCT)>\|(?<k>.*)>$ ::= QUOTELIST<{{payload|pctdec}}|{{k}}|>
+^QUOTELIST<(?<item>(?:$OPSYM|$EXPR))(?: (?<rest>[^|]*))?\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QUOTE<{{item}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
+```
+
+State:
+
+```lisp
+'(add 1 2)
+```
+
+```text
+(add 1 2)
+```
+
+`quasiquote` uses the same data boundary but selectively evaluates escape positions. `unquote` inserts one value; `splice` appends the items of a list into a quasiquoted list.
+
+```thuepp
+^EENV<quasiquote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQ<{{item}}|{{env}}|{{k}}>
+^QQESC<unquote\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KKEEPENV<{{env}}> KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
+^QQESC<splice\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KKEEPENV<{{env}}> KQQSPLICE<{{rest}}|{{env}}|{{acc}}> {{k}}>
+```
+
+State:
+
+```lisp
+`(add ,(add 1 2) ,@(list 4 5))
+```
+
+```text
+(add 3 4 5)
+```
+
+## Lisp parse: source strings to code values
+
+`parse` is the bridge from string data back into Lisp code-as-data. It is not `eval`: it reads a string with the same reader used for top-level input, but with the `KPARSE` continuation. That continuation returns the quoted data value instead of booting the core environment and running it.
+
+```thuepp
+^APPLY<VPRIM<parse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARSE<{{a|pctdec}}|{{k}}>
+^BPARSE<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= READ<{{s|pctdec}}> KPARSE<{{k}}>
+^READ<L<(?<payload>$PCT)>> KPARSE<(?<k>.*)>$ ::= QUOTE<L<{{payload}}>|{{k}}>
+^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
+```
+
+So parsing source produces the same kind of data as `quote`:
+
+State:
+
+```lisp
+(parse "(add 1 2)")
+```
+
+```text
+(add 1 2)
+```
+
+Because `parse` reuses the reader, it also performs the same shorthand canonicalization:
+
+State:
+
+```lisp
+(parse "`(1 ,x)")
+```
+
+```text
+(quasiquote (1 (unquote x)))
+```
+
+To run parsed code, hand that data to `eval` with an explicit scope:
+
+State:
+
+```lisp
+(eval (parse "(add x 1)") (dict ('add add) ('x 10)))
+```
+
+```text
+11
+```
+
+## Lisp eval: explicit scope as sandbox
+
+`eval` does not use the caller's ambient locals or the default core environment. It first evaluates its `code` and `scope` operands normally, converts the association-list scope into an environment, and evaluates the code value there. The code can only see names present in that alist.
+
+```thuepp
+^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
+^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
+^ALIST2ENV<\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= CODEVAL<{{code}}|{{acc}}|{{k}}>
+^CODEVAL<VSYM<(?<name>$NAME)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{scopeenv}}|{{k}}>
+```
+
+State:
+
+```lisp
+(eval '(add x 1) (dict ('add add) ('x 10)))
+```
+
+```text
+11
+```
+
+A sandbox is just a function that builds a smaller scope before calling `eval`:
 
 ```lisp
 (let ((sandbox
@@ -242,8 +362,8 @@ This demo sandbox can take a source string, build its allowed scope internally, 
           (eval
             (parse source)
             (dict
-              ((quote square) (fn (x) (mul x x)))
-              ((quote safe-add) (fn (a b) (add a b))))))))
+              ('square (fn (x) (mul x x)))
+              ('safe-add (fn (a b) (add a b))))))))
   (sandbox "(square 6)"))
 ```
 
@@ -254,9 +374,55 @@ That returns `36`. The same helper accepts only the API it installed:
 (sandbox "(add 1 2)")      ; fails with unbound_name
 ```
 
-`add` is available while constructing `safe-add`, but it is not available to user code unless the scope exposes it. Caller locals are not ambient capabilities either: if the caller binds `secret`, `(sandbox "secret")` still fails with `unbound_name` unless `secret` is placed in the scope.
+`'square`, `'safe-add`, `'add`, and `'x` above are shorthand for `(quote square)`, `(quote safe-add)`, `(quote add)`, and `(quote x)`. They build symbol keys for the association-list scope; they do not look those names up. `add` without the quote is the current value of the `add` binding, which is what exposes that primitive to evaluated code.
 
-The executable fixture is `examples/lisp/tests/sandbox_demo.toml`.
+`add` is available while constructing `safe-add`, but it is not available to user code unless the scope exposes it. Caller locals are not ambient capabilities either: if the caller binds `secret`, `(sandbox "secret")` still fails with `unbound_name` unless `secret` is placed in the scope. The executable fixture is `examples/lisp/tests/sandbox_demo.toml`.
+
+## Lisp macros: explicit expansion, then eval
+
+There is no `defmacro`, global macro registry, or implicit macro pass. `macroexpand` is a strict two-argument primitive: code-as-data plus an association list of `(symbol transformer)` pairs. The transformer receives the raw operand list, returns new code-as-data, and the result is recursively expanded.
+
+```thuepp
+^APPLY<VPRIM<macroexpand>\|(?<code>[^;]*);(?<scope>[^;]*);\|(?<k>.*)>$ ::= BMACROEXPAND<{{code|pctdec}}|{{scope|pctdec}}|{{k}}>
+^BMACROEXPAND<(?<code>$VAL)\|VLIST<(?<macros>$ITEMS)>\|(?<k>.*)>$ ::= MEXP<{{code}}|{{macros}}|{{k}}>
+^MEXPHEAD<VSYM<(?<name>$PCT)>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{macros}}|{{head}};{{tail}}|{{tail}}|{{macros}}|{{k}}>
+^MLOOKEQ<1\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MCALL<{{transformer|pctdec}}|VLIST<{{operands}}>|{{macros}}|{{k}}>
+^RET<(?<expanded>$VAL)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<{{expanded}}|{{macros}}|{{k}}>
+```
+
+```lisp
+(let ((macros
+       (dict
+         ('inc
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand '(inc (inc x)) macros))
+```
+
+returns:
+
+```text
+(add (add x 1) 1)
+```
+
+To execute the expansion, pass the result to `eval` with an explicit value scope. The macro scope controls expansion; the eval scope controls runtime capabilities.
+
+State:
+
+```lisp
+(let ((macros
+       (dict
+         ('inc
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (eval
+    (macroexpand '(inc (inc 2)) macros)
+    (dict ('add add))))
+```
+
+```text
+4
+```
 
 This is all with humble `lhs ::= rhs` rewrite rules.
 
