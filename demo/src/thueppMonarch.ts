@@ -14,7 +14,7 @@ export const thueppMonarchLanguage: monaco.languages.IMonarchLanguage = {
   tokenizer: {
     root: [
       [/^\s*::=\s*$/, { token: 'keyword.separator', next: '@stateRow' }],
-      [/^((?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?\S(?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?)(::[=<>!-])(.*)$/, [
+      [/^(?!.*\(\?(?:P<|<)[A-Za-z_][A-Za-z0-9_]*>)((?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?\S(?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?)(::[=<>!-])(.*)$/, [
         'source',
         'operator',
         'source',

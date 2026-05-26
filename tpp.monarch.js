@@ -30,7 +30,7 @@ export const thueppMonarchLanguage = {
       // Rule rows: highlight only the first unescaped valid operator as the
       // delimiter. Later operator-looking text is RHS payload, not delimiter.
       // Match the whole physical row so tokenizer state cannot leak to the next row.
-      [/^((?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?\S(?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?)(::[=<>!-])(.*)$/, [
+      [/^(?!.*\(\?(?:P<|<)[A-Za-z_][A-Za-z0-9_]*>)((?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?\S(?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?)(::[=<>!-])(.*)$/, [
         'source',
         'operator',
         'source',
