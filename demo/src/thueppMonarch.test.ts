@@ -63,6 +63,15 @@ function nonCapturingGroupPattern(): RegExp {
   throw new Error('missing non-capturing group tokenizer rule')
 }
 
+function namedCapturePatternAndAction(): [RegExp, unknown[]] {
+  for (const rule of stateRules('common')) {
+    if (!Array.isArray(rule)) continue
+    const [pattern, action] = rule
+    if (pattern instanceof RegExp && Array.isArray(action) && pattern.test('(?<name>$NAME)')) return [pattern, action]
+  }
+  throw new Error('missing named capture tokenizer rule')
+}
+
 describe('thue++ Monarch tokenizer', () => {
   it('colors inert rows without an operator as comments', () => {
     const pattern = missingOperatorCommentPattern()
@@ -123,6 +132,16 @@ describe('thue++ Monarch tokenizer', () => {
 
     expect(match?.[1]).toBe('(')
     expect(match?.[2]).toBe('?:')
+  })
+
+  it('lets named capture rows use inner token rules so capture names are variables', () => {
+    const ruleRow = '^READ<(?<name>$NAME)> KTOP$ ::= CBOOT<{{name}}|KDONE>'
+    const [pattern, action] = namedCapturePatternAndAction()
+    const match = pattern.exec('(?<name>$NAME)')
+
+    expect(rulePrefixPattern().test(ruleRow)).toBe(false)
+    expect(match?.[3]).toBe('name')
+    expect(action).toEqual(['@brackets', 'regexp', 'variable', 'regexp'])
   })
 
   it('does not treat alias operators as angle brackets', () => {
