@@ -27,7 +27,8 @@ Compound forms:
 - code-as-data lists: `quote`, quote-family reader shorthand, `quasiquote`, `unquote`, `splice`, `parse`, `unparse`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth`;
 - association-list helpers: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
 - symbol/name conversion primitives: `symbol` and `name`;
-- runtime type inspection: `type`.
+- runtime type inspection: `type`;
+- composable IO primitive callables: `write` and `readline`.
 
 ## Runtime values
 
@@ -63,7 +64,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), and IO helpers (`write`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -74,7 +75,48 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 observed through bindings updated by `set`.
 - `(set name expr)` updates the nearest existing lexical binding and returns the
 assigned value; setting an unbound name fails with `unbound_name`.
-- Arithmetic, comparison, collection, alist, and type-inspection primitive callables are strict for the operands they require and have exact arity.
+- Arithmetic, comparison, collection, alist, type-inspection, and IO primitive callables are strict for the operands they require and have exact arity.
+
+## IO primitives
+
+`write` and `readline` are ordinary primitive callables from the initial core environment. They are not special forms: calls use the same lookup, argument evaluation, and primitive-application path as `add`.
+
+`(write "text")` writes the decoded string to `stdout` and returns `()`. When used as the whole top-level program, the side effect and rendered return value both appear on stdout:
+
+```lisp
+(write "Hello")
+```
+
+outputs:
+
+```text
+Hello()
+```
+
+`(readline)` reads one newline-delimited message from `stdin` and returns it as a string. Prompt-style programs compose `write` and `readline` explicitly:
+
+```lisp
+(let ()
+  (write "Name: ")
+  (readline))
+```
+
+With stdin `Ada\n`, this outputs:
+
+```text
+Name: "Ada"
+```
+
+To retain the read value for later expressions, bind or set it explicitly:
+
+```lisp
+(let ((resp ""))
+  (write "Say: ")
+  (set resp (readline))
+  resp)
+```
+
+There is no dedicated `prompt` or `input` form; those names are ordinary unbound names unless user code binds them. `write` requires a string argument and fails with `type_error` for other value types. `readline` takes no arguments; extra arguments fail with `wrong_arity`.
 
 ## Explicit eval scope
 
@@ -86,7 +128,7 @@ assigned value; setting an unbound name fails with `unbound_name`.
 
 returns `11`.
 
-This is the sandbox boundary: evaluated user code gets exactly the names supplied by the scope alist. There is no ambient caller environment and no hidden core fallback. A sandbox helper can take a source string, parse it, build the entire allowed scope internally, evaluate the parsed code in that scope, and return the value:
+This is the sandbox boundary: evaluated user code gets exactly the names supplied by the scope alist. There is no ambient caller environment and no hidden core fallback. Primitive callables such as `add`, `write`, or `readline` are available to evaluated code only when the scope explicitly provides them. A sandbox helper can take a source string, parse it, build the entire allowed scope internally, evaluate the parsed code in that scope, and return the value:
 
 ```lisp
 (let ((sandbox
@@ -261,6 +303,8 @@ Alist operations are explicit:
 (type (fn (x) x)) ; function
 (type add)            ; builtin
 (type type)           ; builtin
+(type write)          ; builtin
+(type readline)       ; builtin
 ```
 
 `type` reports the evaluated value, not source syntax: `(type (add 1 2))` returns `number`, `(type (quote add))` returns `symbol`, and `(type missing)` fails through ordinary name lookup with `unbound_name`. For existing compatibility, opaque primitive callables report the type symbol `builtin`; that symbol names the primitive-callable value family and does not imply reader syntax or a user-definable builtin mechanism. Explicit `eval` scopes get `type` only when the scope alist provides it, for example `(dict ((quote type) type) ...)`.
@@ -285,11 +329,11 @@ misses) and `letrec` remains a reserved unsupported form (`unsupported_form`).
 The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
 
 - `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `do`, `define`, `letrec`, `break`, `continue`, `map`, bare `unquote`, bare `splice`, nested `quasiquote`, raw internal-looking inputs, and other non-reader forms;
-- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `and`, `or`, `let`, `fn`, and `while` shapes;
+- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `and`, `or`, `let`, `fn`, and `while` shapes, and extra arguments to `readline`;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual name-lookup miss for a bare variable or callee name;
 - `not_function`: attempting to apply a non-closure value, including lists;
-- `type_error`: an operand value contains the wrong runtime type for the requested operation;
+- `type_error`: an operand value contains the wrong runtime type for the requested operation, including non-string arguments to `write`;
 - `division_by_zero`: division by zero, including computed zero denominators;
 - `invalid_numeric_token`: numeric-looking tokens that do not satisfy the numeric literal contract;
 - `invalid_symbol`: string-to-symbol conversion input whose printed form would not parse back as a symbol;
