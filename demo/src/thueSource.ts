@@ -5,15 +5,44 @@ export interface SplitProgramSourceResult {
 }
 
 export function splitProgramSource(source: string): SplitProgramSourceResult {
-  const lines = normalizedLines(source)
-  const separator = lines.findIndex(line => line.trim() === '::=')
-  if (separator < 0) return { rules: source, state: '', error: '' }
+  const separator = findStateSeparator(source)
+  if (!separator) return { rules: source, state: '', error: '' }
 
-  const stateRows = lines.slice(separator + 1)
-  while (stateRows.length > 0 && stateRows[stateRows.length - 1] === '') stateRows.pop()
-  return { rules: source, state: stateRows.join('\n'), error: '' }
+  const state = trimTrailingEmptyRows(normalizeNewlines(source.slice(separator.end)))
+  return { rules: source.slice(0, separator.start), state, error: '' }
 }
 
-function normalizedLines(source: string): string[] {
-  return source.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+interface SeparatorRange {
+  start: number
+  end: number
+}
+
+function findStateSeparator(source: string): SeparatorRange | undefined {
+  let rowStart = 0
+  while (rowStart <= source.length) {
+    let rowEnd = rowStart
+    while (rowEnd < source.length && source[rowEnd] !== '\n' && source[rowEnd] !== '\r') rowEnd += 1
+
+    if (source.slice(rowStart, rowEnd).trim() === '::=') {
+      let end = rowEnd
+      if (source[end] === '\r' && source[end + 1] === '\n') end += 2
+      else if (source[end] === '\r' || source[end] === '\n') end += 1
+      return { start: rowStart, end }
+    }
+
+    if (rowEnd >= source.length) break
+    rowStart = rowEnd + 1
+    if (source[rowEnd] === '\r' && source[rowStart] === '\n') rowStart += 1
+  }
+  return undefined
+}
+
+function normalizeNewlines(text: string): string {
+  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+}
+
+function trimTrailingEmptyRows(text: string): string {
+  const rows = text.split('\n')
+  while (rows.length > 0 && rows[rows.length - 1] === '') rows.pop()
+  return rows.join('\n')
 }

@@ -219,7 +219,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-output-stderr"]').element.tagName).toBe('TEXTAREA')
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
     expect(loadedSource).toContain('Hello, World')
-    expect(loadedSource).toContain('\n::=\nSTART\n')
+    expect(loadedSource).not.toContain('\n::=\nSTART\n')
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
@@ -235,7 +235,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-step"]').trigger('click')
     await flush()
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
-    expect(mockedRunWithWorker.mock.calls[0][0].sourceText).toContain('\n::=\nSTART\n')
+    expect(mockedRunWithWorker.mock.calls[0][0].sourceText).not.toContain('\n::=\nSTART\n')
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('START')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello, World!\n')
   })
@@ -250,11 +250,11 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
-    expect(mockedRunWithWorker.mock.calls[0][0].sourceText).toContain('\n::=\nSTART\n')
+    expect(mockedRunWithWorker.mock.calls[0][0].sourceText).not.toContain('\n::=\nSTART\n')
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('')
   })
 
-  it('seeds Program State from pasted full source while preserving shareable Program Rules', async () => {
+  it('seeds Program State from pasted full source while keeping Program Rules runnable', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App)
     await wrapper.get('[data-test="playground-state"]').setValue('stale override')
@@ -263,7 +263,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-rules"]').setValue(pastedSource)
     await wrapper.get('[data-test="playground-rules"]').trigger('paste')
 
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe(pastedSource)
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('^aaab$ ::= done\n')
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('aaab')
   })
 

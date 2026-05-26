@@ -368,6 +368,7 @@ function seedStateFromSource(source = rulesText.value): void {
   stateText.value = ''
   const split = splitProgramSource(source)
   loadError.value = split.error
+  rulesText.value = split.rules
   if (stateText.value === '') stateText.value = split.state
   clearRun()
 }
