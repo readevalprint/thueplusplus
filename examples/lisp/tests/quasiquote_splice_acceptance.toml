@@ -267,7 +267,7 @@ exit_code = 2
 
 [[case]]
 name = "unquote returning set value propagates env in list item"
-input = '(let ((x 1)) (do (quasiquote (a (unquote (set x 2)))) x))'
+input = '(let ((x 1)) (quasiquote (a (unquote (set x 2)))) x)'
 [case.expect]
 stdout = "2\n"
 stderr = ""
@@ -275,7 +275,7 @@ exit_code = 0
 
 [[case]]
 name = "splice returning set list propagates env"
-input = '(let ((xs (list 1)) (seen 0)) (do (quasiquote (a (splice (set xs (list 2 3))) z)) (count xs)))'
+input = '(let ((xs (list 1)) (seen 0)) (quasiquote (a (splice (set xs (list 2 3))) z)) (count xs))'
 [case.expect]
 stdout = "2\n"
 stderr = ""

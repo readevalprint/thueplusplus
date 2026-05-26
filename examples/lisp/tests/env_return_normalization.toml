@@ -4,24 +4,24 @@ timeout = 10
 args = ["--max-evals", "60000"]
 
 [[case]]
-name = "do normalizes plain first expression"
-input = '(do 1 2)'
+name = "zero-binding let normalizes plain first expression"
+input = '(let () 1 2)'
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "2"
 
 [[case]]
-name = "do normalizes env-updating first expression"
-input = '(let ((x 1)) (do (set x 2) x))'
+name = "let body normalizes env-updating first expression"
+input = '(let ((x 1)) (set x 2) x)'
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "2"
 
 [[case]]
-name = "do normalizes env-updating nested body"
-input = '(let ((x 1)) (do (do (set x 2) x) x))'
+name = "nested let body normalizes env-updating body"
+input = '(let ((x 1)) (let () (set x 2) x) x)'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -29,7 +29,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "while body mutation still feeds next iteration"
-input = '(let ((x 0)) (do (while (lt x 3) (set x (add x 1))) x))'
+input = '(let ((x 0)) (while (lt x 3) (set x (add x 1))) x)'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -45,7 +45,7 @@ stdout_stripped = "(a 1 true)"
 
 [[case]]
 name = "quasiquote unquote set propagates env"
-input = '(let ((x 1)) (do `(a ,(set x 2) ,x) x))'
+input = '(let ((x 1)) `(a ,(set x 2) ,x) x)'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -61,7 +61,7 @@ stdout_stripped = "(a 1 2 b)"
 
 [[case]]
 name = "quasiquote splice env-updating expression propagates env"
-input = '(let ((x 1)) (do `(a ,@(do (set x 2) (list x)) b) x))'
+input = '(let ((x 1)) `(a ,@(let () (set x 2) (list x)) b) x)'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -77,7 +77,7 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "quasiquote splice env-updating non-list remains type error"
-input = '(let ((x 1)) `(a ,@(do (set x 2) x) b))'
+input = '(let ((x 1)) `(a ,@(let () (set x 2) x) b))'
 [case.expect]
 exit_code = 2
 stdout = ""

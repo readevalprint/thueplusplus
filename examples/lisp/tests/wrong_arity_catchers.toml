@@ -114,13 +114,13 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "fn with extra body operands fails wrong arity"
-input = '(fn (x) x x)'
+name = "fn accepts multiple body operands"
+input = '((fn (x) (add x 1) (add x 2)) 10)'
 
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "12"
 
 [[case]]
 name = "bare if fails wrong arity"
@@ -204,13 +204,13 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "let with extra body operands fails wrong arity"
-input = '(let ((x 1)) x x)'
+name = "let accepts multiple body operands"
+input = '(let ((x 1)) (add x 1) x)'
 
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
 
 [[case]]
 name = "bare while fails wrong arity"
@@ -231,19 +231,19 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "while with extra body operands fails wrong arity"
-input = '(while true 1 2)'
+name = "while accepts multiple body operands"
+input = '(while false 1 2)'
 
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
 
 [[case]]
-name = "bare do fails wrong arity"
+name = "bare do is unsupported"
 input = '(do)'
 
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr_stripped = "wrong_arity"
+stderr_stripped = "unsupported_form"

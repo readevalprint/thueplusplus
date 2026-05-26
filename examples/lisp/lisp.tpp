@@ -34,8 +34,8 @@ PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse
 PRIM2 <- cons|nth|contains|dissoc|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
-SPECIAL_WRONG_ARITY <- do|eval|quote|quasiquote|set|fn|if|and|or|let|while
-UNSUPPORTED_FORM <- break|continue|map|unquote|splice|define|letrec
+SPECIAL_WRONG_ARITY <- eval|quote|quasiquote|set|fn|if|and|or|let|while
+UNSUPPORTED_FORM <- do|break|continue|map|unquote|splice|define|letrec
 NODE <- (?:$NUM|true|false|$VSTR|$VLIST|$VSYM|L<$PCT>)
 VAL <- (?:$VNUM|$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
 NONNUM <- (?:$VBOOL|$VSTR|$VLIST|$VSYM|$VCLOS|$VPRIM)
@@ -97,8 +97,7 @@ STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^LOOKEQ<1\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
 ^LOOKEQ<0\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{want}}|{{rest}}|{{k}}>
 
-^EENV<fn L<(?<params>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
-^EENV<fn L<(?<params>$PCT)> (?<body>$NODE|$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
+^EENV<fn L<(?<params>$PCT)> (?<body>[^|]+)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
 
 Environment aware evaluation core
 ARGENV evaluates demanded nodes in the current lexical environment. EENVKEEP normalizes plain value returns and environment carrying returns for forms that may mutate bindings.
@@ -148,15 +147,17 @@ Control forms choose which operands to evaluate. Symbolic arithmetic syntax is d
 ^RET<VBOOL<true>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<false>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{rhs}}|{{env}}|{{k}}>
 ^RET<(?<bad>$NONBOOL)\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^EENV<do (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
-^EENV<do (?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KKEEPENV<{{env}}> KENBEGIN<{{rest|pctenc}}|{{env}}> {{k}}>
-^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KENBEGIN<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= EENV<do {{rest|pctdec}}|{{env}}|{{k}}>
+Internal sequencing
+SEQ evaluates body expressions in order, preserves environment updates, and returns the final expression value.
+^SEQ<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
+^SEQ<(?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KKEEPENV<{{env}}> KSEQ<{{rest|pctenc}}|{{env}}> {{k}}>
+^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KSEQ<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= SEQ<{{rest|pctdec}}|{{env}}|{{k}}>
 
 Looping and mutation
-While reevaluates one body expression until the condition is false. Use do for sequencing. Set updates the nearest existing lexical binding and returns the assigned value.
-^EENV<while (?<cond>$EXPR) (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILECOND<{{cond|pctenc}}^{{body|pctenc}}^{{env}}> {{k}}>
+While reevaluates one or more body expressions until the condition is false. Set updates the nearest existing lexical binding and returns the assigned value.
+^EENV<while (?<cond>$EXPR) (?<body>[^|]+)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILECOND<{{cond|pctenc}}^{{body|pctenc}}^{{env}}> {{k}}>
 ^RET<VBOOL<false>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<VLIST<>|{{env}}|{{k}}>
-^RET<VBOOL<true>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= EENVKEEP<{{body|pctdec}}|{{env}}|KWHILEBODY<{{cond}}^{{body}}^{{env}}> {{k}}>
+^RET<VBOOL<true>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SEQ<{{body|pctdec}}|{{env}}|KWHILEBODY<{{cond}}^{{body}}^{{env}}> {{k}}>
 ^RET<(?<bad>$NONBOOL)\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILEBODY<(?<cond>$PCT)\^(?<body>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} {{body|pctdec}}|{{env}}|{{k}}>
 
@@ -292,14 +293,14 @@ Generic call, closure binding, and let
 After special forms have had a chance to run, generic calls evaluate the callee and operands, then APPLY handles closures or primitive callable values. Let binds evaluated pairs one at a time into a new lexical frame.
 ^RET<VLIST<(?<items>$ITEMS)>\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= RET<VLIST<{{item|pctenc}};{{items}}>|{{k}}>
 ^RET<(?<bad>$NONLIST)\|KPUSH2<(?<item>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
-^EENV<let L<(?<bindings>$PCT)> (?<body>L<$PCT>)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
-^EENV<let L<(?<bindings>$PCT)> (?<body>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body}}|{{env}}|{{k}}>
+^EENV<let L<(?<bindings>$PCT)> (?<body>[^|]+)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETBINDRAW<{{bindings|pctdec}}|{{body|pctenc}}|{{env}}|{{k}}>
 ^EENV<(?<form>$SPECIAL_WRONG_ARITY) (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<(?<form>$UNSUPPORTED_FORM)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<(?<callee>$NAME) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$NAME) (?<a>$EXPR) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$EXPR) (?<args>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{callee}}|{{env}}|KENVCALL<{{args|pctenc}}|{{env}}> {{k}}>
 ^RET<(?<fn>$VAL)\|KENVCALL<(?<args>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= SRCEVALARGS<{{args|pctdec}}|{{env}}|> KSRCAPPLY<{{fn}}> {{k}}>
+^RETENV<(?<fn>$VAL)\|(?<env>[^|]*)\|KENVCALL<(?<args>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= SRCEVALARGS<{{args|pctdec}}|{{env}}|> KSRCAPPLY<{{fn}}> {{k}}>
 
 Primitive dispatch and arity guards
 Primitive values are internal callable handles. Grouped guards reject wrong arity before each primitive family decodes arguments and performs type checks.
@@ -381,18 +382,18 @@ Arithmetic and comparisons delegate to generic numeric builtins, then normalize 
 ^APPLY<VSTR<(?<s>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VLIST<(?<items>$ITEMS)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSYM<(?<name>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
-^BINDCLOS<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= EENV<{{body|pctdec}}|{{env}}|{{k}}>
+^BINDCLOS<\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= SEQ<{{body|pctdec}}|{{env}}|{{k}}>
 ^BINDCLOS<\|(?<args>(?:[^;>]*;)+)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= ERR<wrong_arity>
 ^BINDCLOS<(?<params>$PCT)\|\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|1>$ ::= RET<VCLOS<{{params}}^{{body}}^{{env}}>|{{k}}>
 ^BINDCLOS<(?<p>$NAME)%20(?<prest>$PCT)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= BINDCLOS<{{prest}}|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}|1>
 ^BINDCLOS<(?<p>$NAME)\|(?<aval>[^;]*);(?<arest>.*)\|(?<env>[^|]*)\|(?<body>$PCT)\|(?<k>.*)\|(?<bound>[01])>$ ::= BINDCLOS<|{{arest}}|{{p}}={{aval}};{{env}}|{{body}}|{{k}}|1>
 
 
-^LETBINDRAW<\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{body}}|{{env}}|{{k}}>
-^LETBINDRAW<L<(?<n>$NAME)%20(?<v>$LET_VALUE_PCT)> (?<rest>.*)\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}|{{rest}}|{{body}}|{{env}}> {{k}}>
-^LETBINDRAW<L<(?<n>$NAME)%20(?<v>$LET_VALUE_PCT)>\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}||{{body}}|{{env}}> {{k}}>
+^LETBINDRAW<\|(?<body>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= SEQ<{{body|pctdec}}|{{env}}|{{k}}>
+^LETBINDRAW<L<(?<n>$NAME)%20(?<v>$LET_VALUE_PCT)> (?<rest>.*)\|(?<body>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}|{{rest}}|{{body}}|{{env}}> {{k}}>
+^LETBINDRAW<L<(?<n>$NAME)%20(?<v>$LET_VALUE_PCT)>\|(?<body>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}||{{body}}|{{env}}> {{k}}>
 ^LETARGENV<(?<node>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node|pctdec}}|{{env}}|{{k}}>
-^RET<(?<v>$VAL)\|KLETN<(?<n>$NAME)\|(?<rest>[^|]*)\|(?<body>L<$PCT>|$EXPR)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
+^RET<(?<v>$VAL)\|KLETN<(?<n>$NAME)\|(?<rest>[^|]*)\|(?<body>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
 
 ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
 SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
