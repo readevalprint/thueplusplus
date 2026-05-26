@@ -1,7 +1,7 @@
 // Monaco Monarch tokenizer for thue++ (.tpp).
 //
 // Source parsing is line-oriented: rows before the final `::=` separator are
-// rules/aliases/inert source; zero or one raw state row may follow it. This
+// rules/aliases/inert source; all following rows are raw state text. This
 // tokenizer is intentionally lexical. Runtime checks such as RE2 validity,
 // alias order/uniqueness, builtin arity, capture existence, resource validity,
 // and template filter validity still belong to the interpreter.
@@ -24,7 +24,7 @@ export const thueppMonarchLanguage = {
 
   tokenizer: {
     root: [
-      // Final state separator. The next physical row, if any, is raw state.
+      // Final state separator. All following physical rows are raw state.
       [/^\s*::=\s*$/, { token: 'keyword.separator', next: '@stateRow' }],
 
       // Rule rows: highlight only the first unescaped valid operator as the
@@ -97,12 +97,7 @@ export const thueppMonarchLanguage = {
     ],
 
     stateRow: [
-      [/.*$/, { token: 'string', next: '@afterState' }],
-    ],
-
-    // The language allows at most one source-provided state row after `::=`.
-    afterState: [
-      [/.*$/, 'invalid'],
+      [/.*$/, 'string'],
     ],
   },
 };

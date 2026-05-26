@@ -344,9 +344,6 @@ func (i *Interpreter) parseProgram(content string) error {
 	if separatorIndex >= 0 {
 		prefixRows = sourceRows[:separatorIndex]
 		stateRows = sourceRows[separatorIndex+1:]
-		if len(stateRows) > 1 {
-			return fmt.Errorf("Line %d: State section after ::= must contain at most one row", stateRows[1].SourceLine)
-		}
 	}
 
 	var err error
@@ -382,11 +379,11 @@ func (i *Interpreter) parseProgram(content string) error {
 			i.Rules = append(i.Rules, *rule)
 		}
 	}
-	if len(stateRows) == 1 {
-		i.State = stateRows[0].Text
-	} else {
-		i.State = ""
+	stateText := make([]string, 0, len(stateRows))
+	for _, row := range stateRows {
+		stateText = append(stateText, row.Text)
 	}
+	i.State = strings.Join(stateText, "\n")
 	return nil
 }
 

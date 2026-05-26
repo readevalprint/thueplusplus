@@ -6,10 +6,10 @@
 
 Language      <- SourceSection StateSection? EOF
 SourceSection <- (SourceRow NL)* SourceRow?
-StateSection  <- Sep StateRow?
-SourceRow    <- !Sep (Rule / Alias / Comment / Blank)
-Sep          <- WS* '::=' WS* (NL / EOF)
-StateRow     <- (!NL .)* NL?
+StateSection  <- Sep StateText?
+SourceRow     <- !Sep (Rule / Alias / Comment / Blank)
+Sep           <- WS* '::=' WS* (NL / EOF)
+StateText     <- .*
 Alias        <- WS* Name WS* '<-' WS* Regex
 Rule         <- LHS Op WS* RHS
 Reserved     <- LHS ReservedOp RHS
