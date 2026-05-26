@@ -209,3 +209,109 @@ input = '(eval (list (quote eq) "(add 1 2)" "(add 1 2)") (dict ((quote eq) eq)))
 exit_code = 2
 stderr = "type_error"
 stdout_stripped = ""
+
+[[case]]
+name = "eval accepts generated code returned with environment"
+input = '''
+(eval
+  (let ((code (quote (add x 1))))
+    code)
+  (dict ((quote add) add) ((quote x) 10)))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "11"
+
+[[case]]
+name = "eval accepts macroexpand result returned with environment"
+input = '''
+(eval
+  (let ((macros
+         (dict
+           ((quote inc)
+            (fn (args)
+              `(add ,(first args) 1))))))
+    (macroexpand (quote (inc x)) macros))
+  (dict ((quote add) add) ((quote x) 10)))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "11"
+
+[[case]]
+name = "eval accepts scope returned with environment"
+input = '''
+(eval
+  (quote (add x 1))
+  (let ((scope (dict ((quote add) add) ((quote x) 10))))
+    scope))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "11"
+
+[[case]]
+name = "eval rejects non-list scope returned with environment"
+input = '''
+(eval
+  (quote x)
+  (let ((scope 7))
+    scope))
+'''
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "eval code operand environment does not feed scope operand"
+input = '''
+(eval
+  (let ((scope (dict ((quote x) 1))))
+    (quote x))
+  scope)
+'''
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "eval macroexpand result still has no hidden core fallback"
+input = '''
+(eval
+  (let ((macros
+         (dict
+           ((quote inc)
+            (fn (args)
+              `(add ,(first args) 1))))))
+    (macroexpand (quote (inc x)) macros))
+  (dict ((quote x) 10)))
+'''
+
+[case.expect]
+exit_code = 2
+stderr = "unbound_name"
+stdout_stripped = ""
+
+[[case]]
+name = "eval rejects closure code returned with environment"
+input = '''
+(eval
+  (let ((code (fn (x) x)))
+    code)
+  (dict))
+'''
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""

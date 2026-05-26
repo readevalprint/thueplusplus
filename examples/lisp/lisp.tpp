@@ -239,8 +239,11 @@ Explicit eval
 Eval first evaluates the code value and scope alist, converts symbol keyed pairs into an environment, then evaluates code values directly through CODEVAL. Closures and primitive handles are not public code values.
 ^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
 ^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
+^RETENV<(?<code>$VAL)\|(?<newenv>[^|]*)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
 ^RET<VLIST<(?<items>$ITEMS)>\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ALIST2ENV<{{items}}|{{code}}|{{k}}|>
+^RETENV<VLIST<(?<items>$ITEMS)>\|(?<env>[^|]*)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ALIST2ENV<{{items}}|{{code}}|{{k}}|>
 ^RET<(?<bad>$NONLIST)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
+^RETENV<(?<bad>$NONLIST)\|(?<env>[^|]*)\|KEVALRUN<(?<code>$VAL)> (?<k>.*)>$ ::= ERR<type_error>
 ^ALIST2ENV<\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= CODEVAL<{{code}}|{{acc}}|{{k}}>
 ^ALIST2ENV<(?<pair>[^;]*);(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ALIST2ENVPAIR<{{pair|pctdec}}|{{rest}}|{{code}}|{{k}}|{{acc}}>
 ^ALIST2ENVPAIR<VLIST<(?<key>[^;]*);(?<val>[^;]*);>\|(?<rest>$ITEMS)\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= ALIST2ENVKEY<{{key|pctdec}}|{{val}}|{{rest}}|{{code}}|{{k}}|{{acc}}>
