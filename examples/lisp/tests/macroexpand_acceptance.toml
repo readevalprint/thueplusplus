@@ -1,0 +1,341 @@
+# Explicit recursive macro expansion over Lisp code-as-data.
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "160000"]
+
+[[case]]
+name = "macroexpand simple macro to code data"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (inc x)) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(add x 1)"
+
+[[case]]
+name = "macroexpand recursively expands nested macro calls"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (inc (inc x))) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(add (add x 1) 1)"
+
+[[case]]
+name = "macroexpand recurses through non macro list children"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (list (inc x))) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(list (add x 1))"
+
+[[case]]
+name = "macroexpand gives transformer raw operands"
+input = '''
+(let ((macros
+       (dict
+         ((quote ignore)
+          (fn (args) 1)))))
+  (macroexpand (quote (ignore missing-name)) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "macroexpand recursively expands transformer output"
+input = '''
+(let ((macros
+       (dict
+         ((quote a)
+          (fn (args) `(b ,(first args))))
+         ((quote b)
+          (fn (args) `(add ,(first args) 1))))))
+  (macroexpand (quote (a x)) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(add x 1)"
+
+[[case]]
+name = "macroexpand quote blocks expansion"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (quote (inc x))) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(quote (inc x))"
+
+[[case]]
+name = "macroexpand quasiquote expands only unquote expression positions"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (quasiquote (template (inc data) (unquote (inc x))))) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(quasiquote (template (inc data) (unquote (add x 1))))"
+
+[[case]]
+name = "macroexpand when macro uses splice and implicit sequence body"
+input = '''
+(let ((macros
+       (dict
+         ((quote when)
+          (fn (args)
+            (let ((cond (first args))
+                  (body (rest args)))
+              `(if ,cond (let () ,@body) ())))))))
+  (macroexpand (quote (when ok (write "yes") 1)) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(if ok (let () (write \"yes\") 1) ())"
+
+[[case]]
+name = "macroexpand result can be evaluated explicitly"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (eval
+    (macroexpand (quote (inc 2)) macros)
+    (dict ((quote add) add))))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "macroexpand absent macro leaves call for later eval"
+input = '(macroexpand (quote (inc 2)) (dict))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(inc 2)"
+
+[[case]]
+name = "macroexpand wrong arity none"
+input = '(macroexpand)'
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand wrong arity one"
+input = '(macroexpand (quote x))'
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand wrong arity extra"
+input = '(macroexpand (quote x) (dict) (dict))'
+
+[case.expect]
+exit_code = 2
+stderr = "wrong_arity"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand macro scope must be a list"
+input = '(macroexpand (quote x) 7)'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand macro key must be a symbol"
+input = '(macroexpand (quote (inc x)) (dict ("inc" (fn (args) (first args)))))'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand transformer must be callable"
+input = '(macroexpand (quote (inc x)) (dict ((quote inc) 1)))'
+
+[case.expect]
+exit_code = 2
+stderr = "not_function"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand transformer result must be code data"
+input = '''
+(let ((macros
+       (dict
+         ((quote bad)
+          (fn (args) add)))))
+  (macroexpand (quote (bad x)) macros))
+'''
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand scalar boolean returns unchanged"
+input = '(macroexpand true (dict))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "true"
+
+[[case]]
+name = "macroexpand recurses list with non symbol head"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (1 (inc x))) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(1 (add x 1))"
+
+[[case]]
+name = "macroexpand primitive transformer returns through normal apply"
+input = '(macroexpand (quote (first (inc x))) (dict ((quote first) first)))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(inc x)"
+
+[[case]]
+name = "macroexpand quasiquote preserves scalar and empty template data"
+input = '(macroexpand (quote (quasiquote (1 true "s" ()))) (dict))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(quasiquote (1 true \"s\" ()))"
+
+[[case]]
+name = "macroexpand quasiquote expands splice expression positions"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (quasiquote (items (splice (inc xs))))) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(quasiquote (items (splice (add xs 1))))"
+
+[[case]]
+name = "macroexpand quasiquote preserves nested quasiquote template"
+input = '''
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (quasiquote (quasiquote (inc x)))) macros))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(quasiquote (quasiquote (inc x)))"
+
+[[case]]
+name = "macroexpand macro scope entry must be a pair"
+input = '(macroexpand (quote (inc x)) (list (list (quote inc))))'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand macro scope entry must be a list"
+input = '(macroexpand (quote (inc x)) (list 1))'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand code argument cannot be callable"
+input = '(macroexpand (fn (x) x) (dict))'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand quasiquote template cannot contain callable values"
+input = '(macroexpand (list (quote quasiquote) (list add)) (dict))'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""

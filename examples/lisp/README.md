@@ -24,7 +24,7 @@ Compound forms:
 - bounded iteration/state update: `while` and `set`;
 - functions: `fn` and direct application;
 - lists: `list`, `first`, `rest`;
-- code-as-data lists: `quote`, quote-family reader shorthand, `quasiquote`, `unquote`, `splice`, `parse`, `unparse`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth`;
+- code-as-data lists: `quote`, quote-family reader shorthand, `quasiquote`, `unquote`, `splice`, `parse`, `unparse`, `macroexpand`, `list`, `eval`, `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth`;
 - association-list helpers: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
 - symbol/name conversion primitives: `symbol` and `name`;
 - runtime type inspection: `type`;
@@ -64,7 +64,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), and IO helpers (`write`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), macro expansion (`macroexpand`), and IO helpers (`write`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -76,6 +76,66 @@ observed through bindings updated by `set`.
 - `(set name expr)` updates the nearest existing lexical binding and returns the
 assigned value; setting an unbound name fails with `unbound_name`.
 - Arithmetic, comparison, collection, alist, type-inspection, and IO primitive callables are strict for the operands they require and have exact arity.
+
+## Macro expansion
+
+`macroexpand` is an ordinary two-argument primitive callable from the initial core environment:
+
+```lisp
+(macroexpand code macros)
+```
+
+Both operands are evaluated before the primitive runs. `code` must evaluate to public code-as-data: a scalar, symbol, or proper list produced by `quote`, `quasiquote`, `parse`, or list-building operations. `macros` must evaluate to an association list whose entries are `(symbol transformer)` pairs. Transformer values must be callable closures or primitive callables.
+
+Macro expansion is explicit and separate from evaluation. It returns expanded code-as-data; it does not execute the expanded result. To run expanded code, compose it with `eval` and an explicit value scope:
+
+```lisp
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (eval
+    (macroexpand (quote (inc 2)) macros)
+    (dict ((quote add) add))))
+```
+
+This returns `3`.
+
+Expansion walks code recursively:
+
+- atoms and empty lists return unchanged;
+- `(quote ...)` blocks expansion completely;
+- if a list head is a symbol present in the macro alist, the transformer is called with one argument: a list containing the raw unevaluated operands;
+- operands are not pre-expanded before the transformer call, so control macros own their syntax;
+- the transformer result is recursively expanded;
+- non-macro lists recursively expand each item;
+- unknown names are left as ordinary symbols/forms for later explicit evaluation.
+
+Example:
+
+```lisp
+(let ((macros
+       (dict
+         ((quote inc)
+          (fn (args)
+            `(add ,(first args) 1))))))
+  (macroexpand (quote (inc (inc x))) macros))
+```
+
+returns `(add (add x 1) 1)`.
+
+Quasiquote is treated as template data during macro expansion. Template data is preserved, while `unquote` and `splice` expression positions are recursively macroexpanded:
+
+```lisp
+(macroexpand
+  (quote (quasiquote (template (inc data) (unquote (inc x)))))
+  macros)
+```
+
+returns `(quasiquote (template (inc data) (unquote (add x 1))))` when `inc` is present in `macros`.
+
+There is no `defmacro`, `macrolet`, global macro registry, implicit macro expansion during ordinary evaluation, hygiene, or ambient macro environment. Macro scopes are ordinary explicit association lists. Malformed macro scopes or non-symbol macro keys fail with `type_error`; non-callable macro bindings fail through normal application with `not_function`; wrong arity fails with `wrong_arity`.
 
 ## IO primitives
 

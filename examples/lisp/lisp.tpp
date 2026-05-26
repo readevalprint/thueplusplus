@@ -33,7 +33,7 @@ VPRIM <- VPRIM<$NAME>
 PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM0 <- readline
 PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write
-PRIM2 <- cons|nth|contains|dissoc|$PRIM_NUM2
+PRIM2 <- cons|nth|contains|dissoc|macroexpand|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
 SPECIAL_WRONG_ARITY <- eval|quote|quasiquote|set|fn|if|and|or|let|while
 UNSUPPORTED_FORM <- do|break|continue|map|unquote|splice|define|letrec
@@ -86,7 +86,7 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;|{{k}}>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;|{{k}}>
 
 
 Literal demand
@@ -124,7 +124,7 @@ ARGENV evaluates demanded nodes in the current lexical environment. EENVKEEP nor
 Bare form guards
 Zero operand special forms need explicit ownership before generic call lookup would treat the form name as a callable value.
 ^EENV<(?<form>$SPECIAL_WRONG_ARITY)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<(?:symbol|name)\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
+^EENV<(?:symbol|name|macroexpand)\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
 ^EENV<(?<form>$UNSUPPORTED_FORM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<(?<op>$PRIM0)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= APPLY<VPRIM<{{op}}>||{{k}}>
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
@@ -262,6 +262,59 @@ Eval first evaluates the code value and scope alist, converts symbol keyed pairs
 ^RET<(?<v>$VAL)\|KCODEARG<(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<fn>$VAL)> (?<k>.*)>$ ::= CODEARGS<{{rest}}|{{scopeenv}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}>
 ^CODEVAL<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
 ^EENV<eval (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+
+Explicit recursive macro expansion
+Macroexpand evaluates its code and macro alist operands, then walks code data. Macro heads receive the raw operand list as one argument. Quote blocks expansion. Quasiquote preserves template data but expands unquote and splice expression positions.
+^APPLY<VPRIM<macroexpand>\|(?<code>[^;]*);(?<scope>[^;]*);\|(?<k>.*)>$ ::= BMACROEXPAND<{{code|pctdec}}|{{scope|pctdec}}|{{k}}>
+^BMACROEXPAND<(?<code>$VAL)\|VLIST<(?<macros>$ITEMS)>\|(?<k>.*)>$ ::= MEXP<{{code}}|{{macros}}|{{k}}>
+^BMACROEXPAND<(?<code>$VAL)\|(?<bad>$NONLIST)\|(?<k>.*)>$ ::= ERR<type_error>
+
+^MEXP<VNUM<(?<n>$NUM)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^MEXP<VBOOL<(?<b>true|false)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
+^MEXP<VSTR<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+^MEXP<VSYM<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
+^MEXP<VLIST<>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
+^MEXP<VLIST<(?<head>[^;]*);(?<tail>$ITEMS)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPHEAD<{{head|pctdec}}|{{head}}|{{tail}}|{{macros}}|{{k}}>
+^MEXP<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+
+^MEXPHEAD<VSYM<quote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
+^MEXPHEAD<VSYM<quasiquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPQQLIST<{{tail}}|{{macros}}|KMQTOP<{{head}}> {{k}}|>
+^RET<VLIST<(?<tail>$ITEMS)>\|KMQTOP<(?<head>[^>]*)> (?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
+^MEXPHEAD<VSYM<(?<name>$PCT)>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{macros}}|{{head}};{{tail}}|{{tail}}|{{macros}}|{{k}}>
+^MEXPHEAD<(?<nonmacro>$VAL)\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{head}};{{tail}}|{{macros}}|{{k}}|>
+
+^MLOOK<(?<name>$PCT)\|\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{full}}|{{macros}}|{{k}}|>
+^MLOOK<(?<name>$PCT)\|(?<entry>[^;]*);(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOKENTRY<{{entry|pctdec}}|{{name}}|{{rest}}|{{full}}|{{operands}}|{{macros}}|{{k}}>
+^MLOOKENTRY<VLIST<(?<key>[^;]*);(?<transformer>[^;]*);>\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOKKEY<{{key|pctdec}}|{{transformer}}|{{name}}|{{rest}}|{{full}}|{{operands}}|{{macros}}|{{k}}>
+^MLOOKENTRY<VLIST<(?<baditems>[^|]*)>\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^MLOOKENTRY<(?<bad>$VAL)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^MLOOKKEY<VSYM<(?<key>$PCT)>\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOKEQ<VALKEYEQ<{{key}},{{name}}>|{{transformer}}|{{name}}|{{rest}}|{{full}}|{{operands}}|{{macros}}|{{k}}>
+^MLOOKKEY<(?<bad>$VAL)\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^MLOOKEQ<0\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{rest}}|{{full}}|{{operands}}|{{macros}}|{{k}}>
+^MLOOKEQ<1\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MCALL<{{transformer|pctdec}}|VLIST<{{operands}}>|{{macros}}|{{k}}>
+^MCALL<(?<transformer>$VAL)\|(?<operands>$VLIST)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= APPLY<{{transformer}}|{{operands|pctenc}};|KMEXPANDRESULT<{{macros}}> {{k}}>
+^RET<(?<expanded>$VAL)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<{{expanded}}|{{macros}}|{{k}}>
+^RETENV<(?<expanded>$VAL)\|(?<env>[^|]*)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<{{expanded}}|{{macros}}|{{k}}>
+
+^MEXPLIST<\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^MEXPLIST<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= MEXP<{{item|pctdec}}|{{macros}}|KMEXPLISTITEM<{{rest}}|{{macros}}|{{acc}}> {{k}}>
+^RET<(?<item>$VAL)\|KMEXPLISTITEM<(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= MEXPLIST<{{rest}}|{{macros}}|{{k}}|{{acc}}{{item|pctenc}};>
+
+^MEXPQQ<VNUM<(?<n>$NUM)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^MEXPQQ<VBOOL<(?<b>true|false)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
+^MEXPQQ<VSTR<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+^MEXPQQ<VSYM<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
+^MEXPQQ<VLIST<>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
+^MEXPQQ<VLIST<(?<head>[^;]*);(?<tail>$ITEMS)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPQQHEAD<{{head|pctdec}}|{{head}}|{{tail}}|{{macros}}|{{k}}>
+^MEXPQQ<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^MEXPQQHEAD<VSYM<unquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{tail}}|{{macros}}|KMQESCAPE<{{head}}> {{k}}|>
+^MEXPQQHEAD<VSYM<splice>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{tail}}|{{macros}}|KMQESCAPE<{{head}}> {{k}}|>
+^MEXPQQHEAD<VSYM<quasiquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
+^MEXPQQHEAD<(?<headval>$VAL)\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPQQLIST<{{head}};{{tail}}|{{macros}}|{{k}}|>
+^RET<VLIST<(?<tail>$ITEMS)>\|KMQESCAPE<(?<head>[^>]*)> (?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
+^MEXPQQLIST<\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^MEXPQQLIST<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= MEXPQQ<{{item|pctdec}}|{{macros}}|KMQITEM<{{rest}}|{{macros}}|{{acc}}> {{k}}>
+^RET<(?<item>$VAL)\|KMQITEM<(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= MEXPQQLIST<{{rest}}|{{macros}}|{{k}}|{{acc}}{{item|pctenc}};>
 
 Dictionary constructor and loose alist operations
 Dict evaluates each key and value into an ordinary list of two item lists. Alist operations walk ordinary lists, skip unrelated entries, compare encoded runtime values exactly, and preserve tail fields where appropriate.
