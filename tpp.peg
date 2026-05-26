@@ -1,22 +1,25 @@
 # PEG grammar for thue++ source syntax.
 # Lexical only: row trimming, comment classification, reserved operators,
-# regex/template validation, and limits are semantic.
+# regex/template validation, and limits are semantic. Unrecognized `::` forms
+# are intentionally out of spec; forks that use them define non-thue++ behavior.
+# Literal `::` in source-side patterns/comments should be percent-encoded.
 
-Language     <- Prefix (Sep State?)? EOF
-Prefix       <- (Row NL)* Row?
-Row          <- !Sep (Rule / Alias / Comment)?
+Language      <- SourceSection StateSection? EOF
+SourceSection <- (SourceRow NL)* SourceRow?
+StateSection  <- Sep StateRow?
+SourceRow    <- !Sep (Rule / Alias / Comment / Blank)
 Sep          <- WS* '::=' WS* (NL / EOF)
-State        <- (!NL .)*
+StateRow     <- (!NL .)* NL?
 Alias        <- WS* Name WS* '<-' WS* Regex
-Rule         <- LHS Op RHS
-Reserved     <- LHS '::' ReservedChar RHS
-Comment      <- (!NL .)+
+Rule         <- LHS Op WS* RHS
+Reserved     <- LHS ReservedOp RHS
+Comment      <- (!ReservedOp !Op !NL .)+
 
-LHS          <- WS* LHSPart* LHSNonWS LHSPart* WS*
-LHSPart      <- EscOp / !Op !NL .
-LHSNonWS     <- EscOp / !Op !WS !NL .
-EscOp        <- '\\' Op
-Regex        <- (!NL .)*
+LHS          <- WS* LHSBody WS*
+LHSBody      <- LHSUnit* LHSNonWS LHSUnit*
+LHSUnit      <- !ReservedOp !Op !NL .
+LHSNonWS     <- !ReservedOp !Op !WS !NL .
+Regex        <- (!ReservedOp !Op !NL .)*
 RHS          <- (Template / !NL .)*
 Template     <- '{{' Var ('|' Filter)? '}}'
 Var          <- 'rule_index' / Capture
@@ -24,9 +27,10 @@ Filter       <- 'pctenc' / 'pctdec'
 Capture      <- [A-Za-z_] [A-Za-z0-9_]*
 
 Op           <- '::=' / '::<' / '::>' / '::-' / '::!'
-ReservedChar <- ![=<>!-] [!-\/:-@[-`{-~]
+ReservedOp   <- '::"' / '::#' / '::$' / '::%' / '::&' / '::\'' / '::(' / '::)' / '::*' / '::+' / '::,' / '::.' / '::/' / ':::' / '::;' / '::?' / '::@' / '::[' / '::\\' / '::]' / '::^' / '::_' / '::`' / '::{' / '::|' / '::}' / '::~'
 
 Name         <- [A-Z] [A-Z0-9_]*
-WS           <- [ \t]
-NL           <- '\n'
+Blank        <- WS*
+WS           <- [ \t\f\v]
+NL           <- '\r\n' / '\n' / '\r'
 EOF          <- !.
