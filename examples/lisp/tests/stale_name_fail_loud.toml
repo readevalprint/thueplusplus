@@ -1,6 +1,7 @@
 # Old public Lisp names are deliberately not compatibility aliases.
 program = "../lisp.tpp"
 timeout = 10
+args = ["--max-evals", "30000"]
 
 [[case]]
 name = "old lambda form is unbound"
