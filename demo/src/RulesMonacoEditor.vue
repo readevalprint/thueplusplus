@@ -37,6 +37,8 @@ function registerThueppLanguage(): void {
     base: 'vs-dark',
     inherit: true,
     rules: [
+      { token: 'operator.alias.thuepp', foreground: 'fbbf24', fontStyle: 'bold' },
+      { token: 'type.identifier.alias.thuepp', foreground: 'fde68a', fontStyle: 'bold' },
       { token: 'operator.thuepp', foreground: 'c4b5fd' },
       { token: 'keyword.separator.thuepp', foreground: 'f9a8d4', fontStyle: 'bold' },
       { token: 'type.identifier.thuepp', foreground: '93c5fd' },

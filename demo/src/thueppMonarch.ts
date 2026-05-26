@@ -14,11 +14,16 @@ export const thueppMonarchLanguage: monaco.languages.IMonarchLanguage = {
   tokenizer: {
     root: [
       [/^\s*::=\s*$/, { token: 'keyword.separator', next: '@stateRow' }],
-      [/^(\s*)([A-Z][A-Z0-9_]*)(\s*)(<-)/, [
-        'white',
-        'type.identifier',
-        'white',
+      [/^((?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?\S(?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?)(::[=<>!-])(.*)$/, [
+        'source',
         'operator',
+        'source',
+      ]],
+      [/^(?!.*(?:^|[^\\])::[=<>!-])(\s*)([A-Z][A-Z0-9_]*)(\s*)(<-)/, [
+        'white',
+        'type.identifier.alias',
+        'white',
+        'operator.alias',
       ]],
       [/^(?=\s*\S)(?!\s*[A-Z][A-Z0-9_]*\s*<-)(?!.*(?:^|[^\\])::)(?!.*<\|[A-Z][A-Z0-9_]*\|>).+$/, 'comment'],
       { include: '@source' },
@@ -28,10 +33,14 @@ export const thueppMonarchLanguage: monaco.languages.IMonarchLanguage = {
       [/\\::/, 'regexp.escape'],
       [/::[=<>!-]/, 'operator'],
       [/::(?![=<>!-])\S*/, 'invalid'],
+      { include: '@common' },
+    ],
+
+    common: [
       [/\{\{\s*(rule_index|[A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*(pctenc|pctdec|[A-Za-z_][A-Za-z0-9_]*)\s*)?\}\}/, 'variable'],
       [/\{\{[^}\r\n]*\}\}/, 'invalid'],
       [/<\|[A-Z][A-Z0-9_]*\|>/, 'invalid'],
-      [/\$[A-Z][A-Z0-9_]*/, 'type.identifier'],
+      [/\$[A-Z][A-Z0-9_]*/, 'type.identifier.alias'],
       [/(\()(\?<)([A-Za-z_][A-Za-z0-9_]*)(>)/, ['@brackets', 'regexp', 'variable', 'regexp']],
       [/(\()(\?P<)([A-Za-z_][A-Za-z0-9_]*)(>)/, ['@brackets', 'regexp', 'variable', 'regexp']],
       [/(\()(\?[:imsU-]+)/, ['@brackets', 'regexp']],
