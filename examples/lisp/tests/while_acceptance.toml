@@ -13,7 +13,7 @@ stdout_stripped = "()"
 
 [[case]]
 name = "while single body updates existing binding"
-input = '(let ((i 0)) (do (while (lt i 3) (set i (add i 1))) i))'
+input = '(let ((i 0)) (while (lt i 3) (set i (add i 1))) i)'
 
 [case.expect]
 exit_code = 0
@@ -21,8 +21,8 @@ stderr = ""
 stdout_stripped = "3"
 
 [[case]]
-name = "while do body sums numbers"
-input = '(let ((i 0) (sum 0)) (do (while (lt i 4) (do (set sum (add sum i)) (set i (add i 1)))) sum))'
+name = "while sequence body sums numbers"
+input = '(let ((i 0) (sum 0)) (while (lt i 4) (set sum (add sum i)) (set i (add i 1))) sum)'
 
 [case.expect]
 exit_code = 0
@@ -30,8 +30,8 @@ stderr = ""
 stdout_stripped = "6"
 
 [[case]]
-name = "while do body traverses list value"
-input = '(let ((xs (list 1 2 3)) (acc (list))) (do (while (lt 0 (count xs)) (do (set acc (cons (first xs) acc)) (set xs (rest xs)))) acc))'
+name = "while sequence body traverses list value"
+input = '(let ((xs (list 1 2 3)) (acc (list))) (while (lt 0 (count xs)) (set acc (cons (first xs) acc)) (set xs (rest xs))) acc)'
 
 [case.expect]
 exit_code = 0
@@ -48,13 +48,13 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "while requires cond and body only"
+name = "while false with sequence body returns empty list"
 input = '(while false 1 2)'
 
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
 
 [[case]]
 name = "set requires existing binding"
@@ -94,8 +94,8 @@ stdout = ""
 stderr_contains = ["Rule probe limit (200) exceeded"]
 
 [[case]]
-name = "while do condition must be boolean"
-input = '(while 1 (do 1 2))'
+name = "while sequence condition must be boolean"
+input = '(while 1 1 2)'
 
 [case.expect]
 exit_code = 2
@@ -103,8 +103,8 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "while do body preserves plain first expression before set"
-input = '(let ((i 0)) (do (while (lt i 1) (do 1 (set i (add i 1)))) i))'
+name = "while sequence body preserves plain first expression before set"
+input = '(let ((i 0)) (while (lt i 1) 1 (set i (add i 1))) i)'
 
 [case.expect]
 exit_code = 0
@@ -112,8 +112,8 @@ stderr = ""
 stdout_stripped = "1"
 
 [[case]]
-name = "while do body preserves plain final expression after set"
-input = '(let ((i 0)) (do (while (lt i 1) (do (set i (add i 1)) 99)) i))'
+name = "while sequence body preserves plain final expression after set"
+input = '(let ((i 0)) (while (lt i 1) (set i (add i 1)) 99) i)'
 
 [case.expect]
 exit_code = 0
@@ -149,13 +149,13 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "while wrong arity in lexical environment fails wrong arity"
+name = "while false sequence body in lexical environment returns empty list"
 input = '(let ((x 1)) (while false 1 2))'
 
 [case.expect]
-exit_code = 2
-stdout = ""
-stderr_stripped = "wrong_arity"
+exit_code = 0
+stderr = ""
+stdout_stripped = "()"
 
 [[case]]
 name = "set can return numeric value"

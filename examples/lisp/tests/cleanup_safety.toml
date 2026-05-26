@@ -55,8 +55,8 @@ stdout = ""
 stderr_stripped = "wrong_arity"
 
 [[case]]
-name = "do preserves set env update"
-input = '(let ((x 0)) (do (set x 1) x))'
+name = "let body preserves set env update"
+input = '(let ((x 0)) (set x 1) x)'
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -64,7 +64,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "while mutation feeds later reads deterministically"
-input = '(let ((x 0)) (do (while (lt x 2) (set x (add x 1))) x))'
+input = '(let ((x 0)) (while (lt x 2) (set x (add x 1))) x)'
 [case.expect]
 exit_code = 0
 stderr = ""

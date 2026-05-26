@@ -147,7 +147,7 @@ exit_code = 2
 
 [[case]]
 name = "set-nth does not mutate existing list binding"
-input = '(let ((xs (list 1 2 3))) (do (set-nth xs 1 9) xs))'
+input = '(let ((xs (list 1 2 3))) (set-nth xs 1 9) xs)'
 [case.expect]
 stdout = "(1 2 3)\n"
 stderr = ""
@@ -155,7 +155,7 @@ exit_code = 0
 
 [[case]]
 name = "set-nth result can be assigned with set"
-input = '(let ((xs (list 1 2 3))) (do (set xs (set-nth xs 1 9)) xs))'
+input = '(let ((xs (list 1 2 3))) (set xs (set-nth xs 1 9)) xs)'
 [case.expect]
 stdout = "(1 9 3)\n"
 stderr = ""
@@ -163,7 +163,7 @@ exit_code = 0
 
 [[case]]
 name = "set-nth preserves aliased old list value"
-input = '(let ((xs (list 1 2))) (let ((ys xs)) (do (set xs (set-nth xs 0 9)) ys)))'
+input = '(let ((xs (list 1 2))) (let ((ys xs)) (set xs (set-nth xs 0 9)) ys))'
 [case.expect]
 stdout = "(1 2)\n"
 stderr = ""

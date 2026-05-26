@@ -19,7 +19,7 @@ Compound forms:
 - arithmetic primitive callables from the initial core environment: `add`, `sub`, `mul`, `div`;
 - numeric comparison/equality primitive callables from the initial core environment: `eq`, `lt`, `gt`, `lte`, `gte`;
 - boolean control: `if`, `and`, `or`;
-- sequencing: `do`;
+- implicit sequence bodies: `let`, `fn`, and `while`;
 - lexical binding: `let`;
 - bounded iteration/state update: `while` and `set`;
 - functions: `fn` and direct application;
@@ -63,14 +63,13 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `do`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), and type inspection (`type`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
-- `do` evaluates expressions in order and returns the final expression value.
-- `(while cond body)` evaluates `cond` before each iteration and evaluates the single
-`body` expression only while the condition is boolean `true`; use `(do ...)` as
-that one body expression when sequencing is needed.
+- `let`, `fn`, and `while` bodies are implicit sequences: body expressions evaluate left to right and return the final expression value.
+- `(let () expr1 expr2 ... exprN)` is the explicit block expression for contexts that still accept exactly one expression, such as `if` branches or quasiquote escapes.
+- `(while cond body...)` evaluates `cond` before each iteration and evaluates the body sequence only while the condition is boolean `true`.
 - A false-initial or normally exhausted `while` returns `()`. Loop-side state is
 observed through bindings updated by `set`.
 - `(set name expr)` updates the nearest existing lexical binding and returns the
@@ -182,9 +181,8 @@ To update a variable, explicitly rebind it with `set`:
 
 ```lisp
 (let ((xs (list 1 2 3)))
-  (do
-    (set xs (set-nth xs 1 9))
-    xs))
+  (set xs (set-nth xs 1 9))
+  xs)
 ```
 
 returns `(1 9 3)`. Without the `set`, the original `xs` binding still points at `(1 2 3)`. This also makes code-as-data transformations ordinary list updates, for example `(set-nth (quote (add 1 2)) 0 (quote sub))` returns `(sub 1 2)`.
@@ -269,9 +267,7 @@ Alist operations are explicit:
 
 ## Recursion and loop boundary
 
-#108 settles the first bounded iteration primitive as minimal `(while cond body)`.
-The body slot is exactly one expression; use `(do ...)` in that slot for ordered
-multi-step updates. `break` and `continue` are deliberately not part of this slice.
+#108 settled the first bounded iteration primitive as minimal `while`; current `while` accepts one or more body expressions and evaluates them as an implicit sequence. `break` and `continue` are deliberately not part of this slice.
 
 Rationale:
 
@@ -288,8 +284,8 @@ misses) and `letrec` remains a reserved unsupported form (`unsupported_form`).
 
 The evaluator exits non-zero and writes one named error symbol on stderr for rejected inputs. Supported public error symbols are:
 
-- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `define`, `letrec`, `break`, `continue`, `map`, bare `unquote`, bare `splice`, nested `quasiquote`, raw internal-looking inputs, and other non-reader forms;
-- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `do`, `and`, `or`, `let`, and `fn` shapes;
+- `unsupported_form`: syntax or special forms intentionally outside this Lisp core, including `do`, `define`, `letrec`, `break`, `continue`, `map`, bare `unquote`, bare `splice`, nested `quasiquote`, raw internal-looking inputs, and other non-reader forms;
+- `wrong_arity`: supported forms/operators/applications with too few or too many operands, including malformed `if`, `and`, `or`, `let`, `fn`, and `while` shapes;
 - `malformed_list`: reader/list syntax that cannot be framed as a valid balanced list;
 - `unbound_name`: an actual name-lookup miss for a bare variable or callee name;
 - `not_function`: attempting to apply a non-closure value, including lists;

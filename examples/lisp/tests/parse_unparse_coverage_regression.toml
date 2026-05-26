@@ -27,8 +27,8 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "do can ignore unrendered primitive before scalar"
-input = '(do add 1)'
+name = "zero-binding let can ignore unrendered primitive before scalar"
+input = '(let () add 1)'
 [case.expect]
 stdout = "1\n"
 stderr = ""
