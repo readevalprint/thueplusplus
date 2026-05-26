@@ -22,8 +22,8 @@ stderr = ""
 stdout = "\"plain text\"\n"
 
 [[case]]
-name = "write composes with readline through do"
-input = '(do (write "Name: ") (readline))'
+name = "write composes with readline through zero-binding let"
+input = '(let () (write "Name: ") (readline))'
 stdin = "Ada\n"
 
 [case.expect]
@@ -33,7 +33,7 @@ stdout = "Name: \"Ada\"\n"
 
 [[case]]
 name = "write and readline result can be assigned"
-input = '(let ((resp "")) (do (write "Say: ") (set resp (readline)) resp))'
+input = '(let ((resp "")) (write "Say: ") (set resp (readline)) resp)'
 stdin = "hello\n"
 
 [case.expect]
