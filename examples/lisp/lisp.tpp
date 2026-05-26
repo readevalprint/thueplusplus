@@ -50,8 +50,8 @@ Reader entry and shared source freezer
 Top level input and the parse primitive both enter READ with different continuations so string escapes and list freezing cannot drift.
 Strings become VSTR before list freezing. Parenthesized source is reduced inside out into L pct payloads. Reader shorthand expands quote, quasiquote, unquote, and splice into ordinary source forms.
 
-^\([^)]*$ ::= ERR<malformed_list>
-^(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)$ ::= READ<{{input}}> KTOP
+\A\([^)]*\z ::= ERR<malformed_list>
+\A[ \t\r\n]*(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)[ \t\r\n]*\z ::= READ<{{input}}> KTOP
 
 String escape validation
 Invalid escapes are rejected before the generic unescape builtin runs. The double UNESC layer below first removes rewrite state escaping, then applies Lisp string literal escaping.
@@ -59,6 +59,14 @@ Invalid escapes are rejected before the generic unescape builtin runs. The doubl
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
 ^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<UNESC<{{str|pctenc}}>>>{{post}}> {{k}}
 UNESC<(?<s>$PCT)> ::! unescape s
+
+Reader whitespace normalization
+After strings are protected as VSTR payloads, source whitespace is insignificant outside tokens and list delimiters. Normalize readable multiline indentation to the flat token spacing expected by the evaluator core.
+^READ<[ \t\r\n]+(?<rest>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{rest}}> {{k}}
+^READ<(?<rest>[\s\S]*\S)[ \t\r\n]+> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{rest}}> {{k}}
+^READ<(?<pre>[\s\S]*)\([ \t\r\n]+(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}({{post}}> {{k}}
+^READ<(?<pre>[\s\S]*)[ \t\r\n]+\)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}){{post}}> {{k}}
+^READ<(?<pre>[\s\S]*\S)(?:[ \t]*[\r\n][ \t\r\n]*|[ \t]{2,})(?<post>\S[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}} {{post}}> {{k}}
 
 Reader shorthand expansion
 The reader rewrites punctuation shorthand to long form before evaluation or parse result quoting.
@@ -482,5 +490,12 @@ ESC<(?<s>$PCT)> ::! escape s
 
 Final catchers
 These runtime input catchers produce stable Lisp errors for malformed brace starts or unsupported nonempty source that no earlier rule accepted.
-^\{(?<bad>[^\n]*)$ ::= ERR<malformed_list>
-^(?<bad>[^\n].*)$ ::= ERR<unsupported_form>
+\A\{(?<bad>[\s\S]*)\z ::= ERR<malformed_list>
+\A(?<bad>[\s\S]+)\z ::= ERR<unsupported_form>
+
+::=
+(add
+  (add 1 2)
+  (mul
+    3
+    4))
