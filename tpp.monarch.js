@@ -27,13 +27,22 @@ export const thueppMonarchLanguage = {
       // Final state separator. The next physical row, if any, is raw state.
       [/^\s*::=\s*$/, { token: 'keyword.separator', next: '@stateRow' }],
 
-      // Alias definitions. Keep the RHS in normal tokenization so regex pieces,
-      // alias refs, and invalid old alias tokens are still colored.
-      [/^(\s*)([A-Z][A-Z0-9_]*)(\s*)(<-)/, [
-        'white',
-        'type.identifier',
-        'white',
+      // Rule rows: highlight only the first unescaped valid operator as the
+      // delimiter. Later operator-looking text is RHS payload, not delimiter.
+      // Match the whole physical row so tokenizer state cannot leak to the next row.
+      [/^((?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?\S(?:\\::|(?!(?:::[=<>!-]))[^\r\n])*?)(::[=<>!-])(.*)$/, [
+        'source',
         'operator',
+        'source',
+      ]],
+
+      // Alias definitions. Use alias-specific token classes so definitions
+      // stand out, but only on rows without an unescaped valid rule operator.
+      [/^(?!.*(?:^|[^\\])::[=<>!-])(\s*)([A-Z][A-Z0-9_]*)(\s*)(<-)/, [
+        'white',
+        'type.identifier.alias',
+        'white',
+        'operator.alias',
       ]],
 
       // Inert prose rows with no unescaped rule operator are executable
@@ -48,19 +57,22 @@ export const thueppMonarchLanguage = {
       // Escaped parser delimiter must win before operator matching.
       [/\\::/, 'regexp.escape'],
 
-      // Rule operators. Any later operator-looking text on the RHS is just text
-      // to the interpreter, but highlighting it as an operator is useful for
-      // spotting generated operation markers.
+      // Rule-looking operators outside parsed rule rows are invalid/empty-LHS
+      // operator rows or other standalone operator-looking text.
       [/::[=<>!-]/, 'operator'],
       [/::(?![=<>!-])\S*/, 'invalid'],
 
+      { include: '@common' },
+    ],
+
+    common: [
       // Replacement template fields.
       [/\{\{\s*(rule_index|[A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*(pctenc|pctdec|[A-Za-z_][A-Za-z0-9_]*)\s*)?\}\}/, 'variable'],
       [/\{\{[^}\r\n]*\}\}/, 'invalid'],
 
       // Pattern aliases and stale alias spelling.
       [/<\|[A-Z][A-Z0-9_]*\|>/, 'invalid'],
-      [/\$[A-Z][A-Z0-9_]*/, 'type.identifier'],
+      [/\$[A-Z][A-Z0-9_]*/, 'type.identifier.alias'],
 
       // RE2-ish regex surface used in LHS and aliases.
       [/(\()(\?<)([A-Za-z_][A-Za-z0-9_]*)(>)/, ['@brackets', 'regexp', 'variable', 'regexp']],

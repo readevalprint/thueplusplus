@@ -4,6 +4,30 @@ Status: Draft
 
 Standalone spec for building a Thue++ runtime in another language.
 
+## 0. Overview
+
+Thue++ is a language for writing state machines. It is a regex-based language that allows you to write rules that match and rewrite a string.
+
+For example, This is a hello world program in Thue++.
+
+```thuepp
+Aliases to match PCT-encoded strings.
+PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
+
+Print the prompt to the console and read the name from the console. 
+<PRINT_PROMPT> ::> stdout What is your name?\n
+
+Input with a 30s timeout and is automatically PCT-encoded.
+<READ_NAME> ::< 30 stdin
+
+Greet the provided name.
+^GREET:(?<name>$PCT)$ ::> stdout hello {{name|pctdec}}!\n
+
+Set the initial state to the prompt and the name.
+::=
+<PRINT_PROMPT>GREET:<READ_NAME>
+```
+
 ## 1. Core model
 
 A program is UTF-8 text parsed into:
@@ -15,47 +39,29 @@ Execution scans rules top-to-bottom. The first rule whose pattern matches acts o
 
 ## 2. Source parsing
 
-Split source into rows by newline. Source has an optional final initial-state section:
+PEG Grammer Summary. See [tpp.peg](../tpp.peg) for more details.
 
-- the row whose trimmed text is exactly `::=` is the state separator;
-- rows before that separator are the rule/alias section;
-- the separator is not part of state and is not a rule;
-- zero or one row may follow the separator and becomes the complete initial state string exactly as written;
-- any additional row after that state row is a parse error;
-- if no separator exists, the initial state is the empty string.
+```peg
+Language <- Row+ (Sep State?)?
+Row      <- Rule / Alias / Comment
+Sep      <- '::='
+State    <- text
+Alias    <- Name '<-' Regex
+Rule     <- LHS Op RHS
+Comment  <- text
 
-Rows after the final separator are data only: do not parse aliases or rules there. Rows before the final separator are parsed as aliases/rules only; non-empty rows that are neither aliases nor rules are inert source text and do not become initial state.
+Op       <- '::=' / '::<' / '::>' / '::-' / '::!'
+```
 
-A row beginning with `#` has no special status. It is a rule if it contains a valid operator in the rule/alias section; it is ordinary matchable text if used as the one state row. A host-supplied input override replaces the initial state only; it does not change rules.
+Rows are trimmed for classification. `Sep` is the first row exactly `::=`; it is not a rule. `State` is the optional single row after `Sep`; extra state rows are parse errors. Rows before `Sep` that are not aliases or rules are comments and have no effect. `#` has no special status. A host input override replaces only `State`.
 
 ## 3. Aliases
 
-Alias definition:
-
-```text
-NAME <- regex-fragment
-```
-
-`NAME` matches `[A-Z][A-Z0-9_]*`. Use `$NAME` in later aliases and rule patterns.
-
-Alias rules: expand before rule parsing; references may only point backward; duplicate/unknown aliases are errors; aliases must not contain named captures; each alias expands as `(?:fragment)`; `<|NAME|>` is invalid; expansion limits are 10,000 substitutions per row and 1,000,000 UTF-8 bytes per expanded row.
+Aliases are `NAME <- regex-fragment`, where `NAME` matches `[A-Z][A-Z0-9_]*`. `$NAME` may appear in later aliases and rule patterns. References are backward-only; duplicate/unknown aliases, named captures in aliases, and `<|NAME|>` are errors. Expansion wraps fragments as `(?:fragment)` and is limited to 10,000 substitutions/row and 1,000,000 UTF-8 bytes/row.
 
 ## 4. Rule syntax
 
-A rule row is:
-
-```text
-LHS ::OP RHS
-```
-
-`::OP` is the first `::` not immediately preceded by `\`. Valid operators:
-
-```text
-::= replace       ::< read line     ::> write
-::- exit          ::! builtin
-```
-
-Trim spaces/tabs from the right of `LHS` and left of `RHS`. Empty `LHS` means the row is not a rule. An unescaped `::` with any other operator is an error.
+Valid operators are `::=` replace, `::<` read, `::>` write, `::-` exit, and `::!` builtin. `Op` is the first valid operator not immediately preceded by `\`. Trim spaces/tabs from the right of `LHS` and left of `RHS`. Empty `LHS` means the row is not a rule. An unescaped `::` with any other operator is an error.
 
 ## 5. Patterns
 
@@ -65,20 +71,7 @@ Required behavior: `^`/`$` match state row boundaries; `.` does not match newlin
 
 ## 6. Templates
 
-Normal templates are used by `::=` and `::>`.
-
-Forms:
-
-```text
-{{name}}          capture or empty string if absent
-{{name|pctenc}}   canonical PCT encoding of capture
-{{name|pctdec}}   canonical PCT decoding of capture
-{{rule_index}}    zero-based rule index
-```
-
-Unknown filters, malformed filters, and missing filtered captures are errors. Malformed `{{...}}` that is not a valid variable/filter remains literal.
-
-Template literal escapes: `\n`, `\t`, `\r`, `\\`.
+Templates in `::=`/`::>` contain `{{name}}`, `{{name|pctenc}}`, `{{name|pctdec}}`, and `{{rule_index}}`; `name` matches `[A-Za-z_][A-Za-z0-9_]*`. Unfiltered missing captures expand to empty. Filtered missing captures, unknown filters, and malformed filtered variables are errors. Malformed unfiltered `{{...}}` spans remain literal. Literal escapes are `\n`, `\t`, `\r`, `\\`.
 
 ## 7. Execution
 
@@ -103,49 +96,29 @@ Only one span is replaced per action. A host may set max rule probes; every exam
 
 ### `::=` replace
 
-```text
-LHS ::= TEMPLATE
-```
-
-Expand `TEMPLATE` as a normal template. Replace the match with the result.
+Expand `RHS` as a normal template and replace the match with the result.
 
 ### `::!` builtin
-
-```text
-LHS ::! builtin capture_name ...
-```
 
 Split `RHS` on whitespace. First token is builtin name; remaining tokens are capture names, not templates. Missing/unknown builtin, wrong arity, non-capture argument, or argument not present in `LHS` are errors. The builtin receives exact capture strings and replaces the match with its result.
 
 ### `::<` read
 
-```text
-LHS ::< TIMEOUT RESOURCE
-```
-
-`RHS` must be exactly two tokens. `TIMEOUT` is a finite positive number of seconds; zero, negative, NaN, infinity, and non-numeric values are errors. `RESOURCE` matches `[A-Za-z_][A-Za-z0-9_]*` and must be readable.
+`RHS` must be exactly two tokens: `TIMEOUT RESOURCE`. `TIMEOUT` is a finite positive number of seconds; zero, negative, NaN, infinity, and non-numeric values are errors. `RESOURCE` matches `[A-Za-z_][A-Za-z0-9_]*` and must be readable.
 
 Read exactly one newline-delimited message. Strip `\n`; if preceded by `\r`, strip that too. EOF before newline is an error. Bulk reads are unsupported. Replacement is canonical PCT encoding of the line payload.
 
 ### `::>` write
 
-```text
-LHS ::> TEMPLATE
-```
-
-Expand `TEMPLATE`, then split at first space/tab into `RESOURCE CONTENT`; absent separator means empty content. If resource is writable, write content and replace match with empty string. Unknown resource replaces match with `ERR:resource:RESOURCE`. Failed write replaces match with an `ERR:resource:...` marker.
+Expand `RHS` as a template, then split at first space/tab into `RESOURCE CONTENT`; absent separator means empty content. If resource is writable, write content and replace match with empty string. Unknown resource replaces match with `ERR:resource:RESOURCE`. Failed write replaces match with an `ERR:resource:...` marker.
 
 ### `::-` exit
 
-```text
-LHS ::- CODE
-```
-
-Trim `CODE`; if wrapped in `{...}`, remove braces. If it parses as integer, exit with that code; otherwise exit `1`. No replacement occurs.
+Trim `RHS`; if wrapped in `{...}`, remove braces. If it parses as integer, exit with that code; otherwise exit `1`. No replacement occurs.
 
 ## 9. Resources
 
-Standard resources: `stdin`, `stdout`, `stderr`. `stdin` is readable. `stdout`/`stderr` are writable. Reading `stdout`/`stderr` is an error. Writing `stdin` fails as a resource write. Hosts may bind more resources; all use the same line-read/string-write contract.
+Standard resources: readable `stdin`, writable `stdout`/`stderr`. Reading non-readable resources errors. Writes to unknown/failed resources follow `::>` marker behavior. Hosts may bind more line-read/string-write resources.
 
 ## 10. Builtins
 
@@ -174,4 +147,4 @@ Escapes: `escape` and `unescape` take canonical PCT and return canonical PCT. Su
 
 ## 11. Conformance
 
-A runtime conforms if it preserves the observable behavior specified here: parsing, aliases, matching, templates, ordered execution, operators, builtins, resources, errors, limits, and exit codes. Malformed syntax, invalid regex/aliases/templates/builtins/builtin input, resource read errors, and limit violations must fail loudly.
+Conformance means preserving all observable parsing, execution, output, error, limit, and exit-code behavior above. Malformed syntax/input and limit/resource read failures fail loudly.

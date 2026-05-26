@@ -1,24 +1,32 @@
 # PEG grammar for thue++ source syntax.
+# Lexical only: row trimming, comment classification, reserved operators,
+# regex/template validation, and limits are semantic.
 
-Program      <- Prefix State? EOF
-Prefix       <- (PrefixRow NL)* PrefixRow?
-State        <- Sep (NL StateRow)? NL?
+Language     <- Prefix (Sep State?)? EOF
+Prefix       <- (Row NL)* Row?
+Row          <- !Sep (Rule / Alias / Comment)?
+Sep          <- WS* '::=' WS* (NL / EOF)
+State        <- (!NL .)*
+Alias        <- WS* Name WS* '<-' WS* Regex
+Rule         <- LHS Op RHS
+Reserved     <- LHS '::' ReservedChar RHS
+Comment      <- (!NL .)+
 
-PrefixRow    <- !Sep (Rule / Alias / EmptyOperator / Inert)
-StateRow     <- (!NL .)*
+LHS          <- WS* LHSPart* LHSNonWS LHSPart* WS*
+LHSPart      <- EscOp / !Op !NL .
+LHSNonWS     <- EscOp / !Op !WS !NL .
+EscOp        <- '\\' Op
+Regex        <- (!NL .)*
+RHS          <- (Template / !NL .)*
+Template     <- '{{' Var ('|' Filter)? '}}'
+Var          <- 'rule_index' / Capture
+Filter       <- 'pctenc' / 'pctdec'
+Capture      <- [A-Za-z_] [A-Za-z0-9_]*
 
-Sep          <- H* '::=' H* &(NL / EOF)
-Alias        <- H* Name H* '<-' H* Rest
-Rule         <- &((!OpStart !NL .)* !H (!OpStart !NL .)* Op) LHS Op Rest
-EmptyOperator <- H* Op Rest
-Inert        <- (!OpStart !NL .)*
-
-LHS          <- (!OpStart !NL .)+
 Op           <- '::=' / '::<' / '::>' / '::-' / '::!'
-OpStart      <- !'\\' '::'
+ReservedChar <- ![=<>!-] [!-\/:-@[-`{-~]
 
 Name         <- [A-Z] [A-Z0-9_]*
-Rest         <- (!NL .)*
-H            <- [ \t]
-NL           <- '\r\n' / '\n' / '\r'
+WS           <- [ \t]
+NL           <- '\n'
 EOF          <- !.

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { thueppLanguageConfiguration, thueppMonarchLanguage } from './thueppMonarch'
 
+function stateRules(name: string): unknown[] {
+  const tokenizer = thueppMonarchLanguage.tokenizer as Record<string, unknown[]>
+  return tokenizer[name] ?? []
+}
+
 function missingOperatorCommentPattern(): RegExp {
-  const root = thueppMonarchLanguage.tokenizer.root as unknown[]
-  for (const rule of root) {
+  for (const rule of stateRules('root')) {
     if (!Array.isArray(rule)) continue
     const [pattern, action] = rule
     if (action === 'comment' && pattern instanceof RegExp) return pattern
@@ -11,9 +15,17 @@ function missingOperatorCommentPattern(): RegExp {
   throw new Error('missing inert-row comment tokenizer rule')
 }
 
+function rulePrefixPattern(): RegExp {
+  for (const rule of stateRules('root')) {
+    if (!Array.isArray(rule)) continue
+    const [pattern, action] = rule
+    if (pattern instanceof RegExp && Array.isArray(action) && action[0] === 'source') return pattern
+  }
+  throw new Error('missing rule prefix tokenizer rule')
+}
+
 function invalidOperatorPattern(): RegExp {
-  const source = thueppMonarchLanguage.tokenizer.source as unknown[]
-  for (const rule of source) {
+  for (const rule of stateRules('source')) {
     if (!Array.isArray(rule)) continue
     const [pattern, action] = rule
     if (action === 'invalid' && pattern instanceof RegExp && pattern.source.startsWith('::')) return pattern
@@ -21,9 +33,26 @@ function invalidOperatorPattern(): RegExp {
   throw new Error('missing invalid operator tokenizer rule')
 }
 
+function aliasPrefixPatternAndAction(): [RegExp, unknown[]] {
+  for (const rule of stateRules('root')) {
+    if (!Array.isArray(rule)) continue
+    const [pattern, action] = rule
+    if (pattern instanceof RegExp && pattern.test('PCT <- [A-Z]+') && Array.isArray(action)) return [pattern, action]
+  }
+  throw new Error('missing alias prefix tokenizer rule')
+}
+
+function aliasReferenceAction(): string {
+  for (const rule of stateRules('common')) {
+    if (!Array.isArray(rule)) continue
+    const [pattern, action] = rule
+    if (pattern instanceof RegExp && pattern.test('$PCT') && typeof action === 'string') return action
+  }
+  throw new Error('missing alias reference tokenizer rule')
+}
+
 function nonCapturingGroupPattern(): RegExp {
-  const source = thueppMonarchLanguage.tokenizer.source as unknown[]
-  for (const rule of source) {
+  for (const rule of stateRules('common')) {
     if (!Array.isArray(rule)) continue
     const [pattern, action] = rule
     if (Array.isArray(action) && action[0] === '@brackets' && action[1] === 'regexp' && pattern instanceof RegExp) {
@@ -44,6 +73,37 @@ describe('thue++ Monarch tokenizer', () => {
     expect(pattern.test('PCT <- (?:[A-Z])*')).toBe(false)
     expect(pattern.test('^bad$ ::x nope')).toBe(false)
     expect(pattern.test('<|OLD|>')).toBe(false)
+  })
+
+  it('uses alias-specific token classes for definitions and references', () => {
+    const [, action] = aliasPrefixPatternAndAction()
+
+    expect(action).toEqual([
+      'white',
+      'type.identifier.alias',
+      'white',
+      'operator.alias',
+    ])
+    expect(aliasReferenceAction()).toBe('type.identifier.alias')
+  })
+
+  it('does not color alias-looking LHS text as an alias on rule rows', () => {
+    const ruleMatch = rulePrefixPattern().exec('A <- B ::= C')
+    const [aliasPattern] = aliasPrefixPatternAndAction()
+
+    expect(ruleMatch?.[1]).toBe('A <- B ')
+    expect(ruleMatch?.[2]).toBe('::=')
+    expect(ruleMatch?.[3]).toBe(' C')
+    expect(aliasPattern.test('A <- B ::= C')).toBe(false)
+  })
+
+  it('only treats the first rule operator on a row as the delimiter', () => {
+    const ruleMatch = rulePrefixPattern().exec('B ::= C ::= D3')
+
+    expect(ruleMatch?.[1]).toBe('B ')
+    expect(ruleMatch?.[2]).toBe('::=')
+    expect(ruleMatch?.[3]).toBe(' C ::= D3')
+    expect(stateRules('ruleRhs')).toEqual([])
   })
 
   it('only treats current rule operators as operators', () => {
