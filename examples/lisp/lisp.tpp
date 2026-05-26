@@ -236,7 +236,7 @@ SRCEVALARGS evaluates source operands from left to right, preserves environment 
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KSRCARG<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= SRCEVALARGS<{{rest}}|{{env}}|{{acc}}{{v|pctenc}};> {{done}}>
 
 Explicit eval
-Eval first evaluates the code value and scope alist, converts symbol keyed pairs into an environment, then evaluates code values directly through CODEVAL. Closures and primitive handles are not public code values.
+Eval first evaluates the code value and scope alist, converts symbol keyed pairs into an environment, then evaluates code values directly through CODEVAL. Closures and primitive handles are not public code values. CODEVAL applications use delimiter safe argument continuations and normalize closure RETENV results back to value returns so explicit eval can call closure capabilities without leaking their captured environment into the caller continuation.
 ^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
 ^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
 ^RETENV<(?<code>$VAL)\|(?<newenv>[^|]*)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
@@ -260,9 +260,11 @@ Eval first evaluates the code value and scope alist, converts symbol keyed pairs
 ^CODEVAL<VLIST<>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^CODEVAL<VLIST<(?<callee>[^;]*);(?<args>$ITEMS)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= CODEVAL<{{callee|pctdec}}|{{scopeenv}}|KCODECALL<{{args}}^{{scopeenv}}> {{k}}>
 ^RET<(?<fn>$VAL)\|KCODECALL<(?<args>$ITEMS)\^(?<scopeenv>[^>]*)> (?<k>.*)>$ ::= CODEARGS<{{args}}|{{scopeenv}}||{{k}}|{{fn}}>
-^CODEARGS<\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= APPLY<{{fn}}|{{acc}}|{{k}}>
-^CODEARGS<(?<arg>[^;]*);(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= CODEVAL<{{arg|pctdec}}|{{scopeenv}}|KCODEARG<{{rest}}|{{scopeenv}}|{{acc}}|{{fn}}> {{k}}>
-^RET<(?<v>$VAL)\|KCODEARG<(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<fn>$VAL)> (?<k>.*)>$ ::= CODEARGS<{{rest}}|{{scopeenv}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn}}>
+^CODEARGS<\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= APPLY<{{fn}}|{{acc}}|KCODERET {{k}}>
+^RET<(?<v>$VAL)\|KCODERET (?<k>.*)>$ ::= RET<{{v}}|{{k}}>
+^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KCODERET (?<k>.*)>$ ::= RET<{{v}}|{{k}}>
+^CODEARGS<(?<arg>[^;]*);(?<rest>$ITEMS)\|(?<scopeenv>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)\|(?<fn>$VAL)>$ ::= CODEVAL<{{arg|pctdec}}|{{scopeenv}}|KCODEARG<{{rest}}^{{scopeenv}}^{{acc}}^{{fn|pctenc}}> {{k}}>
+^RET<(?<v>$VAL)\|KCODEARG<(?<rest>$ITEMS)\^(?<scopeenv>[^>]*)\^(?<acc>$ITEMS)\^(?<fn>$PCT)> (?<k>.*)>$ ::= CODEARGS<{{rest}}|{{scopeenv}}|{{acc}}{{v|pctenc}};|{{k}}|{{fn|pctdec}}>
 ^CODEVAL<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= ERR<type_error>
 ^EENV<eval (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
