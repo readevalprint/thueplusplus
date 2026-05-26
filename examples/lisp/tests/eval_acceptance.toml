@@ -315,3 +315,76 @@ input = '''
 exit_code = 2
 stderr = "type_error"
 stdout_stripped = ""
+
+
+[[case]]
+name = "eval explicit scope closure callable at top level"
+input = '''
+(let ((f (fn (n) n)))
+  (eval (quote (f 1))
+        (dict ((quote f) f))))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "eval explicit scope closure callable in nested argument"
+input = '''
+(let ((f (fn (n) n)))
+  (eval (quote (add (f 1) 2))
+        (dict ((quote add) add) ((quote f) f))))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "eval closure mutation does not clobber caller continuation env"
+input = '''
+(let ((secret 10)
+      (f (fn (x) (set secret (add secret x))))
+      (z 1))
+  (eval (quote (f 4))
+        (dict ((quote f) f) ((quote add) add)))
+  z)
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+
+[[case]]
+name = "eval explicit scope closure callee returned by nested call"
+input = '''
+(let ((make-add (fn () add)))
+  (eval (quote ((make-add) 1 2))
+        (dict ((quote make-add) make-add) ((quote add) add))))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "3"
+
+[[case]]
+name = "eval explicit scope closure mutation is sandboxed from caller env"
+input = '''
+(let ((secret 10)
+      (f (fn (x) (set secret (add secret x)))))
+  (list
+    (eval (quote (f 4))
+          (dict ((quote f) f) ((quote add) add)))
+    secret))
+'''
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "(14 10)"
