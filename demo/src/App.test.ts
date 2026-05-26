@@ -103,8 +103,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-example-id="resource-echo"]').text()).toContain('callback resource')
 
     await selectExample(wrapper, 'coverage')
-    expect(wrapper.get('[data-test="selected-example-summary"]').text()).toContain('Coverage TSV')
-    expect(wrapper.get('[data-test="selected-example-summary"]').text()).toContain('Coverage TSV')
+    expect(wrapper.get('[data-test="source-preview"]').text()).toContain('covered')
+    expect(wrapper.text()).toContain('coverage-demo.tpp')
   })
 
   it('sends custom callback resources and displays read/write logs behind the resources tab', async () => {
@@ -929,5 +929,57 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Grace\n')
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
+  })
+
+  it('renders /playground in compact mode when requested by query param', () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp&mode=compact&section=trace')
+    const wrapper = mount(App, { attachTo: document.body })
+
+    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="embed-section-panel"]').text()).toContain('trace')
+  })
+
+  it('renders /embed without the page header and starts on the requested section/tab', async () => {
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&section=state&tab=stderr&editable=0')
+    const wrapper = mount(App, { attachTo: document.body })
+
+    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="embed-section-panel"]').text()).toContain('state')
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'START')
+    expect(wrapper.get('[data-test="embed-open-full"]').attributes('href')).toContain('/playground?file=.%2Fexamples%2Fhello%2Fhello.tpp')
+  })
+
+  it('honors header=1 for embed routes without showing the picker by default', () => {
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&header=1')
+    const wrapper = mount(App, { attachTo: document.body })
+
+    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="test-selector"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
+  })
+
+  it('runs an output-focused embed through the shared Go-WASM path', async () => {
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&section=output&tab=stdout&controls=run')
+    const wrapper = mount(App, { attachTo: document.body })
+
+    mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: 'Hello from embed!\n', stderr: '', state: '', resourceLogs: [] })
+    await wrapper.get('[data-test="embed-run"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
+    expect(mockedRunWithWorker.mock.calls[0][0].sourcePath).toBe('examples/hello/hello.tpp')
+    expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(10000)
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello from embed!\n')
+  })
+
+  it('shows the embed demo route with preset examples and explanations', () => {
+    window.history.pushState({}, '', '/embed/demo')
+    const wrapper = mount(App, { attachTo: document.body })
+
+    expect(wrapper.text()).toContain('Compact thue++ playground embeds')
+    expect(wrapper.text()).toContain('Output-focused runnable snippet')
+    expect(wrapper.findAll('[data-test="playground-compact-surface"]').length).toBeGreaterThanOrEqual(3)
   })
 })

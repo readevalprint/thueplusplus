@@ -42,6 +42,41 @@ The state textarea is derived from an explicit first bare `::=` separator and pr
 
 The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row still restores that checkpoint, and rows after the selected checkpoint remain marked as future/stale until the next step prunes them.
 
+## Embeddable playground routes
+
+The same shared playground surface powers the full workbench and the embeddable route:
+
+- `/playground` keeps the full page shell, test selector, and debugger controls. On narrow containers or `mode=compact`, it switches to the compact tabbed layout.
+- `/embed` renders the compact/mobile-style surface without the page header by default. It is intended for iframe embeds and docs slots.
+- `/embed/demo` shows several embed presets with short explanations so the section/tab behavior can be reviewed visually.
+
+Supported embed query parameters:
+
+```text
+file=./examples/hello/hello.tpp
+test=./examples/.../tests/foo.toml
+case=<case name>
+section=output|state|input|trace|resources|source
+tab=stdout|stderr
+mode=mini|compact|debug|full|auto
+controls=run|step|debug|none
+editable=0|1
+header=0|1
+picker=0|1
+openFull=0|1
+syncUrl=0|1
+```
+
+Useful examples:
+
+```text
+/embed?file=./examples/hello/hello.tpp&section=output&tab=stdout
+/embed?file=./examples/hello/hello.tpp&section=state
+/embed?file=./examples/guess-number/guess-number.tpp&section=input&controls=debug
+```
+
+For native Vue embedding, use `PlaygroundSurface.vue` with the same concepts as props (`file`, `test`, `caseName`, `section`, `tab`, `mode`, `chrome`, `controls`, `editable`, `showOpenFull`). Large arbitrary source/state payloads are intentionally not encoded in the URL in this first version; pass them through component props or add a deliberate `postMessage`/share-link API later.
+
 ## Boundaries
 
 - Native Python/Go TOML manifests remain the semantic conformance suite (`make test`).

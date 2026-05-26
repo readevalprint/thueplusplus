@@ -1,5 +1,7 @@
 <template>
   <PlaygroundPage v-if="isPlaygroundRoute" />
+  <EmbedDemoPage v-else-if="isEmbedDemoRoute" />
+  <PlaygroundSurface v-else-if="isEmbedRoute" v-bind="embedProps" />
   <main v-else class="site-shell">
     <section class="landing-hero" aria-labelledby="page-title">
       <div class="hero-copy-block">
@@ -94,20 +96,6 @@
             <p class="hint">{{ explanationFor(selectedId) }}</p>
           </section>
 
-          <section class="field-panel context-card">
-            <div class="panel-heading">
-              <div>
-                <p class="kicker compact">program</p>
-                <h2 data-test="selected-example-summary">{{ displayExampleName(selectedExample) }}</h2>
-              </div>
-              <span class="mono-path">{{ sourcePath }}</span>
-            </div>
-            <pre data-test="source-preview">{{ composedSource }}</pre>
-            <div v-if="input" class="context-block">
-              <p class="kicker compact">stdin</p>
-              <pre data-test="stdin-preview">{{ input }}</pre>
-            </div>
-          </section>
         </aside>
       </section>
 
@@ -215,7 +203,9 @@
 import { computed, reactive, ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { examples, type DemoResourceExample } from './examples'
+import EmbedDemoPage from './EmbedDemoPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
+import PlaygroundSurface from './PlaygroundSurface.vue'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoRunResult } from './wasm'
 
@@ -250,7 +240,55 @@ const result = reactive<DemoRunResult>({ stdout: '', stderr: '', coverage: '', c
 const resources = ref<ResourceState[]>([])
 let nextKey = 1
 
-const isPlaygroundRoute = computed(() => window.location.pathname.replace(/\/$/, '').endsWith('/playground'))
+interface EmbedRouteProps {
+  file?: string
+  test?: string
+  caseName?: string
+  section?: 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
+  tab?: string
+  mode?: 'auto' | 'full' | 'compact' | 'mini' | 'debug'
+  chrome?: 'page' | 'embed' | 'bare'
+  controls?: 'run' | 'step' | 'debug' | 'none'
+  editable?: boolean
+  header?: boolean
+  picker?: boolean
+  showOpenFull?: boolean
+  syncUrl?: boolean
+}
+
+const isPlaygroundRoute = computed(() => normalizedPath().endsWith('/playground'))
+const isEmbedDemoRoute = computed(() => normalizedPath().endsWith('/embed/demo'))
+const isEmbedRoute = computed(() => normalizedPath().endsWith('/embed'))
+const embedProps = computed<EmbedRouteProps>(() => {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    file: params.get('file') ?? undefined,
+    test: params.get('test') ?? undefined,
+    caseName: params.get('case') ?? undefined,
+    section: normalizeEmbedSection(params.get('section')),
+    tab: params.get('tab') ?? undefined,
+    mode: normalizeEmbedMode(params.get('mode')),
+    chrome: 'embed',
+    controls: normalizeEmbedControls(params.get('controls')),
+    editable: params.get('editable') !== '0',
+    header: params.get('header') === '1',
+    picker: params.get('picker') === '1',
+    showOpenFull: params.get('openFull') !== '0',
+    syncUrl: params.get('syncUrl') === '1',
+  }
+})
+function normalizedPath(): string {
+  return window.location.pathname.replace(/\/$/, '')
+}
+function normalizeEmbedSection(value: string | null): EmbedRouteProps['section'] {
+  return ['output', 'state', 'input', 'trace', 'resources', 'source'].includes(value ?? '') ? value as EmbedRouteProps['section'] : undefined
+}
+function normalizeEmbedMode(value: string | null): EmbedRouteProps['mode'] {
+  return ['auto', 'full', 'compact', 'mini', 'debug'].includes(value ?? '') ? value as EmbedRouteProps['mode'] : 'compact'
+}
+function normalizeEmbedControls(value: string | null): EmbedRouteProps['controls'] {
+  return ['run', 'step', 'debug', 'none'].includes(value ?? '') ? value as EmbedRouteProps['controls'] : 'run'
+}
 const selectedExample = computed(() => examples.find(item => item.id === selectedId.value) ?? examples[0])
 const starterExamples = computed(() => ['hello', 'stdin', 'resource-echo'].map(id => examples.find(item => item.id === id)).filter((item): item is typeof examples[number] => Boolean(item)))
 const advancedExamples = computed(() => examples.filter(example => !starterExamples.value.some(starter => starter.id === example.id)))

@@ -8,10 +8,13 @@ import 'monaco-editor/min/vs/editor/editor.main.css'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { thueppLanguageConfiguration, thueppMonarchLanguage } from './thueppMonarch'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string
   highlightLine?: number
-}>()
+  readonly?: boolean
+}>(), {
+  readonly: false,
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -87,6 +90,8 @@ onMounted(() => {
       horizontal: 'visible',
       vertical: 'visible',
     },
+    readOnly: props.readonly,
+    domReadOnly: props.readonly,
   })
   editor.onDidChangeModelContent(() => {
     if (applyingExternalValue || !editor) return
@@ -117,6 +122,10 @@ watch(() => props.modelValue, value => {
 
 watch(() => props.highlightLine, line => {
   updateMatchedRuleDecoration(line)
+})
+
+watch(() => props.readonly, value => {
+  editor?.updateOptions({ readOnly: value, domReadOnly: value })
 })
 
 function updateMatchedRuleDecoration(line: number | undefined): void {
