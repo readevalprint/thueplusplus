@@ -58,12 +58,10 @@ export const thueppMonarchLanguage: monaco.languages.IMonarchLanguage = {
     ],
 
     stateRow: [
-      [/.*$/, { token: 'string', next: '@afterState' }],
+      [/.*$/, 'string'],
     ],
 
-    afterState: [
-      [/.*$/, 'invalid'],
-    ],
+    afterState: [],
   },
 }
 

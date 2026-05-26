@@ -115,6 +115,11 @@ describe('thue++ Monarch tokenizer', () => {
     expect(stateRules('ruleRhs')).toEqual([])
   })
 
+  it('keeps all rows after state separator as state text', () => {
+    expect(stateRules('stateRow')).toHaveLength(1)
+    expect(stateRules('afterState')).toEqual([])
+  })
+
   it('only treats current rule operators as operators', () => {
     const invalid = invalidOperatorPattern()
 
