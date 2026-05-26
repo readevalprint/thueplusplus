@@ -1,0 +1,90 @@
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "60000"]
+
+[[case]]
+name = "write emits string and returns empty list"
+input = '(write "Hello")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "Hello()\n"
+
+[[case]]
+name = "readline returns line without prompt"
+input = '(readline)'
+stdin = "plain text\n"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "\"plain text\"\n"
+
+[[case]]
+name = "write composes with readline through do"
+input = '(do (write "Name: ") (readline))'
+stdin = "Ada\n"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "Name: \"Ada\"\n"
+
+[[case]]
+name = "write and readline result can be assigned"
+input = '(let ((resp "")) (do (write "Say: ") (set resp (readline)) resp))'
+stdin = "hello\n"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "Say: \"hello\"\n"
+
+[[case]]
+name = "write requires string"
+input = '(write 1)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error"
+
+[[case]]
+name = "readline rejects argument"
+input = '(readline "extra")'
+stdin = "ignored\n"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity"
+
+[[case]]
+name = "write without arguments is an uncalled primitive value"
+input = '(write)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unparseable_value"
+
+[[case]]
+name = "prompt name is not bound"
+input = '(prompt "Name: ")'
+stdin = "ignored\n"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_name"
+
+[[case]]
+name = "input name is not bound"
+input = '(input "Name: ")'
+stdin = "ignored\n"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unbound_name"
