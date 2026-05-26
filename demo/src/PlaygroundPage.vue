@@ -81,7 +81,7 @@
             </div>
           </CardHeader>
           <CardContent>
-            <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" />
+            <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" data-test="playground-rules" @paste="seedStateFromSource" />
           </CardContent>
         </Card>
       </ResizablePanel>
@@ -354,13 +354,22 @@ function loadFile(file: string): void {
   }
   const split = splitProgramSource(source)
   rulesText.value = split.rules
-  stateText.value = split.state
+  stateText.value = ''
+  if (stateText.value === '') stateText.value = split.state
   loadError.value = split.error
   clearRun()
   resourceInputs.value = {}
   const url = new URL(window.location.href)
   url.searchParams.set('file', normalized)
   window.history.replaceState({}, '', url)
+}
+
+function seedStateFromSource(source = rulesText.value): void {
+  stateText.value = ''
+  const split = splitProgramSource(source)
+  loadError.value = split.error
+  if (stateText.value === '') stateText.value = split.state
+  clearRun()
 }
 
 function selectTestCase(testCase: TestCaseOption): void {

@@ -7,7 +7,7 @@ vi.mock('./RulesMonacoEditor.vue', async () => {
   return {
     default: defineComponent({
       props: { modelValue: { type: String, default: '' }, highlightLine: { type: Number, default: undefined } },
-      emits: ['update:modelValue'],
+      emits: ['update:modelValue', 'paste'],
       setup(props, { emit, attrs }) {
         return () => h('textarea', {
           ...attrs,
@@ -16,6 +16,7 @@ vi.mock('./RulesMonacoEditor.vue', async () => {
           spellcheck: 'false',
           wrap: 'off',
           onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLTextAreaElement).value),
+          onPaste: (event: Event) => emit('paste', (event.target as HTMLTextAreaElement).value),
         })
       },
     }),
@@ -251,6 +252,29 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
     expect(mockedRunWithWorker.mock.calls[0][0].sourceText).toContain('\n::=\nSTART\n')
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('')
+  })
+
+  it('seeds Program State from pasted full source while preserving shareable Program Rules', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    await wrapper.get('[data-test="playground-state"]').setValue('stale override')
+    const pastedSource = '^aaab$ ::= done\n::=\naaab\n'
+
+    await wrapper.get('[data-test="playground-rules"]').setValue(pastedSource)
+    await wrapper.get('[data-test="playground-rules"]').trigger('paste')
+
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe(pastedSource)
+    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('aaab')
+  })
+
+  it('does not rewrite Program Rules when Program State is edited after source seeding', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = mount(App)
+    const originalSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
+
+    await wrapper.get('[data-test="playground-state"]').setValue('custom state')
+
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe(originalSource)
   })
 
   it('loads hash-prefixed source rows exactly and keeps state empty without a separator heuristic', async () => {

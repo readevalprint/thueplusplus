@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  paste: [value: string]
 }>()
 
 const container = ref<HTMLElement | null>(null)
@@ -90,6 +91,10 @@ onMounted(() => {
   editor.onDidChangeModelContent(() => {
     if (applyingExternalValue || !editor) return
     emit('update:modelValue', editor.getValue())
+  })
+  editor.onDidPaste(() => {
+    if (!editor) return
+    emit('paste', editor.getValue())
   })
   matchDecorations = editor.createDecorationsCollection()
   updateMatchedRuleDecoration(props.highlightLine)
