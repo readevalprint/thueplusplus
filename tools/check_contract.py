@@ -89,7 +89,7 @@ def source_excerpt(root: Path, source_path: str, source_lines: str | None) -> tu
 
 def playground_url(source_path: str) -> str:
     file_param = quote(f"./{source_path}", safe="./")
-    return f"http://thuelang.com/playground?file={file_param}"
+    return f"https://thuelang.org/playground?file={file_param}"
 
 
 def render_readme_example(root: Path, source_path: str, expected_output_path: str, source_lines: str | None = None) -> str:

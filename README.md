@@ -93,7 +93,7 @@ This program writes one line, then exits:
 <!-- thuepp-readme-example:start -->
 Example source (`examples/hello/hello.tpp`):
 
-Open in playground: [examples/hello/hello.tpp](http://thuelang.com/playground?file=./examples/hello/hello.tpp)
+Open in playground: [examples/hello/hello.tpp](https://thuelang.org/playground?file=./examples/hello/hello.tpp)
 
 ```thuepp
 
@@ -150,7 +150,7 @@ printf 'x\n3\n8\n7\n' | (cd go && go run ./cmd/thuepp ../examples/guess-number/g
 <!-- thuepp-readme-example:start -->
 Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-31):
 
-Open in playground: [examples/guess-number/guess-number.tpp](http://thuelang.com/playground?file=./examples/guess-number/guess-number.tpp)
+Open in playground: [examples/guess-number/guess-number.tpp](https://thuelang.org/playground?file=./examples/guess-number/guess-number.tpp)
 
 ```thuepp
 
