@@ -18,11 +18,11 @@ export interface TestCaseOption {
   programPath: string
   caseName: string
   input: string
+  hasInput: boolean
   inputPreview: string
   args: string[]
   stdin?: string
   expect: TestManifestCaseExpect
-  searchableText: string
 }
 
 interface RawManifestCase {
@@ -107,9 +107,9 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
     const cases = Array.isArray(parsed.case) ? parsed.case as RawManifestCase[] : []
     if (cases.length === 0) {
       const caseName = typeof parsed.name === 'string' ? parsed.name : label
-      const input = typeof parsed.input === 'string' ? parsed.input : ''
+      const hasInput = typeof parsed.input === 'string'
+      const input = hasInput ? parsed.input as string : ''
       const args = withDefaultMaxEvals(manifestArgs)
-      const searchableText = [manifestPath, label, caseName].join(' ')
       options.push({
         id: `${manifestPath}::${slug(caseName) || 'default'}`,
         manifestPath,
@@ -117,19 +117,19 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
         programPath,
         caseName,
         input,
+        hasInput,
         inputPreview: inputPreview(input),
         args,
         stdin: typeof parsed.stdin === 'string' ? parsed.stdin : undefined,
         expect: expectObject(parsed.expect),
-        searchableText,
       })
       continue
     }
     for (const [index, testCase] of cases.entries()) {
       const caseName = typeof testCase.name === 'string' ? testCase.name : `case ${index + 1}`
-      const input = typeof testCase.input === 'string' ? testCase.input : ''
+      const hasInput = typeof testCase.input === 'string'
+      const input = hasInput ? testCase.input as string : ''
       const args = withDefaultMaxEvals([...manifestArgs, ...asStringArray(testCase.args)])
-      const searchableText = [manifestPath, label, caseName].join(' ')
       options.push({
         id: `${manifestPath}::${slug(caseName)}`,
         manifestPath,
@@ -137,11 +137,11 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
         programPath,
         caseName,
         input,
+        hasInput,
         inputPreview: inputPreview(input),
         args,
         stdin: typeof testCase.stdin === 'string' ? testCase.stdin : undefined,
         expect: expectObject(testCase.expect),
-        searchableText,
       })
     }
   }

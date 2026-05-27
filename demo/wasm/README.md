@@ -1,6 +1,6 @@
-# thue++ Go-WASM JavaScript adapters
+# Thue++ Go-WASM JavaScript adapters
 
-These files are a thin host-adapter layer around the Go WASM interpreter. They do not implement thue++ parsing, matching, or evaluation in JavaScript, and they do not use JavaScript `RegExp` for language semantics.
+These files are a thin host-adapter layer around the Go WASM interpreter. They do not implement Thue++ parsing, matching, or evaluation in JavaScript, and they do not use JavaScript `RegExp` for language semantics.
 
 ## Files
 
@@ -13,7 +13,7 @@ These files are a thin host-adapter layer around the Go WASM interpreter. They d
 ## Run API
 
 ```js
-const { initThuePP } = require('./js/wasm/node.cjs');
+const { initThuePP } = require('./demo/wasm/node.cjs');
 const thuepp = await initThuePP({ wasmPath: 'build/thuepp.wasm' });
 const result = await thuepp.run({
   sourceText: '^hello$ ::> stdout Hello\\n\nhello',

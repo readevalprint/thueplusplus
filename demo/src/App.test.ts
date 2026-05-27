@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
-import { runWithWorker, type DemoRunRequest, type DemoRunResult } from './wasm'
+import { mount } from '@vue/test-utils'
+import { runWithWorker } from './wasm'
 
 vi.mock('./RulesMonacoEditor.vue', async () => {
   const { defineComponent, h } = await import('vue')
@@ -23,6 +23,22 @@ vi.mock('./RulesMonacoEditor.vue', async () => {
   }
 })
 
+vi.mock('./ReadmeCodeEditor.vue', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    default: defineComponent({
+      props: { code: { type: String, default: '' }, language: { type: String, default: 'thuepp' }, lineNumberStart: { type: Number, default: 1 } },
+      setup(props, { attrs }) {
+        return () => h('pre', {
+          ...attrs,
+          'data-language': props.language,
+          'data-line-start': props.lineNumberStart,
+        }, props.code)
+      },
+    }),
+  }
+})
+
 import App from './App.vue'
 
 vi.mock('./wasm', async () => {
@@ -38,18 +54,6 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
-async function selectExample(wrapper: VueWrapper, id: string): Promise<void> {
-  await wrapper.get(`[data-example-id="${id}"]`).trigger('click')
-}
-
-async function runDemo(wrapper: VueWrapper, result: DemoRunResult = { exitCode: 0, stdout: 'ok\n', stderr: '', coverage: '', coverageTSV: '', resourceLogs: [] }): Promise<DemoRunRequest> {
-  mockedRunWithWorker.mockResolvedValueOnce(result)
-  await wrapper.get('[data-test="run-demo"]').trigger('click')
-  await flush()
-  expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
-  return mockedRunWithWorker.mock.calls[0][0]
-}
-
 describe('Go-WASM demo UI', () => {
   beforeEach(() => {
     window.history.pushState({}, '', '/')
@@ -63,120 +67,47 @@ describe('Go-WASM demo UI', () => {
     })
   })
 
-  it('mounts as a real interpreter workbench and runs the hello stdout example', async () => {
+  it('renders the repository README as the site index with Monaco-backed thue fences', () => {
     const wrapper = mount(App)
 
-    expect(wrapper.text()).toContain('A tiny language for rewriting text with rules')
-    expect(wrapper.text()).toContain('Go-WASM interpreter')
-    expect(wrapper.text()).toContain('not a JavaScript rule evaluator')
-    expect(wrapper.get('[data-example-id="hello"]').text()).toContain('stdout')
-    expect(wrapper.get('[data-test="source-preview"]').text()).toContain('Hello from Go-WASM')
-
-    const request = await runDemo(wrapper, { exitCode: 0, stdout: 'Hello from Go-WASM!\n', stderr: '', coverageTSV: '' })
-
-    expect(request.sourcePath).toBe('hello.tpp')
-    expect(request.sourceText).toContain('stdout Hello from Go-WASM!')
-    expect(request.sourceText).toContain('hello')
-    expect(request.coverage).toBe(true)
-    expect(wrapper.text()).toContain('Hello from Go-WASM!')
-    expect(wrapper.text()).toContain('Hello from Go-WASM!')
-  })
-
-  it('passes buffered stdin input to the worker', async () => {
-    const wrapper = mount(App)
-    await selectExample(wrapper, 'stdin')
-
-    expect(wrapper.get('[data-test="stdin-preview"]').text()).toContain('Ada')
-    const request = await runDemo(wrapper, { exitCode: 0, stdout: 'hello Ada!\n' })
-
-    expect(request.sourcePath).toBe('stdin-greeting.tpp')
-    expect(request.input).toBe('Ada\n')
-    expect(request.resources).toEqual([])
-    expect(wrapper.text()).toContain('hello Ada!')
-  })
-
-  it('presents examples as educational scenario cards', async () => {
-    const wrapper = mount(App)
-
-    const cards = wrapper.findAll('[data-test="example-card"]')
-    expect(cards.length).toBeGreaterThanOrEqual(6)
-    expect(wrapper.get('[data-example-id="resource-echo"]').text()).toContain('callback resource')
-
-    await selectExample(wrapper, 'coverage')
-    expect(wrapper.get('[data-test="source-preview"]').text()).toContain('covered')
-    expect(wrapper.text()).toContain('coverage-demo.tpp')
-  })
-
-  it('sends custom callback resources and displays read/write logs behind the resources tab', async () => {
-    const wrapper = mount(App)
-    await selectExample(wrapper, 'resource-echo')
-
-    const request = await runDemo(wrapper, {
-      exitCode: 0,
-      stdout: 'ping\n',
-      resourceLogs: [{ name: 'echo', reads: ['ping'], writes: ['ping'], errors: [] }],
-    })
-
-    expect(request.resources).toEqual([{ name: 'echo', inputText: 'ping\n', readError: undefined }])
-    await wrapper.get('[data-result-tab="resources"]').trigger('click')
-    expect(wrapper.text()).toContain('[echo]')
-    expect(wrapper.text()).toContain('reads: ["ping"]')
-    expect(wrapper.text()).toContain('writes: ["ping"]')
-  })
-
-  it('surfaces resource timeout errors without running subprocess fixtures', async () => {
-    const wrapper = mount(App)
-    await selectExample(wrapper, 'timeout')
-
-    const request = await runDemo(wrapper, {
-      exitCode: 1,
-      stdout: '',
-      stderr: '',
-      error: 'ERR:resource:sleepy:timeout',
-      resourceLogs: [{ name: 'sleepy', reads: [], writes: [], errors: ['timeout'] }],
-    })
-
-    expect(request.sourcePath).toBe('timeout.tpp')
-    expect(request.resources).toEqual([{ name: 'sleepy', inputText: '', readError: 'timeout' }])
-    expect(wrapper.text()).toContain('ERR:resource:sleepy:timeout')
-    await wrapper.get('[data-result-tab="errors"]').trigger('click')
-    expect(wrapper.text()).toContain('ERR:resource:sleepy:timeout')
-    expect(wrapper.text()).toContain('errors: ["timeout"]')
-  })
-
-
-  it('renders raw coverage TSV and parsed coverage rows in the coverage tab', async () => {
-    const wrapper = mount(App)
-    await selectExample(wrapper, 'coverage')
-
-    const request = await runDemo(wrapper, {
-      exitCode: 0,
-      stdout: 'covered\n',
-      coverageTSV: 'coverage-demo.tpp:1\t1\t^start$ ::= middle\ncoverage-demo.tpp:2\t1\t^middle$ ::= done\n',
-    })
-
-    expect(request.coverage).toBe(true)
-    await wrapper.get('[data-result-tab="coverage"]').trigger('click')
-    expect(wrapper.text()).toContain('coverage-demo.tpp:1')
-    expect(wrapper.find('.coverage-table').exists()).toBe(true)
-    expect(wrapper.text()).toContain('^start$ ::= middle')
-    expect(wrapper.text()).toContain('^middle$ ::= done')
-  })
-
-  it('copies stdout and reports clipboard success', async () => {
-    const wrapper = mount(App)
-    await runDemo(wrapper, { exitCode: 0, stdout: 'copy me\n', stderr: '', coverageTSV: '' })
-
-    await wrapper.get('[data-copy="stdout"]').trigger('click')
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('copy me\n')
-    expect(wrapper.text()).toContain('Copied stdout')
+    expect(wrapper.get('[data-test="readme-index"]').text()).toContain('Thue++')
+    const topbar = wrapper.get('[data-test="site-topbar"]')
+    expect(topbar.text()).toContain('Docs')
+    expect(topbar.text()).toContain('Playground')
+    expect(topbar.text()).toContain('GitLab')
+    expect(topbar.text()).toContain('Twitter')
+    expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBe('page')
+    expect(topbar.get('nav a[href="/playground"]').attributes('aria-current')).toBeUndefined()
+    expect(topbar.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
+    expect(topbar.find('a[href="https://x.com/thuelang"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Start with a string and rules that rewrite it')
+    const thueBlocks = wrapper.findAll('[data-test="readme-thue-code"]')
+    expect(thueBlocks.length).toBeGreaterThan(5)
+    expect(thueBlocks[0].text()).toContain('^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}')
+    expect(thueBlocks[0].attributes('data-language')).toBe('thuepp')
+    expect(thueBlocks[0].attributes('data-line-start')).toBe('1')
+    const lispBlocks = wrapper.findAll('[data-test="readme-lisp-code"]')
+    expect(lispBlocks.length).toBeGreaterThan(5)
+    expect(lispBlocks[0].attributes('data-language')).toBe('clojure')
+    expect(lispBlocks[0].text()).toContain('(add (mul 2 3) 4)')
+    expect(wrapper.find('[data-test="run-demo"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('thuepp-readme-example')
+    const toc = wrapper.get('[data-test="readme-toc"]')
+    expect(toc.text()).toContain('Rules')
+    expect(toc.text()).toContain('Lisp eval: explicit scope as sandbox')
+    expect(toc.get('a[aria-current="location"]').attributes('href')).toBe('#thue')
+    expect(getComputedStyle(wrapper.get('[data-test="readme-index"]').element).paddingBottom).toBeTruthy()
   })
 
   it('serves a resizable playground route with pinned stdio resources and no reset action', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App)
 
-    expect(wrapper.text()).toContain('THUE++ Playground')
+    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
+    const topbar = wrapper.get('[data-test="site-topbar"]')
+    expect(topbar.get('nav a[href="/playground"]').attributes('aria-current')).toBe('page')
+    expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBeUndefined()
+    expect(topbar.get('a[href="https://x.com/thuelang"]').text()).toBe('Twitter')
     expect(wrapper.text()).toContain('state')
     expect(wrapper.get('[data-test="playground-rules"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('wrap')).toBe('off')
@@ -733,37 +664,42 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
   })
 
-  it('filters manifest test cases by path or case name without searching input text', async () => {
+  it('renders curated example groups as navigation menu cards without command search', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App, { attachTo: document.body })
-    await wrapper.get('[data-test="test-case-command-trigger"]').trigger('click')
+
+    expect(wrapper.find('[data-test="test-case-command"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="test-case-command-input"]').exists()).toBe(false)
+    const triggerLabels = wrapper.findAll('[data-test="test-case-menu-trigger"]').map(trigger => trigger.text())
+    expect(triggerLabels).toEqual(['Basic rules', 'I/O', 'Resources', 'Calcs', 'Forth', 'Lisp'])
+
+    const lispTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Lisp')
+    expect(lispTrigger).toBeTruthy()
+    await lispTrigger!.trigger('pointerdown')
+    await lispTrigger!.trigger('click')
     await flush()
-    const input = wrapper.get('[data-test="test-case-command-input"]')
 
-    await input.setValue('closure_binding_flattening zero arg')
-    expect(wrapper.findAll('[data-test="test-case-option"]').length).toBeGreaterThan(0)
-    expect(wrapper.get('[data-test="test-case-option-path"]').text()).toContain('closure_binding_flattening.toml')
-    expect(wrapper.get('[data-test="test-case-option-name"]').text()).toContain('zero arg')
-    expect(wrapper.get('[data-test="test-case-option-input-preview"]').text()).toContain('fn')
-
-    await input.setValue('source row beginning with hash')
-    expect(wrapper.findAll('[data-test="test-case-option"]').length).toBeGreaterThan(0)
-    expect(wrapper.get('[data-test="test-case-option-path"]').text()).toContain('source_hash_rule.toml')
-    expect(wrapper.get('[data-test="test-case-option-name"]').text()).toContain('source row beginning with hash can be a rule')
-
-    await input.setValue('100')
-    expect(wrapper.find('[data-test="test-case-option"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="test-case-command-empty"]').text()).toContain('No test cases found')
+    const menuItems = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => element.textContent ?? '')
+    expect(menuItems.some(text => text.includes('Closure call'))).toBe(true)
+    expect(menuItems.some(text => text.includes('zero arg closure call still evaluates body'))).toBe(false)
+    expect(menuItems.some(text => text.includes('Calls a zero-argument closure and returns the body value.'))).toBe(true)
+    expect(menuItems.some(text => text.includes('((fn () 7))'))).toBe(false)
+    expect(menuItems.some(text => text.includes('parse_unparse_canonical_acceptance.toml'))).toBe(false)
   })
 
-  it('selecting a manifest test case loads rules, state, and resources without running', async () => {
+  it('selecting a curated manifest test case loads rules, state, and resources without running', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App, { attachTo: document.body })
 
-    await wrapper.get('[data-test="test-case-command-trigger"]').trigger('click')
+    const lispTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Lisp')
+    expect(lispTrigger).toBeTruthy()
+    await lispTrigger!.trigger('pointerdown')
+    await lispTrigger!.trigger('click')
     await flush()
-    await wrapper.get('[data-test="test-case-command-input"]').setValue('zero arg closure call still evaluates body')
-    await wrapper.get('[data-test="test-case-option"]').trigger('click')
+
+    const zeroArgCase = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => ({ text: () => element.textContent ?? '', trigger: (event: string) => (element as HTMLElement).dispatchEvent(new MouseEvent(event, { bubbles: true })) })).find(item => item.text().includes('Closure call'))
+    expect(zeroArgCase).toBeTruthy()
+    await zeroArgCase!.trigger('click')
     await flush()
 
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('VPRIM')
@@ -775,21 +711,26 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 
-  it('selecting a top-level manifest test preserves exact source rows in rules', async () => {
+  it('selecting a curated source-parsing test preserves exact source rows in rules', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App, { attachTo: document.body })
 
-    await wrapper.get('[data-test="test-case-command-trigger"]').trigger('click')
+    const basicTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Basic rules')
+    expect(basicTrigger).toBeTruthy()
+    await basicTrigger!.trigger('pointerdown')
+    await basicTrigger!.trigger('click')
     await flush()
-    await wrapper.get('[data-test="test-case-command-input"]').setValue('source row beginning with hash')
-    await wrapper.get('[data-test="test-case-option"]').trigger('click')
+
+    const sourceHashCase = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => ({ text: () => element.textContent ?? '', trigger: (event: string) => (element as HTMLElement).dispatchEvent(new MouseEvent(event, { bubbles: true })) })).find(item => item.text().includes('Hash-prefixed rule'))
+    expect(sourceHashCase).toBeTruthy()
+    await sourceHashCase!.trigger('click')
     await flush()
 
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
     expect(loadedSource).toContain('#x ::= y')
     expect(loadedSource).toContain('^y$ ::> stdout source-row-rule\\n')
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('#x')
-    expect(wrapper.get('[data-test="test-case-command-current"]').text()).toContain('source_hash_rule.toml')
+    expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('source_hash_rule.toml')
   })
 
   it('derives resource sections from playground rules and keeps resource inputs gated by requests', async () => {
@@ -918,11 +859,11 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 
-  it('renders /playground in compact mode when requested by query param', () => {
+  it('renders /playground in compact mode without the old playground-specific header', () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp&mode=compact&section=trace')
     const wrapper = mount(App, { attachTo: document.body })
 
-    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="embed-section-panel"]').text()).toContain('trace')
   })
@@ -965,7 +906,7 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/embed/demo')
     const wrapper = mount(App, { attachTo: document.body })
 
-    expect(wrapper.text()).toContain('Compact thue++ playground embeds')
+    expect(wrapper.text()).toContain('Compact Thue++ playground embeds')
     expect(wrapper.text()).toContain('Output-focused runnable snippet')
     expect(wrapper.findAll('[data-test="playground-compact-surface"]').length).toBeGreaterThanOrEqual(3)
   })

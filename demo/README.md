@@ -1,8 +1,8 @@
-# thue++ Go-WASM demo
+# Thue++ Go-WASM demo
 
-This is a small Vite/Vue browser demo shell for the Go-WASM thue++ adapter.
+This is a small Vite/Vue browser demo shell for the Go-WASM Thue++ adapter.
 
-The demo is intentionally not a JavaScript implementation of thue++. It imports the real browser worker adapter from `../js/wasm/`, which loads the Go WASM module and supplies browser resources through callbacks.
+The demo is intentionally not a JavaScript implementation of Thue++. It imports the real browser worker adapter from `wasm/`, which loads the Go WASM module and supplies browser resources through callbacks.
 
 ## Commands
 
@@ -28,7 +28,7 @@ Before serving the demo, run `make demo-build` from the repository root. That ta
 
 ## What the demo tests cover
 
-The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/wasm/browser_adapter_unit_test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker.
+The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `demo/wasm/browser_adapter_unit_test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker.
 
 `DESIGN.md` records the demo's project-owned visual direction: a dark formal interpreter workbench with tokenized colors, code-first panels, visible Go-WASM/Worker status, and explicit guardrails against implying a JavaScript rule evaluator or subprocess emulation.
 
@@ -80,7 +80,7 @@ For native Vue embedding, use `PlaygroundSurface.vue` with the same concepts as 
 ## Boundaries
 
 - Native Python/Go TOML manifests remain the semantic conformance suite (`make test`).
-- This demo is not semantic conformance for thue++; it is a browser adapter/UI smoke suite.
+- This demo is not semantic conformance for Thue++; it is a browser adapter/UI smoke suite.
 - Browser resources are callbacks supplied to the Go-WASM adapter, not OS subprocesses. In-browser runs cannot spawn the process fixtures used by native examples.
 - Include files are resolved from the adapter include map passed by the UI, not from the browser filesystem.
-- The adapter behavior follows the Go-WASM browser callback resource work from GLKB #192 and is documented in [`../js/wasm/README.md`](../js/wasm/README.md).
+- The adapter behavior follows the Go-WASM browser callback resource work from GLKB #192 and is documented in [`wasm/README.md`](wasm/README.md).

@@ -22,7 +22,7 @@ exit_code = 0
 stdout_stripped = "13"
 `
 
-  it('flattens manifest cases with searchable path and case name but not case input', () => {
+  it('flattens manifest cases with paths, case names, and input previews', () => {
     const cases = flattenTestManifests({ [manifestPath]: manifestText })
 
     expect(cases).toHaveLength(2)
@@ -31,11 +31,10 @@ stdout_stripped = "13"
       programPath: 'examples/lisp/lisp.tpp',
       caseName: 'zero arg closure call still evaluates body',
       input: '((fn () 7))',
+      hasInput: true,
+      inputPreview: '((fn () 7))',
       args: ['--max-evals', '60000'],
     })
-    expect(cases[0].searchableText).toContain('closure_binding_flattening')
-    expect(cases[0].searchableText).toContain('zero arg closure')
-    expect(cases[0].searchableText).not.toContain('fn () 7')
     expect(cases[1].inputPreview).toContain('(let ((a 10))')
   })
 })
