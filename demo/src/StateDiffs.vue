@@ -1,17 +1,6 @@
 <template>
   <section ref="timeline" class="state-diffs" data-test="playground-diffs" aria-label="timeline">
     <Table>
-      <TableHeader>
-        <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-          <TableHead v-for="header in headerGroup.headers" :key="header.id">
-            <FlexRender
-              v-if="!header.isPlaceholder"
-              :render="header.column.columnDef.header"
-              :props="header.getContext()"
-            />
-          </TableHead>
-        </TableRow>
-      </TableHeader>
       <TableBody>
         <template v-if="table.getRowModel().rows.length">
           <template v-for="row in table.getRowModel().rows" :key="row.original.key">
@@ -49,7 +38,7 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { nextTick, h, ref, watch } from 'vue'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 
 interface DiffPart {
   key: string
@@ -91,7 +80,6 @@ const timeline = ref<HTMLElement | null>(null)
 const columns: ColumnDef<StateDiffEntry>[] = [
   {
     id: 'entry',
-    header: 'history',
     cell: ({ row }) => entryCell(row.original),
     meta: { class: 'state-diff-entry-cell' },
   },
@@ -117,9 +105,7 @@ function isFuture(entry: StateDiffEntry): boolean {
 
 function entryCell(entry: StateDiffEntry) {
   return h('div', { class: 'state-diff-entry-body' }, [
-    h('div', { class: 'state-diff-meta' }, `#${entry.step} row ${entry.row}`),
     h('div', { class: 'state-diff-field state-diff-rule-field' }, [
-      h('span', { class: 'state-diff-field-label' }, 'rule'),
       h('div', { class: 'state-diff-rule', 'data-test': 'playground-diff-rule' }, entry.rule),
     ]),
     diffCell(entry),
@@ -131,11 +117,9 @@ function diffCell(entry: StateDiffEntry) {
   if (entry.note) return h('div', { class: 'state-diff-note', 'data-test': 'playground-diff-note' }, entry.note)
   return h('div', { class: 'state-diff-lines' }, [
     h('div', { class: 'state-diff-field' }, [
-      h('span', { class: 'state-diff-field-label' }, 'before'),
       diffLine(entry.before, 'removed', '-'),
     ]),
     h('div', { class: 'state-diff-field' }, [
-      h('span', { class: 'state-diff-field-label' }, 'after'),
       diffLine(entry.after, 'added', '+'),
     ]),
   ])
