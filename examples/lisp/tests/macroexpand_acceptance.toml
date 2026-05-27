@@ -323,6 +323,24 @@ stderr = "type_error"
 stdout_stripped = ""
 
 [[case]]
+name = "macroexpand macro scope entry must be an exact pair"
+input = '(macroexpand (quote (inc x)) (list (list (quote inc) (fn (args) (first args)) 3)))'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
+name = "macroexpand nested callable code value inside list is rejected"
+input = '(macroexpand (list (quote list) add) (dict))'
+
+[case.expect]
+exit_code = 2
+stderr = "type_error"
+stdout_stripped = ""
+
+[[case]]
 name = "macroexpand code argument cannot be callable"
 input = '(macroexpand (fn (x) x) (dict))'
 

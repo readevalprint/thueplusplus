@@ -384,10 +384,11 @@ There is no `defmacro`, global macro registry, or implicit macro pass. `macroexp
 
 ```thuepp
 ^APPLY<VPRIM<macroexpand>\|(?<code>[^;]*);(?<scope>[^;]*);\|(?<k>.*)>$ ::= BMACROEXPAND<{{code|pctdec}}|{{scope|pctdec}}|{{k}}>
-^BMACROEXPAND<(?<code>$VAL)\|VLIST<(?<macros>$ITEMS)>\|(?<k>.*)>$ ::= MEXP<{{code}}|{{macros}}|{{k}}>
-^MEXPHEAD<VSYM<(?<name>$PCT)>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{macros}}|{{head}};{{tail}}|{{tail}}|{{macros}}|{{k}}>
-^MLOOKEQ<1\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MCALL<{{transformer|pctdec}}|VLIST<{{operands}}>|{{macros}}|{{k}}>
-^RET<(?<expanded>$VAL)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<{{expanded}}|{{macros}}|{{k}}>
+^BMACROEXPAND<(?<code>$VAL)\|VLIST<(?<macros>$ITEMS)>\|(?<k>.*)>$ ::= MEXP<N|{{code}}|{{macros}}|{{k}}>
+^MEXP<(?<mode>N|Q)\|VLIST<(?<head>[^;]*);(?<tail>$ITEMS)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPHEAD<{{mode}}|{{head|pctdec}}|{{head}}|{{tail}}|{{macros}}|{{k}}>
+^MEXPHEAD<N\|VSYM<(?<name>$PCT)>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{macros}}|{{head}};{{tail}}|{{tail}}|{{macros}}|{{k}}>
+^MEXPHEAD<Q\|VSYM<unquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<N|{{tail}}|{{macros}}|KMQESCAPE<{{head}}> {{k}}|>
+^RET<(?<expanded>$VAL)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<N|{{expanded}}|{{macros}}|{{k}}>
 ```
 
 ```lisp

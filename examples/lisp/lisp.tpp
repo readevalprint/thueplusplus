@@ -271,24 +271,29 @@ Eval first evaluates the code value and scope alist, converts symbol keyed pairs
 Explicit recursive macro expansion
 Macroexpand evaluates its code and macro alist operands, then walks code data. Macro heads receive the raw operand list as one argument. Quote blocks expansion. Quasiquote preserves template data but expands unquote and splice expression positions.
 ^APPLY<VPRIM<macroexpand>\|(?<code>[^;]*);(?<scope>[^;]*);\|(?<k>.*)>$ ::= BMACROEXPAND<{{code|pctdec}}|{{scope|pctdec}}|{{k}}>
-^BMACROEXPAND<(?<code>$VAL)\|VLIST<(?<macros>$ITEMS)>\|(?<k>.*)>$ ::= MEXP<{{code}}|{{macros}}|{{k}}>
+^BMACROEXPAND<(?<code>$VAL)\|VLIST<(?<macros>$ITEMS)>\|(?<k>.*)>$ ::= MEXP<N|{{code}}|{{macros}}|{{k}}>
 ^BMACROEXPAND<(?<code>$VAL)\|(?<bad>$NONLIST)\|(?<k>.*)>$ ::= ERR<type_error>
 
-^MEXP<VNUM<(?<n>$NUM)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
-^MEXP<VBOOL<(?<b>true|false)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
-^MEXP<VSTR<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
-^MEXP<VSYM<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
-^MEXP<VLIST<>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
-^MEXP<VLIST<(?<head>[^;]*);(?<tail>$ITEMS)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPHEAD<{{head|pctdec}}|{{head}}|{{tail}}|{{macros}}|{{k}}>
-^MEXP<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
+^MEXP<(?<mode>N|Q)\|VNUM<(?<n>$NUM)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^MEXP<(?<mode>N|Q)\|VBOOL<(?<b>true|false)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
+^MEXP<(?<mode>N|Q)\|VSTR<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+^MEXP<(?<mode>N|Q)\|VSYM<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
+^MEXP<(?<mode>N|Q)\|VLIST<>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
+^MEXP<(?<mode>N|Q)\|VLIST<(?<head>[^;]*);(?<tail>$ITEMS)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPHEAD<{{mode}}|{{head|pctdec}}|{{head}}|{{tail}}|{{macros}}|{{k}}>
+^MEXP<(?<mode>N|Q)\|(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
 
-^MEXPHEAD<VSYM<quote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
-^MEXPHEAD<VSYM<quasiquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPQQLIST<{{tail}}|{{macros}}|KMQTOP<{{head}}> {{k}}|>
+^MEXPHEAD<N\|VSYM<quote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
+^MEXPHEAD<N\|VSYM<quasiquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<Q|{{tail}}|{{macros}}|KMQTOP<{{head}}> {{k}}|>
 ^RET<VLIST<(?<tail>$ITEMS)>\|KMQTOP<(?<head>[^>]*)> (?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
-^MEXPHEAD<VSYM<(?<name>$PCT)>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{macros}}|{{head}};{{tail}}|{{tail}}|{{macros}}|{{k}}>
-^MEXPHEAD<(?<nonmacro>$VAL)\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{head}};{{tail}}|{{macros}}|{{k}}|>
+^MEXPHEAD<N\|VSYM<(?<name>$PCT)>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{macros}}|{{head}};{{tail}}|{{tail}}|{{macros}}|{{k}}>
+^MEXPHEAD<N\|(?<nonmacro>$VAL)\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<N|{{head}};{{tail}}|{{macros}}|{{k}}|>
+^MEXPHEAD<Q\|VSYM<unquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<N|{{tail}}|{{macros}}|KMQESCAPE<{{head}}> {{k}}|>
+^MEXPHEAD<Q\|VSYM<splice>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<N|{{tail}}|{{macros}}|KMQESCAPE<{{head}}> {{k}}|>
+^MEXPHEAD<Q\|VSYM<quasiquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
+^MEXPHEAD<Q\|(?<headval>$VAL)\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<Q|{{head}};{{tail}}|{{macros}}|{{k}}|>
+^RET<VLIST<(?<tail>$ITEMS)>\|KMQESCAPE<(?<head>[^>]*)> (?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
 
-^MLOOK<(?<name>$PCT)\|\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{full}}|{{macros}}|{{k}}|>
+^MLOOK<(?<name>$PCT)\|\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<N|{{full}}|{{macros}}|{{k}}|>
 ^MLOOK<(?<name>$PCT)\|(?<entry>[^;]*);(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOKENTRY<{{entry|pctdec}}|{{name}}|{{rest}}|{{full}}|{{operands}}|{{macros}}|{{k}}>
 ^MLOOKENTRY<VLIST<(?<key>[^;]*);(?<transformer>[^;]*);>\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOKKEY<{{key|pctdec}}|{{transformer}}|{{name}}|{{rest}}|{{full}}|{{operands}}|{{macros}}|{{k}}>
 ^MLOOKENTRY<VLIST<(?<baditems>[^|]*)>\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
@@ -298,28 +303,12 @@ Macroexpand evaluates its code and macro alist operands, then walks code data. M
 ^MLOOKEQ<0\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MLOOK<{{name}}|{{rest}}|{{full}}|{{operands}}|{{macros}}|{{k}}>
 ^MLOOKEQ<1\|(?<transformer>[^|]*)\|(?<name>$PCT)\|(?<rest>$ITEMS)\|(?<full>$ITEMS)\|(?<operands>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MCALL<{{transformer|pctdec}}|VLIST<{{operands}}>|{{macros}}|{{k}}>
 ^MCALL<(?<transformer>$VAL)\|(?<operands>$VLIST)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= APPLY<{{transformer}}|{{operands|pctenc}};|KMEXPANDRESULT<{{macros}}> {{k}}>
-^RET<(?<expanded>$VAL)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<{{expanded}}|{{macros}}|{{k}}>
-^RETENV<(?<expanded>$VAL)\|(?<env>[^|]*)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<{{expanded}}|{{macros}}|{{k}}>
+^RET<(?<expanded>$VAL)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<N|{{expanded}}|{{macros}}|{{k}}>
+^RETENV<(?<expanded>$VAL)\|(?<env>[^|]*)\|KMEXPANDRESULT<(?<macros>$ITEMS)> (?<k>.*)>$ ::= MEXP<N|{{expanded}}|{{macros}}|{{k}}>
 
-^MEXPLIST<\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
-^MEXPLIST<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= MEXP<{{item|pctdec}}|{{macros}}|KMEXPLISTITEM<{{rest}}|{{macros}}|{{acc}}> {{k}}>
-^RET<(?<item>$VAL)\|KMEXPLISTITEM<(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= MEXPLIST<{{rest}}|{{macros}}|{{k}}|{{acc}}{{item|pctenc}};>
-
-^MEXPQQ<VNUM<(?<n>$NUM)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
-^MEXPQQ<VBOOL<(?<b>true|false)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VBOOL<{{b}}>|{{k}}>
-^MEXPQQ<VSTR<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
-^MEXPQQ<VSYM<(?<s>$PCT)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VSYM<{{s}}>|{{k}}>
-^MEXPQQ<VLIST<>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
-^MEXPQQ<VLIST<(?<head>[^;]*);(?<tail>$ITEMS)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPQQHEAD<{{head|pctdec}}|{{head}}|{{tail}}|{{macros}}|{{k}}>
-^MEXPQQ<(?<bad>VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= ERR<type_error>
-^MEXPQQHEAD<VSYM<unquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{tail}}|{{macros}}|KMQESCAPE<{{head}}> {{k}}|>
-^MEXPQQHEAD<VSYM<splice>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPLIST<{{tail}}|{{macros}}|KMQESCAPE<{{head}}> {{k}}|>
-^MEXPQQHEAD<VSYM<quasiquote>\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
-^MEXPQQHEAD<(?<headval>$VAL)\|(?<head>[^|]*)\|(?<tail>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPQQLIST<{{head}};{{tail}}|{{macros}}|{{k}}|>
-^RET<VLIST<(?<tail>$ITEMS)>\|KMQESCAPE<(?<head>[^>]*)> (?<k>.*)>$ ::= RET<VLIST<{{head}};{{tail}}>|{{k}}>
-^MEXPQQLIST<\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
-^MEXPQQLIST<(?<item>[^;]*);(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= MEXPQQ<{{item|pctdec}}|{{macros}}|KMQITEM<{{rest}}|{{macros}}|{{acc}}> {{k}}>
-^RET<(?<item>$VAL)\|KMQITEM<(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= MEXPQQLIST<{{rest}}|{{macros}}|{{k}}|{{acc}}{{item|pctenc}};>
+^MEXPLIST<(?<mode>N|Q)\|\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^MEXPLIST<(?<mode>N|Q)\|(?<item>[^;]*);(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= MEXP<{{mode}}|{{item|pctdec}}|{{macros}}|KMEXPLISTITEM{{mode}}<{{rest}}|{{macros}}|{{acc}}> {{k}}>
+^RET<(?<item>$VAL)\|KMEXPLISTITEM(?<mode>N|Q)<(?<rest>$ITEMS)\|(?<macros>$ITEMS)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= MEXPLIST<{{mode}}|{{rest}}|{{macros}}|{{k}}|{{acc}}{{item|pctenc}};>
 
 Dictionary constructor and loose alist operations
 Dict evaluates each key and value into an ordinary list of two item lists. Alist operations walk ordinary lists, skip unrelated entries, compare encoded runtime values exactly, and preserve tail fields where appropriate.
