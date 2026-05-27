@@ -69,11 +69,11 @@ function publicAssetURL(fileName: string): string {
 }
 
 export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunResult> {
-  const { ThuePPWorker: Client } = await import('../../js/wasm/worker-client.js') as unknown as {
+  const { ThuePPWorker: Client } = await import('../wasm/worker-client.js') as unknown as {
     ThuePPWorker: typeof ThuePPWorker
   }
 
-  const client = new Client(new URL('../../js/wasm/browser-worker.js', import.meta.url).toString(), {
+  const client = new Client(new URL('../wasm/browser-worker.js', import.meta.url).toString(), {
     wasmURL: publicAssetURL('thuepp.wasm'),
     wasmExecURL: publicAssetURL('wasm_exec.js'),
   })

@@ -1,6 +1,6 @@
 # Copy-on-write KV example
 
-`cow-kv.tpp` is a transactional key-value store written as thue++ rewrite rules.
+`cow-kv.tpp` is a transactional key-value store written as Thue++ rewrite rules.
 
 It is not meant to be a database library. It shows how one state string can encode a protocol with base data, nested transaction frames, tombstones, lookup order, and error states.
 

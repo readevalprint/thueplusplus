@@ -2,7 +2,7 @@
   <main class="embed-demo-page">
     <section class="embed-demo-hero" aria-labelledby="embed-demo-title">
       <p class="kicker">embeddable playground</p>
-      <h1 id="embed-demo-title">Compact thue++ playground embeds</h1>
+      <h1 id="embed-demo-title">Compact Thue++ playground embeds</h1>
       <p>
         These examples use the same shared playground surface as the full workbench, but with embed chrome,
         section tabs, URL-controlled focus, and compact controls for documentation-sized slots.

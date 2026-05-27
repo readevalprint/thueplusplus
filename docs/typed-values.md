@@ -1,8 +1,8 @@
 # Readable typed values
 
-Typed values are a public example-level data representation for example programs that want self-describing textual values. They are not part of the thue++ interpreter core syntax.
+Typed values are a public example-level data representation for example programs that want self-describing textual values. They are not part of the Thue++ interpreter core syntax.
 
-Interpreters treat typed values as ordinary rewritten text. A thue++ program may choose to emit, parse, validate, or reject this representation, but the interpreter does not attach semantic meaning to tags.
+Interpreters treat typed values as ordinary rewritten text. A Thue++ program may choose to emit, parse, validate, or reject this representation, but the interpreter does not attach semantic meaning to tags.
 
 ## Envelope grammar
 

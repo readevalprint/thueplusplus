@@ -22,7 +22,6 @@ export interface TestCaseOption {
   args: string[]
   stdin?: string
   expect: TestManifestCaseExpect
-  searchableText: string
 }
 
 interface RawManifestCase {
@@ -109,7 +108,6 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
       const caseName = typeof parsed.name === 'string' ? parsed.name : label
       const input = typeof parsed.input === 'string' ? parsed.input : ''
       const args = withDefaultMaxEvals(manifestArgs)
-      const searchableText = [manifestPath, label, caseName].join(' ')
       options.push({
         id: `${manifestPath}::${slug(caseName) || 'default'}`,
         manifestPath,
@@ -121,7 +119,6 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
         args,
         stdin: typeof parsed.stdin === 'string' ? parsed.stdin : undefined,
         expect: expectObject(parsed.expect),
-        searchableText,
       })
       continue
     }
@@ -129,7 +126,6 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
       const caseName = typeof testCase.name === 'string' ? testCase.name : `case ${index + 1}`
       const input = typeof testCase.input === 'string' ? testCase.input : ''
       const args = withDefaultMaxEvals([...manifestArgs, ...asStringArray(testCase.args)])
-      const searchableText = [manifestPath, label, caseName].join(' ')
       options.push({
         id: `${manifestPath}::${slug(caseName)}`,
         manifestPath,
@@ -141,7 +137,6 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
         args,
         stdin: typeof testCase.stdin === 'string' ? testCase.stdin : undefined,
         expect: expectObject(testCase.expect),
-        searchableText,
       })
     }
   }

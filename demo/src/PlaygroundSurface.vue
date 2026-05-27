@@ -2,7 +2,6 @@
   <main ref="surfaceRoot" class="playground-route playground-surface" :class="[`playground-chrome-${props.chrome}`, { 'playground-compact-layout': isCompactLayout }]" :data-mode="props.mode" :data-compact="isCompactLayout ? 'true' : 'false'">
     <header v-if="showHeader" class="playground-route-header" data-test="playground-header">
       <h1>{{ props.title }}</h1>
-      <TestCaseCommand v-if="showPicker" :options="testCaseOptions" @select="selectTestCase" />
     </header>
 
     <p v-if="loadError" class="error-text">{{ loadError }}</p>
@@ -25,11 +24,24 @@
         </div>
       </header>
 
-      <TestCaseCommand v-if="showPicker" :options="testCaseOptions" @select="selectTestCase" />
+      <Card v-if="showPicker" class="test-case-pane" data-test="test-case-pane">
+        <CardHeader>
+          <CardTitle>examples</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TestCaseMenu :options="testCaseOptions" :selected-id="selectedTestCase?.id" :current-program-path="currentProgramPath" @select="selectTestCase" />
+        </CardContent>
+      </Card>
 
       <Card class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
         <CardHeader class="playground-rules-header">
-          <CardTitle>program rules</CardTitle>
+          <div class="playground-rules-title-block">
+            <CardTitle>program rules</CardTitle>
+            <p v-if="selectedTestCase" class="playground-selected-case" data-test="playground-selected-case">
+              <span>{{ selectedTestCase.caseName }}</span>
+              <small>{{ selectedTestCase.manifestPath }}</small>
+            </p>
+          </div>
           <div v-if="showDebugControls" class="playground-rules-options">
             <ButtonGroup class="playground-speed-links" aria-label="Step speed">
               <Button v-for="option in continueSpeedOptions" :key="option.value" type="button" :variant="continueSpeed === option.value ? 'secondary' : 'ghost'" size="sm" :data-selected="continueSpeed === option.value" :data-test="`playground-speed-${option.value}`" :disabled="isBusy" @click="continueSpeed = option.value">{{ option.label }}</Button>
@@ -79,9 +91,23 @@
 
     <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" auto-save-id="playground-columns" data-test="playground-full-surface">
       <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
+        <Card v-if="showPicker" class="test-case-pane" data-test="test-case-pane">
+          <CardHeader>
+            <CardTitle>examples</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TestCaseMenu :options="testCaseOptions" :selected-id="selectedTestCase?.id" :current-program-path="currentProgramPath" @select="selectTestCase" />
+          </CardContent>
+        </Card>
         <Card class="playground-rules-pane">
           <CardHeader class="playground-rules-header">
-            <CardTitle>program rules</CardTitle>
+            <div class="playground-rules-title-block">
+              <CardTitle>program rules</CardTitle>
+              <p v-if="selectedTestCase" class="playground-selected-case" data-test="playground-selected-case">
+                <span>{{ selectedTestCase.caseName }}</span>
+                <small>{{ selectedTestCase.manifestPath }}</small>
+              </p>
+            </div>
             <div class="playground-rules-toolbar">
               <Button type="button" variant="secondary" size="icon" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" aria-label="Reset to first state" @click="resetToFirstState">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M11 5v14l-9-7 9-7zm11 0v14l-9-7 9-7z" /></svg>
@@ -140,7 +166,7 @@ import { Textarea } from '@/components/ui/textarea'
 import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
-import TestCaseCommand from './TestCaseCommand.vue'
+import TestCaseMenu from './TestCaseMenu.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
@@ -309,6 +335,7 @@ const lastRunMode = ref<'step' | 'continue' | 'end'>('step')
 const continueSpeed = ref<ContinueSpeed>('10')
 const maxSteps = ref(10000)
 const matchedRuleLine = ref<number | undefined>()
+const selectedTestCase = ref<TestCaseOption | undefined>()
 
 const resourceSections = computed(() => extractResources(rulesText.value))
 const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
@@ -321,6 +348,7 @@ const stepTitle = computed(() => 'Step forward')
 const continueTitle = computed(() => 'Play')
 const endTitle = computed(() => `End without rendering intermediate states (max ${maxSteps.value} steps)`)
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
+const currentProgramPath = computed(() => sourcePath.value)
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -442,6 +470,7 @@ function resourceConfigs() {
 function loadFile(file: string): void {
   const normalized = normalizeFileParam(file)
   const source = examplesByPublicPath[normalized]
+  selectedTestCase.value = undefined
   fileParam.value = normalized
   sourcePath.value = normalized.replace(/^\.\//, '')
   if (!source) {
@@ -476,6 +505,7 @@ function seedStateFromSource(source = rulesText.value): void {
 function selectTestCase(testCase: TestCaseOption): void {
   const file = `./${testCase.programPath}`
   loadFile(file)
+  selectedTestCase.value = testCase
   stateText.value = testCase.input
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
   if (props.syncUrl) {

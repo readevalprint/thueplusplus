@@ -1,6 +1,6 @@
 > We do this not because it is easy, but because we thought it would be easy.
 
-# thue++
+# Thue++
 
 Start with a string and rules that rewrite it:
 
@@ -10,7 +10,7 @@ lhs ::= rhs
 
 This is a semi-Thue system: replace matching substrings by rule, and repeat. It is named after Axel Thue, whose early work on string rewriting became part of the foundation of formal language theory.
 
-John Colagioia's esolang [Thue](https://github.com/jcolag/Thue) turned that idea into a small programming language. thue++ keeps the same core model, then adds regex captures and templates:
+John Colagioia's esolang [Thue](https://github.com/jcolag/Thue) turned that idea into a small programming language. Thue++ keeps the same core model, then adds regex captures and templates:
 
 ```thuepp
 ^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}
@@ -22,7 +22,7 @@ This README builds up from the [rules](#rules) then to [captures](#captures-and-
 
 ## Use cases
 
-thue++ has a small surface area: ordered regex rules, capture templates, explicit resources, and a single state string. That makes it easier to audit than a general-purpose embedded language.
+Thue++ has a small surface area: ordered regex rules, capture templates, explicit resources, and a single state string. That makes it easier to audit than a general-purpose embedded language.
 
 The execution model is deterministic. Given the same source, state, resource bindings, resource messages, and limits, the same rule fires in the same order and produces the same result. Numeric builtins use exact rationals rather than float arithmetic, so numeric behavior is deterministic too.
 
@@ -30,7 +30,7 @@ External effects are gated through named resources. A program cannot reach the n
 
 Resource metering is also direct. Memory is the size of the current state string. Time and CPU can be charged by rewrite step, rule match, or even rule check, depending on how strict the host needs to be.
 
-That makes thue++ a candidate for anything that needs to run untrusted code. For example, a sandbox for agent-facing DSLs: the host can expose only the capabilities an LLM agent should have, meter the text state and rewrite budget, and keep API keys or network access outside the language. The same properties also support blockchain smart-contract execution, where gas can be charged per step and persisted state size. Anything is possible.
+That makes Thue++ a candidate for anything that needs to run untrusted code. For example, a sandbox for agent-facing DSLs: the host can expose only the capabilities an LLM agent should have, meter the text state and rewrite budget, and keep API keys or network access outside the language. The same properties also support blockchain smart-contract execution, where gas can be charged per step and persisted state size. Anything is possible.
 
 ## Rules
 
@@ -93,10 +93,12 @@ This program writes one line, then exits:
 <!-- thuepp-readme-example:start -->
 Example source (`examples/hello/hello.tpp`):
 
-Open in playground: [examples/hello/hello.tpp](https://thuelang.org/playground?file=./examples/hello/hello.tpp)
+Run it now in the browser playground:
+https://thuelang.org/playground?file=./examples/hello/hello.tpp
+
+See the source: [examples/hello/hello.tpp](http://gitlab.backrooms.internal/root/thuepp/-/blob/main/examples/hello/hello.tpp)
 
 ```thuepp
-
 ^START$ ::= hello\ndone
 hello ::> stdout Hello, World!\n
 done ::- 0
@@ -130,7 +132,7 @@ START
 
 `::< 30 stdin` reads one line from `stdin` with a 30-second timeout. The line is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
 
-The same resource interface can connect to a process. The runner binds a resource name, and thue++ reads or writes through that name.
+The same resource interface can connect to a process. The runner binds a resource name, and Thue++ reads or writes through that name.
 
 ## Conditionals by rewriting: guess the number
 
@@ -143,17 +145,22 @@ Numeric builtins are deterministic exact-rational operations. Decimal-looking in
 It also shows process resources. The program reads `@RANDOM_NUMBER@` from the `random` resource. This command runs the Go backend and binds `random` to a process that writes `7`:
 
 ```bash
-printf 'x\n3\n8\n7\n' | (cd go && go run ./cmd/thuepp ../examples/guess-number/guess-number.tpp --proc:random 'printf 7; echo')
+printf 'x\n3\n8\n7\n' | \
+  go -C go run ./cmd/thuepp \
+    ../examples/guess-number/guess-number.tpp \
+    --proc:random 'printf 7; echo'
 ```
 
-<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-31 expected-output=examples/guess-number/tests/basic.toml -->
+<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-30 expected-output=examples/guess-number/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
-Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-31):
+Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-30):
 
-Open in playground: [examples/guess-number/guess-number.tpp](https://thuelang.org/playground?file=./examples/guess-number/guess-number.tpp)
+Run it now in the browser playground:
+https://thuelang.org/playground?file=./examples/guess-number/guess-number.tpp
+
+See the source: [examples/guess-number/guess-number.tpp](http://gitlab.backrooms.internal/root/thuepp/-/blob/main/examples/guess-number/guess-number.tpp)
 
 ```thuepp
-
 NUMBER <- [0-9]+
 
 PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
@@ -232,8 +239,6 @@ Transactions are copy-on-write overlays. `set` and `del` write only to the top f
 
 [`examples/forth/forth.tpp`](examples/forth/forth.tpp) is a compact stack machine written as rewrite rules. It is smaller than the Lisp evaluator, but it shows the same idea: a language can live inside state transitions.
 
-State:
-
 ```text
 1 2 + 3 *
 ```
@@ -248,9 +253,7 @@ Tokens are whitespace-delimited. The data stack renders top-first, so `1 2 3` be
 
 ## A larger language inside the language: Lisp
 
-Apparently, you can write a powerful Lisp as regex rewrite rules. [`examples/lisp/lisp.tpp`](examples/lisp/lisp.tpp) is still only thue++ rules. The reader, typed values, lexical scope, closures, lists, quote, eval, and macro expansion all live in `.tpp`.
-
-State:
+Apparently, you can write a powerful Lisp as regex rewrite rules. [`examples/lisp/lisp.tpp`](examples/lisp/lisp.tpp) is still only Thue++ rules. The reader, typed values, lexical scope, closures, lists, quote, eval, and macro expansion all live in `.tpp`.
 
 ```lisp
 (add (mul 2 3) 4)
@@ -294,11 +297,11 @@ The real rule has more primitives; this is the shape.
 ^QUOTELIST<(?<item>(?:$OPSYM|$EXPR))(?: (?<rest>[^|]*))?\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= QUOTE<{{item}}|KQLIST<{{rest}}|{{acc}}> {{k}}>
 ```
 
-State:
-
 ```lisp
 '(add 1 2)
 ```
+
+Expected output:
 
 ```text
 (add 1 2)
@@ -312,11 +315,11 @@ State:
 ^QQESC<splice\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KKEEPENV<{{env}}> KQQSPLICE<{{rest}}|{{env}}|{{acc}}> {{k}}>
 ```
 
-State:
-
 ```lisp
 `(add ,(add 1 2) ,@(list 4 5))
 ```
+
+Expected output:
 
 ```text
 (add 3 4 5)
@@ -335,11 +338,11 @@ State:
 
 Parsing source produces the same kind of data as `quote`:
 
-State:
-
 ```lisp
 (parse "(add 1 2)")
 ```
+
+Expected output:
 
 ```text
 (add 1 2)
@@ -347,11 +350,11 @@ State:
 
 Because `parse` reuses the reader, shorthand is canonicalized too:
 
-State:
-
 ```lisp
 (parse "`(1 ,x)")
 ```
+
+Expected output:
 
 ```text
 (quasiquote (1 (unquote x)))
@@ -359,11 +362,11 @@ State:
 
 To run parsed code, pass it to `eval` with an explicit scope:
 
-State:
-
 ```lisp
 (eval (parse "(add x 1)") (dict ('add add) ('x 10)))
 ```
+
+Expected output:
 
 ```text
 11
@@ -380,11 +383,11 @@ State:
 ^CODEVAL<VSYM<(?<name>$NAME)>\|(?<scopeenv>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{scopeenv}}|{{k}}>
 ```
 
-State:
-
 ```lisp
 (eval '(add x 1) (dict ('add add) ('x 10)))
 ```
+
+Expected output:
 
 ```text
 11
@@ -438,15 +441,13 @@ There is no `defmacro`, global macro registry, or implicit macro pass. `macroexp
   (macroexpand '(inc (inc x)) macros))
 ```
 
-returns:
+Expected output:
 
 ```text
 (add (add x 1) 1)
 ```
 
 To execute the expansion, pass it to `eval` with an explicit value scope. The macro scope controls expansion. The eval scope controls runtime capabilities.
-
-State:
 
 ```lisp
 (let ((macros
@@ -458,6 +459,8 @@ State:
     (macroexpand '(inc (inc 2)) macros)
     (dict ('add add))))
 ```
+
+Expected output:
 
 ```text
 4
@@ -479,7 +482,7 @@ uv run python python/thuepp.py <program.tpp>
 
 The stable Python entry point is `python/thuepp.py`. Direct `./python/thuepp.py ...` commands assume dependencies are already installed or the command runs under `uv`.
 
-JavaScript support is Go-WASM based. Files under [`js/wasm/`](js/wasm/) load the WASM artifact and adapt runner resources for Node, browser, and worker environments. They are adapters, not a separate JavaScript implementation.
+JavaScript support is Go-WASM based. Files under [`demo/wasm/`](demo/wasm/) load the WASM artifact and adapt runner resources for Node, browser, and worker environments. They are adapters, not a separate JavaScript implementation.
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -561,10 +564,10 @@ Coverage ignores are unsupported. Every surviving rule in manifest-declared exam
 ## Repository layout
 
 ```text
-examples/        Shared thue++ programs and manifest tests
+examples/        Shared Thue++ programs and manifest tests
 python/          Current Python conformance backend
 go/              Current Go conformance backend and Go-WASM export package
-js/wasm/         JavaScript adapters for loading the Go-WASM module
+demo/wasm/       JavaScript adapters for loading the Go-WASM module
 docs/            Language contracts for builtins and typed values
 tools/           Repository conformance checker and shared manifest runner
 learnings/       Preserved design notes and failed attempts worth not repeating
@@ -575,22 +578,22 @@ learnings/       Preserved design notes and failed attempts worth not repeating
 - [`examples/forth/README.md`](examples/forth/README.md) — compact stack-language example
 - [`examples/lisp/README.md`](examples/lisp/README.md) — Lisp evaluator contract
 - [`examples/lisp/tests/sandbox_demo.toml`](examples/lisp/tests/sandbox_demo.toml) — explicit-scope sandbox demo
-- [`docs/rfc-language.md`](docs/rfc-language.md) — standalone thue++ language contract
+- [`docs/rfc-language.md`](docs/rfc-language.md) — standalone Thue++ language contract
 - [`docs/numeric-builtins.md`](docs/numeric-builtins.md) — exact numeric grammar and display policy
 - [`docs/string-escape-builtins.md`](docs/string-escape-builtins.md) — escape/unescape contract
 - [`docs/typed-values.md`](docs/typed-values.md) — readable typed value wrappers
-- [`js/wasm/README.md`](js/wasm/README.md) — WASM adapter API
+- [`demo/wasm/README.md`](demo/wasm/README.md) — WASM adapter API
 
 ## Installation
 
 There is no package to install. Use this repository as a reference for the language semantics and examples.
 
-If you want thue++ semantics in another project, give this repository to your coding agent and ask it to port only what that project needs.
+If you want Thue++ semantics in another project, give this repository to your coding agent and ask it to port only what that project needs.
 
 Copy-pasteable agent prompt:
 
 ```text
-Implement thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, exact-rational numeric builtins with no decimal/binary floats, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
+Implement Thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, exact-rational numeric builtins with no decimal/binary floats, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
 ```
 
 To run this repository's current reference tooling locally:
