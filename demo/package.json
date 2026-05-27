@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vue-tsc --noEmit && vite build && node scripts/check-dist.mjs",
+    "build": "vue-tsc --noEmit && vite build && node scripts/prepare-dist.mjs && node scripts/check-dist.mjs",
     "test": "vue-tsc --noEmit && vitest run",
     "test:ui": "vitest run",
     "test:e2e": "playwright test",

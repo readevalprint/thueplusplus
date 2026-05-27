@@ -13,6 +13,10 @@ for (const asset of requiredAssets) {
 }
 
 const index = readFileSync(join(dist, 'index.html'), 'utf8')
+const fallback = readFileSync(join(dist, '404.html'), 'utf8')
+if (fallback !== index) {
+  throw new Error('demo production dist 404.html must match index.html for direct SPA route loads on GitLab Pages')
+}
 if (index.includes('src="/assets/') || index.includes('href="/assets/')) {
   throw new Error('demo production index uses origin-root /assets URLs instead of base-relative assets')
 }
