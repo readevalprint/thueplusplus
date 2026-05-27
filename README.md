@@ -18,7 +18,19 @@ John Colagioia's esolang [Thue](https://github.com/jcolag/Thue) turned that idea
 
 A rule matches the current state. If it applies, it rewrites with the template. Then scanning starts again from the top.
 
-The README builds up from [one rule](#one-rule) to [captures](#captures-and-templates), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](examples/forth/README.md), and [Lisp](examples/lisp/README.md).
+This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](examples/forth/README.md), and [Lisp](examples/lisp/README.md).
+
+## Use cases
+
+thue++ has a small surface area: ordered regex rules, capture templates, explicit resources, and a single state string. That makes it easier to audit than a general-purpose embedded language.
+
+The execution model is deterministic. Given the same source, state, resource bindings, resource messages, and limits, the same rule fires in the same order and produces the same result. Numeric builtins use exact rationals rather than float arithmetic, so numeric behavior is deterministic too.
+
+External effects are gated through named resources. A program cannot reach the network, filesystem, API keys, subprocesses, or host services unless the runner binds a resource that exposes them.
+
+Resource metering is also direct. Memory is the size of the current state string. Time and CPU can be charged by rewrite step, rule match, or even rule check, depending on how strict the host needs to be.
+
+That makes thue++ a candidate for anything that needs to run untrusted code. For example, a sandbox for agent-facing DSLs: the host can expose only the capabilities an LLM agent should have, meter the text state and rewrite budget, and keep API keys or network access outside the language. The same properties also support blockchain smart-contract execution, where gas can be charged per step and persisted state size. Anything is possible.
 
 ## Rules
 
@@ -81,6 +93,8 @@ This program writes one line, then exits:
 <!-- thuepp-readme-example:start -->
 Example source (`examples/hello/hello.tpp`):
 
+Open in playground: [examples/hello/hello.tpp](http://thuelang.com/playground?file=./examples/hello/hello.tpp)
+
 ```thuepp
 
 ^START$ ::= hello\ndone
@@ -124,6 +138,8 @@ Conditionals come from pattern choice. If the state matches one rule, that rule 
 
 The guess-number example uses this to validate input and choose the next state. Numeric builtins only see digit strings; invalid input rewrites back to the prompt.
 
+Numeric builtins are deterministic exact-rational operations. Decimal-looking input such as `0.1` is parsed as the rational `1/10`; adding `0.1` and `0.2` returns `3/10`, not a floating-point approximation. The interpreters do not use decimal or binary float arithmetic internally.
+
 It also shows process resources. The program reads `@RANDOM_NUMBER@` from the `random` resource. This command runs the Go backend and binds `random` to a process that writes `7`:
 
 ```bash
@@ -133,6 +149,8 @@ printf 'x\n3\n8\n7\n' | (cd go && go run ./cmd/thuepp ../examples/guess-number/g
 <!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-31 expected-output=examples/guess-number/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
 Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-31):
+
+Open in playground: [examples/guess-number/guess-number.tpp](http://thuelang.com/playground?file=./examples/guess-number/guess-number.tpp)
 
 ```thuepp
 
@@ -517,7 +535,7 @@ uv run python tools/check_contract.py --update-readme
 - `--input` replaces the source-provided initial state for CLI runners
 - resource reads consume one newline-delimited message and PCT-encode the payload
 - execution limits such as `--max-evals` and `--max-state-bytes`
-- exact rational numeric builtins, not floating-point approximation
+- exact rational numeric builtins; decimal-looking input parses to rationals, never floats
 - string escape/unescape builtins over PCT payloads
 
 ## Rule coverage counts
@@ -572,7 +590,7 @@ If you want thue++ semantics in another project, give this repository to your co
 Copy-pasteable agent prompt:
 
 ```text
-Implement thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, builtins, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
+Implement thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, exact-rational numeric builtins with no decimal/binary floats, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
 ```
 
 To run this repository's current reference tooling locally:

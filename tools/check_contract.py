@@ -9,6 +9,7 @@ import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import quote
 
 import example_runner
 
@@ -86,11 +87,17 @@ def source_excerpt(root: Path, source_path: str, source_lines: str | None) -> tu
     return excerpt, f"Example source excerpt (`{source_path}`, lines {start}-{end}):"
 
 
+def playground_url(source_path: str) -> str:
+    file_param = quote(f"./{source_path}", safe="./")
+    return f"http://thuelang.com/playground?file={file_param}"
+
+
 def render_readme_example(root: Path, source_path: str, expected_output_path: str, source_lines: str | None = None) -> str:
     source, source_label = source_excerpt(root, source_path, source_lines)
     stdout = expected_stdout(root, Path(expected_output_path))
     return (
         f"{source_label}\n\n"
+        f"Open in playground: [{source_path}]({playground_url(source_path)})\n\n"
         "```thuepp\n"
         f"{source.rstrip(chr(10))}\n"
         "```\n\n"
