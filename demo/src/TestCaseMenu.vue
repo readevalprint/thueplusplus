@@ -1,28 +1,31 @@
 <template>
-  <NavigationMenu data-test="test-case-menu">
-    <NavigationMenuList>
-      <NavigationMenuItem v-for="group in menuGroups" :key="group.label">
-        <NavigationMenuTrigger data-test="test-case-menu-trigger">{{ group.label }}</NavigationMenuTrigger>
-        <NavigationMenuContent>
-          <ul class="grid w-[24rem] gap-3 p-4 md:w-[34rem] md:grid-cols-2">
-            <li v-for="option in group.options" :key="option.id">
-              <NavigationMenuLink
-                as="button"
-                type="button"
-                class="cursor-pointer text-left"
-                data-test="test-case-menu-case"
-                :data-test-case-id="option.id"
-                @click="emit('select', option)"
-              >
-                <span class="text-sm leading-none font-medium" data-test="test-case-menu-case-name">{{ option.menuLabel }}</span>
-                <span class="text-muted-foreground line-clamp-2 text-sm leading-snug" data-test="test-case-menu-case-description">{{ option.menuDescription }}</span>
-              </NavigationMenuLink>
-            </li>
-          </ul>
-        </NavigationMenuContent>
-      </NavigationMenuItem>
-    </NavigationMenuList>
-  </NavigationMenu>
+  <div class="test-case-menu-row">
+    <span class="test-case-menu-label">Select an example</span>
+    <NavigationMenu data-test="test-case-menu">
+      <NavigationMenuList>
+        <NavigationMenuItem v-for="group in menuGroups" :key="group.label">
+          <NavigationMenuTrigger data-test="test-case-menu-trigger">{{ group.label }}</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <ul class="grid w-[24rem] gap-3 p-4 md:w-[34rem] md:grid-cols-2">
+              <li v-for="option in group.options" :key="option.id">
+                <NavigationMenuLink
+                  as="button"
+                  type="button"
+                  class="cursor-pointer text-left"
+                  data-test="test-case-menu-case"
+                  :data-test-case-id="option.id"
+                  @click="emit('select', option)"
+                >
+                  <span class="text-sm leading-none font-medium" data-test="test-case-menu-case-name">{{ option.menuLabel }}</span>
+                  <span class="text-muted-foreground line-clamp-2 text-sm leading-snug" data-test="test-case-menu-case-description">{{ option.menuDescription }}</span>
+                </NavigationMenuLink>
+              </li>
+            </ul>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+      </NavigationMenuList>
+    </NavigationMenu>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -77,24 +80,14 @@ const curatedGroups: CuratedGroup[] = [
         description: 'Smallest complete program: one rule rewrites START into a greeting.',
       },
       {
-        manifestPath: 'examples/simple/tests/basic.toml',
-        label: 'Simple loop',
-        description: 'A tiny deterministic rewrite sequence for watching state changes.',
-      },
-      {
-        manifestPath: 'examples/template-delimiters/tests/basic.toml',
-        label: 'Template delimiters',
-        description: 'Shows output templates and delimiter switching while preserving embedded initial state.',
+        manifestPath: 'examples/pattern-alias/tests/dollar_transitive.toml',
+        label: 'Pattern aliases',
+        description: 'Builds readable regex fragments with $ aliases and nested reuse.',
       },
       {
         manifestPath: 'examples/multiline/tests/basic.toml',
         label: 'Multiline state',
         description: 'Demonstrates rules matching across a state with multiple rows.',
-      },
-      {
-        manifestPath: 'examples/hash-data/tests/source_hash_rule.toml',
-        label: 'Hash-prefixed rule',
-        description: 'Confirms a source row beginning with # can still be parsed as a rule.',
       },
       {
         manifestPath: 'examples/pattern-order/tests/basic.toml',
