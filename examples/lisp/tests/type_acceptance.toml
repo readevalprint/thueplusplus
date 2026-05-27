@@ -118,7 +118,7 @@ name = "type missing fails through get"
 input = '(type missing)'
 [case.expect]
 stdout = ""
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 exit_code = 2
 
 [[case]]
@@ -126,7 +126,7 @@ name = "top-level type primitive is unparseable"
 input = 'type'
 [case.expect]
 stdout = ""
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 exit_code = 2
 
 [[case]]
@@ -134,7 +134,7 @@ name = "type requires one argument when extra arguments supplied"
 input = '(type 1 2)'
 [case.expect]
 stdout = ""
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 exit_code = 2
 
 [[case]]
@@ -142,7 +142,7 @@ name = "type requires one argument through explicit eval apply"
 input = '(eval (quote (type)) (dict ((quote type) type)))'
 [case.expect]
 stdout = ""
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 exit_code = 2
 
 [[case]]
@@ -158,5 +158,5 @@ name = "type absent from explicit eval scope is unbound"
 input = '(eval (quote (type xs)) (dict ((quote xs) (list 1 2))))'
 [case.expect]
 stdout = ""
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 exit_code = 2

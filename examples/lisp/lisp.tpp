@@ -532,7 +532,7 @@ ESC<(?<s>$PCT)> ::! escape s
 ^RRET<(?<frag>$PCT)\|KOUT>$ ::= @OUT<{{frag}}>@@EXIT0@
 ^@OUT<(?<v>$PCT)>@@EXIT0@$ ::> stdout {{v|pctdec}}\n
 ^ERR<(?<e>[A-Za-z0-9_]+)>$ ::= @ERR<{{e}}>@@EXIT2@
-^@ERR<(?<v>[A-Za-z0-9_]+)>@ ::> stderr {{v}}
+^@ERR<(?<v>[A-Za-z0-9_]+)>@ ::> stderr {{v}}\n
 ^@EXIT2@$ ::- 2
 
 Final catchers

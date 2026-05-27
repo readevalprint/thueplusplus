@@ -166,7 +166,7 @@ input = '(macroexpand)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -175,7 +175,7 @@ input = '(macroexpand (quote x))'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -184,7 +184,7 @@ input = '(macroexpand (quote x) (dict) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -193,7 +193,7 @@ input = '(macroexpand (quote x) 7)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -202,7 +202,7 @@ input = '(macroexpand (quote (inc x)) (dict ("inc" (fn (args) (first args)))))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -211,7 +211,7 @@ input = '(macroexpand (quote (inc x)) (dict ((quote inc) 1)))'
 
 [case.expect]
 exit_code = 2
-stderr = "not_function"
+stderr = "not_function\n"
 stdout_stripped = ""
 
 [[case]]
@@ -226,7 +226,7 @@ input = '''
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -310,7 +310,7 @@ input = '(macroexpand (quote (inc x)) (list (list (quote inc))))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -319,7 +319,7 @@ input = '(macroexpand (quote (inc x)) (list 1))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -328,7 +328,7 @@ input = '(macroexpand (quote (inc x)) (list (list (quote inc) (fn (args) (first 
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -337,7 +337,7 @@ input = '(macroexpand (list (quote list) add) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -346,7 +346,7 @@ input = '(macroexpand (fn (x) x) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -355,5 +355,5 @@ input = '(macroexpand (list (quote quasiquote) (list add)) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""

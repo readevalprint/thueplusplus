@@ -1017,7 +1017,7 @@ func (i *Interpreter) Run() (int, error) {
 		applied := false
 		for ruleIndex, rule := range i.Rules {
 			if i.MaxEvals != nil && i.EvalCount >= *i.MaxEvals {
-				return 1, fmt.Errorf("Rule probe limit (%d) exceeded", *i.MaxEvals)
+				return 1, fmt.Errorf("Evaluation step limit (%d) exceeded", *i.MaxEvals)
 			}
 			i.EvalCount++
 

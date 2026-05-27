@@ -65,7 +65,7 @@ name = "list can render stored closure"
 input = '(let ((f (fn (x) x))) (list f))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -73,7 +73,7 @@ name = "list can render stored closure after scalar"
 input = '(let ((f (fn (x) x))) (list 1 f))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -81,7 +81,7 @@ name = "fn argument closure can be stored in list"
 input = '((fn (x) (list x)) (fn (y) y))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -193,7 +193,7 @@ name = "deep nested list can render closure first"
 input = '(list (list (list (fn (x) x))))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -225,7 +225,7 @@ name = "deep nested list can render closure second"
 input = '(list (list (list 0 (fn (x) x))))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]

@@ -21,7 +21,7 @@ input = '(add 1 2 3)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]

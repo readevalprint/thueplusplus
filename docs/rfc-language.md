@@ -116,7 +116,7 @@ loop:
   return 0
 ```
 
-Only one span is replaced per action. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set max rule probes; every examined rule counts. A host may set max state bytes; check it after replacement.
+Only one span is replaced per action. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set a maximum evaluation step limit; every examined rule counts as one step. A host may set max state bytes; check it after replacement.
 
 ## 8. Operators
 
