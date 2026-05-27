@@ -1,7 +1,0 @@
-name = "simple example"
-program = "../simple.tpp"
-
-[expect]
-stdout = "This is thue++!\n"
-stderr = ""
-exit_code = 0

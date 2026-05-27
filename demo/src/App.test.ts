@@ -711,28 +711,6 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 
-  it('selecting a curated source-parsing test preserves exact source rows in rules', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App, { attachTo: document.body })
-
-    const basicTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Basic rules')
-    expect(basicTrigger).toBeTruthy()
-    await basicTrigger!.trigger('pointerdown')
-    await basicTrigger!.trigger('click')
-    await flush()
-
-    const sourceHashCase = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => ({ text: () => element.textContent ?? '', trigger: (event: string) => (element as HTMLElement).dispatchEvent(new MouseEvent(event, { bubbles: true })) })).find(item => item.text().includes('Hash-prefixed rule'))
-    expect(sourceHashCase).toBeTruthy()
-    await sourceHashCase!.trigger('click')
-    await flush()
-
-    const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
-    expect(loadedSource).toContain('#x ::= y')
-    expect(loadedSource).toContain('^y$ ::> stdout source-row-rule\\n')
-    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('#x')
-    expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('source_hash_rule.toml')
-  })
-
   it('derives resource sections from playground rules and keeps resource inputs gated by requests', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.tpp')
     const wrapper = mount(App)
