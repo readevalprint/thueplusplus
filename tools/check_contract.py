@@ -89,15 +89,10 @@ def source_excerpt(root: Path, source_path: str, source_lines: str | None) -> tu
 def render_readme_example(root: Path, source_path: str, expected_output_path: str, source_lines: str | None = None) -> str:
     source, source_label = source_excerpt(root, source_path, source_lines)
     stdout = expected_stdout(root, Path(expected_output_path))
-    command = readme_example_command(root, source_path, expected_output_path)
     return (
         f"{source_label}\n\n"
         "```thuepp\n"
         f"{source.rstrip(chr(10))}\n"
-        "```\n\n"
-        "Run it:\n\n"
-        "```bash\n"
-        f"{command}\n"
         "```\n\n"
         "Expected output:\n\n"
         "```text\n"
