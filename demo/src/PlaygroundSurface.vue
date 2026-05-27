@@ -6,6 +6,10 @@
 
     <p v-if="loadError" class="error-text">{{ loadError }}</p>
 
+    <section v-if="showPicker" data-test="test-case-pane">
+      <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
+    </section>
+
     <section v-if="isCompactLayout" class="playground-embed-layout" data-test="playground-compact-surface">
       <header class="playground-embed-topbar" data-test="embed-topbar">
         <div class="playground-embed-title">
@@ -23,15 +27,6 @@
           <Button v-if="props.showOpenFull" as="a" variant="ghost" :href="openFullHref" data-test="embed-open-full">Open full</Button>
         </div>
       </header>
-
-      <Card v-if="showPicker" class="test-case-pane" data-test="test-case-pane">
-        <CardHeader>
-          <CardTitle>examples</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TestCaseMenu :options="testCaseOptions" :selected-id="selectedTestCase?.id" :current-program-path="currentProgramPath" @select="selectTestCase" />
-        </CardContent>
-      </Card>
 
       <Card class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
         <CardHeader class="playground-rules-header">
@@ -91,14 +86,6 @@
 
     <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" auto-save-id="playground-columns" data-test="playground-full-surface">
       <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
-        <Card v-if="showPicker" class="test-case-pane" data-test="test-case-pane">
-          <CardHeader>
-            <CardTitle>examples</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TestCaseMenu :options="testCaseOptions" :selected-id="selectedTestCase?.id" :current-program-path="currentProgramPath" @select="selectTestCase" />
-          </CardContent>
-        </Card>
         <Card class="playground-rules-pane">
           <CardHeader class="playground-rules-header">
             <div class="playground-rules-title-block">
@@ -348,7 +335,6 @@ const stepTitle = computed(() => 'Step forward')
 const continueTitle = computed(() => 'Play')
 const endTitle = computed(() => `End without rendering intermediate states (max ${maxSteps.value} steps)`)
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
-const currentProgramPath = computed(() => sourcePath.value)
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -506,7 +492,7 @@ function selectTestCase(testCase: TestCaseOption): void {
   const file = `./${testCase.programPath}`
   loadFile(file)
   selectedTestCase.value = testCase
-  stateText.value = testCase.input
+  if (testCase.hasInput) stateText.value = testCase.input
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
   if (props.syncUrl) {
     const url = new URL(window.location.href)

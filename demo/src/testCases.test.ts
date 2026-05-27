@@ -31,6 +31,7 @@ stdout_stripped = "13"
       programPath: 'examples/lisp/lisp.tpp',
       caseName: 'zero arg closure call still evaluates body',
       input: '((fn () 7))',
+      hasInput: true,
       inputPreview: '((fn () 7))',
       args: ['--max-evals', '60000'],
     })

@@ -664,34 +664,40 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
   })
 
-  it('renders manifest test cases as a nested examples menu without command search', async () => {
+  it('renders curated example groups as navigation menu cards without command search', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App, { attachTo: document.body })
 
     expect(wrapper.find('[data-test="test-case-command"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="test-case-command-input"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="test-case-pane"]').text()).toContain('examples')
-    expect(wrapper.get('[data-test="test-case-menu"]').attributes('role')).toBe('tree')
-    expect(wrapper.findAll('[data-test="test-case-tree-item"]').some(item => item.text().includes('examples/lisp/lisp.tpp'))).toBe(true)
+    const triggerLabels = wrapper.findAll('[data-test="test-case-menu-trigger"]').map(trigger => trigger.text())
+    expect(triggerLabels).toEqual(['Basic rules', 'I/O', 'Resources', 'Calcs', 'Forth', 'Lisp'])
 
-    const lispGroup = wrapper.findAll('[data-test="test-case-tree-item"]').find(item => item.text().includes('examples/lisp/lisp.tpp'))
-    expect(lispGroup).toBeTruthy()
-    await lispGroup!.trigger('click')
+    const lispTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Lisp')
+    expect(lispTrigger).toBeTruthy()
+    await lispTrigger!.trigger('pointerdown')
+    await lispTrigger!.trigger('click')
     await flush()
-    expect(wrapper.findAll('[data-test="test-case-tree-item"]').some(item => item.text().includes('zero arg closure call still evaluates body'))).toBe(true)
-    expect(wrapper.findAll('[data-test="test-case-tree-item"]').some(item => item.text().includes('closure_binding_flattening.toml'))).toBe(true)
+
+    const menuItems = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => element.textContent ?? '')
+    expect(menuItems.some(text => text.includes('Closure call'))).toBe(true)
+    expect(menuItems.some(text => text.includes('zero arg closure call still evaluates body'))).toBe(false)
+    expect(menuItems.some(text => text.includes('Calls a zero-argument closure and returns the body value.'))).toBe(true)
+    expect(menuItems.some(text => text.includes('((fn () 7))'))).toBe(false)
+    expect(menuItems.some(text => text.includes('parse_unparse_canonical_acceptance.toml'))).toBe(false)
   })
 
-  it('selecting a manifest test case loads rules, state, and resources without running', async () => {
+  it('selecting a curated manifest test case loads rules, state, and resources without running', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App, { attachTo: document.body })
 
-    const lispGroup = wrapper.findAll('[data-test="test-case-tree-item"]').find(item => item.text().includes('examples/lisp/lisp.tpp'))
-    expect(lispGroup).toBeTruthy()
-    await lispGroup!.trigger('click')
+    const lispTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Lisp')
+    expect(lispTrigger).toBeTruthy()
+    await lispTrigger!.trigger('pointerdown')
+    await lispTrigger!.trigger('click')
     await flush()
 
-    const zeroArgCase = wrapper.findAll('[data-test="test-case-tree-item"]').find(item => item.text().includes('zero arg closure call still evaluates body'))
+    const zeroArgCase = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => ({ text: () => element.textContent ?? '', trigger: (event: string) => (element as HTMLElement).dispatchEvent(new MouseEvent(event, { bubbles: true })) })).find(item => item.text().includes('Closure call'))
     expect(zeroArgCase).toBeTruthy()
     await zeroArgCase!.trigger('click')
     await flush()
@@ -705,16 +711,17 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 
-  it('selecting a top-level manifest test preserves exact source rows in rules', async () => {
+  it('selecting a curated source-parsing test preserves exact source rows in rules', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = mount(App, { attachTo: document.body })
 
-    const sourceHashGroup = wrapper.findAll('[data-test="test-case-tree-item"]').find(item => item.text().includes('examples/hash-data/source-hash-rule.tpp'))
-    expect(sourceHashGroup).toBeTruthy()
-    await sourceHashGroup!.trigger('click')
+    const basicTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Basic rules')
+    expect(basicTrigger).toBeTruthy()
+    await basicTrigger!.trigger('pointerdown')
+    await basicTrigger!.trigger('click')
     await flush()
 
-    const sourceHashCase = wrapper.findAll('[data-test="test-case-tree-item"]').find(item => item.text().includes('source row beginning with hash can be a rule'))
+    const sourceHashCase = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => ({ text: () => element.textContent ?? '', trigger: (event: string) => (element as HTMLElement).dispatchEvent(new MouseEvent(event, { bubbles: true })) })).find(item => item.text().includes('Hash-prefixed rule'))
     expect(sourceHashCase).toBeTruthy()
     await sourceHashCase!.trigger('click')
     await flush()
