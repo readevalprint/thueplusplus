@@ -36,7 +36,7 @@ input = '(add 1)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -45,7 +45,7 @@ input = '(add 1 2 3)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -54,7 +54,7 @@ input = '(add 1 true)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -63,7 +63,7 @@ input = '(let ((add 7)) (add 1 2))'
 
 [case.expect]
 exit_code = 2
-stderr = "not_function"
+stderr = "not_function\n"
 stdout_stripped = ""
 
 [[case]]
@@ -90,7 +90,7 @@ input = '(missing 1 2)'
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -99,7 +99,7 @@ input = '(+ 1 2)'
 
 [case.expect]
 exit_code = 2
-stderr = "unsupported_form"
+stderr = "unsupported_form\n"
 stdout_stripped = ""
 
 [[case]]
@@ -108,7 +108,7 @@ input = '(list add)'
 
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -117,7 +117,7 @@ input = '(first add)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -126,7 +126,7 @@ input = '(rest add)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -135,7 +135,7 @@ input = '(count add)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -144,7 +144,7 @@ input = '(nth add 0)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -153,7 +153,7 @@ input = '(cons 1 add)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -162,7 +162,7 @@ input = '(quasiquote (x (splice add)))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -180,7 +180,7 @@ input = '(let ((count 7)) (count (list 1)))'
 
 [case.expect]
 exit_code = 2
-stderr = "not_function"
+stderr = "not_function\n"
 stdout_stripped = ""
 
 [[case]]
@@ -216,7 +216,7 @@ input = '(eval (quote (count xs)) (dict ((quote xs) (list 1 2))))'
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -261,7 +261,7 @@ input = '(get (dict) (quote a))'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -270,7 +270,7 @@ input = '(count (list 1) (list 2))'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -288,7 +288,7 @@ input = 'first'
 
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -297,7 +297,7 @@ input = '(cons 0 (list 1) 2)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -306,5 +306,5 @@ input = '(get (dict) (quote a) 0 1)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""

@@ -178,7 +178,7 @@ name = "fn renders closure"
 input = '(fn (x) x)'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -436,7 +436,7 @@ name = "nested list first closure renders"
 input = '(list (list (fn (x) x)))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -460,7 +460,7 @@ name = "nested list next closure renders"
 input = '(list (list 1 (fn (x) x)))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -484,7 +484,7 @@ name = "second nested list first closure renders"
 input = '(list 0 (list (fn (x) x)))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -508,5 +508,5 @@ name = "second nested list next closure renders"
 input = '(list 0 (list 1 (fn (x) x)))'
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""

@@ -743,7 +743,7 @@ class ThueppInterpreter:
             for rule_index, rule in enumerate(self.rules):
                 if self.max_evals is not None and self.eval_count >= self.max_evals:
                     raise RuntimeError(
-                        f"Rule probe limit ({self.max_evals}) exceeded"
+                        f"Evaluation step limit ({self.max_evals}) exceeded"
                     )
                 self.eval_count += 1
 
@@ -875,8 +875,8 @@ def main():
         "--max-evals",
         type=int,
         help=(
-            "Maximum ordered rule probes before aborting "
-            "(each rule inspected in the inner loop counts as one, including non-matching)"
+            "Maximum evaluation steps before aborting "
+            "(each rule inspected in the inner loop counts as one step, including non-matching rules)"
         ),
     )
     parser.add_argument(

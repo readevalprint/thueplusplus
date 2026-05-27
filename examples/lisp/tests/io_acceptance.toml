@@ -48,7 +48,7 @@ input = '(write 1)'
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr = "type_error"
+stderr = "type_error\n"
 
 [[case]]
 name = "readline rejects argument"
@@ -58,7 +58,7 @@ stdin = "ignored\n"
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 
 [[case]]
 name = "write without arguments is an uncalled primitive value"
@@ -67,7 +67,7 @@ input = '(write)'
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 
 [[case]]
 name = "prompt name is not bound"
@@ -77,7 +77,7 @@ stdin = "ignored\n"
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 
 [[case]]
 name = "input name is not bound"
@@ -87,4 +87,4 @@ stdin = "ignored\n"
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr = "unbound_name"
+stderr = "unbound_name\n"

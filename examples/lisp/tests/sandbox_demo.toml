@@ -33,7 +33,7 @@ input = '(let ((sandbox (fn (source) (eval (parse source) (dict ((quote square) 
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -42,7 +42,7 @@ input = '(let ((secret 99) (sandbox (fn (source) (eval (parse source) (dict ((qu
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -51,5 +51,5 @@ input = '(let ((sandbox (fn (source) (eval (parse source) (dict ((quote square) 
 
 [case.expect]
 exit_code = 2
-stderr = "malformed_list"
+stderr = "malformed_list\n"
 stdout_stripped = ""

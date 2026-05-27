@@ -26,7 +26,7 @@ input = '(let () (div 1 0) 9)'
 
 [case.expect]
 exit_code = 2
-stderr = "division_by_zero"
+stderr = "division_by_zero\n"
 stdout = ""
 
 [[case]]
@@ -53,7 +53,7 @@ input = '(do)'
 
 [case.expect]
 exit_code = 2
-stderr = "unsupported_form"
+stderr = "unsupported_form\n"
 stdout = ""
 
 [[case]]
@@ -62,7 +62,7 @@ input = '(let ((x 1)) (do))'
 
 [case.expect]
 exit_code = 2
-stderr = "unsupported_form"
+stderr = "unsupported_form\n"
 stdout = ""
 
 [[case]]
@@ -71,5 +71,5 @@ input = '(if true 1 else 2)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout = ""

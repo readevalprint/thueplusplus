@@ -27,7 +27,7 @@ input = '(eval (quote (add x 1)) (dict ((quote x) 10)))'
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -36,7 +36,7 @@ input = '(let ((x 99)) (eval (quote x) (dict)))'
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -81,7 +81,7 @@ input = '(eval)'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -90,7 +90,7 @@ input = '(eval (quote x))'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -99,7 +99,7 @@ input = '(eval (quote x) (dict ((quote x) 1)) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -108,7 +108,7 @@ input = '(eval (quote x) 7)'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -117,7 +117,7 @@ input = '(eval (dict ((quote x) 1)) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -126,7 +126,7 @@ input = '(eval (fn (x) x) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -135,7 +135,7 @@ input = 'exec'
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -144,7 +144,7 @@ input = '(eval (quote x) (dict ("x" 1)))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -153,7 +153,7 @@ input = '(eval (quote ()) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "wrong_arity"
+stderr = "wrong_arity\n"
 stdout_stripped = ""
 
 [[case]]
@@ -162,7 +162,7 @@ input = '(eval (quote add) (dict ((quote add) add)))'
 
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
@@ -171,7 +171,7 @@ input = '(eval (quote x) (assoc (dict) (quote +) 1))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -180,7 +180,7 @@ input = '(eval (quote +) (dict))'
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -207,7 +207,7 @@ input = '(eval (list (quote eq) "(add 1 2)" "(add 1 2)") (dict ((quote eq) eq)))
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -267,7 +267,7 @@ input = '''
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 [[case]]
@@ -281,7 +281,7 @@ input = '''
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -299,7 +299,7 @@ input = '''
 
 [case.expect]
 exit_code = 2
-stderr = "unbound_name"
+stderr = "unbound_name\n"
 stdout_stripped = ""
 
 [[case]]
@@ -313,7 +313,7 @@ input = '''
 
 [case.expect]
 exit_code = 2
-stderr = "type_error"
+stderr = "type_error\n"
 stdout_stripped = ""
 
 

@@ -155,7 +155,7 @@ input = '((fn (x y) (add x y)) 1)'
 
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]

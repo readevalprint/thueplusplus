@@ -91,7 +91,7 @@ args = ["--max-evals", "200"]
 [case.expect]
 exit_code = 1
 stdout = ""
-stderr_contains = ["Rule probe limit (200) exceeded"]
+stderr_contains = ["Evaluation step limit (200) exceeded"]
 
 [[case]]
 name = "while sequence condition must be boolean"
@@ -128,7 +128,7 @@ args = ["--max-evals", "200"]
 [case.expect]
 exit_code = 1
 stdout = ""
-stderr_contains = ["Rule probe limit (200) exceeded"]
+stderr_contains = ["Evaluation step limit (200) exceeded"]
 
 [[case]]
 name = "set without args fails wrong arity"
@@ -190,7 +190,7 @@ input = '(let ((x 0)) (set x (fn (y) y)))'
 
 [case.expect]
 exit_code = 2
-stderr = "unparseable_value"
+stderr = "unparseable_value\n"
 stdout_stripped = ""
 
 [[case]]
