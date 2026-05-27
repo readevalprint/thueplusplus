@@ -1,6 +1,10 @@
 include:
   - template: Security/SAST.gitlab-ci.yml
+    rules:
+      - if: '$CI_SERVER_HOST != "gitlab.com"'
   - template: Security/Secret-Detection.gitlab-ci.yml
+    rules:
+      - if: '$CI_SERVER_HOST != "gitlab.com"'
 
 stages:
   - test
@@ -24,6 +28,8 @@ cache:
 
 test:
   image: golang:1.24.6-bookworm
+  rules:
+    - if: '$CI_SERVER_HOST != "gitlab.com"'
   before_script:
     - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
     - |
@@ -41,7 +47,7 @@ pages:
   image: node:22-bookworm
   stage: pages
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   before_script:
     - apt-get update
     - apt-get install -y --no-install-recommends ca-certificates curl make
