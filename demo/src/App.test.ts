@@ -551,37 +551,46 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('keeps resource output as an append-only transcript across steps', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
-    await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\\\n\n^$ ::= b\n^b$ ::> stdout B\\\\n')
-    await wrapper.get('[data-test="playground-state"]').setValue('a')
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+      const wrapper = mount(App)
+      await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\\\n\n^$ ::= b\n^b$ ::> stdout B\\\\n')
+      await wrapper.get('[data-test="playground-state"]').setValue('a')
 
-    mockedRunWithWorker.mockResolvedValueOnce({
-      exitCode: 0,
-      stdout: 'A\n',
-      stderr: '',
-      state: '',
-      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: '' }],
-      resourceLogs: [{ name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' }],
-    })
-    await wrapper.get('[data-test="playground-step"]').trigger('click')
-    await flush()
-    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
-    expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: 'A\n',
+        stderr: '',
+        state: '',
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: '' }],
+        resourceLogs: [{ name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' }],
+      })
+      await wrapper.get('[data-test="playground-step"]').trigger('click')
+      await flush()
+      expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
+      expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
 
-    mockedRunWithWorker.mockResolvedValueOnce({
-      exitCode: 0,
-      stdout: 'B\n',
-      stderr: '',
-      state: '',
-      resourceLogs: [{ name: 'stdout', reads: [], writes: ['B\n'], errors: [], remainingInputText: '', outputText: 'B\n' }],
-    })
-    await wrapper.get('[data-test="playground-step"]').trigger('click')
-    await flush()
+      await vi.advanceTimersByTimeAsync(1000)
+      await flush()
+      expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBeUndefined()
 
-    expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('')
-    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\nB\n')
-    expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: 'B\n',
+        stderr: '',
+        state: '',
+        resourceLogs: [{ name: 'stdout', reads: [], writes: ['B\n'], errors: [], remainingInputText: '', outputText: 'B\n' }],
+      })
+      await wrapper.get('[data-test="playground-step"]').trigger('click')
+      await flush()
+
+      expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('')
+      expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\nB\n')
+      expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('step pauses at resource reads and submit resumes automatically', async () => {

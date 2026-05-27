@@ -309,7 +309,7 @@ const resourceInputs = ref<Record<string, string>>({})
 const resourceSubmittedInputs = ref<Record<string, string>>({})
 const resourceLogs = ref<Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }>>({})
 const resourceOutputs = ref<Record<string, string>>({})
-const resourceAttention = ref<Record<string, 'input' | 'output'>>({})
+const resourceAttention = ref<Record<string, 'input'>>({})
 const loadError = ref('')
 const running = ref(false)
 const continuing = ref(false)
@@ -619,7 +619,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
   } catch (error) {
     const stderr = error instanceof Error ? error.message : String(error)
     const nextStderr = `${resourceOutputs.value.stderr ?? ''}${stderr}`
-    resourceAttention.value = nextStderr !== (resourceOutputs.value.stderr ?? '') ? { stderr: 'output' } : {}
+    resourceAttention.value = {}
     resourceOutputs.value = { ...resourceOutputs.value, stderr: nextStderr }
     statusText.value = 'errored'
     activeSection.value = 'output'
@@ -883,25 +883,20 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
   const hasStderrLog = logs.some(log => log.name === 'stderr' && (Boolean(log.outputText) || (log.writes?.length ?? 0) > 0))
   if (stdout && !hasStdoutLog) nextOutputs.stdout = `${nextOutputs.stdout ?? ''}${stdout}`
   if (stderr && !hasStderrLog) nextOutputs.stderr = appendErrorTranscript(nextOutputs.stderr ?? '', stderr)
-  resourceAttention.value = changedResourceTextareas(resourceInputs.value, nextInputs, resourceOutputs.value, nextOutputs)
+  resourceAttention.value = changedResourceInputs(resourceInputs.value, nextInputs)
   resourceLogs.value = nextLogs
   resourceInputs.value = nextInputs
   resourceSubmittedInputs.value = nextSubmittedInputs
   resourceOutputs.value = nextOutputs
 }
 
-function changedResourceTextareas(
+function changedResourceInputs(
   previousInputs: Record<string, string>,
   nextInputs: Record<string, string>,
-  previousOutputs: Record<string, string>,
-  nextOutputs: Record<string, string>,
-): Record<string, 'input' | 'output'> {
-  const attention: Record<string, 'input' | 'output'> = {}
+): Record<string, 'input'> {
+  const attention: Record<string, 'input'> = {}
   for (const [name, next] of Object.entries(nextInputs)) {
     if ((previousInputs[name] ?? '') !== next) attention[name] = 'input'
-  }
-  for (const [name, next] of Object.entries(nextOutputs)) {
-    if ((previousOutputs[name] ?? '') !== next) attention[name] = 'output'
   }
   return attention
 }

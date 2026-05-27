@@ -704,7 +704,6 @@ code {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  padding: var(--space-3);
   width: 100%;
 }
 [data-slot="card-header"] {
@@ -729,7 +728,6 @@ code {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  padding: 0;
 }
 .playground-rules-header {
   align-items: center;
@@ -945,7 +943,17 @@ code {
   white-space: pre;
 }
 .resource-field textarea[data-attention="input"] { border-color: rgb(59 130 246 / 0.9); }
-.resource-field textarea[data-attention="output"] { border-color: rgb(34 197 94 / 0.85); }
+.resource-field textarea[data-attention="output"] { animation: resource-output-attention 1s ease-out; }
+@keyframes resource-output-attention {
+  0%, 45% {
+    border-color: rgb(34 197 94 / 0.85);
+    box-shadow: 0 0 0 1px rgb(34 197 94 / 0.28);
+  }
+  100% {
+    border-color: var(--color-border);
+    box-shadow: none;
+  }
+}
 .resource-field [data-slot="button"] { align-self: flex-start; }
 .run-status {
   font-family: var(--font-mono);
