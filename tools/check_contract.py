@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Repository conformance checks for thue++ verification policy."""
 
 from __future__ import annotations

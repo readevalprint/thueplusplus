@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AV: arbitrary parser + reducer + substitution-based lambda/let.
 # Goal: test n-arity lambda and let over arbitrary parsed bodies without fixed source-form regexes.
 # Tradeoff: substitution is not real lexical environment; nested shadowing is an edgecase/failure.

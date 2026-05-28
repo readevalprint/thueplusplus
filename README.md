@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 > We do this not because it is easy, but because we thought it would be easy.
 
 # thue++
@@ -96,6 +97,7 @@ Example source (`examples/hello/hello.tpp`):
 Open in playground: [examples/hello/hello.tpp](http://thuelang.com/playground?file=./examples/hello/hello.tpp)
 
 ```thuepp
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 ^START$ ::= hello\ndone
 hello ::> stdout Hello, World!\n
@@ -146,13 +148,14 @@ It also shows process resources. The program reads `@RANDOM_NUMBER@` from the `r
 printf 'x\n3\n8\n7\n' | (cd go && go run ./cmd/thuepp ../examples/guess-number/guess-number.tpp --proc:random 'printf 7; echo')
 ```
 
-<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-31 expected-output=examples/guess-number/tests/basic.toml -->
+<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-32 expected-output=examples/guess-number/tests/basic.toml -->
 <!-- thuepp-readme-example:start -->
-Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-31):
+Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-32):
 
 Open in playground: [examples/guess-number/guess-number.tpp](http://thuelang.com/playground?file=./examples/guess-number/guess-number.tpp)
 
 ```thuepp
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 NUMBER <- [0-9]+
 
@@ -607,3 +610,11 @@ Repository development requirements:
 - Go for the second conformance backend
 - `make` for verification targets
 - Node.js only for Go-WASM adapter and browser-demo checks
+
+## License
+
+Thue++ is licensed under the GNU Affero General Public License v3.0 or later.
+
+This includes the language documentation, examples, tests, tools, demo code, and reference implementations unless a file states otherwise.
+
+See `LICENSE`.

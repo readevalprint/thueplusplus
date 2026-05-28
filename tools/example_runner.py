@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Shared TOML example manifest runner for thue++ implementations.
 
 This module intentionally treats every implementation, including the Python

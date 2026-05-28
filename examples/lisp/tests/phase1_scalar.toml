@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Reconciled with the canonical Lisp evaluator.
 # This manifest keeps scalar behavior implemented by the canonical evaluator.
 # Unsupported legacy scalar operators/comparisons remain out of scope;

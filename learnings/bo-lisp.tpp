@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BO: BN hard-acceptance trunk under whole-document runtime.
 # Architecture: protect strings, freeze lists inside-out as L[pct(payload)], evaluate on demand with typed V* runtime values, lexical env, closures, n-ary let iterator, arrays via raw-semicolon pct(value) payload.
 # Scope: hard acceptance plus expanded edge probes. This is the best current candidate, but not yet polished production lisp.tpp.

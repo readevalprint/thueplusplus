@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Readable typed values
 
 Typed values are a public example-level data representation for example programs that want self-describing textual values. They are not part of the thue++ interpreter core syntax.

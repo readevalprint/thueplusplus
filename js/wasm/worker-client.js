@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export class ThuePPWorker {
   constructor(workerURL, initOptions = {}, clientOptions = {}) {
     // browser-worker.js deliberately stays a classic worker because Go's

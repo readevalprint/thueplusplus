@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Greenfield parenthesized Lisp rewrite.
 # Hard cutoff: no legacy curly syntax, no alternate form delimiters, no
 # backwards compatibility shims. Source and internal forms stay parenthesized.

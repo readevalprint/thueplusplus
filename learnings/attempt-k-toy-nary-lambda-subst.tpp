@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt I: parser with encoded child-list items + EV/RET.
 # Key change from H: a nested list is one atomic item L:<pct(payload)>.
 # That gives regex-safe sibling boundaries for node-dispatch evaluation.

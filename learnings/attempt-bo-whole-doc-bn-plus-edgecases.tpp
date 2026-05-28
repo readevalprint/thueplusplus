@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BO alias: same content as bo-lisp.tpp, retained with descriptive name.
 
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

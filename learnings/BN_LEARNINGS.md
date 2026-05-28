@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # BN let-binding iterator and env-aware form learnings
 
 ## Inputs read

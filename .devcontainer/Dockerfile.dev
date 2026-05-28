@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 FROM golang:1.24.6-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AK: generated-rule n-arity lambda and let variants.
 # Goal: compare generated apply/lookup helpers without broad raw substitution.
 

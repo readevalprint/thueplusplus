@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AI: integrated Lisp-surface smoke demo.
 # Covers basic math, compare, lazy booleans, lambda n-arity, let n-arity, int, string, list.
 # This is deliberately a fixed-pattern dynamic-rule smoke test, not a general recursive parser.

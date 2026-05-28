@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Env/generic-call/lambda state probes
 
 Disposable. No repo files changed.

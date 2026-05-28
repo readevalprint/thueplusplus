@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 DIGIT <- [0-9]
 NUM <- $DIGIT+
 ALT <- cat|dog

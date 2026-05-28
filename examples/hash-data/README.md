@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Hash data semantics
 
 The character `#` has no special language-level meaning in Thue++.

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <section class="resource-section" :data-test="`resource-section-${resource.name}`">
     <code>{{ resource.name }}</code>

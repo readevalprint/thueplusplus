@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Numeric builtin contract
 
 This document is the source contract for numeric inputs and outputs used by the built-in numeric operations in thue++ examples and interpreters.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BC1: escaped literal operator rule editing.
 # Confirms new \::= syntax lets a rule match/rewrite a literal rule row.
 

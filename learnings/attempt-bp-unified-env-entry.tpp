@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BP: unify top-level around env-aware evaluator by entering EENV with empty env.
 # Goal: test whether BN's duplicated E/EENV top-level can be collapsed.
 # Expected tradeoff: cleaner architecture if green; likely gaps where only E rules exist.

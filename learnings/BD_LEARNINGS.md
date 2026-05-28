@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # BD hard-acceptance continuation learnings
 
 Date: current session.

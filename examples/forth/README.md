@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Forth example
 
 `forth.tpp` is a compact Forth-style stack machine implemented entirely as Thue++ rewrite rules. It is intended as a serious target-language example, like the Lisp evaluator, but with a much smaller stack-oriented execution model.

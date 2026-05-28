@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # thue++ Go-WASM demo
 
 This is a small Vite/Vue browser demo shell for the Go-WASM thue++ adapter.

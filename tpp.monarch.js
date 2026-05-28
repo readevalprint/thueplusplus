@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Monaco Monarch tokenizer for thue++ (.tpp).
 //
 // Source parsing is line-oriented: rows before the final `::=` separator are

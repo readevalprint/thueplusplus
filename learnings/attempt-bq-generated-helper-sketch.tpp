@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BQ: generated-helper sketch based on BN.
 # Goal: hold behavior constant while marking the next direction: dynamic node-local helper rules.
 # This file is intentionally near-BN; separate tiny dynamic probes validate lifecycle, not full hard acceptance.

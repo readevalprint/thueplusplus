@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 KEY <- [A-Za-z0-9_-]+
 VAL <- [A-Za-z0-9_-]+

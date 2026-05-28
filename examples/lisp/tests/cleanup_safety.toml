@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Cross-cutting adversarial safety cases for deletion-first Lisp evaluator cleanup.
 # These intentionally pin public behavior touched by let, closure binding,
 # env-return, strict-arg, primitive-arity, special-catcher, and code-as-data

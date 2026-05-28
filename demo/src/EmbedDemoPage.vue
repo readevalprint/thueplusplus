@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <main class="embed-demo-page">
     <section class="embed-demo-hero" aria-labelledby="embed-demo-title">

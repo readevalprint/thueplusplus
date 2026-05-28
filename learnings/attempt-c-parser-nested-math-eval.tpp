@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt C: packed-stack parser + tiny AST-ish evaluator for nested binary math.
 # Demonstrates parser output can feed evaluator rules without raw recursive regex parsing.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

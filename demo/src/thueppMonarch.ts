@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 
 export const thueppMonarchLanguage: monaco.languages.IMonarchLanguage = {

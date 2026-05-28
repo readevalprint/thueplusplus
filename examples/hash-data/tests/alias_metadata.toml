@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "alias expansion does not inject user-visible hash metadata"
 program = "../alias-metadata.tpp"
 timeout = 5

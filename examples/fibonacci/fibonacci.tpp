@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 ^next:(?<remaining>1*):(?<b>[0-9]+):(?<sum>[0-9]+) ::= step:{{remaining}}:{{b}}:{{sum}}
 

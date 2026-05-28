@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt Q2: corrected TPP K-stream. Rest continuation stays outside frame payload.
 # Input is a prebuilt AST state, e.g.
 #   EVLIST[A%3Amul%20L%3AA%253Aadd%2520N%253A1%2520N%253A2%2520%20L%3AA%253Aadd%2520N%253A3%2520N%253A4%2520%20|E0|KDONE]

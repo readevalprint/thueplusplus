@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BA: arbitrary parser emits atomic N/A/B/S/L items, then scalar EV/RET.
 # Scope: arbitrary balanced parsing + scalar typed values + binary math/compare + lazy if/and/or/not.
 # Known gap: no n-ary arg loop, no env/closures, arrays only parsed not evaluated here.

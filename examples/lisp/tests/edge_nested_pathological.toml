@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Graduated deeply nested Lisp parser/runtime edge cases.
 # These cases stress greedy encoded-list capture, higher-order closures, lists,
 # and lexical lets together so future changes do not regress nested framing.

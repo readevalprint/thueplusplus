@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AP: marked entry + typed primitive continuations.
 # Goal: avoid raw source literals and raw primitive outputs sharing row shape.
 # Public source first enters SRC_* rows; primitive raw outputs stay inside typed continuation wrappers.

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Sneklang-style AST stack evaluator probes
 
 Disposable probes only. No repo files changed.

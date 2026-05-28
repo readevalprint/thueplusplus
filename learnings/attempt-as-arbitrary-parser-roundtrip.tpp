@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AS: arbitrary balanced Lisp parser roundtrip.
 # Goal: stop relying on form-specific source regexes. This parser accepts arbitrary
 # balanced parenthesized input, integers, booleans, atoms, and quoted strings with spaces.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BH: inside-out pct framer plus first-outer-node demand evaluator.
 # Goal: test architecture: pct-encode innermost lists until no raw parens remain;
 # then evaluate the outer payload and decode nested L[...] nodes only when demanded.
