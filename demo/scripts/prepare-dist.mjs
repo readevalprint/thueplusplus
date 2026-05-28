@@ -78,7 +78,8 @@ function injectPrerenderedReadme(html) {
 
 function renderMarkdown(markdown) {
   const lines = markdown.replace(/\r\n/g, '\n').split('\n')
-  const out = ['      <main class="readme-page prerendered-readme" data-prerendered="true">', '        <article class="readme-document">']
+  const body = []
+  const headings = []
   let i = 0
   while (i < lines.length) {
     const line = lines[i]
@@ -90,28 +91,30 @@ function renderMarkdown(markdown) {
       i += 1
       while (i < lines.length && !lines[i].startsWith('```')) { code.push(lines[i]); i += 1 }
       if (i < lines.length) i += 1
-      out.push(`          <pre class="readme-code"><code${lang ? ` class="language-${escapeAttribute(lang)}"` : ''}>${escapeHtml(code.join('\n'))}</code></pre>`)
+      body.push(`          <pre class="readme-code"><code${lang ? ` class="language-${escapeAttribute(lang)}"` : ''}>${escapeHtml(code.join('\n'))}</code></pre>`)
       continue
     }
     const heading = line.match(/^(#{1,6})\s+(.+)$/)
     if (heading) {
       const level = heading[1].length
       const text = stripMarkdown(heading[2].trim())
-      out.push(`          <h${level} id="${slugify(text)}">${renderInline(heading[2].trim())}</h${level}>`)
+      const id = slugify(text)
+      if (level <= 3) headings.push({ id, level, text })
+      body.push(`          <h${level} id="${id}">${renderInline(heading[2].trim())}</h${level}>`)
       i += 1
       continue
     }
     if (/^\s*[-*]\s+/.test(line)) {
-      out.push('          <ul>')
+      body.push('          <ul>')
       while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
-        out.push(`            <li>${renderInline(lines[i].replace(/^\s*[-*]\s+/, '').trim())}</li>`)
+        body.push(`            <li>${renderInline(lines[i].replace(/^\s*[-*]\s+/, '').trim())}</li>`)
         i += 1
       }
-      out.push('          </ul>')
+      body.push('          </ul>')
       continue
     }
     if (line.startsWith('> ')) {
-      out.push(`          <blockquote>${renderInline(line.slice(2).trim())}</blockquote>`)
+      body.push(`          <blockquote>${renderInline(line.slice(2).trim())}</blockquote>`)
       i += 1
       continue
     }
@@ -120,10 +123,29 @@ function renderMarkdown(markdown) {
       paragraph.push(lines[i].trim())
       i += 1
     }
-    if (paragraph.length) out.push(`          <p>${renderInline(paragraph.join(' '))}</p>`)
+    if (paragraph.length) body.push(`          <p>${renderInline(paragraph.join(' '))}</p>`)
   }
-  out.push('        </article>', '      </main>')
-  return out.join('\n')
+  return [
+    '      <main class="readme-page prerendered-readme" data-prerendered="true">',
+    renderToc(headings),
+    '        <article class="readme-document">',
+    ...body,
+    '        </article>',
+    '      </main>',
+  ].join('\n')
+}
+
+function renderToc(headings) {
+  const links = headings.map((heading, index) => {
+    const active = index === 0 ? ' class="active" aria-current="location"' : ''
+    return `          <a href="#${escapeAttribute(heading.id)}"${active} data-level="${heading.level}">${escapeHtml(heading.text)}</a>`
+  })
+  return [
+    '        <nav class="readme-toc" aria-label="Table of contents" data-test="readme-toc">',
+    '          <p>On this page</p>',
+    ...links,
+    '        </nav>',
+  ].join('\n')
 }
 
 function renderInline(text) {

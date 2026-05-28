@@ -34,6 +34,9 @@ if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
 if (!index.includes('semi-Thue system') || !index.includes('Hello world') || !index.includes('data-prerendered="true"')) {
   throw new Error('demo production index must include prerendered README content for crawlers')
 }
+if (!index.includes('<nav class="readme-toc"') || index.indexOf('<nav class="readme-toc"') > index.indexOf('<article class="readme-document"')) {
+  throw new Error('demo production index must prerender the README TOC before the article to avoid docs layout shift')
+}
 if (index.includes('modulepreload" crossorigin href="/assets/editor-monaco-')) {
   throw new Error('demo production index must not eagerly modulepreload the Monaco editor chunk')
 }
