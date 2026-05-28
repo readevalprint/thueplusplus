@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Core acceptance cases for examples/lisp/lisp.tpp.
 # Originally generated from learnings/hard_acceptance_cases.tsv, then promoted
 # into the stable Lisp contract.

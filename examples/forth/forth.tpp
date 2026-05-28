@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 NUM <- -?[0-9]+
 NAT <- [0-9]+

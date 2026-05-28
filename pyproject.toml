@@ -1,6 +1,8 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 [project]
 name = "thueplusplus"
 version = "0.1.0"
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.11"
 dependencies = [
     "google-re2==1.1",

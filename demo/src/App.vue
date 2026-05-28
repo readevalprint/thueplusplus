@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <PlaygroundPage v-if="isPlaygroundRoute" />
   <EmbedDemoPage v-else-if="isEmbedDemoRoute" />

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "copy-on-write discard restores parent value"
 program = "../cow-kv.tpp"
 input = "set a base; begin; set a child; get a; discard; get a"

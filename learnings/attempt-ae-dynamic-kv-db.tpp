@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AE: dynamic K/V database using rules as records.
 #
 # A key/value record is represented as a generated rule row:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Exact routing for special-form arity and unsupported-form catchers. These
 # cases pin public errors so cleanup cannot drift into unbound_name,
 # not_function, or the wrong fail-loud class.

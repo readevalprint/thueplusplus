@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "commit publishes transaction overlay"
 program = "../cow-kv.tpp"
 input = "set a base; begin; set a child; commit; get a"

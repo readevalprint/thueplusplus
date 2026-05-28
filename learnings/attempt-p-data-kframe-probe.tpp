@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt P: prove ::% can build continuation frame payloads safely.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ITEM <- (?:(?:N%3A-?[0-9]+|A%3A[A-Za-z_][A-Za-z0-9_-]*|L%3A(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*)%20)

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt H: packed parser + explicit EV/RET continuations for strict binary math/compare.
 # Purpose: prove sneklang-style node dispatch can be represented without global bottom-up eval.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AT: arbitrary parser + bottom-up strict evaluator.
 # Goal: arbitrary balanced input for strict math/compare/array/string/bool forms.
 # Tradeoff: bottom-up strict evaluation is intentionally NOT safe for lazy forms.

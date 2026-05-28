@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt F: parser + tiny unary lambda application by AST-body substitution.
 # This is intentionally narrow: it supports parameter x only and numeric args.
 # Purpose: prove lambda can ride on the parsed AST, and expose why raw substitution

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AW: delimited value representation stress test.
 # Goal: fix the AV edgecase where pct AST item streams made ARR(...) values hard to capture
 # as lambda/let arguments. Use explicit V[...] constructors with a constructor tag.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AO: integrated acceptance Lisp smoke with array/head/rest.
 # Acceptance: basic math, compare, lazy boolean ops, lambda n-arity,
 # if conditional, let n-arity, int, string, bool, and array head/rest.

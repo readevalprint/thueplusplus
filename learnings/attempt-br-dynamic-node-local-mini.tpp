@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BR: tiny dynamic node-local helper proof.
 # Purpose: validate the proposed direction of creating an exact helper rule for one active node,
 # then allowing that helper rule to rewrite the exact node state row below it.

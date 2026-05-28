@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AF: dynamic rule create/update/remove with FIN-delimited generated rules.
 #
 # Generated dynamic rule rows use a single lifecycle delimiter in their LHS:

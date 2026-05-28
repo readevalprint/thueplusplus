@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "transaction lookup falls through overlay to base value"
 program = "../cow-kv.tpp"
 input = "set a base; begin; get a"

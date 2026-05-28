@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AN: lazy boolean ops and if conditional with typed bool staging.
 # Goal: isolate lazy control from arithmetic so unselected (/ 1 0) never reduces.
 

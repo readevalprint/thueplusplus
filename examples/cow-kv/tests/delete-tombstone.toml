@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "transactional delete tombstone hides parent value"
 program = "../cow-kv.tpp"
 input = "set a base; begin; del a; get a; discard; get a; begin; del a; commit; get a"

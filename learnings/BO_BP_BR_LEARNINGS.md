@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # BO/BP/BQ/BR Lisp acceptance learnings
 
 ## Source/context read

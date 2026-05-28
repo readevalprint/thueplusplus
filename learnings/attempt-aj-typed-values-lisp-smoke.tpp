@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AJ: typed values for Lisp smoke.
 # Goal: avoid the prior bug where raw builtin result 1/0 rendered as numeric before bool.
 # Runtime constructors here: NUM[n], BOOL[1|0], NIL[], STR[pct], LIST[pct-rendered].

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AQ: fuller array/head/rest probe.
 # Goal: specify empty/singleton/rest behavior and mixed values.
 # Runtime render shape is ARRAY[...] -> [items]. Empty is []. Rest singleton -> [].

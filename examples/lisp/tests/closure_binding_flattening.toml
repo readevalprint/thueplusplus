@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Focused safety cases for the single closure binding iterator.
 program = "../lisp.tpp"
 timeout = 10

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 ^pack:(?<a>$PCT),(?<b>$PCT)$ ::% A={{a}}|B={{b}}

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 >0 ::> stdout Count: 0\n
 >1 ::> stdout Count: 1\n

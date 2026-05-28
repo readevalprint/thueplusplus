@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 Lisp evaluator guide
 This file is executable docutation written as Thueplusplus rewrite rules.
 Rows like this one are inert prose rows, not hash comments and not rules.

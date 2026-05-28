@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Lisp in Thue++
 
 Apparently, you can write a powerful Lisp in 500 lines of Thue++.

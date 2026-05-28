@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Graduated Lisp runtime fail-loud edge cases.
 # These cases live in the normal tests/ sweep and must stay green.
 program = "../lisp.tpp"

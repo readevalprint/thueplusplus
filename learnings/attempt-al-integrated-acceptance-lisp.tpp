@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AL: integrated acceptance Lisp smoke.
 # Acceptance target: basic math, compare, lazy booleans, lambda n-arity,
 # let n-arity, int, string, and list all work in Lisp-shaped input.

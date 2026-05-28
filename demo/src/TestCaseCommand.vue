@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <div class="test-case-command" data-test="test-case-command">
     <button type="button" class="test-case-command-trigger" data-test="test-case-command-trigger" @click="openPalette">

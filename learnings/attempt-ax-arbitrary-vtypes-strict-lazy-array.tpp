@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AX: arbitrary parser with atomic V* runtime constructors.
 # Goal: encode runtime types explicitly: VNUM[n], VBOOL[t/f], VSTR[pct], VARR[payload].
 # This fixes pct-space delimiter ambiguity from STR:<pct> item streams.

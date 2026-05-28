@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "source row beginning with hash can be a rule"
 program = "../source-hash-rule.tpp"
 timeout = 5

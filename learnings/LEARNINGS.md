@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Lisp PDA probes learnings
 
 Disposable probes only. No repo files changed.
