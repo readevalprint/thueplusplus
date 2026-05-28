@@ -84,7 +84,7 @@ watchEffect(() => {
   } else {
     setPageMetadata({
       title: 'Thue++ — Deterministic String-Rewrite Programming Language',
-      description: 'Thue++ is a deterministic semi-Thue string-rewrite programming language with regex captures, explicit resources, exact rational builtins, conformance backends, and a browser playground.',
+      description: 'Thue++ is a rewrite-rule metalanguage for sandboxed DSLs, with ordered regex rewrites, exact arithmetic, explicit resources, and a browser playground.',
       canonical: 'https://thuelang.org/',
       robots: 'index,follow',
     })
