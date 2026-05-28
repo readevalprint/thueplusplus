@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://thuelang.org/sitemap.xml

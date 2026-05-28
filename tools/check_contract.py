@@ -92,7 +92,7 @@ def playground_url(source_path: str) -> str:
     return f"https://thuelang.org/playground?file={file_param}"
 
 
-GITLAB_SOURCE_ROOT = "http://gitlab.backrooms.internal/root/thuepp/-/blob/main"
+GITLAB_SOURCE_ROOT = "https://gitlab.com/thuelang/thueplusplus/-/blob/main"
 
 
 def gitlab_source_url(source_path: str) -> str:

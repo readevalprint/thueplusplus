@@ -54,6 +54,13 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
+async function mountApp(options?: Parameters<typeof mount>[1]): Promise<ReturnType<typeof mount>> {
+  const wrapper = mount(App, options)
+  await flush()
+  await flush()
+  return wrapper
+}
+
 describe('Go-WASM demo UI', () => {
   beforeEach(() => {
     window.history.pushState({}, '', '/')
@@ -67,8 +74,8 @@ describe('Go-WASM demo UI', () => {
     })
   })
 
-  it('renders the repository README as the site index with Monaco-backed thue fences', () => {
-    const wrapper = mount(App)
+  it('renders the repository README as the site index with Monaco-backed thue fences', async () => {
+    const wrapper = await mountApp()
 
     expect(wrapper.get('[data-test="readme-index"]').text()).toContain('Thue++')
     const topbar = wrapper.get('[data-test="site-topbar"]')
@@ -101,7 +108,7 @@ describe('Go-WASM demo UI', () => {
 
   it('serves a resizable playground route with pinned stdio resources and no reset action', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
     const topbar = wrapper.get('[data-test="site-topbar"]')
@@ -173,7 +180,7 @@ describe('Go-WASM demo UI', () => {
 
   it('uses the visible empty state instead of falling back to embedded source state', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-state"]').setValue('')
 
     mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '', state: '', resourceLogs: [] })
@@ -187,7 +194,7 @@ describe('Go-WASM demo UI', () => {
 
   it('seeds Program State from pasted full source while keeping Program Rules runnable', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-state"]').setValue('stale override')
     const pastedSource = '^aaab$ ::= done\n::=\naaab\n'
 
@@ -200,7 +207,7 @@ describe('Go-WASM demo UI', () => {
 
   it('does not rewrite Program Rules when Program State is edited after source seeding', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     const originalSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
 
     await wrapper.get('[data-test="playground-state"]').setValue('custom state')
@@ -210,7 +217,7 @@ describe('Go-WASM demo UI', () => {
 
   it('loads hash-prefixed source rows exactly and keeps state empty without a separator heuristic', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hash-data/source-hash-rule.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
 
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
     expect(loadedSource).toContain('#x ::= y')
@@ -220,7 +227,7 @@ describe('Go-WASM demo UI', () => {
 
   it('discovers resources from hash-prefixed rule rows', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('#read ::< @VALUE custom\n#done ::> custom done\n')
 
     expect(wrapper.get('[data-test="resource-section-custom"]').text()).toContain('custom')
@@ -228,7 +235,7 @@ describe('Go-WASM demo UI', () => {
 
   it('steps one rule and updates State as the current state', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
     await wrapper.get('[data-test="playground-state"]').setValue('start')
 
@@ -259,7 +266,7 @@ describe('Go-WASM demo UI', () => {
 
   it('shows failed step exit status and stderr instead of reporting a successful step', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/builtin/builtin.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-state"]').setValue('div:1,0')
 
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -303,7 +310,7 @@ describe('Go-WASM demo UI', () => {
 
   it('shows parse-time step errors in state history when no trace is available', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
     await wrapper.get('[data-test="playground-state"]').setValue('1,2')
 
@@ -329,7 +336,7 @@ describe('Go-WASM demo UI', () => {
 
   it('shows matched rules in state history even when state does not change', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^done$ ::> stdout ok\\n')
     await wrapper.get('[data-test="playground-state"]').setValue('done')
 
@@ -352,7 +359,7 @@ describe('Go-WASM demo UI', () => {
 
   it('shows compact changed context for long state diffs below State', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle')
     const before = `${'a'.repeat(80)}LOOK<add|mul=VPRIM<mul>;add=VPRIM<add>;|K>${'z'.repeat(80)}`
     const after = `${'a'.repeat(80)}FOUND<VPRIM<add>|K>${'z'.repeat(80)}`
@@ -381,7 +388,7 @@ describe('Go-WASM demo UI', () => {
 
   it('places newer step diffs below older diffs', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
 
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -416,7 +423,7 @@ describe('Go-WASM demo UI', () => {
 
   it('ends a run in one worker call and appends only a collapsed final history row', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
     await wrapper.get('[data-test="playground-state"]').setValue('start')
 
@@ -451,7 +458,7 @@ describe('Go-WASM demo UI', () => {
     vi.useFakeTimers()
     try {
       window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-      const wrapper = mount(App)
+      const wrapper = await mountApp()
       await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
       await wrapper.get('[data-test="playground-state"]').setValue('start')
 
@@ -488,7 +495,7 @@ describe('Go-WASM demo UI', () => {
 
   it('clicks timeline rows to restore state, undo, and prune future rows before stepping', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done\n^middle$ ::= branch')
     await wrapper.get('[data-test="playground-state"]').setValue('start')
 
@@ -554,7 +561,7 @@ describe('Go-WASM demo UI', () => {
     vi.useFakeTimers()
     try {
       window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-      const wrapper = mount(App)
+      const wrapper = await mountApp()
       await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\\\n\n^$ ::= b\n^b$ ::> stdout B\\\\n')
       await wrapper.get('[data-test="playground-state"]').setValue('a')
 
@@ -595,7 +602,7 @@ describe('Go-WASM demo UI', () => {
 
   it('step pauses at resource reads and submit resumes automatically', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.tpp')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 1,
@@ -675,7 +682,7 @@ describe('Go-WASM demo UI', () => {
 
   it('renders curated example groups as navigation menu cards without command search', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="test-case-command"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="test-case-command-input"]').exists()).toBe(false)
@@ -698,7 +705,7 @@ describe('Go-WASM demo UI', () => {
 
   it('selecting a curated manifest test case loads rules, state, and resources without running', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     const lispTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Lisp')
     expect(lispTrigger).toBeTruthy()
@@ -722,7 +729,7 @@ describe('Go-WASM demo UI', () => {
 
   it('derives resource sections from playground rules and keeps resource inputs gated by requests', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.tpp')
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
 
     expect(wrapper.get('[data-test="resource-section-random"]').text()).toContain('random')
     expect(wrapper.get('[data-test="resource-section-random"]').text()).not.toContain('read')
@@ -765,7 +772,7 @@ describe('Go-WASM demo UI', () => {
 
   it('submit resumes with the last step or continue command', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada')
     expect(wrapper.find('[data-test="stdin-send"]').exists()).toBe(false)
@@ -846,9 +853,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 
-  it('renders /playground in compact mode without the old playground-specific header', () => {
+  it('renders /playground in compact mode without the old playground-specific header', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp&mode=compact&section=trace')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
@@ -857,7 +864,7 @@ describe('Go-WASM demo UI', () => {
 
   it('renders /embed without the page header and starts on the requested section/tab', async () => {
     window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&section=state&tab=stderr&editable=0')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
@@ -866,9 +873,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="embed-open-full"]').attributes('href')).toContain('/playground?file=.%2Fexamples%2Fhello%2Fhello.tpp')
   })
 
-  it('honors header=1 for embed routes without showing the picker by default', () => {
+  it('honors header=1 for embed routes without showing the picker by default', async () => {
     window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&header=1')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="test-selector"]').exists()).toBe(false)
@@ -877,7 +884,7 @@ describe('Go-WASM demo UI', () => {
 
   it('runs an output-focused embed through the shared Go-WASM path', async () => {
     window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&section=output&tab=stdout&controls=run')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: 'Hello from embed!\n', stderr: '', state: '', resourceLogs: [] })
     await wrapper.get('[data-test="embed-run"]').trigger('click')
@@ -889,9 +896,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello from embed!\n')
   })
 
-  it('shows the embed demo route with preset examples and explanations', () => {
+  it('shows the embed demo route with preset examples and explanations', async () => {
     window.history.pushState({}, '', '/embed/demo')
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.text()).toContain('Compact Thue++ playground embeds')
     expect(wrapper.text()).toContain('Output-focused runnable snippet')

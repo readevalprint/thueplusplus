@@ -3,9 +3,8 @@
 </template>
 
 <script setup lang="ts">
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
-import 'monaco-editor/min/vs/editor/editor.main.css'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import { registerThueppMonacoLanguage } from './thueppMonacoSetup'
 
 const props = withDefaults(defineProps<{
@@ -22,8 +21,9 @@ const emit = defineEmits<{
 }>()
 
 const container = ref<HTMLElement | null>(null)
-let editor: monaco.editor.IStandaloneCodeEditor | undefined
-let matchDecorations: monaco.editor.IEditorDecorationsCollection | undefined
+let monaco: typeof Monaco | undefined
+let editor: Monaco.editor.IStandaloneCodeEditor | undefined
+let matchDecorations: Monaco.editor.IEditorDecorationsCollection | undefined
 let resizeObserver: ResizeObserver | undefined
 let applyingExternalValue = false
 
@@ -31,13 +31,15 @@ interface RulesEditorElement extends HTMLElement {
   __thueppSetValue?: (value: string) => void
 }
 
-function registerThueppLanguage(): void {
-  registerThueppMonacoLanguage(monaco)
+function registerThueppLanguage(monacoApi: typeof Monaco): void {
+  registerThueppMonacoLanguage(monacoApi)
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!container.value) return
-  registerThueppLanguage()
+  await import('monaco-editor/min/vs/editor/editor.main.css')
+  monaco = await import('monaco-editor/esm/vs/editor/editor.api.js')
+  registerThueppLanguage(monaco)
   editor = monaco.editor.create(container.value, {
     value: props.modelValue,
     language: 'thuepp',
@@ -98,7 +100,7 @@ watch(() => props.readonly, value => {
 })
 
 function updateMatchedRuleDecoration(line: number | undefined): void {
-  if (!editor || !matchDecorations) return
+  if (!editor || !matchDecorations || !monaco) return
   const model = editor.getModel()
   if (!line || !model || line < 1 || line > model.getLineCount()) {
     matchDecorations.set([])

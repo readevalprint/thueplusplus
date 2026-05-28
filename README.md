@@ -8,15 +8,17 @@ Start with a string and rules that rewrite it:
 lhs ::= rhs
 ```
 
-This is a semi-Thue system: replace matching substrings by rule, and repeat. It is named after Axel Thue, whose early work on string rewriting became part of the foundation of formal language theory.
+This is a [semi-Thue system](https://grokipedia.com/page/Semi-Thue_system): replace matching substrings by rule, and repeat. It is named after [Axel Thue](https://mathshistory.st-andrews.ac.uk/Biographies/Thue/), whose early work on [string rewriting](https://grokipedia.com/page/Rewriting) became part of the foundation of formal language theory.
 
-John Colagioia's esolang [Thue](https://github.com/jcolag/Thue) turned that idea into a small programming language. Thue++ keeps the same core model, then adds regex captures and templates:
+John Colagioia's esolang [Thue](https://github.com/jcolag/Thue) turned that idea into a small programming language. Thue++ keeps the same core model, then adds [regular-expression](https://en.wikipedia.org/wiki/Regular_expression) captures and templates:
 
 ```thuepp
 ^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}
 ```
 
 A rule matches the current state. If it applies, it rewrites with the template. Then scanning starts again from the top.
+
+Optional context links are included where they help. You do not need a formal-language background to read this README, and the links are there for whichever terms you want to chase further.
 
 This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](examples/forth/README.md), and [Lisp](examples/lisp/README.md).
 
@@ -30,7 +32,7 @@ External effects are gated through named resources. A program cannot reach the n
 
 Resource metering is also direct. Memory is the size of the current state string. Time and CPU can be charged by rewrite step, rule match, or even rule check, depending on how strict the host needs to be.
 
-That makes Thue++ a candidate for anything that needs to run untrusted code. For example, a sandbox for agent-facing DSLs: the host can expose only the capabilities an LLM agent should have, meter the text state and rewrite budget, and keep API keys or network access outside the language. The same properties also support blockchain smart-contract execution, where gas can be charged per step and persisted state size. Anything is possible.
+That makes Thue++ a candidate for anything that needs to run untrusted code. For example, a sandbox for agent-facing [domain-specific languages](https://martinfowler.com/books/dsl.html): the host can expose only the capabilities an LLM agent should have, meter the text state and rewrite budget, and keep API keys or network access outside the language. The same properties also support blockchain smart-contract execution, where gas can be charged per step and persisted state size. Anything is possible.
 
 ## Rules
 
@@ -96,7 +98,7 @@ Example source (`examples/hello/hello.tpp`):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/hello/hello.tpp
 
-See the source: [examples/hello/hello.tpp](http://gitlab.backrooms.internal/root/thuepp/-/blob/main/examples/hello/hello.tpp)
+See the source: [examples/hello/hello.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/hello/hello.tpp)
 
 ```thuepp
 ^START$ ::= hello\ndone
@@ -140,7 +142,7 @@ Conditionals come from pattern choice. If the state matches one rule, that rule 
 
 The guess-number example uses this to validate input and choose the next state. Numeric builtins only see digit strings; invalid input rewrites back to the prompt.
 
-Numeric builtins are deterministic exact-rational operations. Decimal-looking input such as `0.1` is parsed as the rational `1/10`; adding `0.1` and `0.2` returns `3/10`, not a floating-point approximation. The interpreters do not use decimal or binary float arithmetic internally.
+Numeric builtins are deterministic exact-rational operations. Decimal-looking input such as `0.1` is parsed as the rational `1/10`; adding `0.1` and `0.2` returns `3/10`, not a [floating-point](https://floating-point-gui.de/) approximation. The interpreters do not use decimal or binary float arithmetic internally.
 
 It also shows process resources. The program reads `@RANDOM_NUMBER@` from the `random` resource. This command runs the Go backend and binds `random` to a process that writes `7`:
 
@@ -158,7 +160,7 @@ Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-30):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/guess-number/guess-number.tpp
 
-See the source: [examples/guess-number/guess-number.tpp](http://gitlab.backrooms.internal/root/thuepp/-/blob/main/examples/guess-number/guess-number.tpp)
+See the source: [examples/guess-number/guess-number.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/guess-number/guess-number.tpp)
 
 ```thuepp
 NUMBER <- [0-9]+
@@ -237,7 +239,7 @@ Transactions are copy-on-write overlays. `set` and `del` write only to the top f
 
 ## A smaller language inside the language: Forth
 
-[`examples/forth/forth.tpp`](examples/forth/forth.tpp) is a compact stack machine written as rewrite rules. It is smaller than the Lisp evaluator, but it shows the same idea: a language can live inside state transitions.
+[`examples/forth/forth.tpp`](examples/forth/forth.tpp) is a compact [stack machine](https://en.wikipedia.org/wiki/Stack_machine) in the spirit of [Forth](https://www.forth.com/resources/forth-programming-language/), written as rewrite rules. It is smaller than the Lisp evaluator, but it shows the same idea: a language can live inside state transitions.
 
 ```text
 1 2 + 3 *
@@ -253,7 +255,7 @@ Tokens are whitespace-delimited. The data stack renders top-first, so `1 2 3` be
 
 ## A larger language inside the language: Lisp
 
-Apparently, you can write a powerful Lisp as regex rewrite rules. [`examples/lisp/lisp.tpp`](examples/lisp/lisp.tpp) is still only Thue++ rules. The reader, typed values, lexical scope, closures, lists, quote, eval, and macro expansion all live in `.tpp`.
+Apparently, you can write a powerful [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) as regex rewrite rules. [`examples/lisp/lisp.tpp`](examples/lisp/lisp.tpp) is still only Thue++ rules. The reader, typed values, [lexical scope](https://www.scheme.com/tspl4/binding.html), closures, lists, quote, eval, and macro expansion all live in `.tpp`.
 
 ```lisp
 (add (mul 2 3) 4)
@@ -288,7 +290,7 @@ The real rule has more primitives; this is the shape.
 
 ## Lisp quotes: code as data
 
-`quote` is lazy: it returns source as data instead of evaluating it. Symbols become `VSYM<...>`. Lists become `VLIST<...>` with pct-encoded items. Output renders them back as readable Lisp.
+`quote` is lazy: it returns source as data instead of evaluating it. Symbols become `VSYM<...>`. Lists become `VLIST<...>` with [percent-encoded](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1) items. Output renders them back as readable Lisp.
 
 ```thuepp
 ^EENV<quote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
@@ -524,7 +526,7 @@ uv run python tools/check_contract.py --update-readme
 
 - v0.2 semantics checked by executable manifests
 - ordered rewrite rules over text state
-- RE2-compatible regex subset
+- [RE2-compatible](https://github.com/google/re2/wiki/Syntax) regex subset
 - pattern aliases with `$NAME` references
 - named captures and `{{group}}` templates
 - operators: `::=`, `::<`, `::>`, `::-`, `::!`
@@ -575,6 +577,8 @@ learnings/       Preserved design notes and failed attempts worth not repeating
 
 ## Further reading
 
+Project docs and examples:
+
 - [`examples/forth/README.md`](examples/forth/README.md) — compact stack-language example
 - [`examples/lisp/README.md`](examples/lisp/README.md) — Lisp evaluator contract
 - [`examples/lisp/tests/sandbox_demo.toml`](examples/lisp/tests/sandbox_demo.toml) — explicit-scope sandbox demo
@@ -583,6 +587,16 @@ learnings/       Preserved design notes and failed attempts worth not repeating
 - [`docs/string-escape-builtins.md`](docs/string-escape-builtins.md) — escape/unescape contract
 - [`docs/typed-values.md`](docs/typed-values.md) — readable typed value wrappers
 - [`demo/wasm/README.md`](demo/wasm/README.md) — WASM adapter API
+
+External context:
+
+- [Semi-Thue system](https://grokipedia.com/page/Semi-Thue_system) — the string-rewrite model Thue++ starts from
+- [Rewriting](https://grokipedia.com/page/Rewriting) — broader rewriting-system context
+- [Axel Thue](https://mathshistory.st-andrews.ac.uk/Biographies/Thue/) — historical background from MacTutor
+- [Thue esolang](https://github.com/jcolag/Thue) — John Colagioia's original language
+- [RE2 syntax](https://github.com/google/re2/wiki/Syntax) — regex syntax family targeted by both backends
+- [RFC 3986 percent-encoding](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1) — background for PCT payloads
+- [The Floating-Point Guide](https://floating-point-gui.de/) — why exact rationals avoid decimal/binary float surprises
 
 ## Installation
 

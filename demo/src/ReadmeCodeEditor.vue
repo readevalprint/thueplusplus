@@ -3,10 +3,8 @@
 </template>
 
 <script setup lang="ts">
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
-import 'monaco-editor/min/vs/editor/editor.main.css'
-import 'monaco-editor/esm/vs/basic-languages/clojure/clojure.contribution.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import { registerThueppMonacoLanguage } from './thueppMonacoSetup'
 
 const props = withDefaults(defineProps<{
@@ -19,7 +17,8 @@ const props = withDefaults(defineProps<{
 })
 
 const container = ref<HTMLElement | null>(null)
-let editor: monaco.editor.IStandaloneCodeEditor | undefined
+let monaco: typeof Monaco | undefined
+let editor: Monaco.editor.IStandaloneCodeEditor | undefined
 let resizeObserver: ResizeObserver | undefined
 
 const lineHeight = 20
@@ -31,8 +30,13 @@ const editorStyle = computed(() => ({
   height: `${lineCount.value * lineHeight + verticalPadding + horizontalScrollbarHeight + borderHeight}px`,
 }))
 
-onMounted(() => {
+onMounted(async () => {
   if (!container.value) return
+  await Promise.all([
+    import('monaco-editor/min/vs/editor/editor.main.css'),
+    import('monaco-editor/esm/vs/basic-languages/clojure/clojure.contribution.js'),
+  ])
+  monaco = await import('monaco-editor/esm/vs/editor/editor.api.js')
   registerThueppMonacoLanguage(monaco)
   editor = monaco.editor.create(container.value, {
     value: props.code,
@@ -83,7 +87,7 @@ watch(() => props.lineNumberStart, start => {
 
 watch(() => props.language, language => {
   const model = editor?.getModel()
-  if (model) monaco.editor.setModelLanguage(model, language)
+  if (model && monaco) monaco.editor.setModelLanguage(model, language)
 })
 
 onBeforeUnmount(() => {
