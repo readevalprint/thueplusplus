@@ -18,6 +18,7 @@ export interface KoanTestResource {
 
 export interface KoanTestCase {
   name: string
+  state?: string
   resources: Record<string, KoanTestResource>
   exit_code: number
 }

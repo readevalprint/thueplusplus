@@ -23,7 +23,15 @@
 
     <section aria-labelledby="try-it">
       <h2 id="try-it">Try It</h2>
-      <KoanAttempt :koan="koan" />
+      <PlaygroundSurface
+        mode="full"
+        chrome="bare"
+        :header="false"
+        :picker="false"
+        :show-test-selector="false"
+        :sync-url="false"
+        :koan="koan"
+      />
     </section>
 
     <section aria-labelledby="solutions">
@@ -36,7 +44,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import MarkdownDocument from '../MarkdownDocument.vue'
-import KoanAttempt from './KoanAttempt.vue'
+import PlaygroundSurface from '../PlaygroundSurface.vue'
 import KoanBreadcrumbs from './KoanBreadcrumbs.vue'
 import KoanSolutionsTable from './KoanSolutionsTable.vue'
 import { parseMarkdown, type MarkdownBlock } from '../markdown'
