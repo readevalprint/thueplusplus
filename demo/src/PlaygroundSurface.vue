@@ -151,7 +151,7 @@
         <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
           <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row"><Card class="playground-state-pane"><CardHeader><CardTitle>program state</CardTitle><Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge></CardHeader><CardContent><Textarea v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" /></CardContent></Card></ResizablePanel>
           <ResizableHandle />
-          <ResizablePanel :default-size="42" :min-size="18" class="playground-row playground-timeline-row"><Card class="playground-diffs-pane"><CardHeader><CardTitle>timeline</CardTitle></CardHeader><CardContent><StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" /></CardContent></Card></ResizablePanel>
+          <ResizablePanel :default-size="42" :min-size="18" class="playground-row playground-timeline-row"><Card class="playground-diffs-pane"><CardHeader><CardTitle>state history</CardTitle></CardHeader><CardContent><StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" /></CardContent></Card></ResizablePanel>
         </ResizablePanelGroup>
       </ResizablePanel>
       <ResizableHandle />

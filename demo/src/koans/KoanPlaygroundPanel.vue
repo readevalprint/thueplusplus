@@ -1,20 +1,20 @@
 <template>
-  <Card data-test="koan-playground-panel">
-    <CardHeader>
-      <div>
-        <CardTitle>{{ koan.title }}</CardTitle>
-        <p data-test="koan-summary">{{ koan.summary }}</p>
-      </div>
-      <Badge variant="secondary" data-test="koan-results-summary">{{ summaryText }}</Badge>
-    </CardHeader>
-    <CardContent>
+  <div class="koan-playground-panel" data-test="koan-playground-panel">
+    <section class="koan-playground-section" aria-labelledby="koan-panel-title">
+      <header class="koan-playground-header">
+        <div>
+          <h3 id="koan-panel-title">{{ koan.title }}</h3>
+          <p data-test="koan-summary">{{ koan.summary }}</p>
+        </div>
+        <Badge variant="secondary" data-test="koan-results-summary">{{ summaryText }}</Badge>
+      </header>
       <Button type="button" data-test="koan-run-tests" :disabled="running" @click="$emit('run')">
         {{ running ? 'Running…' : 'Run Tests' }}
       </Button>
 
       <ItemGroup aria-label="Koan test cases">
         <Collapsible v-for="testCase in koan.tests" :key="testCase.name">
-          <Item variant="outline" :data-test="`koan-test-${slugId(testCase.name)}`" :data-status="statusFor(testCase.name)">
+          <Item :data-test="`koan-test-${slugId(testCase.name)}`" :data-status="statusFor(testCase.name)">
             <ItemContent>
               <CollapsibleTrigger as-child>
                 <Button type="button" variant="ghost" class="justify-start" :data-test="`koan-test-toggle-${slugId(testCase.name)}`">
@@ -61,19 +61,24 @@
           </Item>
         </Collapsible>
       </ItemGroup>
-    </CardContent>
-  </Card>
+    </section>
+
+    <section class="koan-playground-section koan-solutions-panel" data-test="koan-solutions-panel" aria-labelledby="koan-solutions-title">
+      <h3 id="koan-solutions-title">solutions</h3>
+      <KoanSolutionsTable :solutions="koan.solutions" />
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import type { KoanEntry, KoanTestCase } from './types'
 import type { KoanTestResult } from './runKoanTests'
+import KoanSolutionsTable from './KoanSolutionsTable.vue'
 
 const props = defineProps<{
   koan: KoanEntry
