@@ -143,14 +143,15 @@ describe('Go-WASM demo UI', () => {
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://thuelang.org/koans/fixed-greet/${solutionId}`)
   })
 
-  it('runs koan tests from the editable attempt editor and shows expected output diffs', async () => {
+  it('runs koan tests from the playground rules editor and shows expected output diffs', async () => {
     window.history.pushState({}, '', '/koans/fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
     const wrapper = await mountApp()
 
-    expect(wrapper.find('[data-test="koan-attempt"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="koan-test-default-state"]').text()).toContain('default state')
-    expect(wrapper.get('[data-test="koan-attempt-editor"]').element).toBeInstanceOf(HTMLTextAreaElement)
+    expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
+    expect(wrapper.find('[data-test="koan-attempt"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
     await flush()
@@ -161,11 +162,13 @@ describe('Go-WASM demo UI', () => {
       input: '',
       resources: [],
     }))
-    const result = wrapper.get('[data-test="koan-result-default-state"]')
+    const result = wrapper.get('[data-test="koan-test-default-state"]')
     expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 / 1 passing')
     expect(result.attributes('data-status')).toBe('fail')
-    expect(result.get('[data-test="koan-resource-diff-stdout"]').text()).toContain('"Hello, koan!\\n"')
-    expect(result.get('[data-test="koan-resource-diff-stdout"]').text()).toContain('""')
+    await wrapper.get('[data-test="koan-test-toggle-default-state"]').trigger('click')
+    await flush()
+    expect(result.text()).toContain('"Hello, koan!\\n"')
+    expect(result.text()).toContain('""')
   })
 
   it('passes stdin buffers through resource-shaped koan tests', async () => {
@@ -195,8 +198,23 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('1\n')
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([])
     expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('2 / 2 passing')
-    expect(wrapper.get('[data-test="koan-result-zero-to-one"]').attributes('data-status')).toBe('pass')
-    expect(wrapper.get('[data-test="koan-result-one-to-zero"]').attributes('data-status')).toBe('pass')
+    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').attributes('data-status')).toBe('pass')
+    expect(wrapper.get('[data-test="koan-test-one-to-zero"]').attributes('data-status')).toBe('pass')
+  })
+
+  it('debugs a koan case by loading state and resource buffers without changing rules', async () => {
+    window.history.pushState({}, '', '/koans/binary-not/')
+    const wrapper = await mountApp()
+    const rules = wrapper.get('[data-test="playground-rules"]')
+    await rules.setValue('0 ::= 1')
+
+    await wrapper.get('[data-test="koan-debug-zero-to-one"]').trigger('click')
+    await flush()
+
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('0 ::= 1')
+    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('0\n')
+    expect((wrapper.get('[data-test="resource-input-stdin"]').element as HTMLTextAreaElement).value).toBe('0\n')
+    expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('zero to one')
   })
 
   it('sorts koan solutions with the shadcn data table controls', async () => {

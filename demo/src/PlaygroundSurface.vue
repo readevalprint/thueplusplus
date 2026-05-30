@@ -28,13 +28,22 @@
         </div>
       </header>
 
+      <KoanPlaygroundPanel
+        v-if="props.koan"
+        :koan="props.koan"
+        :running="koanTestsRunning"
+        :results="koanResults"
+        @run="runCurrentKoanTests"
+        @debug="debugKoanCase"
+      />
+
       <Card class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
         <CardHeader class="playground-rules-header">
           <div class="playground-rules-title-block">
             <CardTitle>program rules</CardTitle>
-            <p v-if="selectedTestCase" class="playground-selected-case" data-test="playground-selected-case">
-              <span>{{ selectedTestCase.caseName }}</span>
-              <small>{{ selectedTestCase.manifestPath }}</small>
+            <p v-if="selectedCaseLabel" class="playground-selected-case" data-test="playground-selected-case">
+              <span>{{ selectedCaseLabel }}</span>
+              <small>{{ selectedCaseSource }}</small>
             </p>
           </div>
           <div v-if="showDebugControls" class="playground-rules-options">
@@ -84,15 +93,25 @@
       </Card>
     </section>
 
-    <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" auto-save-id="playground-columns" data-test="playground-full-surface">
-      <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
+    <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" :auto-save-id="props.koan ? 'playground-koan-columns' : 'playground-columns'" data-test="playground-full-surface">
+      <ResizablePanel v-if="props.koan" :default-size="24" :min-size="16" class="playground-column playground-koan-column">
+        <KoanPlaygroundPanel
+          :koan="props.koan"
+          :running="koanTestsRunning"
+          :results="koanResults"
+          @run="runCurrentKoanTests"
+          @debug="debugKoanCase"
+        />
+      </ResizablePanel>
+      <ResizableHandle v-if="props.koan" />
+      <ResizablePanel :default-size="props.koan ? 32 : 42" :min-size="24" class="playground-column playground-rules-column">
         <Card class="playground-rules-pane">
           <CardHeader class="playground-rules-header">
             <div class="playground-rules-title-block">
               <CardTitle>program rules</CardTitle>
-              <p v-if="selectedTestCase" class="playground-selected-case" data-test="playground-selected-case">
-                <span>{{ selectedTestCase.caseName }}</span>
-                <small>{{ selectedTestCase.manifestPath }}</small>
+              <p v-if="selectedCaseLabel" class="playground-selected-case" data-test="playground-selected-case">
+                <span>{{ selectedCaseLabel }}</span>
+                <small>{{ selectedCaseSource }}</small>
               </p>
             </div>
             <div class="playground-rules-toolbar">
@@ -128,7 +147,7 @@
         </Card>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-state-column">
+      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
         <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
           <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row"><Card class="playground-state-pane"><CardHeader><CardTitle>program state</CardTitle><Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge></CardHeader><CardContent><Textarea v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" /></CardContent></Card></ResizablePanel>
           <ResizableHandle />
@@ -136,7 +155,7 @@
         </ResizablePanelGroup>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
+      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
     </ResizablePanelGroup>
   </main>
 </template>
@@ -154,9 +173,12 @@ import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
 import TestCaseMenu from './TestCaseMenu.vue'
+import KoanPlaygroundPanel from './koans/KoanPlaygroundPanel.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
+import { runKoanTests, type KoanTestResult } from './koans/runKoanTests'
+import type { KoanEntry, KoanTestCase } from './koans/types'
 
 export type PlaygroundSection = 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
 export type PlaygroundMode = 'auto' | 'full' | 'compact' | 'mini' | 'debug'
@@ -180,6 +202,7 @@ const props = withDefaults(defineProps<{
   showOpenFull?: boolean
   syncUrl?: boolean
   title?: string
+  koan?: KoanEntry
 }>(), {
   mode: 'auto',
   chrome: 'page',
@@ -323,8 +346,14 @@ const continueSpeed = ref<ContinueSpeed>('10')
 const maxSteps = ref(10000)
 const matchedRuleLine = ref<number | undefined>()
 const selectedTestCase = ref<TestCaseOption | undefined>()
+const activeKoanCaseName = ref('')
+const koanResults = ref<KoanTestResult[] | null>(null)
+const koanTestsRunning = ref(false)
+const koanDebugResourceNames = ref<string[]>([])
 
-const resourceSections = computed(() => extractResources(rulesText.value))
+const resourceSections = computed(() => mergeResourceSections(extractResources(rulesText.value), koanDebugResourceNames.value))
+const selectedCaseLabel = computed(() => selectedTestCase.value?.caseName ?? activeKoanCaseName.value)
+const selectedCaseSource = computed(() => selectedTestCase.value?.manifestPath ?? (activeKoanCaseName.value && props.koan ? `koans/${props.koan.slug}` : ''))
 const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
 const isBusy = computed(() => running.value || continuing.value)
 const canReset = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
@@ -408,6 +437,23 @@ function markResource(resources: Map<string, ResourceUsage>, name: string, mode:
   resources.set(name, current)
 }
 
+function mergeResourceSections(base: ResourceUsage[], loadedNames: string[]): ResourceUsage[] {
+  const byName = new Map(base.map(resource => [resource.name, { ...resource }]))
+  for (const name of loadedNames) {
+    const current = byName.get(name) ?? { name, reads: false, writes: false }
+    if (name === 'stdout' || name === 'stderr') current.writes = true
+    else current.reads = true
+    byName.set(name, current)
+  }
+  const stdioOrder = new Map([['stdout', 0], ['stdin', 1], ['stderr', 2]])
+  return [...byName.values()].sort((a, b) => {
+    const left = stdioOrder.get(a.name)
+    const right = stdioOrder.get(b.name)
+    if (left !== undefined || right !== undefined) return (left ?? Number.MAX_SAFE_INTEGER) - (right ?? Number.MAX_SAFE_INTEGER)
+    return a.name.localeCompare(b.name)
+  })
+}
+
 function setResourceInput(name: string, value: string): void {
   resourceInputs.value = { ...resourceInputs.value, [name]: value }
   const { [name]: _removed, ...remainingSubmitted } = resourceSubmittedInputs.value
@@ -457,6 +503,7 @@ function loadFile(file: string): void {
   const normalized = normalizeFileParam(file)
   const source = examplesByPublicPath[normalized]
   selectedTestCase.value = undefined
+  activeKoanCaseName.value = ''
   fileParam.value = normalized
   sourcePath.value = normalized.replace(/^\.\//, '')
   if (!source) {
@@ -472,6 +519,7 @@ function loadFile(file: string): void {
   loadError.value = split.error
   clearRun()
   resourceInputs.value = {}
+  koanDebugResourceNames.value = []
   if (props.syncUrl) {
     const url = new URL(window.location.href)
     url.searchParams.set('file', normalized)
@@ -500,6 +548,51 @@ function selectTestCase(testCase: TestCaseOption): void {
     url.searchParams.set('case', testCase.id.split('::').at(-1) ?? testCase.caseName)
     window.history.replaceState({}, '', url)
   }
+}
+
+async function runCurrentKoanTests(): Promise<void> {
+  if (!props.koan) return
+  koanTestsRunning.value = true
+  try {
+    koanResults.value = await runKoanTests(props.koan, rulesText.value)
+  } finally {
+    koanTestsRunning.value = false
+  }
+}
+
+function debugKoanCase(testCase: KoanTestCase): void {
+  selectedTestCase.value = undefined
+  activeKoanCaseName.value = testCase.name
+  sourcePath.value = `koans/${props.koan?.slug ?? 'koan'}/attempt.tpp`
+  const nextInputs: Record<string, string> = {}
+  const nextSubmitted: Record<string, string> = {}
+  const loadedNames = new Set<string>()
+  for (const [name, resource] of Object.entries(testCase.resources)) {
+    if (typeof resource.buffer === 'string') {
+      nextInputs[name] = resource.buffer
+      nextSubmitted[name] = resource.buffer
+      loadedNames.add(name)
+    }
+    if (typeof resource.expected_output === 'string') loadedNames.add(name)
+  }
+  clearRun()
+  stateText.value = testCase.state ?? testCase.resources.stdin?.buffer ?? ''
+  resourceInputs.value = nextInputs
+  resourceSubmittedInputs.value = nextSubmitted
+  koanDebugResourceNames.value = [...loadedNames]
+  activeSection.value = loadedNames.size > 0 ? 'resources' : 'state'
+  clearDiffs()
+}
+
+function initializeKoanAttempt(): void {
+  if (!props.koan) return
+  fileParam.value = `./koans/${props.koan.slug}/attempt.tpp`
+  sourcePath.value = `koans/${props.koan.slug}/attempt.tpp`
+  activeKoanCaseName.value = ''
+  rulesText.value = ''
+  stateText.value = ''
+  loadError.value = ''
+  clearRun()
 }
 
 function clearRun(): void {
@@ -916,6 +1009,10 @@ async function runCompactProgram(): Promise<void> {
 function loadInitialSelection(): void {
   const testParam = props.test ?? routeSearchParams.get('test')
   const caseParam = props.caseName ?? routeSearchParams.get('case')
+  if (props.koan) {
+    initializeKoanAttempt()
+    return
+  }
   loadFile(fileParam.value)
   if (!testParam && !caseParam) return
   const cleanTest = testParam?.replace(/^\.\//, '')
