@@ -1031,11 +1031,7 @@ function updatePendingCountdown(): void {
   pendingResourceCountdownSeconds.value = remaining
   if (remaining > 0) return
   const name = pendingResourceName.value
-  if ((resourceInputs.value[name] ?? '') === '') {
-    void submitResource(name)
-  } else {
-    stopPendingCountdown()
-  }
+  void submitResource(name)
 }
 
 function stopPendingCountdown(): void {

@@ -303,6 +303,22 @@ test('stdin countdown submits an empty line and hides after resuming', async ({ 
   await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
 })
 
+test('pending read countdown consumes a typed line instead of stranding the loop', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await fillRules(page, '@IN@ ::< 1 stdin\n^1$ ::= OUT\\nEXIT\nOUT ::> stdout 1\\n\n^EXIT$ ::- 0\n^$ ::= @IN@')
+  await page.getByTestId('playground-state').fill('@IN@')
+
+  await page.getByTestId('playground-continue').click()
+  await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
+  await expect(page.getByTestId('resource-countdown-stdin')).toContainText(/empty line in [01]s/)
+  await page.getByTestId('resource-input-stdin').fill('1')
+
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('1\n', { timeout: 3000 })
+  await expect(page.getByTestId('playground-status')).toContainText('exited 0')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
+  await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
+})
+
 test('state history restores matching resource output snapshots', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^a$ ::> stdout A\\n\n^$ ::= b\n^b$ ::> stdout B\\n')

@@ -875,6 +875,52 @@ describe('Go-WASM demo UI', () => {
     }
   })
 
+  it('submits the typed buffer when a pending input countdown expires', async () => {
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
+      const wrapper = await mountApp({ attachTo: document.body })
+      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 1 stdin')
+      await wrapper.get('[data-test="playground-state"]').setValue('@IN@')
+
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 1,
+        stdout: '',
+        stderr: '',
+        error: 'ERR:resource:stdin:pending_input:stdin',
+        errors: 'ERR:resource:stdin:pending_input:stdin',
+        state: '@IN@',
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '@IN@', error: 'ERR:resource:stdin:pending_input:stdin' }],
+        resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+      })
+
+      await wrapper.get('[data-test="playground-step"]').trigger('click')
+      await flush()
+      await wrapper.get('[data-test="resource-input-stdin"]').setValue('1')
+
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        state: '1',
+        trace: [{ step: 2, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '1', stateAfter: '1' }],
+        resourceLogs: [{ name: 'stdin', reads: ['1'], writes: [], errors: [], remainingInputText: '', outputText: '' }],
+      })
+
+      await vi.advanceTimersByTimeAsync(1000)
+      await flush()
+
+      expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
+      expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: '1', lineMode: true, readError: undefined })
+      expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
+      expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', '1')
+      expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
+      expect(wrapper.find('[data-test="resource-countdown-stdin"]').exists()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('step pauses at resource reads and submit resumes automatically', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
