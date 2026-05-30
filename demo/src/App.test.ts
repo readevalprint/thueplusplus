@@ -783,6 +783,7 @@ describe('Go-WASM demo UI', () => {
         stdout: 'B\n',
         stderr: '',
         state: '',
+        trace: [{ step: 2, ruleIndex: 2, sourcePath: 'examples/hello/hello.tpp', lineNumber: 3, operator: '::>', lhs: '^b$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'b', replacement: '', stateAfter: '' }],
         resourceLogs: [{ name: 'stdout', reads: [], writes: ['B\n'], errors: [], remainingInputText: '', outputText: 'B\n' }],
       })
       await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -791,6 +792,58 @@ describe('Go-WASM demo UI', () => {
       expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('')
       expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\nB\n')
       expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
+      const entries = wrapper.findAll('.state-diff-row')
+      expect(entries).toHaveLength(3)
+      await entries[1].trigger('click')
+      expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
+      await entries[2].trigger('click')
+      expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\nB\n')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('submits an empty line when a pending input countdown expires', async () => {
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
+      const wrapper = await mountApp({ attachTo: document.body })
+      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 1 stdin')
+      await wrapper.get('[data-test="playground-state"]').setValue('@IN@')
+
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 1,
+        stdout: '',
+        stderr: '',
+        error: 'ERR:resource:stdin:pending_input:stdin',
+        errors: 'ERR:resource:stdin:pending_input:stdin',
+        state: '@IN@',
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '@IN@', error: 'ERR:resource:stdin:pending_input:stdin' }],
+        resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+      })
+
+      await wrapper.get('[data-test="playground-step"]').trigger('click')
+      await flush()
+
+      expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
+      expect(wrapper.get('[data-test="resource-countdown-stdin"]').text()).toContain('empty line in 1s')
+
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        state: '',
+        trace: [{ step: 2, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '' }],
+        resourceLogs: [{ name: 'stdin', reads: [''], writes: [], errors: [], remainingInputText: '', outputText: '' }],
+      })
+
+      await vi.advanceTimersByTimeAsync(1000)
+      await flush()
+
+      expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
+      expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: '\n', lineMode: true, readError: undefined })
+      expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
+      expect(wrapper.find('[data-test="resource-countdown-stdin"]').exists()).toBe(false)
     } finally {
       vi.useRealTimers()
     }
@@ -821,7 +874,7 @@ describe('Go-WASM demo UI', () => {
     expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.get('[data-test="resource-input-random"]').attributes('data-attention')).toBeUndefined()
     expect(document.activeElement).toBe(wrapper.get('[data-test="resource-input-random"]').element)
-    expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'random')).toEqual({ name: 'random', inputText: '', readError: undefined })
+    expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'random')).toEqual({ name: 'random', inputText: '', lineMode: true, readError: undefined })
 
     await wrapper.get('[data-test="resource-input-random"]').setValue('7')
 
@@ -842,7 +895,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="resource-submit-random"]').trigger('click')
     await flush()
 
-    expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'random')).toEqual({ name: 'random', inputText: '7', readError: undefined })
+    expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'random')).toEqual({ name: 'random', inputText: '7', lineMode: true, readError: undefined })
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'GUESS<7|@USER_GUESS@>')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\n')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
@@ -870,7 +923,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
     await flush()
 
-    expect(mockedRunWithWorker.mock.calls[2][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'x', readError: undefined })
+    expect(mockedRunWithWorker.mock.calls[2][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'x', lineMode: true, readError: undefined })
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\nPlease enter digits only.\nGuess:\n')
     expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
@@ -955,10 +1008,10 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([
-      { name: 'stdout', inputText: '', readError: undefined },
-      { name: 'stdin', inputText: '', readError: undefined },
-      { name: 'stderr', inputText: '', readError: undefined },
-      { name: 'random', inputText: '', readError: undefined },
+      { name: 'stdout', inputText: '', lineMode: true, readError: undefined },
+      { name: 'stdin', inputText: '', lineMode: true, readError: undefined },
+      { name: 'stderr', inputText: '', lineMode: true, readError: undefined },
+      { name: 'random', inputText: '', lineMode: true, readError: undefined },
     ])
     expect(mockedRunWithWorker.mock.calls[0][0].procs).toBeUndefined()
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n')
@@ -992,7 +1045,7 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('read')
-    expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: '', readError: undefined })
+    expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: '', lineMode: true, readError: undefined })
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'read')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
     expect(document.activeElement).toBe(wrapper.get('[data-test="resource-input-stdin"]').element)
@@ -1013,7 +1066,7 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[1][0].stepLimit).toBe(1)
-    expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'Ada', readError: undefined })
+    expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'Ada', lineMode: true, readError: undefined })
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'got:Ada')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
 

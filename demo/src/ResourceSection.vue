@@ -3,6 +3,13 @@
     <code>{{ resource.name }}</code>
 
     <div v-if="showInput" class="resource-field">
+      <div class="resource-field-label-row">
+        <label class="resource-field-label" :for="inputId">{{ resource.name }} input buffer</label>
+        <span v-if="countdownSeconds !== undefined" class="resource-countdown" :data-test="`resource-countdown-${resource.name}`">
+          empty line in {{ countdownSeconds }}s
+        </span>
+      </div>
+      <p class="resource-field-help">one line is consumed per request</p>
       <Textarea
         :id="inputId"
         :model-value="input"
@@ -12,10 +19,11 @@
         wrap="off"
         @update:model-value="$emit('update:input', String($event))"
       />
-      <Button type="button" size="sm" :data-test="`resource-submit-${resource.name}`" :disabled="running || !canSubmit" @click="$emit('submit')">Submit</Button>
+      <Button type="button" size="sm" :data-test="`resource-submit-${resource.name}`" :disabled="running || !canSubmit" @click="$emit('submit')">Submit buffer</Button>
     </div>
 
     <div v-if="showOutput" class="resource-field">
+      <label class="resource-field-label" :for="outputId">{{ resource.name }} output</label>
       <Textarea
         :id="outputId"
         ref="outputTextarea"
@@ -49,6 +57,7 @@ const props = defineProps<{
   canSubmit: boolean
   showInput: boolean
   showOutput: boolean
+  countdownSeconds?: number
   attention?: 'input' | 'output'
 }>()
 
