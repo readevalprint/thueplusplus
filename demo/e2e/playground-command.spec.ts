@@ -248,12 +248,26 @@ test('state history click restores state and step prunes future rows', async ({ 
   await expect(page.getByTestId('playground-state')).toHaveValue('branch')
 })
 
+test('prefilled stdin buffer is consumed without waiting for submit', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await fillRules(page, '@IN@ ::< 30 stdin')
+  await page.getByTestId('playground-state').fill('@IN@')
+  await page.getByTestId('resource-input-stdin').fill('Ada\nLovelace\n')
+
+  await page.getByTestId('playground-step').click()
+
+  await expect(page.getByTestId('playground-status')).toContainText('stepped')
+  await expect(page.getByTestId('playground-state')).toHaveValue('Ada')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('Lovelace\n')
+  await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
+  await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
+})
+
 test('stdin submit resumes the last step command', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, 'PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30 stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
   await page.getByTestId('playground-state').fill('read')
 
-  await page.getByTestId('resource-input-stdin').fill('Ada')
   await expect(page.getByTestId('stdin-send')).toHaveCount(0)
   await expect(page.getByTestId('stdin-queue')).toHaveCount(0)
   await expect(page.getByTestId('resource-ready-stdin')).toHaveCount(0)
@@ -265,6 +279,7 @@ test('stdin submit resumes the last step command', async ({ page }) => {
   await expect(page.getByTestId('playground-state')).toHaveValue(/got:@IN@/)
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
 
+  await page.getByTestId('resource-input-stdin').fill('Ada')
   await page.getByTestId('resource-submit-stdin').click()
   await expect(page.getByTestId('playground-state')).toHaveValue('got:Ada')
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
@@ -318,22 +333,11 @@ test('resource sections are derived from rules and stdio is pinned', async ({ pa
   await expect(page.getByTestId('resource-submit-random')).toBeDisabled()
   await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
 
+  await page.getByTestId('resource-input-random').fill('7')
+  await page.getByTestId('resource-input-stdin').fill('x\n3\n8\n7\n')
+
   await expect(page.getByTestId('playground-auto')).toHaveCount(0)
   await page.getByTestId('playground-continue').click()
-
-  await expect(page.getByTestId('playground-status')).toContainText('waiting for random')
-  await expect(page.getByTestId('resource-submit-random')).toBeEnabled()
-  await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
-  await page.getByTestId('resource-input-random').fill('7')
-  await page.getByTestId('resource-submit-random').click()
-
-  await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
-  await expect(page.getByTestId('resource-submit-random')).toBeDisabled()
-  await expect(page.getByTestId('resource-submit-stdin')).toBeEnabled()
-  for (const guess of ['x', '3', '8', '7']) {
-    await page.getByTestId('resource-input-stdin').fill(guess)
-    await page.getByTestId('resource-submit-stdin').click()
-  }
 
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n', { timeout: 5000 })
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
