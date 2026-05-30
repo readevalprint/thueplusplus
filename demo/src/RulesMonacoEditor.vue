@@ -29,6 +29,7 @@ let applyingExternalValue = false
 
 interface RulesEditorElement extends HTMLElement {
   __thueppSetValue?: (value: string) => void
+  __thueppGetValue?: () => string
 }
 
 function registerThueppLanguage(monacoApi: typeof Monaco): void {
@@ -79,6 +80,7 @@ onMounted(async () => {
     editor.setValue(value)
     emit('update:modelValue', value)
   }
+  ;(container.value as RulesEditorElement).__thueppGetValue = () => editor?.getValue() ?? ''
   resizeObserver = new ResizeObserver(() => editor?.layout())
   resizeObserver.observe(container.value)
 })
@@ -123,7 +125,10 @@ function updateMatchedRuleDecoration(line: number | undefined): void {
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
-  if (container.value) delete (container.value as RulesEditorElement).__thueppSetValue
+  if (container.value) {
+    delete (container.value as RulesEditorElement).__thueppSetValue
+    delete (container.value as RulesEditorElement).__thueppGetValue
+  }
   editor?.dispose()
 })
 </script>

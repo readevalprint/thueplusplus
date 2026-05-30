@@ -8,12 +8,31 @@ async function fillRules(page: Page, value: string): Promise<void> {
   }, value)
 }
 
-test('koan detail route replaces the docs sidepanel with a full-width playground layout', async ({ page }) => {
+async function readRules(page: Page): Promise<string> {
+  return page.getByTestId('playground-rules').evaluate(element => {
+    const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
+    if (!editorElement.__thueppGetValue) throw new Error('rules Monaco editor is not ready')
+    return editorElement.__thueppGetValue()
+  })
+}
+
+function collectRuntimeErrors(page: Page): string[] {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+  return errors
+}
+
+test('koan detail route renders a usable full-width solve-first playground', async ({ page }) => {
+  const runtimeErrors = collectRuntimeErrors(page)
   await page.goto('/koans/fixed-greet/')
 
   const pageRoot = page.getByTestId('koans-page')
   const surface = page.getByTestId('playground-full-surface')
   const koanPanel = page.getByTestId('koan-playground-panel')
+  const solutions = page.getByTestId('koan-solutions-panel')
   const rules = page.getByTestId('playground-rules')
   const state = page.getByTestId('playground-state')
   const resources = page.getByTestId('resource-sections').first()
@@ -21,15 +40,19 @@ test('koan detail route replaces the docs sidepanel with a full-width playground
   await expect(page.getByTestId('koan-toc')).toHaveCount(0)
   await expect(pageRoot).toHaveClass(/koan-detail-page/)
   await expect(koanPanel).toBeVisible()
+  await expect(solutions).toBeVisible()
   await expect(page.getByTestId('koan-run-tests')).toBeVisible()
   await expect(rules).toBeVisible()
   await expect(state).toBeVisible()
   await expect(resources).toBeVisible()
+  await expect(koanPanel).not.toHaveAttribute('data-slot', 'card')
+  await expect(solutions).not.toHaveAttribute('data-slot', 'card')
 
-  const [pageBox, surfaceBox, koanBox, rulesBox, stateBox, resourcesBox] = await Promise.all([
+  const [pageBox, surfaceBox, koanBox, solutionsBox, rulesBox, stateBox, resourcesBox] = await Promise.all([
     pageRoot.boundingBox(),
     surface.boundingBox(),
     koanPanel.boundingBox(),
+    solutions.boundingBox(),
     rules.boundingBox(),
     state.boundingBox(),
     resources.boundingBox(),
@@ -37,11 +60,61 @@ test('koan detail route replaces the docs sidepanel with a full-width playground
   expect(pageBox?.width ?? 0).toBeGreaterThan(1100)
   expect(surfaceBox?.width ?? 0).toBeGreaterThan(1000)
   expect(surfaceBox?.height ?? 0).toBeGreaterThan(400)
-  expect(koanBox?.height ?? 0).toBeGreaterThan(250)
+  expect(koanBox?.height ?? 0).toBeGreaterThan(180)
+  expect(solutionsBox?.height ?? 0).toBeGreaterThan(80)
   expect(rulesBox?.height ?? 0).toBeGreaterThan(250)
+  expect(Math.abs((solutionsBox?.x ?? 0) - (koanBox?.x ?? 0))).toBeLessThan(8)
+  expect(solutionsBox!.y).toBeGreaterThan(koanBox!.y)
+  expect(solutionsBox!.x).toBeLessThan(rulesBox!.x)
   expect(koanBox!.x).toBeLessThan(rulesBox!.x)
   expect(rulesBox!.x).toBeLessThan(stateBox!.x)
   expect(stateBox!.x).toBeLessThan(resourcesBox!.x)
+
+  await page.getByTestId('solution-sort-title').click()
+  await expect(page.getByTestId('koan-solutions-table').locator('tbody tr').first()).toContainText('Direct Greeting')
+  await page.getByTestId('solution-sort-title').click()
+  await expect(page.getByTestId('koan-solutions-table').locator('tbody tr').first()).toContainText('Staged Greeting')
+  await page.getByTestId('solution-2026-05-29-direct-greeting').click()
+  await expect(page).toHaveURL(/\/koans\/fixed-greet\/2026-05-29-direct-greeting\/?$/)
+  expect(runtimeErrors).toEqual([])
+})
+
+test('koan debug loads case state and resource buffers in the browser', async ({ page }) => {
+  const runtimeErrors = collectRuntimeErrors(page)
+  await page.goto('/koans/binary-not/')
+
+  await fillRules(page, '0 ::= 1')
+  await page.getByTestId('koan-debug-zero-to-one').click()
+
+  expect(await readRules(page)).toBe('0 ::= 1')
+  await expect(page.getByTestId('playground-state')).toHaveValue('0\n')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('0\n')
+  await expect(page.getByTestId('resource-section-stdout')).toBeVisible()
+  await expect(page.getByTestId('playground-selected-case')).toContainText('zero to one')
+  await expect(page.getByTestId('playground-selected-case')).toContainText('koans/binary-not')
+  expect(runtimeErrors).toEqual([])
+})
+
+test('koan run tests reports passing and failing browser results', async ({ page }) => {
+  const runtimeErrors = collectRuntimeErrors(page)
+  await page.goto('/koans/binary-not/')
+
+  await fillRules(page, '@IN@ ::< 1 stdin\n^0$ ::= OUT1\\nEXIT\n^1$ ::= OUT0\\nEXIT\nOUT1 ::> stdout 1\\n\nOUT0 ::> stdout 0\\n\n^EXIT$ ::- 0\n::=\n@IN@')
+  await page.getByTestId('koan-run-tests').click()
+
+  await expect(page.getByTestId('koan-results-summary')).toContainText('2 / 2 passing', { timeout: 5000 })
+  await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'pass')
+  await expect(page.getByTestId('koan-test-one-to-zero')).toHaveAttribute('data-status', 'pass')
+
+  await fillRules(page, '0 ::= 1')
+  await page.getByTestId('koan-run-tests').click()
+
+  await expect(page.getByTestId('koan-results-summary')).toContainText('0 / 2 passing', { timeout: 5000 })
+  await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'fail')
+  await page.getByTestId('koan-test-toggle-zero-to-one').click()
+  await expect(page.getByTestId('koan-test-zero-to-one')).toContainText('stdout expected')
+  await expect(page.getByTestId('koan-test-zero-to-one')).toContainText('stdout actual')
+  expect(runtimeErrors).toEqual([])
 })
 
 test('playground selector searches by path/case but not input', async ({ page }) => {
@@ -152,7 +225,7 @@ test('parse-time builtin errors appear in state history', async ({ page }) => {
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue("Line 1: Unknown builtin 'nope'\nLine 1: Unknown builtin 'nope'")
 })
 
-test('timeline click restores state and step prunes future rows', async ({ page }) => {
+test('state history click restores state and step prunes future rows', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^start$ ::= middle\n^middle$ ::= done')
   await page.getByTestId('playground-state').fill('start')
