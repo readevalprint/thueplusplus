@@ -513,10 +513,15 @@ function resourceOutputText(name: string): string {
 function resourceConfigs() {
   return resourceSections.value.map(resource => ({
     name: resource.name,
-    inputText: isResourceReady(resource.name) ? submittedResourceInputText(resource.name) : '',
+    inputText: resourceInputTextForRun(resource.name),
     lineMode: true,
     readError: undefined,
   }))
+}
+
+function resourceInputTextForRun(name: string): string {
+  if (isResourceReady(name)) return submittedResourceInputText(name)
+  return resourceInputs.value[name] ?? ''
 }
 
 function submittedResourceInputText(name: string): string {
@@ -1058,7 +1063,7 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
       outputText: log.outputText,
     }
     nextLogs[log.name] = normalized
-    if (log.remainingInputText !== undefined && Object.prototype.hasOwnProperty.call(nextSubmittedInputs, log.name)) {
+    if (log.remainingInputText !== undefined && (Object.prototype.hasOwnProperty.call(nextSubmittedInputs, log.name) || normalized.reads.length > 0)) {
       nextInputs[log.name] = log.remainingInputText
       if (log.remainingInputText === '') delete nextSubmittedInputs[log.name]
       else nextSubmittedInputs[log.name] = log.remainingInputText
