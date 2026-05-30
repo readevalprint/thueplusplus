@@ -64,7 +64,7 @@ function buildResources(options) {
     if (resources[name]) return;
     const config = configsByName.get(name) || {};
     const buffer = { text: String(config.inputText ?? fallbackInput) };
-    const submittedValueMode = Object.prototype.hasOwnProperty.call(config, 'inputText');
+    const submittedValueMode = Object.prototype.hasOwnProperty.call(config, 'inputText') && !config.lineMode;
     const log = { name, reads: [], writes: [], errors: [], remainingInputText: buffer.text, outputText: '' };
     logs.push(log);
     resources[name] = {

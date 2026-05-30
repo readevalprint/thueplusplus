@@ -1,6 +1,7 @@
 export interface DemoResourceConfig {
   name: string
   inputText: string
+  lineMode?: boolean
   readError?: string
 }
 
