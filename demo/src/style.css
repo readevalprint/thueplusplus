@@ -1136,6 +1136,11 @@ code {
   min-height: 0;
   overflow: visible;
 }
+.playground-chrome-bare .playground-layout {
+  flex: 0 0 clamp(34rem, 72vh, 48rem);
+  height: clamp(34rem, 72vh, 48rem);
+  min-height: 34rem;
+}
 .playground-embed-layout {
   display: flex;
   flex-direction: column;

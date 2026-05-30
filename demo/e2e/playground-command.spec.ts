@@ -8,6 +8,36 @@ async function fillRules(page: Page, value: string): Promise<void> {
   }, value)
 }
 
+test('koan detail route shows a visible full playground with koan panel before rules', async ({ page }) => {
+  await page.goto('/koans/fixed-greet/')
+
+  const surface = page.getByTestId('playground-full-surface')
+  const koanPanel = page.getByTestId('koan-playground-panel')
+  const rules = page.getByTestId('playground-rules')
+  const state = page.getByTestId('playground-state')
+  const resources = page.getByTestId('resource-sections').first()
+
+  await expect(koanPanel).toBeVisible()
+  await expect(page.getByTestId('koan-run-tests')).toBeVisible()
+  await expect(rules).toBeVisible()
+  await expect(state).toBeVisible()
+  await expect(resources).toBeVisible()
+
+  const [surfaceBox, koanBox, rulesBox, stateBox, resourcesBox] = await Promise.all([
+    surface.boundingBox(),
+    koanPanel.boundingBox(),
+    rules.boundingBox(),
+    state.boundingBox(),
+    resources.boundingBox(),
+  ])
+  expect(surfaceBox?.height ?? 0).toBeGreaterThan(400)
+  expect(koanBox?.height ?? 0).toBeGreaterThan(250)
+  expect(rulesBox?.height ?? 0).toBeGreaterThan(250)
+  expect(koanBox!.x).toBeLessThan(rulesBox!.x)
+  expect(rulesBox!.x).toBeLessThan(stateBox!.x)
+  expect(stateBox!.x).toBeLessThan(resourcesBox!.x)
+})
+
 test('playground selector searches by path/case but not input', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await page.getByTestId('test-case-command-trigger').click()
