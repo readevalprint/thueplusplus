@@ -60,6 +60,8 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   expect(pageBox?.width ?? 0).toBeGreaterThan(1100)
   expect(surfaceBox?.width ?? 0).toBeGreaterThan(1000)
   expect(surfaceBox?.height ?? 0).toBeGreaterThan(400)
+  const pageScroll = await page.evaluate(() => (document.scrollingElement?.scrollHeight ?? 0) - window.innerHeight)
+  expect(pageScroll).toBeLessThanOrEqual(1)
   expect(koanBox?.height ?? 0).toBeGreaterThan(180)
   expect(solutionsBox?.height ?? 0).toBeGreaterThan(80)
   expect(rulesBox?.height ?? 0).toBeGreaterThan(250)
