@@ -154,6 +154,17 @@ a { color: inherit; touch-action: manipulation; }
 .koans-page {
   display: block;
 }
+.koan-detail-page {
+  display: block;
+  margin: 0 auto;
+  max-width: none;
+  padding: clamp(32px, 5vw, 64px) var(--site-gutter) max(var(--space-12), 70vh);
+  width: 100%;
+}
+.koan-detail-document {
+  max-width: none;
+  width: 100%;
+}
 .readme-toc {
   position: sticky;
   top: var(--space-6);

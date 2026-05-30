@@ -1,5 +1,5 @@
 <template>
-  <main :class="selectedKoan ? 'readme-page' : 'readme-page koans-page'" data-test="koans-page">
+  <main :class="pageClass" data-test="koans-page">
     <KoanSolutionDetail
       v-if="selectedKoan && selectedSolution"
       :koan="selectedKoan"
@@ -37,4 +37,8 @@ const props = defineProps<{
 
 const selectedKoan = computed(() => koans.find((koan) => koan.slug === props.selectedSlug))
 const selectedSolution = computed(() => selectedKoan.value?.solutions.find(solution => solution.id === props.selectedSolutionId?.toLowerCase()))
+const pageClass = computed(() => {
+  if (selectedKoan.value && !selectedSolution.value) return 'koan-detail-page'
+  return selectedKoan.value ? 'readme-page' : 'readme-page koans-page'
+})
 </script>
