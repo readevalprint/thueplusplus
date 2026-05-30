@@ -885,6 +885,69 @@ code {
   line-height: 1.45;
   margin: var(--space-2) 0 0;
 }
+.koan-tests-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+.koan-tests-header h3 {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+.koan-test-items {
+  gap: var(--space-2);
+}
+.koan-test-item {
+  background: rgb(255 255 255 / 0.025);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+.koan-test-item[data-status="pass"] {
+  border-color: rgb(34 197 94 / 0.34);
+}
+.koan-test-item[data-status="fail"] {
+  border-color: rgb(239 68 68 / 0.42);
+}
+.koan-test-row-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  min-width: 0;
+}
+.koan-test-row-header [data-slot="item-title"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.koan-test-failure-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.koan-test-diff-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.koan-test-diff-title {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-transform: lowercase;
+}
+.koan-resource-diff-lines {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
 .koan-solutions-panel [data-slot="table-container"] {
   max-width: 100%;
 }

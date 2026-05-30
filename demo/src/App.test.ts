@@ -165,10 +165,9 @@ describe('Go-WASM demo UI', () => {
       resources: [],
     }))
     const result = wrapper.get('[data-test="koan-test-default-state"]')
-    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 / 1 passing')
+    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 passing · 1 failing')
     expect(result.attributes('data-status')).toBe('fail')
-    await wrapper.get('[data-test="koan-test-toggle-default-state"]').trigger('click')
-    await flush()
+    expect(wrapper.get('[data-test="koan-test-resource-diff-default-state-stdout"]').text()).toContain('stdout differs')
     expect(result.text()).toContain('"Hello, koan!\\n"')
     expect(result.text()).toContain('""')
   })
@@ -204,7 +203,7 @@ describe('Go-WASM demo UI', () => {
 
     expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="koan-run-tests"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="koan-debug-default-state"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="koan-test-default-state"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-full-surface"]').text()).toContain('program rules')
     expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
   })
@@ -235,32 +234,27 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('0\n')
     expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('1\n')
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([])
-    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('2 / 2 passing')
+    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('2 passing')
     expect(wrapper.get('[data-test="koan-test-zero-to-one"]').attributes('data-status')).toBe('pass')
     expect(wrapper.get('[data-test="koan-test-one-to-zero"]').attributes('data-status')).toBe('pass')
   })
 
-  it('debugs a koan case by loading resource buffers without changing rules or copying stdin into state', async () => {
+  it('shows resource-shaped koan failures as stacked expected and actual diffs', async () => {
     window.history.pushState({}, '', '/koans/binary-not/')
+    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: 'wrong\n', stderr: '' })
     const wrapper = await mountApp()
     const rules = wrapper.get('[data-test="playground-rules"]')
     await rules.setValue('0 ::= 1')
 
-    await wrapper.get('[data-test="koan-test-toggle-zero-to-one"]').trigger('click')
-    await flush()
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('0 ::= 1')
-    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('stdin input')
-    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('stdout expected')
-
-    await wrapper.get('[data-test="koan-debug-zero-to-one"]').trigger('click')
+    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
     await flush()
 
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('0 ::= 1')
-    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('')
-    expect((wrapper.get('[data-test="resource-input-stdin"]').element as HTMLTextAreaElement).value).toBe('0\n')
-    expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
-    expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('zero to one')
-    expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('koans/binary-not')
+    expect(wrapper.find('[data-test="koan-debug-zero-to-one"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').attributes('data-status')).toBe('fail')
+    expect(wrapper.get('[data-test="koan-test-resource-diff-zero-to-one-stdout"]').text()).toContain('stdout differs')
+    expect(wrapper.get('[data-test="koan-test-resource-expected-zero-to-one-stdout"]').text()).toContain('"1\\n"')
+    expect(wrapper.get('[data-test="koan-test-resource-actual-zero-to-one-stdout"]').text()).toContain('"wrong\\n"')
   })
 
   it('sorts koan solutions with the shadcn data table controls', async () => {

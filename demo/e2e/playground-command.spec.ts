@@ -8,14 +8,6 @@ async function fillRules(page: Page, value: string): Promise<void> {
   }, value)
 }
 
-async function readRules(page: Page): Promise<string> {
-  return page.getByTestId('playground-rules').evaluate(element => {
-    const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
-    if (!editorElement.__thueppGetValue) throw new Error('rules Monaco editor is not ready')
-    return editorElement.__thueppGetValue()
-  })
-}
-
 function collectRuntimeErrors(page: Page): string[] {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -81,22 +73,6 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   expect(runtimeErrors).toEqual([])
 })
 
-test('koan debug loads resource buffers without copying stdin into state', async ({ page }) => {
-  const runtimeErrors = collectRuntimeErrors(page)
-  await page.goto('/koans/binary-not/')
-
-  await fillRules(page, '0 ::= 1')
-  await page.getByTestId('koan-debug-zero-to-one').click()
-
-  expect(await readRules(page)).toBe('0 ::= 1')
-  await expect(page.getByTestId('playground-state')).toHaveValue('')
-  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('0\n')
-  await expect(page.getByTestId('resource-section-stdout')).toBeVisible()
-  await expect(page.getByTestId('playground-selected-case')).toContainText('zero to one')
-  await expect(page.getByTestId('playground-selected-case')).toContainText('koans/binary-not')
-  expect(runtimeErrors).toEqual([])
-})
-
 test('koan run tests reports passing and failing browser results', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
   await page.goto('/koans/binary-not/')
@@ -104,18 +80,19 @@ test('koan run tests reports passing and failing browser results', async ({ page
   await fillRules(page, '@IN@ ::< 1 stdin\n^0$ ::= OUT1\\nEXIT\n^1$ ::= OUT0\\nEXIT\nOUT1 ::> stdout 1\\n\nOUT0 ::> stdout 0\\n\n^EXIT$ ::- 0\n::=\n@IN@')
   await page.getByTestId('koan-run-tests').click()
 
-  await expect(page.getByTestId('koan-results-summary')).toContainText('2 / 2 passing', { timeout: 5000 })
+  await expect(page.getByTestId('koan-results-summary')).toContainText('2 passing', { timeout: 5000 })
   await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'pass')
   await expect(page.getByTestId('koan-test-one-to-zero')).toHaveAttribute('data-status', 'pass')
+  await expect(page.getByTestId('koan-debug-zero-to-one')).toHaveCount(0)
 
   await fillRules(page, '0 ::= 1')
   await page.getByTestId('koan-run-tests').click()
 
-  await expect(page.getByTestId('koan-results-summary')).toContainText('0 / 2 passing', { timeout: 5000 })
+  await expect(page.getByTestId('koan-results-summary')).toContainText('0 passing · 2 failing', { timeout: 5000 })
   await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'fail')
-  await page.getByTestId('koan-test-toggle-zero-to-one').click()
-  await expect(page.getByTestId('koan-test-zero-to-one')).toContainText('stdout expected')
-  await expect(page.getByTestId('koan-test-zero-to-one')).toContainText('stdout actual')
+  await expect(page.getByTestId('koan-test-resource-diff-zero-to-one-stdout')).toContainText('stdout differs')
+  await expect(page.getByTestId('koan-test-resource-expected-zero-to-one-stdout')).toContainText('"1\\n"')
+  await expect(page.getByTestId('koan-test-resource-actual-zero-to-one-stdout')).toContainText('""')
   expect(runtimeErrors).toEqual([])
 })
 
