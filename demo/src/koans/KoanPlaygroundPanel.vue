@@ -45,25 +45,39 @@
             <div v-if="isExpanded(testCase.name)" class="koan-test-details" :data-test="`koan-test-details-${slugId(testCase.name)}`">
               <section v-if="hasFixtureDetails(testCase)" class="koan-test-detail-section">
                 <h4>fixture</h4>
-                <dl class="koan-test-fixture-list">
-                  <template v-if="initialState(testCase) !== ''">
-                    <dt>initial state</dt>
-                    <dd><pre :data-test="`koan-test-state-${slugId(testCase.name)}`">{{ printable(initialState(testCase)) }}</pre></dd>
-                  </template>
-                  <template v-for="resource in inputResources(testCase)" :key="`input-${resource.name}`">
-                    <dt>{{ resource.name }} buffer</dt>
-                    <dd><pre :data-test="`koan-test-resource-input-${slugId(testCase.name)}-${slugId(resource.name)}`">{{ printable(resource.value) }}</pre></dd>
-                  </template>
-                  <template v-for="resource in expectedResources(testCase)" :key="`expected-${resource.name}`">
-                    <dt>{{ resource.name }} expected output</dt>
-                    <dd><pre :data-test="`koan-test-resource-fixture-expected-${slugId(testCase.name)}-${slugId(resource.name)}`">{{ printable(resource.value) }}</pre></dd>
-                  </template>
-                  <dt>expected exit code</dt>
-                  <dd><code :data-test="`koan-test-exit-code-fixture-${slugId(testCase.name)}`">{{ testCase.exit_code }}</code></dd>
-                </dl>
+                <div class="koan-test-fixture-stack">
+                  <div v-if="initialState(testCase) !== ''" class="koan-test-value-block">
+                    <div class="koan-test-value-label">initial state</div>
+                    <pre :data-test="`koan-test-state-${slugId(testCase.name)}`">{{ initialState(testCase) }}</pre>
+                  </div>
+
+                  <div v-for="resource in testcaseResources(testCase)" :key="resource.name" class="koan-test-resource-block">
+                    <div v-if="typeof resource.buffer === 'string'" class="koan-test-value-block">
+                      <div class="koan-test-value-label">{{ resource.name }} buffer</div>
+                      <pre :data-test="`koan-test-resource-input-${slugId(testCase.name)}-${slugId(resource.name)}`">{{ resource.buffer }}</pre>
+                    </div>
+
+                    <div v-if="resourceFailure(testCase.name, resource.name)" class="koan-test-diff-block" :data-test="`koan-test-resource-diff-${slugId(testCase.name)}-${slugId(resource.name)}`">
+                      <div class="koan-test-diff-title">{{ resource.name }} expected vs actual</div>
+                      <div class="state-diff-lines koan-resource-diff-lines">
+                        <div class="state-diff-line removed" :data-test="`koan-test-resource-expected-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">-</span>{{ resourceFailure(testCase.name, resource.name)?.expected }}</div>
+                        <div class="state-diff-line added" :data-test="`koan-test-resource-actual-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">+</span>{{ resourceFailure(testCase.name, resource.name)?.actual }}</div>
+                      </div>
+                    </div>
+                    <div v-else-if="typeof resource.expected_output === 'string'" class="koan-test-value-block">
+                      <div class="koan-test-value-label">{{ resource.name }} expected output</div>
+                      <pre :data-test="`koan-test-resource-fixture-expected-${slugId(testCase.name)}-${slugId(resource.name)}`">{{ resource.expected_output }}</pre>
+                    </div>
+                  </div>
+
+                  <div class="koan-test-value-block koan-test-exit-code-block">
+                    <div class="koan-test-value-label">expected exit code</div>
+                    <code :data-test="`koan-test-exit-code-fixture-${slugId(testCase.name)}`">{{ testCase.exit_code }}</code>
+                  </div>
+                </div>
               </section>
 
-              <section v-if="resultFor(testCase.name) && !resultFor(testCase.name)?.passed" class="koan-test-detail-section koan-test-failure-details" :data-test="`koan-test-failure-${slugId(testCase.name)}`">
+              <section v-if="hasNonResourceFailure(testCase.name)" class="koan-test-detail-section koan-test-failure-details" :data-test="`koan-test-failure-${slugId(testCase.name)}`">
                 <h4>result</h4>
                 <template v-if="resultFor(testCase.name)?.exitCode && !resultFor(testCase.name)?.exitCode.passed">
                   <div class="koan-test-diff-block" :data-test="`koan-test-exit-code-diff-${slugId(testCase.name)}`">
@@ -74,18 +88,6 @@
                     </div>
                   </div>
                 </template>
-                <div
-                  v-for="resource in failedResources(testCase.name)"
-                  :key="resource.name"
-                  class="koan-test-diff-block"
-                  :data-test="`koan-test-resource-diff-${slugId(testCase.name)}-${slugId(resource.name)}`"
-                >
-                  <div class="koan-test-diff-title">{{ resource.name }} differs</div>
-                  <div class="state-diff-lines koan-resource-diff-lines">
-                    <div class="state-diff-line removed" :data-test="`koan-test-resource-expected-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">-</span>{{ printable(resource.expected) }}</div>
-                    <div class="state-diff-line added" :data-test="`koan-test-resource-actual-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">+</span>{{ printable(resource.actual) }}</div>
-                  </div>
-                </div>
                 <div v-if="resultFor(testCase.name)?.error" class="state-diff-error" :data-test="`koan-test-error-${slugId(testCase.name)}`">
                   {{ resultFor(testCase.name)?.error }}
                 </div>
@@ -107,8 +109,8 @@
 import { computed, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
-import type { KoanEntry, KoanTestCase } from './types'
-import type { KoanTestResult } from './runKoanTests'
+import type { KoanEntry, KoanTestCase, KoanTestResource } from './types'
+import type { KoanResourceResult, KoanTestResult } from './runKoanTests'
 import KoanSolutionsTable from './KoanSolutionsTable.vue'
 
 const props = defineProps<{
@@ -167,28 +169,21 @@ function initialState(testCase: KoanTestCase): string {
   return testCase.state ?? ''
 }
 
-function inputResources(testCase: KoanTestCase): Array<{ name: string; value: string }> {
-  return Object.entries(testCase.resources)
-    .filter((entry): entry is [string, { buffer: string }] => typeof entry[1].buffer === 'string')
-    .map(([name, resource]) => ({ name, value: resource.buffer }))
-}
-
-function expectedResources(testCase: KoanTestCase): Array<{ name: string; value: string }> {
-  return Object.entries(testCase.resources)
-    .filter((entry): entry is [string, { expected_output: string }] => typeof entry[1].expected_output === 'string')
-    .map(([name, resource]) => ({ name, value: resource.expected_output }))
+function testcaseResources(testCase: KoanTestCase): Array<{ name: string } & KoanTestResource> {
+  return Object.entries(testCase.resources).map(([name, resource]) => ({ name, ...resource }))
 }
 
 function hasFixtureDetails(testCase: KoanTestCase): boolean {
-  return initialState(testCase) !== '' || inputResources(testCase).length > 0 || expectedResources(testCase).length > 0 || typeof testCase.exit_code === 'number'
+  return initialState(testCase) !== '' || testcaseResources(testCase).length > 0 || typeof testCase.exit_code === 'number'
 }
 
-function failedResources(name: string) {
-  return resultFor(name)?.resources.filter(resource => !resource.passed) ?? []
+function resourceFailure(testName: string, resourceName: string): KoanResourceResult | undefined {
+  return resultFor(testName)?.resources.find(resource => resource.name === resourceName && !resource.passed)
 }
 
-function printable(value: string): string {
-  return JSON.stringify(value)
+function hasNonResourceFailure(name: string): boolean {
+  const result = resultFor(name)
+  return Boolean(result && (!result.exitCode.passed || result.error))
 }
 
 function slugId(value: string): string {
