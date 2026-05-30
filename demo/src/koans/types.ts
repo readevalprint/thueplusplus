@@ -35,6 +35,7 @@ export interface KoanEntry {
   path: string
   bestSolutionId: string | null
   tests: KoanTestCase[]
+  hintSource?: string
   solutions: KoanSolution[]
 }
 

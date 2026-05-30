@@ -16,6 +16,12 @@ const testModules = import.meta.glob('../../../koans/*/tests/*.json', {
   eager: true,
 })
 
+const hintModules = import.meta.glob('../../../koans/*/hint.tpp', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+
 const solutionSourceModules = import.meta.glob('../../../koans/*/solutions/*.tpp', {
   query: '?raw',
   import: 'default',
@@ -36,6 +42,7 @@ export const koans: KoanEntry[] = Object.entries(readmeModules)
       path: `/koans/${slug}/`,
       bestSolutionId: solutions[0]?.id ?? null,
       tests: testsForSlug(slug),
+      hintSource: hintForSlug(slug),
       solutions,
     }
   })
@@ -45,6 +52,11 @@ function testsForSlug(slug: string): KoanTestCase[] {
   return Object.entries(testModules)
     .filter(([testPath]) => koanSlugFromTestPath(testPath) === slug)
     .flatMap(([_testPath, rawManifest]) => (rawManifest as KoanTestManifest).cases)
+}
+
+function hintForSlug(slug: string): string | undefined {
+  const match = Object.entries(hintModules).find(([hintPath]) => koanSlugFromHintPath(hintPath) === slug)
+  return match ? String(match[1]) : undefined
 }
 
 function solutionsForSlug(slug: string): KoanSolution[] {
@@ -94,6 +106,12 @@ function koanSlugFromMetricPath(path: string): string {
 function koanSlugFromTestPath(path: string): string {
   const match = path.match(/\/koans\/([^/]+)\/tests\/[^/]+\.json$/)
   if (!match) throw new Error(`Invalid koan test path: ${path}`)
+  return match[1]
+}
+
+function koanSlugFromHintPath(path: string): string {
+  const match = path.match(/\/koans\/([^/]+)\/hint\.tpp$/)
+  if (!match) throw new Error(`Invalid koan hint path: ${path}`)
   return match[1]
 }
 

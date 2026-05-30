@@ -12,8 +12,6 @@
   </nav>
 
   <article class="readme-document" :data-test="`koan-solution-${solution.id}`">
-    <KoanBreadcrumbs :koan="koan" :solution="solution" />
-
     <header>
       <h1 :id="titleHeadingId">{{ koan.title }}</h1>
       <p>{{ koan.summary }}</p>
@@ -40,7 +38,6 @@
 import { computed } from 'vue'
 import MarkdownDocument from '../MarkdownDocument.vue'
 import ReadmeCodeEditor from '../ReadmeCodeEditor.vue'
-import KoanBreadcrumbs from './KoanBreadcrumbs.vue'
 import { parseMarkdown, type MarkdownBlock } from '../markdown'
 import type { KoanEntry, KoanSolution } from './types'
 

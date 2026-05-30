@@ -112,9 +112,9 @@ a { color: inherit; touch-action: manipulation; }
   justify-content: space-between;
   gap: var(--space-4);
   width: 100%;
-  max-width: var(--site-max-width);
+  max-width: none;
   height: 100%;
-  margin: 0 auto;
+  margin: 0;
   padding: 0 var(--site-gutter);
 }
 .site-brand {
@@ -884,6 +884,16 @@ code {
   font-size: 0.92rem;
   line-height: 1.45;
   margin: var(--space-2) 0 0;
+}
+.koan-title-nav {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.koan-title-select {
+  max-width: 14rem;
+  min-width: 0;
 }
 .koan-tests-header {
   align-items: center;

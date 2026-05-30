@@ -9,6 +9,9 @@
     <KoanDetail
       v-else-if="selectedKoan"
       :koan="selectedKoan"
+      :koans="koans"
+      :previous-koan="previousKoan"
+      :next-koan="nextKoan"
     />
 
     <article v-else-if="selectedSlug" class="readme-document" data-test="koan-not-found">
@@ -36,6 +39,9 @@ const props = defineProps<{
 }>()
 
 const selectedKoan = computed(() => koans.find((koan) => koan.slug === props.selectedSlug))
+const selectedKoanIndex = computed(() => selectedKoan.value ? koans.findIndex(koan => koan.slug === selectedKoan.value?.slug) : -1)
+const previousKoan = computed(() => selectedKoanIndex.value > 0 ? koans[selectedKoanIndex.value - 1] : undefined)
+const nextKoan = computed(() => selectedKoanIndex.value >= 0 && selectedKoanIndex.value < koans.length - 1 ? koans[selectedKoanIndex.value + 1] : undefined)
 const selectedSolution = computed(() => selectedKoan.value?.solutions.find(solution => solution.id === props.selectedSolutionId?.toLowerCase()))
 const pageClass = computed(() => {
   if (selectedKoan.value && !selectedSolution.value) return 'koan-detail-page'

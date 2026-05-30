@@ -127,10 +127,7 @@ describe('Go-WASM demo UI', () => {
     const topbar = wrapper.get('[data-test="site-topbar"]')
     expect(topbar.get('nav a[href="/koans"]').attributes('aria-current')).toBe('page')
     expect(wrapper.find(`[data-test="koan-solution-${solutionId}"]`).exists()).toBe(true)
-    const breadcrumbs = wrapper.get('[data-test="koan-breadcrumbs"]')
-    expect(breadcrumbs.get('a[href="/koans"]').text()).toBe('Koans')
-    expect(breadcrumbs.get('a[href="/koans/fixed-greet/"]').text()).toBe('Fixed Greeting')
-    expect(breadcrumbs.get('[aria-current="page"]').text()).toBe('Direct Greeting')
+    expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
     expect(document.title).toBe('Direct Greeting — Fixed Greeting — Thue++ Koan')
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('Write a Thue++ program that prints exactly Hello, koan!\\n and exits with code 0.')
     expect(wrapper.find('[data-test="koan-solutions-table"]').exists()).toBe(false)
@@ -150,7 +147,19 @@ describe('Go-WASM demo UI', () => {
 
     expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="koan-test-default-state"]').text()).toContain('default state')
+    expect(wrapper.get('[data-test="koan-title-nav"]').text()).toContain('Fixed Greeting')
+    expect(wrapper.get('[data-test="koan-title-select"]').text()).toContain('Fixed Greeting')
+    expect(wrapper.get('[data-test="koan-previous"]').attributes('href')).toBe('/koans/binary-not/')
+    expect(wrapper.find('[data-test="koan-next-disabled"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('')
+    expect(wrapper.get('[data-test="koan-load-hint"]').text()).toBe('Load Hint')
+    await wrapper.get('[data-test="koan-load-hint"]').trigger('click')
+    await flush()
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('# Goal: print exactly Hello, koan!')
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).not.toContain('title:')
+    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('START')
     expect(wrapper.find('[data-test="koan-attempt"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="koan-test-default-state"]').text()).not.toContain('"Hello, koan!\\n"')
     expect(wrapper.find('[data-test="koan-test-details-default-state"]').exists()).toBe(false)
@@ -229,6 +238,9 @@ describe('Go-WASM demo UI', () => {
     })
     const wrapper = await mountApp()
 
+    expect(wrapper.find('[data-test="koan-previous-disabled"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="koan-next"]').attributes('href')).toBe('/koans/fixed-greet/')
+    expect(wrapper.get('[data-test="koan-title-select"]').text()).toContain('Binary Not')
     expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('zero to one')
     expect(wrapper.get('[data-test="koan-test-one-to-zero"]').text()).toContain('one to zero')
 
@@ -274,9 +286,8 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/koans/fixed-greet/')
     const wrapper = await mountApp()
     const rows = () => wrapper.get('[data-test="koan-solutions-table"]').findAll('tbody tr').map(row => row.text())
-    const breadcrumbs = wrapper.get('[data-test="koan-breadcrumbs"]')
-    expect(breadcrumbs.get('a[href="/koans"]').text()).toBe('Koans')
-    expect(breadcrumbs.get('[aria-current="page"]').text()).toBe('Fixed Greeting')
+    expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="koan-title-nav"]').text()).toContain('Fixed Greeting')
 
     expect(rows()[0]).toContain('Direct Greeting')
     expect(rows()[1]).toContain('Staged Greeting')
@@ -353,7 +364,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-output-stderr"]').element.tagName).toBe('TEXTAREA')
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
     expect(loadedSource).toContain('Hello, World')
-    expect(loadedSource).not.toContain('\n::=\nSTART\n')
+    expect(loadedSource).toContain('\n::=\nSTART\n')
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
@@ -388,7 +399,7 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('')
   })
 
-  it('seeds Program State from pasted full source while keeping Program Rules runnable', async () => {
+  it('seeds Program State from pasted full source while keeping Program Rules copyable', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-state"]').setValue('stale override')
@@ -397,8 +408,15 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-rules"]').setValue(pastedSource)
     await wrapper.get('[data-test="playground-rules"]').trigger('paste')
 
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('^aaab$ ::= done\n')
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe(pastedSource)
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('aaab')
+
+    mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '', state: 'done', resourceLogs: [] })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker.mock.calls.at(-1)?.[0].sourceText).toBe('^aaab$ ::= done\n')
+    expect(mockedRunWithWorker.mock.calls.at(-1)?.[0].input).toBe('aaab')
   })
 
   it('does not rewrite Program Rules when Program State is edited after source seeding', async () => {

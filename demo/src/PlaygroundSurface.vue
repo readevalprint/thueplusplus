@@ -31,8 +31,12 @@
       <KoanPlaygroundPanel
         v-if="props.koan"
         :koan="props.koan"
+        :koans="props.koans"
+        :previous-koan="props.previousKoan"
+        :next-koan="props.nextKoan"
         :running="koanTestsRunning"
         :results="koanResults"
+        @load-hint="loadKoanHint"
         @run="runCurrentKoanTests"
       />
 
@@ -96,8 +100,12 @@
       <ResizablePanel v-if="props.koan" :default-size="24" :min-size="16" class="playground-column playground-koan-column">
         <KoanPlaygroundPanel
           :koan="props.koan"
+          :koans="props.koans"
+          :previous-koan="props.previousKoan"
+          :next-koan="props.nextKoan"
           :running="koanTestsRunning"
           :results="koanResults"
+          @load-hint="loadKoanHint"
           @run="runCurrentKoanTests"
         />
       </ResizablePanel>
@@ -201,6 +209,9 @@ const props = withDefaults(defineProps<{
   syncUrl?: boolean
   title?: string
   koan?: KoanEntry
+  koans?: KoanEntry[]
+  previousKoan?: KoanEntry
+  nextKoan?: KoanEntry
 }>(), {
   mode: 'auto',
   chrome: 'page',
@@ -353,7 +364,8 @@ const selectedTestCase = ref<TestCaseOption | undefined>()
 const koanResults = ref<KoanTestResult[] | null>(null)
 const koanTestsRunning = ref(false)
 
-const resourceSections = computed(() => mergeResourceSections(extractResources(rulesText.value), []))
+const runnableRulesText = computed(() => splitProgramSource(rulesText.value).rules)
+const resourceSections = computed(() => mergeResourceSections(extractResources(runnableRulesText.value), []))
 const selectedCaseLabel = computed(() => selectedTestCase.value?.caseName ?? '')
 const selectedCaseSource = computed(() => selectedTestCase.value?.manifestPath ?? '')
 const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
@@ -542,7 +554,7 @@ function loadFile(file: string): void {
     return
   }
   const split = splitProgramSource(source)
-  rulesText.value = split.rules
+  rulesText.value = source
   stateText.value = ''
   if (stateText.value === '') stateText.value = split.state
   loadError.value = split.error
@@ -559,7 +571,7 @@ function seedStateFromSource(source = rulesText.value): void {
   stateText.value = ''
   const split = splitProgramSource(source)
   loadError.value = split.error
-  rulesText.value = split.rules
+  rulesText.value = source
   if (stateText.value === '') stateText.value = split.state
   clearRun()
 }
@@ -582,7 +594,7 @@ async function runCurrentKoanTests(): Promise<void> {
   if (!props.koan) return
   koanTestsRunning.value = true
   try {
-    koanResults.value = await runKoanTests(props.koan, rulesText.value)
+    koanResults.value = await runKoanTests(props.koan, runnableRulesText.value)
   } finally {
     koanTestsRunning.value = false
   }
@@ -594,6 +606,17 @@ function initializeKoanAttempt(): void {
   rulesText.value = ''
   stateText.value = ''
   loadError.value = ''
+  clearRun()
+}
+
+function loadKoanHint(): void {
+  if (!props.koan?.hintSource) return
+  const split = splitProgramSource(props.koan.hintSource)
+  rulesText.value = props.koan.hintSource
+  stateText.value = split.state
+  loadError.value = split.error
+  selectedTestCase.value = undefined
+  resourceInputs.value = {}
   clearRun()
 }
 
@@ -707,7 +730,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
   const runState = stateText.value
   try {
     const result = await runWithWorker({
-      sourceText: rulesText.value,
+      sourceText: runnableRulesText.value,
       sourcePath: sourcePath.value,
       input: runState,
       maxEvals: maxSteps.value,
@@ -821,7 +844,7 @@ function appendStateDiffs(trace: DemoTraceEvent[], resources: ResourceSnapshot):
 
 function appendStepErrorDiff(error: string, state: string, resources: ResourceSnapshot): void {
   const row = lineNumberFromError(error) ?? 1
-  const rule = rulesText.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[row - 1]?.trim() || '(no matching rule trace)'
+  const rule = runnableRulesText.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[row - 1]?.trim() || '(no matching rule trace)'
   const step = stateDiffs.value.length
   const entry = {
     key: `error-${step}-${row}`,
