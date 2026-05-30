@@ -8,28 +8,34 @@ async function fillRules(page: Page, value: string): Promise<void> {
   }, value)
 }
 
-test('koan detail route shows a visible full playground with koan panel before rules', async ({ page }) => {
+test('koan detail route replaces the docs sidepanel with a full-width playground layout', async ({ page }) => {
   await page.goto('/koans/fixed-greet/')
 
+  const pageRoot = page.getByTestId('koans-page')
   const surface = page.getByTestId('playground-full-surface')
   const koanPanel = page.getByTestId('koan-playground-panel')
   const rules = page.getByTestId('playground-rules')
   const state = page.getByTestId('playground-state')
   const resources = page.getByTestId('resource-sections').first()
 
+  await expect(page.getByTestId('koan-toc')).toHaveCount(0)
+  await expect(pageRoot).toHaveClass(/koan-detail-page/)
   await expect(koanPanel).toBeVisible()
   await expect(page.getByTestId('koan-run-tests')).toBeVisible()
   await expect(rules).toBeVisible()
   await expect(state).toBeVisible()
   await expect(resources).toBeVisible()
 
-  const [surfaceBox, koanBox, rulesBox, stateBox, resourcesBox] = await Promise.all([
+  const [pageBox, surfaceBox, koanBox, rulesBox, stateBox, resourcesBox] = await Promise.all([
+    pageRoot.boundingBox(),
     surface.boundingBox(),
     koanPanel.boundingBox(),
     rules.boundingBox(),
     state.boundingBox(),
     resources.boundingBox(),
   ])
+  expect(pageBox?.width ?? 0).toBeGreaterThan(1100)
+  expect(surfaceBox?.width ?? 0).toBeGreaterThan(1000)
   expect(surfaceBox?.height ?? 0).toBeGreaterThan(400)
   expect(koanBox?.height ?? 0).toBeGreaterThan(250)
   expect(rulesBox?.height ?? 0).toBeGreaterThan(250)
