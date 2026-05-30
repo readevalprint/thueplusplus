@@ -152,13 +152,15 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="koan-test-default-state"]').text()).toContain('default state')
     expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
     expect(wrapper.find('[data-test="koan-attempt"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="koan-test-default-state"]').text()).not.toContain('"Hello, koan!\\n"')
 
+    await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT')
     await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
       sourcePath: 'koans/fixed-greet/attempt.tpp',
-      sourceText: '',
+      sourceText: '^START$ ::= OUT',
       input: '',
       resources: [],
     }))
@@ -169,6 +171,38 @@ describe('Go-WASM demo UI', () => {
     await flush()
     expect(result.text()).toContain('"Hello, koan!\\n"')
     expect(result.text()).toContain('""')
+  })
+
+  it('places the koan panel inside the full playground before rules, state, and resources', async () => {
+    window.history.pushState({}, '', '/koans/fixed-greet/')
+    const wrapper = await mountApp()
+
+    const surface = wrapper.get('[data-test="playground-full-surface"]')
+    const koanPanel = wrapper.get('[data-test="koan-playground-panel"]')
+    const rulesEditor = wrapper.get('[data-test="playground-rules"]')
+    const stateEditor = wrapper.get('[data-test="playground-state"]')
+    const resources = wrapper.get('[data-test="resource-sections"]')
+
+    expect(surface.element.contains(koanPanel.element)).toBe(true)
+    expect(surface.element.contains(rulesEditor.element)).toBe(true)
+    expect(koanPanel.element.compareDocumentPosition(rulesEditor.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(rulesEditor.element.compareDocumentPosition(stateEditor.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(stateEditor.element.compareDocumentPosition(resources.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(surface.text()).toContain('Fixed Greeting')
+    expect(surface.text()).toContain('program rules')
+    expect(surface.text()).toContain('program state')
+    expect(surface.text()).toContain('resources')
+  })
+
+  it('keeps the generic playground free of the koan panel', async () => {
+    window.history.pushState({}, '', '/playground')
+    const wrapper = await mountApp()
+
+    expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="koan-run-tests"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="koan-debug-default-state"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="playground-full-surface"]').text()).toContain('program rules')
+    expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
   })
 
   it('passes stdin buffers through resource-shaped koan tests', async () => {
@@ -208,13 +242,21 @@ describe('Go-WASM demo UI', () => {
     const rules = wrapper.get('[data-test="playground-rules"]')
     await rules.setValue('0 ::= 1')
 
+    await wrapper.get('[data-test="koan-test-toggle-zero-to-one"]').trigger('click')
+    await flush()
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('0 ::= 1')
+    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('stdin input')
+    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('stdout expected')
+
     await wrapper.get('[data-test="koan-debug-zero-to-one"]').trigger('click')
     await flush()
 
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('0 ::= 1')
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('0\n')
     expect((wrapper.get('[data-test="resource-input-stdin"]').element as HTMLTextAreaElement).value).toBe('0\n')
+    expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
     expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('zero to one')
+    expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('koans/binary-not')
   })
 
   it('sorts koan solutions with the shadcn data table controls', async () => {
