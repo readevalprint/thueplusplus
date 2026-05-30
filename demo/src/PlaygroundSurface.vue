@@ -81,11 +81,11 @@
           </template>
           <Textarea v-else-if="activeSection === 'state'" v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
           <div v-else-if="activeSection === 'input'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections.filter(showResourceInput)" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="false" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+            <ResourceSection v-for="resource in resourceSections.filter(showResourceInput)" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="false" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
           <StateDiffs v-else-if="activeSection === 'trace'" :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
           <div v-else-if="activeSection === 'resources'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
           <Textarea v-else :model-value="rulesText" data-test="embed-source-text" readonly spellcheck="false" wrap="off" />
         </CardContent>
@@ -153,7 +153,7 @@
         </ResizablePanelGroup>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
+      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
     </ResizablePanelGroup>
   </main>
 </template>
@@ -290,6 +290,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   surfaceResizeObserver?.disconnect()
+  stopPendingCountdown()
 })
 
 
@@ -328,9 +329,14 @@ const rulesText = ref('')
 const stateText = ref('')
 const resourceInputs = ref<Record<string, string>>({})
 const resourceSubmittedInputs = ref<Record<string, string>>({})
-const resourceLogs = ref<Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }>>({})
+const resourceLogs = ref<Record<string, ResourceLogSnapshot>>({})
 const resourceOutputs = ref<Record<string, string>>({})
 const resourceAttention = ref<Record<string, 'input'>>({})
+const pendingResourceName = ref('')
+const pendingResourceTimeoutSeconds = ref<number | undefined>()
+const pendingResourceCountdownSeconds = ref<number | undefined>()
+const pendingResourceDeadlineMs = ref<number | undefined>()
+let pendingResourceTimer: ReturnType<typeof window.setInterval> | undefined
 const loadError = ref('')
 const running = ref(false)
 const continuing = ref(false)
@@ -355,7 +361,7 @@ const isBusy = computed(() => running.value || continuing.value)
 const canReset = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
 const canUndo = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
 const canRun = computed(() => !isBusy.value)
-const requestedResourceName = computed(() => statusText.value.match(/^waiting for ([A-Za-z_][A-Za-z0-9_-]*)$/)?.[1])
+const requestedResourceName = computed(() => pendingResourceName.value)
 const stepTitle = computed(() => 'Step forward')
 const continueTitle = computed(() => 'Play')
 const endTitle = computed(() => `End without rendering intermediate states (max ${maxSteps.value} steps)`)
@@ -379,6 +385,21 @@ interface ResourceUsage {
   writes: boolean
 }
 
+interface ResourceLogSnapshot {
+  reads: string[]
+  writes: string[]
+  errors: string[]
+  remainingInputText?: string
+  outputText?: string
+}
+
+interface ResourceSnapshot {
+  inputs: Record<string, string>
+  submittedInputs: Record<string, string>
+  logs: Record<string, ResourceLogSnapshot>
+  outputs: Record<string, string>
+}
+
 interface DiffPart {
   key: string
   text: string
@@ -395,6 +416,7 @@ interface StateDiffEntry {
   stateAfter: string
   before: DiffPart[]
   after: DiffPart[]
+  resources: ResourceSnapshot
   error?: string
   note?: string
 }
@@ -458,6 +480,7 @@ function setResourceInput(name: string, value: string): void {
 
 async function submitResource(name: string): Promise<void> {
   if (requestedResourceName.value !== name) return
+  stopPendingCountdown()
   const value = resourceInputs.value[name] ?? ''
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
   if (lastRunMode.value === 'end') await endProgram()
@@ -466,7 +489,7 @@ async function submitResource(name: string): Promise<void> {
 }
 
 function isResourceReady(name: string): boolean {
-  return (resourceSubmittedInputs.value[name] ?? '').length > 0
+  return Object.prototype.hasOwnProperty.call(resourceSubmittedInputs.value, name)
 }
 
 async function focusResourceInput(name: string): Promise<void> {
@@ -490,9 +513,15 @@ function resourceOutputText(name: string): string {
 function resourceConfigs() {
   return resourceSections.value.map(resource => ({
     name: resource.name,
-    inputText: isResourceReady(resource.name) ? (resourceSubmittedInputs.value[resource.name] ?? '') : '',
+    inputText: isResourceReady(resource.name) ? submittedResourceInputText(resource.name) : '',
+    lineMode: true,
     readError: undefined,
   }))
+}
+
+function submittedResourceInputText(name: string): string {
+  const value = resourceSubmittedInputs.value[name] ?? ''
+  return value === '' ? '\n' : value
 }
 
 function loadFile(file: string): void {
@@ -564,6 +593,7 @@ function initializeKoanAttempt(): void {
 }
 
 function clearRun(): void {
+  stopPendingCountdown()
   running.value = false
   continuing.value = false
   pauseRequested.value = false
@@ -576,10 +606,43 @@ function clearRun(): void {
 }
 
 function clearDiffs(): void {
+  stopPendingCountdown()
   stateDiffs.value = []
   selectedHistoryKey.value = undefined
   baseState.value = stateText.value
   matchedRuleLine.value = undefined
+}
+
+function cloneResourceLog(log: ResourceLogSnapshot): ResourceLogSnapshot {
+  return {
+    reads: [...log.reads],
+    writes: [...log.writes],
+    errors: [...log.errors],
+    remainingInputText: log.remainingInputText,
+    outputText: log.outputText,
+  }
+}
+
+function cloneRecord(value: Record<string, string>): Record<string, string> {
+  return { ...value }
+}
+
+function resourceSnapshot(): ResourceSnapshot {
+  return {
+    inputs: cloneRecord(resourceInputs.value),
+    submittedInputs: cloneRecord(resourceSubmittedInputs.value),
+    logs: Object.fromEntries(Object.entries(resourceLogs.value).map(([name, log]) => [name, cloneResourceLog(log)])),
+    outputs: cloneRecord(resourceOutputs.value),
+  }
+}
+
+function restoreResourceSnapshot(snapshot: ResourceSnapshot): void {
+  resourceInputs.value = cloneRecord(snapshot.inputs)
+  resourceSubmittedInputs.value = cloneRecord(snapshot.submittedInputs)
+  resourceLogs.value = Object.fromEntries(Object.entries(snapshot.logs).map(([name, log]) => [name, cloneResourceLog(log)]))
+  resourceOutputs.value = cloneRecord(snapshot.outputs)
+  resourceAttention.value = {}
+  stopPendingCountdown()
 }
 
 async function stepProgram(): Promise<void> {
@@ -651,20 +714,23 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
     })
     const stderr = [...new Set([result.stderr, result.error, result.errors].filter(Boolean))].join('\n')
     applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
+    const resourcesAfterRun = resourceSnapshot()
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
     const trace = result.trace ?? []
-    appendStateDiffs(trace)
-    if (options.collapsedHistory) appendCollapsedEndDiff(runState, nextState ?? runState, result.evalCount)
+    appendStateDiffs(trace, resourcesAfterRun)
+    if (options.collapsedHistory) appendCollapsedEndDiff(runState, nextState ?? runState, result.evalCount, resourcesAfterRun)
     const pendingResource = pendingInputResource(result)
-    if (trace.length === 0 && stderr && !pendingResource) appendStepErrorDiff(stderr, runState)
+    if (trace.length === 0 && stderr && !pendingResource) appendStepErrorDiff(stderr, runState, resourcesAfterRun)
     updateMatchedRuleLine(trace)
     if (pendingResource) {
       statusText.value = `waiting for ${pendingResource}`
+      startPendingCountdown(pendingResource, pendingInputTimeoutSeconds(trace, pendingResource))
       activeSection.value = 'input'
       await focusResourceInput(pendingResource)
       return 'waiting'
     } else {
+      stopPendingCountdown()
       const stepped = options.stepLimit === 1 && trace.length > 0 && !result.exitCode && !stderr && !trace.some(event => event.exitCode !== undefined)
       if (stepped) {
         statusText.value = 'stepped'
@@ -678,6 +744,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       return 'exited'
     }
   } catch (error) {
+    stopPendingCountdown()
     const stderr = error instanceof Error ? error.message : String(error)
     const nextStderr = `${resourceOutputs.value.stderr ?? ''}${stderr}`
     resourceAttention.value = {}
@@ -704,7 +771,7 @@ function waitForContinueDelay(): Promise<void> {
   })
 }
 
-function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, evalCount?: number): void {
+function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, evalCount: number | undefined, resources: ResourceSnapshot): void {
   const previousStep = Math.max(0, ...stateDiffs.value.map(entry => entry.step))
   const step = Math.max(previousStep + 1, evalCount ?? previousStep + 1)
   const { before, after } = compactCharDiff(stateBefore, stateAfter)
@@ -717,6 +784,7 @@ function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, evalCou
     stateAfter,
     before,
     after,
+    resources,
     note: stateBefore === stateAfter ? 'no state change' : undefined,
   }
   stateDiffs.value = [...stateDiffs.value, entry]
@@ -734,18 +802,19 @@ function appendInitialStateDiff(state: string): void {
     stateAfter: state,
     before,
     after,
+    resources: resourceSnapshot(),
   }]
   selectedHistoryKey.value = 'initial-0'
 }
 
-function appendStateDiffs(trace: DemoTraceEvent[]): void {
-  const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index))
+function appendStateDiffs(trace: DemoTraceEvent[], resources: ResourceSnapshot): void {
+  const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index, resources))
   if (entries.length === 0) return
   stateDiffs.value = [...stateDiffs.value, ...entries]
   selectedHistoryKey.value = entries.at(-1)?.key
 }
 
-function appendStepErrorDiff(error: string, state: string): void {
+function appendStepErrorDiff(error: string, state: string, resources: ResourceSnapshot): void {
   const row = lineNumberFromError(error) ?? 1
   const rule = rulesText.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[row - 1]?.trim() || '(no matching rule trace)'
   const step = stateDiffs.value.length
@@ -758,6 +827,7 @@ function appendStepErrorDiff(error: string, state: string): void {
     stateAfter: state,
     before: [{ key: 'b-0', text: state, changed: false }],
     after: [{ key: 'a-0', text: state, changed: false }],
+    resources,
     error,
   }
   stateDiffs.value = [...stateDiffs.value, entry]
@@ -776,6 +846,7 @@ function selectHistoryEntry(key: string): void {
   if (!entry) return
   selectedHistoryKey.value = entry.key
   stateText.value = entry.stateAfter
+  restoreResourceSnapshot(entry.resources)
   matchedRuleLine.value = entry.row > 0 ? entry.row : undefined
   statusText.value = entry.step === 0 ? 'checkpoint initial' : `checkpoint #${entry.step}`
 }
@@ -803,7 +874,7 @@ function updateMatchedRuleLine(trace: DemoTraceEvent[]): void {
   matchedRuleLine.value = event?.lineNumber
 }
 
-function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] {
+function stateDiffEntry(event: DemoTraceEvent, index: number, resources: ResourceSnapshot): StateDiffEntry[] {
   const error = event.error
   const note = !error && event.stateBefore === event.stateAfter ? stateHistoryNote(event) : undefined
   const { before, after } = compactCharDiff(event.stateBefore, event.stateAfter)
@@ -816,6 +887,7 @@ function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] 
     stateAfter: event.stateAfter,
     before,
     after,
+    resources,
     error,
     note,
   }]
@@ -919,8 +991,61 @@ function pendingInputResource(result?: { error?: string; errors?: string }): str
   return match?.[1] ?? ''
 }
 
+function pendingInputTimeoutSeconds(trace: DemoTraceEvent[], resourceName: string): number | undefined {
+  const event = [...trace].reverse().find(item => item.error?.includes(`pending_input:${resourceName}`))
+  if (!event) return undefined
+  const rule = ruleTextForEvent(event)
+  const escapedName = resourceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = rule.match(new RegExp(`::<\\s+([0-9]+(?:\\.[0-9]+)?)\\s+${escapedName}\\b`))
+  if (!match) return undefined
+  const seconds = Number.parseFloat(match[1])
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined
+}
+
+function countdownForResource(name: string): number | undefined {
+  return pendingResourceName.value === name ? pendingResourceCountdownSeconds.value : undefined
+}
+
+function startPendingCountdown(name: string, timeoutSeconds?: number): void {
+  stopPendingCountdown()
+  pendingResourceName.value = name
+  pendingResourceTimeoutSeconds.value = timeoutSeconds
+  if (timeoutSeconds === undefined) return
+  const deadline = Date.now() + Math.ceil(timeoutSeconds * 1000)
+  pendingResourceDeadlineMs.value = deadline
+  pendingResourceCountdownSeconds.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+  pendingResourceTimer = window.setInterval(() => {
+    updatePendingCountdown()
+  }, 250)
+}
+
+function updatePendingCountdown(): void {
+  if (!pendingResourceName.value || pendingResourceTimeoutSeconds.value === undefined || pendingResourceDeadlineMs.value === undefined) return
+  const end = pendingResourceDeadlineMs.value
+  const remaining = Math.max(0, Math.ceil((end - Date.now()) / 1000))
+  pendingResourceCountdownSeconds.value = remaining
+  if (remaining > 0) return
+  const name = pendingResourceName.value
+  if ((resourceInputs.value[name] ?? '') === '') {
+    void submitResource(name)
+  } else {
+    stopPendingCountdown()
+  }
+}
+
+function stopPendingCountdown(): void {
+  if (pendingResourceTimer) {
+    window.clearInterval(pendingResourceTimer)
+    pendingResourceTimer = undefined
+  }
+  pendingResourceName.value = ''
+  pendingResourceTimeoutSeconds.value = undefined
+  pendingResourceCountdownSeconds.value = undefined
+  pendingResourceDeadlineMs.value = undefined
+}
+
 function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?: string[]; errors?: string[]; remainingInputText?: string; outputText?: string }>, stdout: string, stderr: string): void {
-  const nextLogs: Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }> = {}
+  const nextLogs: Record<string, ResourceLogSnapshot> = {}
   const nextInputs = { ...resourceInputs.value }
   const nextSubmittedInputs = { ...resourceSubmittedInputs.value }
   const nextOutputs: Record<string, string> = { ...resourceOutputs.value }
@@ -933,9 +1058,10 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
       outputText: log.outputText,
     }
     nextLogs[log.name] = normalized
-    if (log.remainingInputText !== undefined && (nextSubmittedInputs[log.name] ?? '').length > 0) {
+    if (log.remainingInputText !== undefined && Object.prototype.hasOwnProperty.call(nextSubmittedInputs, log.name)) {
       nextInputs[log.name] = log.remainingInputText
-      nextSubmittedInputs[log.name] = log.remainingInputText
+      if (log.remainingInputText === '') delete nextSubmittedInputs[log.name]
+      else nextSubmittedInputs[log.name] = log.remainingInputText
     }
     const outputText = log.outputText ?? (normalized.writes.length > 0 ? normalized.writes.join('') : undefined)
     if (outputText !== undefined) nextOutputs[log.name] = `${nextOutputs[log.name] ?? ''}${outputText}`
