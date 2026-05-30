@@ -34,7 +34,6 @@
         :running="koanTestsRunning"
         :results="koanResults"
         @run="runCurrentKoanTests"
-        @debug="debugKoanCase"
       />
 
       <Card class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
@@ -100,7 +99,6 @@
           :running="koanTestsRunning"
           :results="koanResults"
           @run="runCurrentKoanTests"
-          @debug="debugKoanCase"
         />
       </ResizablePanel>
       <ResizableHandle v-if="props.koan" />
@@ -178,7 +176,7 @@ import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
 import { runKoanTests, type KoanTestResult } from './koans/runKoanTests'
-import type { KoanEntry, KoanTestCase } from './koans/types'
+import type { KoanEntry } from './koans/types'
 
 export type PlaygroundSection = 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
 export type PlaygroundMode = 'auto' | 'full' | 'compact' | 'mini' | 'debug'
@@ -346,14 +344,12 @@ const continueSpeed = ref<ContinueSpeed>('10')
 const maxSteps = ref(10000)
 const matchedRuleLine = ref<number | undefined>()
 const selectedTestCase = ref<TestCaseOption | undefined>()
-const activeKoanCaseName = ref('')
 const koanResults = ref<KoanTestResult[] | null>(null)
 const koanTestsRunning = ref(false)
-const koanDebugResourceNames = ref<string[]>([])
 
-const resourceSections = computed(() => mergeResourceSections(extractResources(rulesText.value), koanDebugResourceNames.value))
-const selectedCaseLabel = computed(() => selectedTestCase.value?.caseName ?? activeKoanCaseName.value)
-const selectedCaseSource = computed(() => selectedTestCase.value?.manifestPath ?? (activeKoanCaseName.value && props.koan ? `koans/${props.koan.slug}` : ''))
+const resourceSections = computed(() => mergeResourceSections(extractResources(rulesText.value), []))
+const selectedCaseLabel = computed(() => selectedTestCase.value?.caseName ?? '')
+const selectedCaseSource = computed(() => selectedTestCase.value?.manifestPath ?? '')
 const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
 const isBusy = computed(() => running.value || continuing.value)
 const canReset = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
@@ -503,7 +499,6 @@ function loadFile(file: string): void {
   const normalized = normalizeFileParam(file)
   const source = examplesByPublicPath[normalized]
   selectedTestCase.value = undefined
-  activeKoanCaseName.value = ''
   fileParam.value = normalized
   sourcePath.value = normalized.replace(/^\.\//, '')
   if (!source) {
@@ -519,7 +514,6 @@ function loadFile(file: string): void {
   loadError.value = split.error
   clearRun()
   resourceInputs.value = {}
-  koanDebugResourceNames.value = []
   if (props.syncUrl) {
     const url = new URL(window.location.href)
     url.searchParams.set('file', normalized)
@@ -559,36 +553,10 @@ async function runCurrentKoanTests(): Promise<void> {
     koanTestsRunning.value = false
   }
 }
-
-function debugKoanCase(testCase: KoanTestCase): void {
-  selectedTestCase.value = undefined
-  activeKoanCaseName.value = testCase.name
-  sourcePath.value = `koans/${props.koan?.slug ?? 'koan'}/attempt.tpp`
-  const nextInputs: Record<string, string> = {}
-  const nextSubmitted: Record<string, string> = {}
-  const loadedNames = new Set<string>()
-  for (const [name, resource] of Object.entries(testCase.resources)) {
-    if (typeof resource.buffer === 'string') {
-      nextInputs[name] = resource.buffer
-      nextSubmitted[name] = resource.buffer
-      loadedNames.add(name)
-    }
-    if (typeof resource.expected_output === 'string') loadedNames.add(name)
-  }
-  clearRun()
-  stateText.value = testCase.state ?? ''
-  resourceInputs.value = nextInputs
-  resourceSubmittedInputs.value = nextSubmitted
-  koanDebugResourceNames.value = [...loadedNames]
-  activeSection.value = loadedNames.size > 0 ? 'resources' : 'state'
-  clearDiffs()
-}
-
 function initializeKoanAttempt(): void {
   if (!props.koan) return
   fileParam.value = `./koans/${props.koan.slug}/attempt.tpp`
   sourcePath.value = `koans/${props.koan.slug}/attempt.tpp`
-  activeKoanCaseName.value = ''
   rulesText.value = ''
   stateText.value = ''
   loadError.value = ''
