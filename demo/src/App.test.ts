@@ -173,7 +173,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 passing · 1 failing')
     expect(result.attributes('data-status')).toBe('fail')
     expect(wrapper.get('[data-test="koan-test-details-default-state"]').text()).toContain('fixture')
-    expect(wrapper.get('[data-test="koan-test-resource-diff-default-state-stdout"]').text()).toContain('stdout expected vs actual')
+    expect(wrapper.get('[data-test="koan-test-resource-diff-default-state-stdout"]').text()).toContain('stdout actual vs expected')
     expect(result.text()).toContain('Hello, koan!')
   })
 
@@ -258,9 +258,16 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="koan-debug-zero-to-one"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="koan-test-zero-to-one"]').attributes('data-status')).toBe('fail')
     expect(wrapper.get('[data-test="koan-test-resource-input-zero-to-one-stdin"]').text()).toContain('0')
-    expect(wrapper.get('[data-test="koan-test-resource-diff-zero-to-one-stdout"]').text()).toContain('stdout expected vs actual')
-    expect(wrapper.get('[data-test="koan-test-resource-expected-zero-to-one-stdout"]').text()).toContain('1')
-    expect(wrapper.get('[data-test="koan-test-resource-actual-zero-to-one-stdout"]').text()).toContain('wrong')
+    const diff = wrapper.get('[data-test="koan-test-resource-diff-zero-to-one-stdout"]')
+    expect(diff.text()).toContain('stdout actual vs expected')
+    const actual = wrapper.get('[data-test="koan-test-resource-actual-zero-to-one-stdout"]')
+    const expected = wrapper.get('[data-test="koan-test-resource-expected-zero-to-one-stdout"]')
+    expect(actual.text()).toContain('wrong')
+    expect(actual.classes()).toContain('removed')
+    expect(expected.text()).toContain('1')
+    expect(expected.classes()).toContain('added')
+    expect(diff.element.compareDocumentPosition(actual.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(actual.element.compareDocumentPosition(expected.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('sorts koan solutions with the shadcn data table controls', async () => {

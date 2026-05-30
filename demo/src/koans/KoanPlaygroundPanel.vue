@@ -58,10 +58,10 @@
                     </div>
 
                     <div v-if="resourceFailure(testCase.name, resource.name)" class="koan-test-diff-block" :data-test="`koan-test-resource-diff-${slugId(testCase.name)}-${slugId(resource.name)}`">
-                      <div class="koan-test-diff-title">{{ resource.name }} expected vs actual</div>
+                      <div class="koan-test-diff-title">{{ resource.name }} actual vs expected</div>
                       <div class="state-diff-lines koan-resource-diff-lines">
-                        <div class="state-diff-line removed" :data-test="`koan-test-resource-expected-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">-</span>{{ resourceFailure(testCase.name, resource.name)?.expected }}</div>
-                        <div class="state-diff-line added" :data-test="`koan-test-resource-actual-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">+</span>{{ resourceFailure(testCase.name, resource.name)?.actual }}</div>
+                        <div class="state-diff-line removed" :data-test="`koan-test-resource-actual-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">-</span>{{ resourceFailure(testCase.name, resource.name)?.actual }}</div>
+                        <div class="state-diff-line added" :data-test="`koan-test-resource-expected-${slugId(testCase.name)}-${slugId(resource.name)}`"><span class="state-diff-sign">+</span>{{ resourceFailure(testCase.name, resource.name)?.expected }}</div>
                       </div>
                     </div>
                     <div v-else-if="typeof resource.expected_output === 'string'" class="koan-test-value-block">
@@ -81,10 +81,10 @@
                 <h4>result</h4>
                 <template v-if="resultFor(testCase.name)?.exitCode && !resultFor(testCase.name)?.exitCode.passed">
                   <div class="koan-test-diff-block" :data-test="`koan-test-exit-code-diff-${slugId(testCase.name)}`">
-                    <div class="koan-test-diff-title">exit code differs</div>
+                    <div class="koan-test-diff-title">exit code actual vs expected</div>
                     <div class="state-diff-lines koan-resource-diff-lines">
-                      <div class="state-diff-line removed" :data-test="`koan-test-exit-code-expected-${slugId(testCase.name)}`"><span class="state-diff-sign">-</span>expected {{ resultFor(testCase.name)?.exitCode.expected }}</div>
-                      <div class="state-diff-line added" :data-test="`koan-test-exit-code-actual-${slugId(testCase.name)}`"><span class="state-diff-sign">+</span>actual {{ resultFor(testCase.name)?.exitCode.actual ?? 'none' }}</div>
+                      <div class="state-diff-line removed" :data-test="`koan-test-exit-code-actual-${slugId(testCase.name)}`"><span class="state-diff-sign">-</span>actual {{ resultFor(testCase.name)?.exitCode.actual ?? 'none' }}</div>
+                      <div class="state-diff-line added" :data-test="`koan-test-exit-code-expected-${slugId(testCase.name)}`"><span class="state-diff-sign">+</span>expected {{ resultFor(testCase.name)?.exitCode.expected }}</div>
                     </div>
                   </div>
                 </template>
