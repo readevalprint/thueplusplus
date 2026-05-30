@@ -81,6 +81,7 @@ describe('Go-WASM demo UI', () => {
     const topbar = wrapper.get('[data-test="site-topbar"]')
     expect(topbar.text()).toContain('Docs')
     expect(topbar.text()).toContain('Playground')
+    expect(topbar.text()).toContain('Koans')
     expect(topbar.text()).toContain('GitLab')
     expect(topbar.text()).toContain('Twitter')
     expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBe('page')
@@ -104,6 +105,130 @@ describe('Go-WASM demo UI', () => {
     expect(toc.text()).toContain('Lisp eval: explicit scope as sandbox')
     expect(toc.get('a[aria-current="location"]').attributes('href')).toBe('#thue')
     expect(getComputedStyle(wrapper.get('[data-test="readme-index"]').element).paddingBottom).toBeTruthy()
+  })
+
+  it('serves the koans index route with pilot koan links', async () => {
+    window.history.pushState({}, '', '/koans/')
+    const wrapper = await mountApp()
+
+    const topbar = wrapper.get('[data-test="site-topbar"]')
+    expect(topbar.get('nav a[href="/koans"]').attributes('aria-current')).toBe('page')
+    expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBeUndefined()
+    expect(wrapper.get('[data-test="koan-fixed-greet"]').attributes('href')).toBe('/koans/fixed-greet/')
+    expect(wrapper.get('[data-test="koan-binary-not"]').attributes('href')).toBe('/koans/binary-not/')
+    expect(wrapper.find('[data-test="koans-workflow"]').exists()).toBe(false)
+  })
+
+  it('serves individual koan and solution detail routes', async () => {
+    const solutionId = '2026-05-29-direct-greeting'
+    window.history.pushState({}, '', `/koans/fixed-greet/${solutionId}`)
+    const wrapper = await mountApp()
+
+    const topbar = wrapper.get('[data-test="site-topbar"]')
+    expect(topbar.get('nav a[href="/koans"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.find(`[data-test="koan-solution-${solutionId}"]`).exists()).toBe(true)
+    const breadcrumbs = wrapper.get('[data-test="koan-breadcrumbs"]')
+    expect(breadcrumbs.get('a[href="/koans"]').text()).toBe('Koans')
+    expect(breadcrumbs.get('a[href="/koans/fixed-greet/"]').text()).toBe('Fixed Greeting')
+    expect(breadcrumbs.get('[aria-current="page"]').text()).toBe('Direct Greeting')
+    expect(document.title).toBe('Direct Greeting — Fixed Greeting — Thue++ Koan')
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('Write a Thue++ program that prints exactly Hello, koan!\\n and exits with code 0.')
+    expect(wrapper.find('[data-test="koan-solutions-table"]').exists()).toBe(false)
+    expect(wrapper.get('h2#solution-source').text()).toBe('Direct Greeting')
+    expect(wrapper.get('a[href="https://readevalprint.com"]').text()).toBe('Tim Watts')
+    const solutionSource = wrapper.get('[data-test="koan-solution-source"]')
+    expect(solutionSource.text()).toContain('title: Direct Greeting')
+    expect(solutionSource.text()).toContain('author: Tim Watts')
+    expect(solutionSource.text()).toContain('^START$ ::= OUT\\nEXIT')
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://thuelang.org/koans/fixed-greet/${solutionId}`)
+  })
+
+  it('runs koan tests from the editable attempt editor and shows expected output diffs', async () => {
+    window.history.pushState({}, '', '/koans/fixed-greet/')
+    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
+    const wrapper = await mountApp()
+
+    expect(wrapper.find('[data-test="koan-attempt"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="koan-test-default-state"]').text()).toContain('default state')
+    expect(wrapper.get('[data-test="koan-attempt-editor"]').element).toBeInstanceOf(HTMLTextAreaElement)
+
+    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
+      sourcePath: 'koans/fixed-greet/attempt.tpp',
+      sourceText: '',
+      input: '',
+      resources: [],
+    }))
+    const result = wrapper.get('[data-test="koan-result-default-state"]')
+    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 / 1 passing')
+    expect(result.attributes('data-status')).toBe('fail')
+    expect(result.get('[data-test="koan-resource-diff-stdout"]').text()).toContain('"Hello, koan!\\n"')
+    expect(result.get('[data-test="koan-resource-diff-stdout"]').text()).toContain('""')
+  })
+
+  it('passes stdin buffers through resource-shaped koan tests', async () => {
+    window.history.pushState({}, '', '/koans/binary-not/')
+    mockedRunWithWorker.mockImplementation(async request => {
+      const stdin = request.input
+      return {
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        resourceLogs: [
+          { name: 'stdin', reads: [stdin ?? ''], writes: [], errors: [], outputText: '', remainingInputText: '' },
+          { name: 'stdout', reads: [], writes: [stdin === '0\n' ? '1\n' : '0\n'], errors: [], outputText: stdin === '0\n' ? '1\n' : '0\n' },
+        ],
+      }
+    })
+    const wrapper = await mountApp()
+
+    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('zero to one')
+    expect(wrapper.get('[data-test="koan-test-one-to-zero"]').text()).toContain('one to zero')
+
+    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
+    expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('0\n')
+    expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('1\n')
+    expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([])
+    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('2 / 2 passing')
+    expect(wrapper.get('[data-test="koan-result-zero-to-one"]').attributes('data-status')).toBe('pass')
+    expect(wrapper.get('[data-test="koan-result-one-to-zero"]').attributes('data-status')).toBe('pass')
+  })
+
+  it('sorts koan solutions with the shadcn data table controls', async () => {
+    window.history.pushState({}, '', '/koans/fixed-greet/')
+    const wrapper = await mountApp()
+    const rows = () => wrapper.get('[data-test="koan-solutions-table"]').findAll('tbody tr').map(row => row.text())
+    const breadcrumbs = wrapper.get('[data-test="koan-breadcrumbs"]')
+    expect(breadcrumbs.get('a[href="/koans"]').text()).toBe('Koans')
+    expect(breadcrumbs.get('[aria-current="page"]').text()).toBe('Fixed Greeting')
+
+    expect(rows()[0]).toContain('Direct Greeting')
+    expect(rows()[1]).toContain('Staged Greeting')
+    expect(wrapper.get('[data-test="solution-2026-05-29-direct-greeting"]').attributes('role')).toBe('link')
+    expect(wrapper.get('[data-test="solution-2026-05-29-direct-greeting"]').attributes('tabindex')).toBe('0')
+    expect(wrapper.find('thead').text()).not.toContain('Links')
+    expect(wrapper.get('[data-test="solution-2026-05-29-direct-greeting"] a[href="https://readevalprint.com"]').attributes('href')).toBe('https://readevalprint.com')
+
+    await wrapper.get('[data-test="solution-sort-title"]').trigger('click')
+    await flush()
+    await wrapper.get('[data-test="solution-sort-title"]').trigger('click')
+    await flush()
+
+    expect(rows()[0]).toContain('Staged Greeting')
+    expect(rows()[1]).toContain('Direct Greeting')
+  })
+
+  it('serves unknown koan slugs as koan not found pages', async () => {
+    window.history.pushState({}, '', '/koans/missing-koan/')
+    const wrapper = await mountApp()
+
+    expect(wrapper.get('[data-test="koan-not-found"]').text()).toContain('missing-koan')
+    expect(wrapper.get('[data-test="site-topbar"] nav a[href="/koans"]').attributes('aria-current')).toBe('page')
   })
 
   it('serves a resizable playground route with pinned stdio resources and no reset action', async () => {

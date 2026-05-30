@@ -6,12 +6,14 @@
         <nav class="site-nav" aria-label="Main navigation">
           <a href="/" :aria-current="isDocsRoute ? 'page' : undefined">Docs</a>
           <a href="/playground" :aria-current="isPlaygroundRoute ? 'page' : undefined">Playground</a>
+          <a href="/koans" :aria-current="isKoansRoute ? 'page' : undefined">Koans</a>
           <a href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">GitLab</a>
           <a href="https://x.com/thuelang" rel="noreferrer">Twitter</a>
         </nav>
       </div>
     </header>
     <PlaygroundPage v-if="isPlaygroundRoute" />
+    <KoansPage v-else-if="isKoansRoute" :selected-slug="koanSlug" :selected-solution-id="koanSolutionId" />
     <ReadmePage v-else />
   </template>
   <EmbedDemoPage v-else-if="isEmbedDemoRoute" />
@@ -21,9 +23,11 @@
 <script setup lang="ts">
 import { computed, watchEffect } from 'vue'
 import EmbedDemoPage from './EmbedDemoPage.vue'
+import KoansPage from './KoansPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
 import PlaygroundSurface from './PlaygroundSurface.vue'
 import ReadmePage from './ReadmePage.vue'
+import { koans } from './koans/data'
 
 interface EmbedRouteProps {
   file?: string
@@ -42,11 +46,17 @@ interface EmbedRouteProps {
 }
 
 const routePath = computed(() => normalizedPath() || '/')
+const koansRouteMatch = computed(() => routePath.value.match(/(?:^|\/)koans(?:\/([^/]+)(?:\/([^/]+))?)?$/))
+const koanSlug = computed(() => koansRouteMatch.value?.[1] ? decodeURIComponent(koansRouteMatch.value[1]) : undefined)
+const koanSolutionId = computed(() => koansRouteMatch.value?.[2] ? decodeURIComponent(koansRouteMatch.value[2]).toLowerCase() : undefined)
+const selectedKoan = computed(() => koans.find((koan) => koan.slug === koanSlug.value))
+const selectedSolution = computed(() => selectedKoan.value?.solutions.find(solution => solution.id === koanSolutionId.value))
 const isPlaygroundRoute = computed(() => routePath.value.endsWith('/playground'))
+const isKoansRoute = computed(() => Boolean(koansRouteMatch.value))
 const isEmbedDemoRoute = computed(() => routePath.value.endsWith('/embed/demo'))
 const isEmbedRoute = computed(() => routePath.value.endsWith('/embed'))
 const showSiteTopbar = computed(() => !isEmbedDemoRoute.value && !isEmbedRoute.value)
-const isDocsRoute = computed(() => showSiteTopbar.value && !isPlaygroundRoute.value)
+const isDocsRoute = computed(() => showSiteTopbar.value && !isPlaygroundRoute.value && !isKoansRoute.value)
 const embedProps = computed<EmbedRouteProps>(() => {
   const params = new URLSearchParams(window.location.search)
   return {
@@ -80,6 +90,14 @@ watchEffect(() => {
       description: 'Embeddable Thue++ playground surface.',
       canonical: 'https://thuelang.org/embed',
       robots: 'noindex,follow',
+    })
+  } else if (isKoansRoute.value) {
+    const koanMetadata = selectedKoan.value
+    setPageMetadata({
+      title: selectedSolution.value && koanMetadata ? `${selectedSolution.value.title} — ${koanMetadata.title} — Thue++ Koan` : koanMetadata ? `${koanMetadata.title} — Thue++ Koan` : 'Learn Thue++ — Koans',
+      description: koanMetadata?.summary ?? 'Learn Thue++ in small steps and compare your answers with others.',
+      canonical: `https://thuelang.org/koans${koanSlug.value ? `/${encodeURIComponent(koanSlug.value)}${koanSolutionId.value ? `/${encodeURIComponent(koanSolutionId.value)}` : ''}` : ''}`,
+      robots: 'index,follow',
     })
   } else {
     setPageMetadata({

@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test wasm wasm-smoke wasm-adapter-test demo-test demo-build
+.PHONY: test wasm wasm-smoke wasm-adapter-test demo-test demo-build koan-check koan-test
 
 # Runtime behavior is specified by executable example manifests, run against
 # both mandatory implementations with integrated rule coverage.
@@ -9,6 +9,7 @@ test:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }
 	uv run python tools/check_contract.py
 	uv run python tools/example_runner.py
+	uv run python tools/koan_generator.py --check
 
 wasm:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to build WASM" >&2; exit 127; }
@@ -34,3 +35,12 @@ demo-build: wasm
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to build the browser demo" >&2; exit 127; }
 	npm --prefix demo ci
 	npm --prefix demo run build
+
+# Koan system (isolated; does not touch example_runner or examples/)
+koan-check:
+	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required" >&2; exit 127; }
+	uv run python tools/koan_generator.py --check
+
+koan-test: koan-check
+	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required" >&2; exit 127; }
+	uv run --with pytest pytest tools/test_koan_generator.py -q --tb=short

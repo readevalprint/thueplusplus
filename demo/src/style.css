@@ -151,6 +151,9 @@ a { color: inherit; touch-action: manipulation; }
   margin: 0 auto;
   padding: clamp(40px, 7vw, 88px) var(--site-gutter) max(var(--space-12), 70vh);
 }
+.koans-page {
+  display: block;
+}
 .readme-toc {
   position: sticky;
   top: var(--space-6);
@@ -190,6 +193,95 @@ a { color: inherit; touch-action: manipulation; }
   color: var(--color-text);
   font-size: clamp(1rem, 0.98rem + 0.18vw, 1.06rem);
   line-height: 1.75;
+}
+.koan-breadcrumbs {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+.koan-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.koan-breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: none;
+  color: inherit;
+}
+.koan-breadcrumbs li + li::before {
+  content: '/';
+  color: var(--color-border-strong);
+}
+.koan-breadcrumbs a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+.koan-breadcrumbs a:hover {
+  color: var(--color-text);
+}
+.koan-attempt {
+  display: grid;
+  gap: var(--space-4);
+}
+.koan-attempt .monaco-rules-editor {
+  min-height: 18rem;
+}
+.koan-attempt-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+.koan-attempt-actions button {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-text);
+  color: var(--color-bg);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.55rem 0.9rem;
+}
+.koan-attempt-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.koan-test-list h3,
+.koan-test-results h3 {
+  margin-bottom: var(--space-2);
+}
+.koan-test-list ol,
+.koan-test-results ol {
+  margin-top: 0;
+}
+.koan-test-results li[data-status="pass"] strong {
+  color: #7ee787;
+}
+.koan-test-results li[data-status="fail"] strong,
+.koan-result-error {
+  color: var(--color-danger);
+}
+.koan-result-diff {
+  border-left: 2px solid var(--color-border);
+  margin: var(--space-3) 0;
+  padding-left: var(--space-3);
+}
+.koan-result-diff h4,
+.koan-result-diff p {
+  margin: 0 0 var(--space-1);
+}
+.koan-result-diff pre {
+  background: var(--color-code);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin: 0 0 var(--space-2);
+  overflow: auto;
+  padding: var(--space-2);
 }
 .readme-document h1,
 .readme-document h2,
@@ -255,6 +347,30 @@ a { color: inherit; touch-action: manipulation; }
   gap: var(--space-2);
   margin: var(--space-6) 0 0 1.5rem;
   padding-left: 1rem;
+}
+.readme-table-wrap {
+  max-width: 100%;
+  margin: var(--space-6) 0 0;
+  overflow-x: auto;
+}
+.readme-document table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.readme-document th,
+.readme-document td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.readme-document th {
+  color: var(--color-text);
+  font-weight: 650;
+}
+.readme-document td {
+  color: #c4c4cc;
 }
 .readme-document code {
   position: relative;
