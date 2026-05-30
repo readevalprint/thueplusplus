@@ -1,5 +1,5 @@
 <template>
-  <article class="readme-document koan-detail-document" :data-test="`koan-${koan.slug}`">
+  <article class="koan-detail-document" :data-test="`koan-${koan.slug}`">
     <section class="koan-playground-region" aria-label="Try It">
       <PlaygroundSurface
         mode="full"

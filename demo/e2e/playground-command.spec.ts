@@ -45,6 +45,7 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   await expect(page.getByTestId('koan-toc')).toHaveCount(0)
   await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
   await expect(pageRoot).toHaveClass(/koan-detail-page/)
+  await expect(page.getByTestId('koan-fixed-greet')).not.toHaveClass(/readme-document/)
   await expect(koanPanel).toBeVisible()
   await expect(page.getByTestId('koan-title-nav')).toBeVisible()
   await expect(page.getByTestId('koan-title-select')).toContainText('Fixed Greeting')

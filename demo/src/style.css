@@ -157,10 +157,7 @@ a { color: inherit; touch-action: manipulation; }
 .koan-detail-page {
   display: flex;
   height: calc(100dvh - 56px);
-  margin: 0 auto;
-  max-width: none;
   min-height: 0;
-  overflow: hidden;
   padding: var(--space-4) var(--site-gutter) var(--space-4);
   width: 100%;
 }
@@ -168,13 +165,8 @@ a { color: inherit; touch-action: manipulation; }
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
-  max-width: none;
   min-height: 0;
   width: 100%;
-}
-.koan-detail-document .koan-breadcrumbs {
-  flex: 0 0 auto;
-  margin: 0 0 var(--space-3);
 }
 .koan-playground-region {
   display: flex;
@@ -184,9 +176,7 @@ a { color: inherit; touch-action: manipulation; }
 }
 .koan-playground-region .playground-chrome-bare {
   flex: 1 1 0;
-  height: auto;
   min-height: 0;
-  overflow: hidden;
   padding: 0;
 }
 .koan-playground-region .playground-chrome-bare .playground-layout {
@@ -806,7 +796,6 @@ code {
   width: 100%;
   height: calc(100dvh - 56px);
   min-height: 0;
-  overflow: hidden;
   padding: var(--space-4) var(--site-gutter) var(--space-6);
 }
 .playground-route-header {
@@ -832,10 +821,8 @@ code {
   gap: var(--space-3);
   height: 0;
   min-height: 0;
-  overflow: hidden;
 }
-.playground-column,
-.playground-row {
+.playground-column {
   display: flex;
   min-height: 0;
   min-width: 0;
@@ -844,9 +831,6 @@ code {
 .playground-koan-column {
   flex-direction: column;
   gap: var(--space-3);
-}
-.playground-koan-column {
-  overflow: auto;
 }
 .koan-playground-panel {
   display: flex;
@@ -1070,23 +1054,26 @@ code {
 }
 .playground-state-stack {
   display: flex;
-  gap: var(--space-3);
-  min-height: 0;
-  min-width: 0;
-}
-[data-slot="card"] {
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 70%), var(--color-panel);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  display: flex;
   flex-direction: column;
   gap: var(--space-3);
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+}
+.playground-state-stack > .playground-state-pane { flex: 58 1 0; }
+.playground-state-stack > .playground-diffs-pane { flex: 42 1 0; }
+.playground-state-pane { padding: 3px; }
+.playground-rules-pane,
+.playground-state-pane,
+.playground-diffs-pane,
+.playground-resources-pane,
+.playground-section-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
   width: 100%;
 }
-[data-slot="card-header"] {
+.playground-panel-header {
   align-items: center;
   display: flex;
   flex: 0 0 auto;
@@ -1094,7 +1081,7 @@ code {
   justify-content: space-between;
   min-height: 1.35rem;
 }
-[data-slot="card-title"] {
+.playground-panel-title {
   color: var(--color-text-muted);
   font-size: 0.82rem;
   font-weight: 600;
@@ -1102,12 +1089,11 @@ code {
   margin: 0;
   text-transform: uppercase;
 }
-[data-slot="card-content"] {
+.playground-panel-content {
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
   min-height: 0;
-  min-width: 0;
 }
 .playground-rules-header {
   align-items: center;
@@ -1126,7 +1112,7 @@ code {
   max-width: 100%;
 }
 @container playground-rules-header (max-width: 54rem) {
-  .playground-rules-header > [data-slot="card-title"] {
+  .playground-rules-header .playground-panel-title {
     flex-basis: 100%;
   }
 }
@@ -1231,7 +1217,6 @@ code {
 .monaco-rules-editor .matched-rule-line-gutter { border-left: 3px solid rgb(251 191 36 / 0.9); }
 .state-editor {
   overflow-wrap: anywhere;
-  overflow-x: hidden;
   resize: none;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1397,7 +1382,6 @@ code {
 }
 .playground-rules-pane {
   flex: 1 1 0;
-  min-height: 0;
 }
 .test-case-menu-row {
   align-items: center;
@@ -1417,7 +1401,6 @@ code {
   .playground-route-header { grid-template-columns: 1fr; padding: var(--space-4); }
   .playground-route-header h1 { white-space: normal; }
   .playground-layout { height: auto; min-height: 0; overflow: auto; }
-  [data-slot="card"] { min-height: 16rem; }
   .playground-rules-pane { min-height: 26rem; }
   .playground-resources-pane { min-height: 0; }
   .resource-section { min-height: 12rem; }

@@ -40,10 +40,10 @@
         @run="runCurrentKoanTests"
       />
 
-      <Card class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
-        <CardHeader class="playground-rules-header">
+      <section class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
+        <header class="playground-panel-header playground-rules-header">
           <div class="playground-rules-title-block">
-            <CardTitle>program rules</CardTitle>
+            <div class="playground-panel-title">program rules</div>
             <p v-if="selectedCaseLabel" class="playground-selected-case" data-test="playground-selected-case">
               <span>{{ selectedCaseLabel }}</span>
               <small>{{ selectedCaseSource }}</small>
@@ -60,25 +60,25 @@
               </ButtonGroup>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        </header>
+        <div class="playground-panel-content">
           <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <nav class="playground-section-tabs" aria-label="playground sections" data-test="embed-section-tabs">
         <Button v-for="section in sectionTabs" :key="section.id" type="button" variant="secondary" :class="{ active: activeSection === section.id }" :data-section="section.id" @click="setActiveSection(section.id)">{{ section.label }}</Button>
       </nav>
 
-      <Card class="playground-section-panel" data-test="embed-section-panel">
-        <CardHeader>
-          <CardTitle>{{ activeSection }}</CardTitle>
+      <section class="playground-section-panel" data-test="embed-section-panel">
+        <header class="playground-panel-header">
+          <div class="playground-panel-title">{{ activeSection }}</div>
           <div v-if="activeSection === 'output'" class="playground-output-tabs" data-test="embed-output-tabs">
             <Button type="button" size="sm" variant="secondary" :class="{ active: activeOutputTab === 'stdout' }" data-output-tab="stdout" @click="setActiveOutputTab('stdout')">stdout</Button>
             <Button type="button" size="sm" variant="secondary" :class="{ active: activeOutputTab === 'stderr' }" data-output-tab="stderr" @click="setActiveOutputTab('stderr')">stderr</Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </header>
+        <div class="playground-panel-content">
           <template v-if="activeSection === 'output'">
             <Textarea v-if="activeOutputTab === 'stdout'" :model-value="resourceOutputText('stdout')" data-test="resource-output-stdout" readonly spellcheck="false" wrap="off" />
             <Textarea v-else :model-value="resourceOutputText('stderr')" data-test="resource-output-stderr" readonly spellcheck="false" wrap="off" />
@@ -92,8 +92,8 @@
             <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
           <Textarea v-else :model-value="rulesText" data-test="embed-source-text" readonly spellcheck="false" wrap="off" />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </section>
 
     <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" :auto-save-id="props.koan ? 'playground-koan-columns' : 'playground-columns'" data-test="playground-full-surface">
@@ -111,10 +111,10 @@
       </ResizablePanel>
       <ResizableHandle v-if="props.koan" />
       <ResizablePanel :default-size="props.koan ? 32 : 42" :min-size="24" class="playground-column playground-rules-column">
-        <Card class="playground-rules-pane">
-          <CardHeader class="playground-rules-header">
+        <section class="playground-rules-pane">
+          <header class="playground-panel-header playground-rules-header">
             <div class="playground-rules-title-block">
-              <CardTitle>program rules</CardTitle>
+              <div class="playground-panel-title">program rules</div>
               <p v-if="selectedCaseLabel" class="playground-selected-case" data-test="playground-selected-case">
                 <span>{{ selectedCaseLabel }}</span>
                 <small>{{ selectedCaseSource }}</small>
@@ -146,22 +146,45 @@
               </ButtonGroup>
               <div class="playground-max-steps" data-test="playground-max-steps"><span>max steps:</span><ButtonGroup aria-label="Max steps"><Button v-for="option in maxStepOptions" :key="option" type="button" :variant="maxSteps === option ? 'secondary' : 'ghost'" size="sm" :data-selected="maxSteps === option" :data-test="`playground-max-steps-${option}`" :disabled="isBusy" @click="maxSteps = option">{{ option }}</Button></ButtonGroup></div>
             </div>
-          </CardHeader>
-          <CardContent>
+          </header>
+          <div class="playground-panel-content">
             <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </ResizablePanel>
       <ResizableHandle />
       <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
-        <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
-          <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row"><Card class="playground-state-pane"><CardHeader><CardTitle>program state</CardTitle><Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge></CardHeader><CardContent><Textarea v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" /></CardContent></Card></ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel :default-size="42" :min-size="18" class="playground-row playground-timeline-row"><Card class="playground-diffs-pane"><CardHeader><CardTitle>state history</CardTitle></CardHeader><CardContent><StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" /></CardContent></Card></ResizablePanel>
-        </ResizablePanelGroup>
+        <div class="playground-state-stack" data-test="playground-state-stack">
+          <section class="playground-state-pane">
+            <header class="playground-panel-header">
+              <div class="playground-panel-title">program state</div>
+              <Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge>
+            </header>
+            <div class="playground-panel-content">
+              <Textarea v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
+            </div>
+          </section>
+          <section class="playground-diffs-pane">
+            <header class="playground-panel-header">
+              <div class="playground-panel-title">state history</div>
+            </header>
+            <div class="playground-panel-content">
+              <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+            </div>
+          </section>
+        </div>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
+      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column">
+        <section class="playground-resources-pane" data-test="resource-sections">
+          <header class="playground-panel-header">
+            <div class="playground-panel-title">resources</div>
+          </header>
+          <div class="playground-panel-content resource-list">
+            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+          </div>
+        </section>
+      </ResizablePanel>
     </ResizablePanelGroup>
   </main>
 </template>
@@ -169,7 +192,6 @@
 <script setup lang="ts">
 import { diffChars } from 'diff'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
