@@ -155,15 +155,44 @@ a { color: inherit; touch-action: manipulation; }
   display: block;
 }
 .koan-detail-page {
-  display: block;
+  display: flex;
+  height: calc(100dvh - 56px);
   margin: 0 auto;
   max-width: none;
-  padding: clamp(32px, 5vw, 64px) var(--site-gutter) max(var(--space-12), 70vh);
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-4) var(--site-gutter) var(--space-4);
   width: 100%;
 }
 .koan-detail-document {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   max-width: none;
+  min-height: 0;
   width: 100%;
+}
+.koan-detail-document .koan-breadcrumbs {
+  flex: 0 0 auto;
+  margin: 0 0 var(--space-3);
+}
+.koan-playground-region {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+}
+.koan-playground-region .playground-chrome-bare {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+.koan-playground-region .playground-chrome-bare .playground-layout {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
 }
 .readme-toc {
   position: sticky;

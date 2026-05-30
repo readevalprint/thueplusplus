@@ -2,7 +2,7 @@
   <article class="readme-document koan-detail-document" :data-test="`koan-${koan.slug}`">
     <KoanBreadcrumbs :koan="koan" />
 
-    <section aria-label="Try It">
+    <section class="koan-playground-region" aria-label="Try It">
       <PlaygroundSurface
         mode="full"
         chrome="bare"
