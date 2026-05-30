@@ -240,7 +240,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="koan-test-one-to-zero"]').attributes('data-status')).toBe('pass')
   })
 
-  it('debugs a koan case by loading state and resource buffers without changing rules', async () => {
+  it('debugs a koan case by loading resource buffers without changing rules or copying stdin into state', async () => {
     window.history.pushState({}, '', '/koans/binary-not/')
     const wrapper = await mountApp()
     const rules = wrapper.get('[data-test="playground-rules"]')
@@ -256,7 +256,7 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('0 ::= 1')
-    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('0\n')
+    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('')
     expect((wrapper.get('[data-test="resource-input-stdin"]').element as HTMLTextAreaElement).value).toBe('0\n')
     expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
     expect(wrapper.get('[data-test="playground-selected-case"]').text()).toContain('zero to one')

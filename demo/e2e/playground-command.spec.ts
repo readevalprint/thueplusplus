@@ -79,7 +79,7 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   expect(runtimeErrors).toEqual([])
 })
 
-test('koan debug loads case state and resource buffers in the browser', async ({ page }) => {
+test('koan debug loads resource buffers without copying stdin into state', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
   await page.goto('/koans/binary-not/')
 
@@ -87,7 +87,7 @@ test('koan debug loads case state and resource buffers in the browser', async ({
   await page.getByTestId('koan-debug-zero-to-one').click()
 
   expect(await readRules(page)).toBe('0 ::= 1')
-  await expect(page.getByTestId('playground-state')).toHaveValue('0\n')
+  await expect(page.getByTestId('playground-state')).toHaveValue('')
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('0\n')
   await expect(page.getByTestId('resource-section-stdout')).toBeVisible()
   await expect(page.getByTestId('playground-selected-case')).toContainText('zero to one')

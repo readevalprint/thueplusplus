@@ -576,7 +576,7 @@ function debugKoanCase(testCase: KoanTestCase): void {
     if (typeof resource.expected_output === 'string') loadedNames.add(name)
   }
   clearRun()
-  stateText.value = testCase.state ?? testCase.resources.stdin?.buffer ?? ''
+  stateText.value = testCase.state ?? ''
   resourceInputs.value = nextInputs
   resourceSubmittedInputs.value = nextSubmitted
   koanDebugResourceNames.value = [...loadedNames]
