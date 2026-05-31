@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt Q: generic binary nested CALL/APPLY over prebuilt atomic AST using ::% K frames.
 # No parser; starts from encoded AST state. Goal: prove continuation encoding, not parsing.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

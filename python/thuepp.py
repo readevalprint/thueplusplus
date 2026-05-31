@@ -1,4 +1,5 @@
 #!/usr/bin/env -S python3 -u
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """
 thue++ Interpreter v0.2
 A Python implementation of the thue++ esoteric programming language.

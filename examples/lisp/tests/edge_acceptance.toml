@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Edge acceptance cases for currently supported Lisp behavior.
 # These cases pin hard-won edge semantics in examples/lisp/lisp.tpp.
 program = "../lisp.tpp"

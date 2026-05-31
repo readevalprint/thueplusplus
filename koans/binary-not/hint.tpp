@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 GOAL: Read one line from stdin and flip a binary digit.
 
 The input buffer is provided by each koan test case.

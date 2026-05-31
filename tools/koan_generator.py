@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Isolated Thue++ koan validator and generator.
 
 This tool is deliberately separate from tools/example_runner.py and

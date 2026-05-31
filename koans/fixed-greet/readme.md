@@ -2,6 +2,7 @@
 title: Fixed Greeting
 description: Write a Thue++ program that prints exactly Hello, koan!\n and exits with code 0.
 ---
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
 ## Goal
 

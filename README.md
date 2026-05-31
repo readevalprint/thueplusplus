@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 > We do this not because it is easy, but because we thought it would be easy.
 
 # Thue++
@@ -101,6 +102,7 @@ https://thuelang.org/playground?file=./examples/hello/hello.tpp
 See the source: [examples/hello/hello.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/hello/hello.tpp)
 
 ```thuepp
+# SPDX-License-Identifier: AGPL-3.0-or-later
 ^START$ ::= hello\ndone
 hello ::> stdout Hello, World!\n
 done ::- 0
@@ -163,6 +165,7 @@ https://thuelang.org/playground?file=./examples/guess-number/guess-number.tpp
 See the source: [examples/guess-number/guess-number.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/guess-number/guess-number.tpp)
 
 ```thuepp
+# SPDX-License-Identifier: AGPL-3.0-or-later
 NUMBER <- [0-9]+
 
 PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
@@ -192,7 +195,6 @@ PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^DIRECTION<(?<secret>$NUMBER)\|(?<guess>$NUMBER)\|0>$ ::= @TOO_HIGH@SECRET<{{secret}}>
 
 ::=
-SECRET<@RANDOM_NUMBER@>
 ```
 
 Expected output:
@@ -624,3 +626,11 @@ Repository development requirements:
 - Go for the second conformance backend
 - `make` for verification targets
 - Node.js only for Go-WASM adapter and browser-demo checks
+
+## License
+
+Thue++ is licensed under the GNU Affero General Public License v3.0 or later.
+
+This includes the language documentation, examples, tests, tools, demo code, and reference implementations unless a file states otherwise.
+
+See `LICENSE`.

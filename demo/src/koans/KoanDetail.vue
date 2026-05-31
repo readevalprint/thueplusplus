@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <article class="koan-detail-document" :data-test="`koan-${koan.slug}`">
     <section class="koan-playground-region" aria-label="Try It">

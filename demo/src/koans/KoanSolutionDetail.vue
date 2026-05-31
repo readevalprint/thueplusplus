@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <nav class="readme-toc" aria-label="Koan table of contents" data-test="koan-toc">
     <p>On this page</p>

@@ -4,10 +4,10 @@
       "backends": {
         "go": {
           "covered_rules": [
-            8,
             9,
-            11,
-            13
+            10,
+            12,
+            14
           ],
           "cumulative_state_bytes": 38,
           "eval_steps": 13,
@@ -26,10 +26,10 @@
       "backends": {
         "go": {
           "covered_rules": [
-            8,
-            10,
-            12,
-            13
+            9,
+            11,
+            13,
+            14
           ],
           "cumulative_state_bytes": 38,
           "eval_steps": 15,
@@ -51,12 +51,12 @@
       "go": []
     },
     "rule_lines": [
-      8,
       9,
       10,
       11,
       12,
-      13
+      13,
+      14
     ]
   },
   "cumulative_state_bytes": 76,
@@ -74,9 +74,9 @@
     "website": "https://readevalprint.com"
   },
   "solution_path": "koans/binary-not/solutions/2026-05-29-truth-table-flip.tpp",
-  "solution_sha256": "194d744a2c9c3a80d70938152ea23bc93252beacc8d91f485db0d9abc85b2a11",
-  "source_bytes": 283,
-  "source_sha256": "194d744a2c9c3a80d70938152ea23bc93252beacc8d91f485db0d9abc85b2a11",
+  "solution_sha256": "83c66992dc3ab869d14b0a65a2e59de5eef57ccbcd4bc360e3a90fae45c19373",
+  "source_bytes": 328,
+  "source_sha256": "83c66992dc3ab869d14b0a65a2e59de5eef57ccbcd4bc360e3a90fae45c19373",
   "successful_rewrites": 8,
   "total_probes": 28
 }

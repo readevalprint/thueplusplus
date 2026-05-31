@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AH: Lisp-shaped let n-arity using generated lookup/apply rules.
 #
 # This is not a general parser. It tests let with 2 and 3 bindings in Lisp-shaped input.

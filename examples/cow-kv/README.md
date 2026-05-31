@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Copy-on-write KV example
 
 `cow-kv.tpp` is a transactional key-value store written as Thue++ rewrite rules.

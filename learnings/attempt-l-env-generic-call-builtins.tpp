@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt L: atomic-list parser + env lookup + generic CALL/APPLY for builtins + lazy specials.
 # No lambda yet. This removes operator-head special casing: add/mul/etc are looked up.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

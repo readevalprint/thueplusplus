@@ -2,6 +2,7 @@
 title: Binary Not
 description: Print the opposite of a one-character binary input.
 ---
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
 ## Goal
 

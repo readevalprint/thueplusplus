@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BB: inverted env/closure/apply representation probe.
 # Scope: prove lexical env capture, parameter shadowing, and arrays through env before reconnecting parser.
 # This is intentionally not a full parser/evaluator. It works backward from apply/lookup invariants.

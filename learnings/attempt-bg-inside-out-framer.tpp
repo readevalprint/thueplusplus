@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BG: inside-out pct framer probe.
 # Goal: test user's architecture: repeatedly pct-encode innermost raw paren
 # groups until no raw parens remain, then decode/evaluate the first outer node.

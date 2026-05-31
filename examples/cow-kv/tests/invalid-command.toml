@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "invalid command reports error and continues"
 program = "../cow-kv.tpp"
 input = "set a base; frob a; get a"

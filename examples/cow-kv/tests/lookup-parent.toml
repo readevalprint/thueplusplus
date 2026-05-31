@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "transaction lookup falls through top frame to parent"
 program = "../cow-kv.tpp"
 input = "begin; set a parent; begin; get a"

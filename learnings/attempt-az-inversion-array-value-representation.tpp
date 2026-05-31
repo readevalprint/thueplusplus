@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AZ: inversion-first array representation probe.
 # Work backwards from final operations:
 #   render array, head array, rest array

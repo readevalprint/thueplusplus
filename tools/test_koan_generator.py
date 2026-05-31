@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Focused tests for the isolated koan generator."""
 from __future__ import annotations
 

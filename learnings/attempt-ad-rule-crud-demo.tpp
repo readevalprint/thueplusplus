@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AD: rules create, update, and remove other rules based on simple input logic.
 #
 # Inputs:

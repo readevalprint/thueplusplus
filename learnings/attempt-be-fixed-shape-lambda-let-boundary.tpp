@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt BD: AX with AZ raw-semicolon VARR payload.
 # Goal: fix AX array payload stuckness by storing VARR[pct(value);pct(value);...] with raw semicolon separators.
 # Scope remains parser + strict/lazy scalar + arrays/head/rest; no lambda/let yet.

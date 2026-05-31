@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "nested transactions commit and discard independently"
 program = "../cow-kv.tpp"
 input = "set a root; begin; set a one; begin; set a two; get a; discard; get a; begin; set b inner; commit; get b; commit; get b; get a"

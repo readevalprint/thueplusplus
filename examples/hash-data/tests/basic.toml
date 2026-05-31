@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "hash is ordinary source and state data"
 program = "../hash-data.tpp"
 timeout = 5

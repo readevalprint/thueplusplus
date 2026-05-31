@@ -5,6 +5,7 @@ author: Tim Watts
 website: https://readevalprint.com
 summary: Print the greeting with the fewest rules in the pilot set.
 ---
+# SPDX-License-Identifier: AGPL-3.0-or-later
 ^START$ ::= OUT\nEXIT
 OUT ::> stdout Hello, koan!\n
 ^EXIT$ ::- 0

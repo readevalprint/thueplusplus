@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AG: Lisp-shaped dynamic literals for int, string, nil, bool, and list.
 # Standalone value renderer. The parser is dynamic-rule based but fixed-pattern.
 

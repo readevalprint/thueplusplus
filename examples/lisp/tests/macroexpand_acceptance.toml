@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Explicit recursive macro expansion over Lisp code-as-data.
 program = "../lisp.tpp"
 timeout = 10

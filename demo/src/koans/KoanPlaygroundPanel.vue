@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <div class="koan-playground-panel" data-test="koan-playground-panel">
     <section class="koan-playground-section" aria-labelledby="koan-panel-title">

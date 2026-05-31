@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt B: packed-stack pushdown parser.
 # Produces a pct/text pseudo-AST like LIST(ATOM:add NUM:1 LIST(...)).
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # PEG grammar for thue++ source syntax.
 # Lexical only: row trimming, comment classification, reserved operators,
 # regex/template validation, and limits are semantic. Unrecognized `::` forms

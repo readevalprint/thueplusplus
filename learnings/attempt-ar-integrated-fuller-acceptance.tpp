@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AR: integrated fuller Lisp acceptance smoke.
 # Acceptance: math, compare, lazy boolean ops, lambda n-arity, if, let n-arity,
 # int/string/bool, and array head/rest all work in Lisp-shaped input.

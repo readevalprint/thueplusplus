@@ -4,9 +4,9 @@
       "backends": {
         "go": {
           "covered_rules": [
-            8,
             9,
-            10
+            10,
+            11
           ],
           "cumulative_state_bytes": 35,
           "eval_steps": 6,
@@ -28,9 +28,9 @@
       "go": []
     },
     "rule_lines": [
-      8,
       9,
-      10
+      10,
+      11
     ]
   },
   "cumulative_state_bytes": 35,
@@ -48,9 +48,9 @@
     "website": "https://readevalprint.com"
   },
   "solution_path": "koans/fixed-greet/solutions/2026-05-29-direct-greeting.tpp",
-  "solution_sha256": "e5504893c740a5b19f39a8f17e2f73dd4e72a2b51251d3276eda55a82f5a2bcb",
-  "source_bytes": 249,
-  "source_sha256": "e5504893c740a5b19f39a8f17e2f73dd4e72a2b51251d3276eda55a82f5a2bcb",
+  "solution_sha256": "326d1b9d7680b5d1595a734473e2643577d76738c39b540a963200d414d80bab",
+  "source_bytes": 294,
+  "source_sha256": "326d1b9d7680b5d1595a734473e2643577d76738c39b540a963200d414d80bab",
   "successful_rewrites": 3,
   "total_probes": 6
 }

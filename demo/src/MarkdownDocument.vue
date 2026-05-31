@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <article :class="documentClass">
     <template v-for="(block, index) in blocks" :key="index">

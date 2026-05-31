@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AB: dynamic let n-arity with scoped generated lookup/apply rules.
 #
 # LET2:<id>:x=<n>,y=<n> creates id-scoped dynamic rules for x/y lookup and body continuation.

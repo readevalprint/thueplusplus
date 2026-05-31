@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AU: arbitrary parser + reducer with lazy special-form preemption.
 # Goal: arbitrary balanced input for strict math/compare/array/string/bool plus
 # reasonable lazy if/and/or/not without evaluating unselected (/ 1 0) branches.

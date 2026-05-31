@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt M: generic lookup + strict binary CALL/APPLY only.
 # Purpose: prove env lookup + generic call shape without n-ary arg-loop complexity.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

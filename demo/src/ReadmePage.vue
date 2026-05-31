@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <main class="readme-page" data-test="readme-index">
     <nav class="readme-toc" aria-label="Table of contents" data-test="readme-toc">

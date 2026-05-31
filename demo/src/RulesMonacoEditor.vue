@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <div ref="container" class="monaco-rules-editor" :data-current-match-line="highlightLine || undefined" />
 </template>

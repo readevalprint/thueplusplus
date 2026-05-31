@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Explicit eval-scope sandbox demo.
 #
 # These cases model a sandbox helper in ordinary Lisp. The sandbox function

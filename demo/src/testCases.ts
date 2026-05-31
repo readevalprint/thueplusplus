@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { parse as parseToml } from 'smol-toml'
 
 const DEFAULT_MAX_EVALS = 10000

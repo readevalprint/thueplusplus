@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Contributing to Thue++ Koans
 
 Koans are small executable rewrite challenges. They are intentionally separate from ordinary examples and the general playground.

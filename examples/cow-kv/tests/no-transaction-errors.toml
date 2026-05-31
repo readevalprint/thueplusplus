@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "commit and discard without transaction report errors"
 program = "../cow-kv.tpp"
 input = "commit; discard"

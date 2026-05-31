@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 const assert = require('assert');
 const path = require('path');
 const { Worker } = require('worker_threads');

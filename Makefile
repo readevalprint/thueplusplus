@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 SHELL := /bin/sh
 
 .PHONY: test wasm wasm-smoke wasm-adapter-test demo-test demo-build koan-check koan-test

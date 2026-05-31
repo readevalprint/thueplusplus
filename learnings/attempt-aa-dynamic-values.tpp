@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AA: dynamic literal/value surface for int, string, and list.
 # This is a standalone value-layer probe, not the full EV/RET Lisp evaluator.
 # It tests dynamic parser/framer rules that construct tagged values and render them.

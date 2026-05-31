@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export async function initThuePPWasm(options = {}) {
   if (typeof globalThis.Go !== 'function') {
     if (!options.wasmExecURL) {

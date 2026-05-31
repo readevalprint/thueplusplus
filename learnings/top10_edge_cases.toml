@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Top edge cases selected after BO hard acceptance.
 # This is intentionally a RED manifest for the currently-missing behavior.
 # Uses learnings/bo-lisp.tpp until the evaluator is promoted/cleaned up.

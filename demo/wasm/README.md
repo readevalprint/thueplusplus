@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Thue++ Go-WASM JavaScript adapters
 
 These files are a thin host-adapter layer around the Go WASM interpreter. They do not implement Thue++ parsing, matching, or evaluation in JavaScript, and they do not use JavaScript `RegExp` for language semantics.

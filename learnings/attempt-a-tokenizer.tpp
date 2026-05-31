@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt A: prefix tokenizer. Tokenizes one input row into a flat token list.
 # This validates char/token scanning without stack parsing.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

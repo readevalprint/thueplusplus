@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export type MarkdownBlock =
   | { kind: 'heading'; level: number; id: string; text: string; html: string }
   | { kind: 'paragraph'; html: string }

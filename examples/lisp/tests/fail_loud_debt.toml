@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Fail-loud debt manifest for unsupported or malformed Lisp inputs.
 # These cases must not be silently accepted with rc 0 and empty output in the
 # production Lisp evaluator. They track behavior that is intentionally rejected

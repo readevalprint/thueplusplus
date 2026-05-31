@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 name = "delete outside transaction writes base tombstone"
 program = "../cow-kv.tpp"
 input = "set a base; del a; get a"

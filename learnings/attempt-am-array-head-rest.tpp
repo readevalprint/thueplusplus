@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt AM: typed array/head/rest value-layer probe.
 # Goal: prove array values, head, and rest work with pct-protected render payloads.
 # This is fixed width and fixed-pattern; not a general list parser.

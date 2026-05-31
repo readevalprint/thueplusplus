@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt E: packed-stack parser + lazy-ish special forms over pseudo-AST.
 # IF/AND/OR rules are placed before ordinary reductions so they can discard
 # unchosen branches before nested reducible errors/unsupported forms fire.

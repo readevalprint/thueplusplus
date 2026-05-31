@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt X: pushdown automaton + dynamic one-shot transition rules.
 #
 # Input alphabet:

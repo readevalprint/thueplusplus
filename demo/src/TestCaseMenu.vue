@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <div class="test-case-menu-row">
     <span class="test-case-menu-label">Select an example</span>

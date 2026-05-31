@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <template v-if="showSiteTopbar">
     <header class="site-topbar" data-test="site-topbar">

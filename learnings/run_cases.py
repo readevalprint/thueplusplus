@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import subprocess, sys, pathlib
 root = pathlib.Path('/workspaces/thueplusplus')
 case_file = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].endswith('.tsv') else pathlib.Path('/tmp/thuepp-lisp-pda/hard_acceptance_cases.tsv')

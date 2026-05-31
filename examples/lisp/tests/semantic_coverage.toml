@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Coverage-oriented manifest for supported Lisp evaluator paths.
 # These cases exercise intended runtime paths beyond the minimal core acceptance
 # suite, without weakening existing behavior.

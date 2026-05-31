@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Attempt D: packed-stack parser + N-ary-ish math by left-reducing pseudo-AST lists.
 # Builds on C. Supports nested add/mul with 2+ args, binary sub/div.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
