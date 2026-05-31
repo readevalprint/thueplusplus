@@ -22,15 +22,16 @@ export interface KoanTestResult {
   error?: string
 }
 
-export async function runKoanTests(koan: KoanEntry, source: string): Promise<KoanTestResult[]> {
+export async function runKoanTests(koan: KoanEntry, source: string, signal?: AbortSignal): Promise<KoanTestResult[]> {
   const results: KoanTestResult[] = []
   for (const testCase of koan.tests) {
-    results.push(await runKoanTest(koan, source, testCase))
+    if (signal?.aborted) throw abortError()
+    results.push(await runKoanTest(koan, source, testCase, signal))
   }
   return results
 }
 
-async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCase): Promise<KoanTestResult> {
+async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCase, signal?: AbortSignal): Promise<KoanTestResult> {
   try {
     const result = await runWithWorker({
       sourceText: source,
@@ -46,11 +47,13 @@ async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCa
           inputText: resource.buffer ?? '',
           lineMode: true,
         })),
+      signal,
     })
+    const actualExitCode = result.exitCode ?? (result.error || result.errors ? 1 : 0)
     const exitCode = {
       expected: testCase.exit_code,
-      actual: result.exitCode,
-      passed: result.exitCode === testCase.exit_code,
+      actual: actualExitCode,
+      passed: actualExitCode === testCase.exit_code,
     }
     const resources = expectedResources(testCase).map(({ name, expected }) => {
       const actual = resourceOutput(result.resourceLogs, name, result.stdout ?? '', result.stderr ?? '')
@@ -69,6 +72,7 @@ async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCa
       error: result.error || result.errors || undefined,
     }
   } catch (error) {
+    if (isAbortError(error)) throw error
     return {
       name: testCase.name,
       passed: false,
@@ -100,4 +104,12 @@ function resourceOutput(logs: DemoResourceLog[] | undefined, name: string, stdou
   if (name === 'stdout') return stdout
   if (name === 'stderr') return stderr
   return ''
+}
+
+function abortError(): DOMException {
+  return new DOMException('Koan test run aborted', 'AbortError')
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
 }

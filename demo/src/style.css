@@ -900,6 +900,21 @@ code {
   line-height: 1;
   white-space: nowrap;
 }
+.koan-tests-actions {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+}
+.koan-tests-auto-toggle {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  font-size: 0.78rem;
+  gap: var(--space-1);
+  line-height: 1;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
 .koan-test-status[data-status="fail"] {
   color: var(--color-danger);
 }
@@ -1061,7 +1076,9 @@ code {
 }
 .playground-state-stack > .playground-state-pane { flex: 58 1 0; }
 .playground-state-stack > .playground-diffs-pane { flex: 42 1 0; }
-.playground-state-pane { padding: 3px; }
+.playground-state-pane {
+  padding: 3px;
+}
 .playground-rules-pane,
 .playground-state-pane,
 .playground-diffs-pane,
@@ -1283,6 +1300,7 @@ code {
 .resource-list {
   gap: var(--space-3);
   overflow: auto;
+  padding: 3px;
 }
 .resource-section {
   border-top: 1px solid var(--color-border);
@@ -1336,6 +1354,10 @@ code {
   min-height: 4rem;
   resize: none;
   white-space: pre;
+}
+.resource-field textarea[readonly] {
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 .resource-field textarea[data-attention="input"] { border-color: rgb(59 130 246 / 0.9); }
 .resource-field textarea[data-attention="output"] { animation: resource-output-attention 1s ease-out; }

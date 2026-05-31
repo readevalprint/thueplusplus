@@ -19,7 +19,8 @@
         <div class="playground-embed-actions">
           <Button v-if="showRunButton" type="button" variant="secondary" data-test="embed-run" :disabled="!canRun" @click="() => runCompactProgram()">Run</Button>
           <Button v-if="showStepControls" type="button" variant="secondary" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">Step</Button>
-          <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">Play</Button>
+          <Button v-if="showDebugControls && canRun" type="button" variant="secondary" data-test="playground-continue" :title="continueTitle" @click="() => continueProgram()">Play</Button>
+          <Button v-else-if="showDebugControls" type="button" variant="secondary" data-test="playground-restart" :disabled="isBusy" title="Restart" @click="() => restartProgram()">Restart</Button>
           <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">Pause</Button>
           <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-end" :disabled="!canRun" :title="endTitle" @click="() => endProgram()">End</Button>
           <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" @click="resetToFirstState">Reset</Button>
@@ -35,9 +36,10 @@
         :previous-koan="props.previousKoan"
         :next-koan="props.nextKoan"
         :running="koanTestsRunning"
+        :auto="koanTestsAuto"
         :results="koanResults"
-        @load-hint="loadKoanHint"
         @run="runCurrentKoanTests"
+        @update:auto="setKoanTestsAuto"
       />
 
       <section class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
@@ -85,11 +87,11 @@
           </template>
           <Textarea v-else-if="activeSection === 'state'" v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
           <div v-else-if="activeSection === 'input'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections.filter(showResourceInput)" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="false" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+            <ResourceSection v-for="resource in resourceSections.filter(showResourceInput)" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="false" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
           <StateDiffs v-else-if="activeSection === 'trace'" :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
           <div v-else-if="activeSection === 'resources'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
           <Textarea v-else :model-value="rulesText" data-test="embed-source-text" readonly spellcheck="false" wrap="off" />
         </div>
@@ -104,9 +106,10 @@
           :previous-koan="props.previousKoan"
           :next-koan="props.nextKoan"
           :running="koanTestsRunning"
+          :auto="koanTestsAuto"
           :results="koanResults"
-          @load-hint="loadKoanHint"
           @run="runCurrentKoanTests"
+          @update:auto="setKoanTestsAuto"
         />
       </ResizablePanel>
       <ResizableHandle v-if="props.koan" />
@@ -130,8 +133,11 @@
               <Button type="button" variant="secondary" size="icon" data-test="playground-pause" :disabled="!continuing" title="Pause" aria-label="Pause" @click="pauseProgram">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" /></svg>
               </Button>
-              <Button type="button" variant="secondary" size="icon" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">
+              <Button v-if="canRun" type="button" variant="secondary" size="icon" data-test="playground-continue" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" /></svg>
+              </Button>
+              <Button v-else type="button" variant="secondary" size="icon" data-test="playground-restart" :disabled="isBusy" title="Restart" aria-label="Restart" @click="() => restartProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5V2L7 7l5 5V8c2.76 0 5 2.24 5 5 0 .86-.22 1.67-.6 2.38l1.46 1.46A6.95 6.95 0 0 0 19 13c0-3.86-3.14-7-7-7zm-5 5.62A6.95 6.95 0 0 0 5 15c0 3.86 3.14 7 7 7v3l5-5-5-5v3c-2.76 0-5-2.24-5-5 0-.86.22-1.67.6-2.38L6.14 9.16A6.95 6.95 0 0 0 5 13z" /></svg>
               </Button>
               <Button type="button" variant="secondary" size="icon" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512"><path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" /></svg>
@@ -181,7 +187,7 @@
             <div class="playground-panel-title">resources</div>
           </header>
           <div class="playground-panel-content resource-list">
-            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
         </section>
       </ResizablePanel>
@@ -191,7 +197,7 @@
 
 <script setup lang="ts">
 import { diffChars } from 'diff'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -324,6 +330,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   surfaceResizeObserver?.disconnect()
   stopPendingCountdown()
+  cancelPendingKoanTestDebounce()
+  abortKoanTestRun()
 })
 
 
@@ -377,6 +385,7 @@ const pauseRequested = ref(false)
 const statusText = ref('idle')
 const stateDiffs = ref<StateDiffEntry[]>([])
 const selectedHistoryKey = ref<string | undefined>()
+const terminalHistoryKey = ref<string | undefined>()
 const baseState = ref('')
 const lastRunMode = ref<'step' | 'continue' | 'end'>('step')
 const continueSpeed = ref<ContinueSpeed>('10')
@@ -385,6 +394,10 @@ const matchedRuleLine = ref<number | undefined>()
 const selectedTestCase = ref<TestCaseOption | undefined>()
 const koanResults = ref<KoanTestResult[] | null>(null)
 const koanTestsRunning = ref(false)
+const koanTestsAuto = ref(false)
+let koanTestRunId = 0
+let koanTestAbortController: AbortController | undefined
+let koanTestDebounceTimer: ReturnType<typeof window.setTimeout> | undefined
 
 const runnableRulesText = computed(() => splitProgramSource(rulesText.value).rules)
 const resourceSections = computed(() => mergeResourceSections(extractResources(runnableRulesText.value), []))
@@ -392,14 +405,19 @@ const selectedCaseLabel = computed(() => selectedTestCase.value?.caseName ?? '')
 const selectedCaseSource = computed(() => selectedTestCase.value?.manifestPath ?? '')
 const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
 const isBusy = computed(() => running.value || continuing.value)
+const atTerminalHistoryEntry = computed(() => selectedHistoryKey.value !== undefined && selectedHistoryKey.value === terminalHistoryKey.value)
 const canReset = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
 const canUndo = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
-const canRun = computed(() => !isBusy.value)
+const canRun = computed(() => !isBusy.value && !atTerminalHistoryEntry.value)
 const requestedResourceName = computed(() => pendingResourceName.value)
 const stepTitle = computed(() => 'Step forward')
 const continueTitle = computed(() => 'Play')
 const endTitle = computed(() => `End without rendering intermediate states (max ${maxSteps.value} steps)`)
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
+
+watch(runnableRulesText, () => {
+  scheduleKoanTestRun()
+})
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -540,6 +558,16 @@ function showResourceOutput(resource: ResourceUsage): boolean {
   return resource.name === 'stdout' || resource.name === 'stderr' || resource.writes
 }
 
+function resourceInputReadonly(_name: string): boolean {
+  return isBusy.value
+}
+
+function resourceInputHelp(name: string): string {
+  if (isBusy.value) return 'running; input is locked until the next pause'
+  if (requestedResourceName.value === name) return 'program is waiting; submit one response'
+  return 'preload input for the next run'
+}
+
 function resourceOutputText(name: string): string {
   return resourceOutputs.value[name] ?? ''
 }
@@ -613,13 +641,59 @@ function selectTestCase(testCase: TestCaseOption): void {
 }
 
 async function runCurrentKoanTests(): Promise<void> {
+  await startKoanTestRun()
+}
+
+function setKoanTestsAuto(value: boolean): void {
+  koanTestsAuto.value = value
+  if (value) scheduleKoanTestRun()
+  else cancelPendingKoanTestDebounce()
+}
+
+function scheduleKoanTestRun(): void {
+  if (!props.koan || !koanTestsAuto.value) return
+  cancelPendingKoanTestDebounce()
+  koanTestDebounceTimer = window.setTimeout(() => {
+    koanTestDebounceTimer = undefined
+    void startKoanTestRun()
+  }, 300)
+}
+
+async function startKoanTestRun(): Promise<void> {
   if (!props.koan) return
+  cancelPendingKoanTestDebounce()
+  abortKoanTestRun()
+  const runId = ++koanTestRunId
+  const controller = new AbortController()
+  koanTestAbortController = controller
   koanTestsRunning.value = true
+  const source = runnableRulesText.value
   try {
-    koanResults.value = await runKoanTests(props.koan, runnableRulesText.value)
+    const results = await runKoanTests(props.koan, source, controller.signal)
+    if (runId === koanTestRunId && !controller.signal.aborted) koanResults.value = results
+  } catch (error) {
+    if (!isAbortError(error)) throw error
   } finally {
-    koanTestsRunning.value = false
+    if (runId === koanTestRunId) {
+      koanTestsRunning.value = false
+      koanTestAbortController = undefined
+    }
   }
+}
+
+function cancelPendingKoanTestDebounce(): void {
+  if (koanTestDebounceTimer === undefined) return
+  window.clearTimeout(koanTestDebounceTimer)
+  koanTestDebounceTimer = undefined
+}
+
+function abortKoanTestRun(): void {
+  koanTestAbortController?.abort()
+  koanTestAbortController = undefined
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
 }
 function initializeKoanAttempt(): void {
   if (!props.koan) return
@@ -629,10 +703,12 @@ function initializeKoanAttempt(): void {
   stateText.value = ''
   loadError.value = ''
   clearRun()
+  loadKoanHintIfEditorEmpty()
 }
 
-function loadKoanHint(): void {
+function loadKoanHintIfEditorEmpty(): void {
   if (!props.koan?.hintSource) return
+  if (rulesText.value.trim() !== '') return
   const split = splitProgramSource(props.koan.hintSource)
   rulesText.value = props.koan.hintSource
   stateText.value = split.state
@@ -659,6 +735,7 @@ function clearDiffs(): void {
   stopPendingCountdown()
   stateDiffs.value = []
   selectedHistoryKey.value = undefined
+  terminalHistoryKey.value = undefined
   baseState.value = stateText.value
   matchedRuleLine.value = undefined
 }
@@ -736,6 +813,13 @@ function pauseProgram(): void {
   statusText.value = 'pausing'
 }
 
+async function restartProgram(): Promise<void> {
+  if (isBusy.value) return
+  if (stateDiffs.value.length > 0) selectHistoryEntry(stateDiffs.value[0].key)
+  terminalHistoryKey.value = undefined
+  await continueProgram()
+}
+
 type RunStatus = 'stepped' | 'exited' | 'waiting' | 'errored'
 
 async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean; collapsedHistory?: boolean }): Promise<RunStatus | undefined> {
@@ -787,6 +871,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
         return 'stepped'
       }
       statusText.value = `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
+      terminalHistoryKey.value = selectedHistoryKey.value
       if (stderr) {
         activeSection.value = 'output'
         activeOutputTab.value = 'stderr'
@@ -887,7 +972,11 @@ function appendStepErrorDiff(error: string, state: string, resources: ResourceSn
 function pruneFutureHistory(): void {
   const index = selectedHistoryCursor.value
   if (index >= 0 && index < stateDiffs.value.length - 1) {
-    stateDiffs.value = stateDiffs.value.slice(0, index + 1)
+    const kept = stateDiffs.value.slice(0, index + 1)
+    stateDiffs.value = kept
+    if (terminalHistoryKey.value && !kept.some(entry => entry.key === terminalHistoryKey.value)) {
+      terminalHistoryKey.value = undefined
+    }
   }
 }
 
@@ -1037,12 +1126,12 @@ function splitEllipsisPart(text: string, changed: boolean, keyPrefix: string): D
 
 function pendingInputResource(result?: { error?: string; errors?: string }): string {
   const text = [result?.error ?? '', result?.errors ?? '', ...Object.values(resourceLogs.value).flatMap(log => log.errors)].join('\n')
-  const match = text.match(/pending_input:([A-Za-z_][A-Za-z0-9_-]*)/)
-  return match?.[1] ?? ''
+  const match = text.match(/WAIT:resource:([A-Za-z_][A-Za-z0-9_-]*):pending_input|pending_input:([A-Za-z_][A-Za-z0-9_-]*)/)
+  return match?.[1] ?? match?.[2] ?? ''
 }
 
 function pendingInputTimeoutSeconds(trace: DemoTraceEvent[], resourceName: string): number | undefined {
-  const event = [...trace].reverse().find(item => item.error?.includes(`pending_input:${resourceName}`))
+  const event = [...trace].reverse().find(item => item.error?.includes(`WAIT:resource:${resourceName}:pending_input`) || item.error?.includes(`pending_input:${resourceName}`))
   if (!event) return undefined
   const rule = ruleTextForEvent(event)
   const escapedName = resourceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

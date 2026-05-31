@@ -75,7 +75,7 @@ function buildResources(options) {
           return { error: String(config.readError) };
         }
         if (!buffer.text) {
-          const pending = `pending_input:${name}`;
+          const pending = `WAIT:resource:${name}:pending_input`;
           log.errors.push(pending);
           log.remainingInputText = buffer.text;
           return { error: pending };

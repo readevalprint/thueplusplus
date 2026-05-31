@@ -58,12 +58,20 @@
         <h3>tests</h3>
         <span class="koan-tests-summary" data-test="koan-results-summary">{{ summaryText }}</span>
       </div>
-      <Button v-if="koan.hintSource" type="button" variant="secondary" data-test="koan-load-hint" @click="$emit('loadHint')">
-        Load Hint
-      </Button>
-      <Button type="button" data-test="koan-run-tests" :disabled="running" @click="$emit('run')">
-        {{ running ? 'Running…' : 'Run Tests' }}
-      </Button>
+      <div class="koan-tests-actions">
+        <Button type="button" data-test="koan-run-tests" :disabled="running" @click="$emit('run')">
+          {{ running ? 'Running…' : 'Run Tests' }}
+        </Button>
+        <label class="koan-tests-auto-toggle">
+          <input
+            type="checkbox"
+            :checked="auto"
+            data-test="koan-auto-tests"
+            @change="$emit('update:auto', ($event.target as HTMLInputElement).checked)"
+          >
+          auto
+        </label>
+      </div>
 
       <ItemGroup class="koan-test-items" aria-label="Koan test cases">
         <Item
@@ -169,12 +177,13 @@ const props = defineProps<{
   previousKoan?: KoanEntry
   nextKoan?: KoanEntry
   running: boolean
+  auto: boolean
   results: KoanTestResult[] | null
 }>()
 
 defineEmits<{
-  loadHint: []
   run: []
+  'update:auto': [value: boolean]
 }>()
 
 const expandedOverrides = ref<Record<string, boolean>>({})

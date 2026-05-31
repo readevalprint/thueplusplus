@@ -16,6 +16,7 @@ export interface DemoRunRequest {
   procs?: Record<string, string>
   trace?: boolean
   stepLimit?: number
+  signal?: AbortSignal
 }
 
 export interface DemoResourceLog {
@@ -70,6 +71,7 @@ function publicAssetURL(fileName: string): string {
 }
 
 export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunResult> {
+  if (request.signal?.aborted) throw abortError()
   const { ThuePPWorker: Client } = await import('../wasm/worker-client.js') as unknown as {
     ThuePPWorker: typeof ThuePPWorker
   }
@@ -78,8 +80,11 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
     wasmURL: publicAssetURL('thuepp.wasm'),
     wasmExecURL: publicAssetURL('wasm_exec.js'),
   })
+  const abort = () => client.terminate()
+  request.signal?.addEventListener('abort', abort, { once: true })
 
   try {
+    if (request.signal?.aborted) throw abortError()
     const result = await client.run({
       sourceText: request.sourceText,
       sourcePath: request.sourcePath,
@@ -92,11 +97,17 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
       trace: request.trace,
       stepLimit: request.stepLimit,
     })
+    if (request.signal?.aborted) throw abortError()
     return {
       ...result,
       coverage: result.coverageTSV ?? result.coverage ?? '',
     }
   } finally {
+    request.signal?.removeEventListener('abort', abort)
     client.terminate()
   }
+}
+
+function abortError(): DOMException {
+  return new DOMException('Run aborted', 'AbortError')
 }

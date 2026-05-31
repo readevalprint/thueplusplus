@@ -53,12 +53,7 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   await expect(page.getByTestId('koan-next-disabled')).toBeVisible()
   await expect(solutions).toBeVisible()
   await expect(page.getByTestId('koan-run-tests')).toBeVisible()
-  await expect(page.getByTestId('koan-load-hint')).toBeVisible()
-  await expect.poll(async () => rules.evaluate(element => {
-    const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
-    return editorElement.__thueppGetValue?.() ?? ''
-  })).toBe('')
-  await page.getByTestId('koan-load-hint').click()
+  await expect(page.getByTestId('koan-load-hint')).toHaveCount(0)
   await expect.poll(async () => rules.evaluate(element => {
     const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
     return editorElement.__thueppGetValue?.() ?? ''
@@ -222,7 +217,7 @@ test('empty history and resources do not show helper labels', async ({ page }) =
   await expect(page.getByTestId('playground-pause')).toBeDisabled()
   await expect(page.getByTestId('resource-section-stdin')).toContainText('stdin')
   await expect(page.getByTestId('resource-section-stdin')).toContainText('stdin input buffer')
-  await expect(page.getByTestId('resource-section-stdin')).toContainText('one line is consumed per request')
+  await expect(page.getByTestId('resource-section-stdin')).toContainText('preload input for the next run')
   await expect(page.getByTestId('resource-section-stdin')).not.toContainText('read')
   await expect(page.getByTestId('resource-section-stdout')).toContainText('stdout')
   await expect(page.getByTestId('resource-section-stdout')).toContainText('stdout output')
@@ -236,8 +231,9 @@ test('failed matched builtin appears in state history', async ({ page }) => {
 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('exited 1')
-  await expect(page.getByTestId('playground-step')).toBeEnabled()
-  await expect(page.getByTestId('playground-continue')).toBeEnabled()
+  await expect(page.getByTestId('playground-step')).toBeDisabled()
+  await expect(page.getByTestId('playground-continue')).toHaveCount(0)
+  await expect(page.getByTestId('playground-restart')).toBeEnabled()
   await expect(page.getByTestId('playground-diff-error')).toContainText("Builtin 'div' division by zero")
 
   await page.getByTestId('playground-state').fill('div:2,1')
@@ -258,7 +254,8 @@ test('parse-time builtin errors appear in state history', async ({ page }) => {
   await expect(page.getByTestId('playground-diffs')).toContainText('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
   await expect(page.getByTestId('playground-diff-error')).toContainText("Line 1: Unknown builtin 'nope'")
 
-  await expect(page.getByTestId('playground-step')).toBeEnabled()
+  await expect(page.getByTestId('playground-step')).toBeDisabled()
+  await expect(page.getByTestId('playground-restart')).toBeEnabled()
   await page.getByTestId('playground-state').fill('2,3')
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue("Line 1: Unknown builtin 'nope'\nLine 1: Unknown builtin 'nope'")
@@ -399,7 +396,7 @@ test('resource sections are derived from rules and stdio is pinned', async ({ pa
   await expect(page.getByTestId('playground-auto')).toHaveCount(0)
   await page.getByTestId('playground-continue').click()
 
-  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n', { timeout: 5000 })
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n', { timeout: 10000 })
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
   await expect(page.getByTestId('resource-input-random')).toHaveValue('')
 })

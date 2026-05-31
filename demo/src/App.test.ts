@@ -54,6 +54,14 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(promiseResolve => {
+    resolve = promiseResolve
+  })
+  return { promise, resolve }
+}
+
 async function mountApp(options?: Parameters<typeof mount>[1]): Promise<ReturnType<typeof mount>> {
   const wrapper = mount(App, options)
   await flush()
@@ -142,7 +150,7 @@ describe('Go-WASM demo UI', () => {
 
   it('runs koan tests from the playground rules editor and shows expected output diffs', async () => {
     window.history.pushState({}, '', '/koans/fixed-greet/')
-    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
+    mockedRunWithWorker.mockResolvedValue({ stdout: '', stderr: '' })
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(true)
@@ -153,11 +161,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="koan-next-disabled"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('')
-    expect(wrapper.get('[data-test="koan-load-hint"]').text()).toBe('Load Hint')
-    await wrapper.get('[data-test="koan-load-hint"]').trigger('click')
-    await flush()
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('# Goal: print exactly Hello, koan!')
+    expect(wrapper.find('[data-test="koan-load-hint"]').exists()).toBe(false)
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).not.toContain('title:')
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).value).toBe('START')
     expect(wrapper.find('[data-test="koan-attempt"]').exists()).toBe(false)
@@ -183,7 +188,56 @@ describe('Go-WASM demo UI', () => {
     expect(result.attributes('data-status')).toBe('fail')
     expect(wrapper.get('[data-test="koan-test-details-default-state"]').text()).toContain('fixture')
     expect(wrapper.get('[data-test="koan-test-resource-diff-default-state-stdout"]').text()).toContain('stdout actual vs expected')
+    expect(wrapper.find('[data-test="koan-test-exit-code-diff-default-state"]').exists()).toBe(false)
     expect(result.text()).toContain('Hello, koan!')
+  })
+
+  it('auto-runs koan tests on debounced rule changes and restarts an in-flight run', async () => {
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/koans/fixed-greet/')
+      const firstRun = deferred<never>()
+      const aborts: AbortSignal[] = []
+      mockedRunWithWorker
+        .mockImplementationOnce(request => {
+          aborts.push(request.signal as AbortSignal)
+          return new Promise((resolve, reject) => {
+            request.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
+            firstRun.promise.then(resolve, reject)
+          })
+        })
+        .mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' })
+
+      const wrapper = await mountApp()
+      await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
+      await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= FIRST')
+      vi.advanceTimersByTime(299)
+      await flush()
+      expect(mockedRunWithWorker).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1)
+      await flush()
+      expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
+      expect(mockedRunWithWorker.mock.calls[0][0]).toEqual(expect.objectContaining({
+        sourceText: '^START$ ::= FIRST',
+        sourcePath: 'koans/fixed-greet/attempt.tpp',
+      }))
+      expect(wrapper.get('[data-test="koan-run-tests"]').text()).toBe('Running…')
+
+      await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= SECOND')
+      vi.advanceTimersByTime(300)
+      await flush()
+
+      expect(aborts[0].aborted).toBe(true)
+      expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
+      expect(mockedRunWithWorker.mock.calls[1][0]).toEqual(expect.objectContaining({
+        sourceText: '^START$ ::= SECOND',
+      }))
+      await flush()
+      expect(wrapper.get('[data-test="koan-run-tests"]').text()).toBe('Run Tests')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('places the koan panel inside the full playground before rules, state, and resources', async () => {
@@ -506,13 +560,14 @@ describe('Go-WASM demo UI', () => {
     expect(entries[1].find('.state-diff-error').exists()).toBe(true)
     expect(entries[1].find('.state-diff-line.removed').exists()).toBe(false)
     expect(entries[1].find('.state-diff-line.added').exists()).toBe(false)
-    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
-    expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
-    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.find('[data-test="playground-continue"]').exists()).toBe(false)
+    expect((wrapper.get('[data-test="playground-restart"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(true)
     expect((wrapper.get('[data-test="playground-reset"]').element as HTMLButtonElement).disabled).toBe(false)
     expect((wrapper.get('[data-test="playground-undo"]').element as HTMLButtonElement).disabled).toBe(false)
     expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toBe('Step forward')
-    expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toBe('Play')
+    expect(wrapper.get('[data-test="playground-restart"]').attributes('title')).toBe('Restart')
     expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toBe('End without rendering intermediate states (max 10000 steps)')
 
     await wrapper.get('[data-test="playground-state"]').setValue('div:2,1')
@@ -689,9 +744,9 @@ describe('Go-WASM demo UI', () => {
       await wrapper.get('[data-test="playground-continue"]').trigger('click')
       await flush()
 
-      expect(wrapper.get('[data-test="playground-continue"]').text()).toBe('')
-      expect(wrapper.get('[data-test="playground-continue"]').attributes('aria-label')).toBe('Play')
-      expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
+      expect(wrapper.find('[data-test="playground-continue"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="playground-restart"]').attributes('aria-label')).toBe('Restart')
+      expect((wrapper.get('[data-test="playground-restart"]').element as HTMLButtonElement).disabled).toBe(true)
       expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(false)
 
       await wrapper.get('[data-test="playground-pause"]').trigger('click')
@@ -822,6 +877,89 @@ describe('Go-WASM demo UI', () => {
     }
   })
 
+  it('replaces play with restart at an exited checkpoint and re-enables play after stepping back', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = await mountApp({ attachTo: document.body })
+    await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::= b\n^b$ ::> stdout done\\n')
+    await wrapper.get('[data-test="playground-state"]').setValue('a')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      stdout: '',
+      stderr: '',
+      state: 'b',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: 'b', stateAfter: 'b' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(false)
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: '',
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::>', lhs: '^b$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'b', replacement: '', stateAfter: '', exitCode: 0 }],
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['done\n'], errors: [], remainingInputText: '', outputText: 'done\n' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 0')
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.find('[data-test="playground-continue"]').exists()).toBe(false)
+    expect((wrapper.get('[data-test="playground-restart"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="playground-undo"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-reset"]').element as HTMLButtonElement).disabled).toBe(false)
+
+    await wrapper.get('[data-test="playground-undo"]').trigger('click')
+    await flush()
+
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint #1')
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'b')
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.get('[data-test="playground-end"]').element as HTMLButtonElement).disabled).toBe(false)
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: '',
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::>', lhs: '^b$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'b', replacement: '', stateAfter: '', exitCode: 0 }],
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['done\n'], errors: [], remainingInputText: '', outputText: 'done\n' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker).toHaveBeenCalledTimes(3)
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 0')
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.find('[data-test="playground-continue"]').exists()).toBe(false)
+    expect((wrapper.get('[data-test="playground-restart"]').element as HTMLButtonElement).disabled).toBe(false)
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: '',
+      trace: [{ step: 1, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: '', exitCode: 0 }],
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['done\n'], errors: [], remainingInputText: '', outputText: 'done\n' }],
+    })
+    await wrapper.get('[data-test="playground-restart"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker).toHaveBeenCalledTimes(4)
+    expect(mockedRunWithWorker.mock.calls[3][0].input).toBe('a')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 0')
+    expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('uses visible resource buffers on the next run without requiring submit', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
@@ -848,6 +986,35 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="resource-countdown-stdin"]').exists()).toBe(false)
   })
 
+  it('locks resource input buffers while the interpreter is actively running', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
+    const wrapper = await mountApp({ attachTo: document.body })
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< stdin')
+    await wrapper.get('[data-test="playground-state"]').setValue('@IN@')
+    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada')
+    const run = deferred<{ exitCode: number; stdout: string; stderr: string; state: string; resourceLogs: Array<{ name: string; reads: string[]; writes: string[]; errors: string[]; remainingInputText: string; outputText: string }> }>()
+    mockedRunWithWorker.mockReturnValueOnce(run.promise)
+
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect((wrapper.get('[data-test="resource-input-stdin"]').element as HTMLTextAreaElement).readOnly).toBe(true)
+    expect(wrapper.get('[data-test="resource-input-help-stdin"]').text()).toBe('running; input is locked until the next pause')
+    expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(true)
+
+    run.resolve({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'Ada',
+      resourceLogs: [{ name: 'stdin', reads: ['Ada'], writes: [], errors: [], remainingInputText: '', outputText: '' }],
+    })
+    await flush()
+
+    expect((wrapper.get('[data-test="resource-input-stdin"]').element as HTMLTextAreaElement).readOnly).toBe(false)
+    expect(wrapper.get('[data-test="resource-input-help-stdin"]').text()).toBe('preload input for the next run')
+  })
+
   it('submits an empty line when a pending input countdown expires', async () => {
     vi.useFakeTimers()
     try {
@@ -860,11 +1027,11 @@ describe('Go-WASM demo UI', () => {
         exitCode: 1,
         stdout: '',
         stderr: '',
-        error: 'ERR:resource:stdin:pending_input:stdin',
-        errors: 'ERR:resource:stdin:pending_input:stdin',
+        error: 'WAIT:resource:stdin:pending_input',
+        errors: 'WAIT:resource:stdin:pending_input',
         state: '@IN@',
-        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '@IN@', error: 'ERR:resource:stdin:pending_input:stdin' }],
-        resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '@IN@', error: 'WAIT:resource:stdin:pending_input' }],
+        resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['WAIT:resource:stdin:pending_input'], remainingInputText: '', outputText: '' }],
       })
 
       await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -906,11 +1073,11 @@ describe('Go-WASM demo UI', () => {
         exitCode: 1,
         stdout: '',
         stderr: '',
-        error: 'ERR:resource:stdin:pending_input:stdin',
-        errors: 'ERR:resource:stdin:pending_input:stdin',
+        error: 'WAIT:resource:stdin:pending_input',
+        errors: 'WAIT:resource:stdin:pending_input',
         state: '@IN@',
-        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '@IN@', error: 'ERR:resource:stdin:pending_input:stdin' }],
-        resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '@IN@', error: 'WAIT:resource:stdin:pending_input' }],
+        resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['WAIT:resource:stdin:pending_input'], remainingInputText: '', outputText: '' }],
       })
 
       await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -948,11 +1115,11 @@ describe('Go-WASM demo UI', () => {
       exitCode: 1,
       stdout: '',
       stderr: '',
-      error: 'ERR:resource:random:pending_input:random',
-      errors: 'ERR:resource:random:pending_input:random',
+      error: 'WAIT:resource:random:pending_input',
+      errors: 'WAIT:resource:random:pending_input',
       state: 'SECRET<@RANDOM_NUMBER@>',
       resourceLogs: [
-        { name: 'random', reads: [], writes: [], errors: ['pending_input:random'], remainingInputText: '', outputText: '' },
+        { name: 'random', reads: [], writes: [], errors: ['WAIT:resource:random:pending_input'], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
       ],
     })
@@ -963,6 +1130,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for random')
     expect((wrapper.get('[data-test="resource-submit-random"]').element as HTMLButtonElement).disabled).toBe(false)
     expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="resource-input-random"]').element as HTMLTextAreaElement).readOnly).toBe(false)
+    expect(wrapper.get('[data-test="resource-input-help-random"]').text()).toBe('program is waiting; submit one response')
     expect(wrapper.get('[data-test="resource-input-random"]').attributes('data-attention')).toBeUndefined()
     expect(document.activeElement).toBe(wrapper.get('[data-test="resource-input-random"]').element)
     expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'random')).toEqual({ name: 'random', inputText: '', lineMode: true, readError: undefined })
@@ -973,13 +1142,13 @@ describe('Go-WASM demo UI', () => {
       exitCode: 1,
       stdout: 'Guess:\n',
       stderr: '',
-      error: 'ERR:resource:stdin:pending_input:stdin',
-      errors: 'ERR:resource:stdin:pending_input:stdin',
+      error: 'WAIT:resource:stdin:pending_input',
+      errors: 'WAIT:resource:stdin:pending_input',
       state: 'GUESS<7|@USER_GUESS@>',
       resourceLogs: [
         { name: 'random', reads: ['7'], writes: [], errors: [], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: ['Guess:\n'], errors: [], remainingInputText: '', outputText: 'Guess:\n' },
-        { name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' },
+        { name: 'stdin', reads: [], writes: [], errors: ['WAIT:resource:stdin:pending_input'], remainingInputText: '', outputText: '' },
       ],
     })
 
@@ -1002,11 +1171,11 @@ describe('Go-WASM demo UI', () => {
       exitCode: 1,
       stdout: 'Please enter digits only.\nGuess:\n',
       stderr: '',
-      error: 'ERR:resource:stdin:pending_input:stdin',
-      errors: 'ERR:resource:stdin:pending_input:stdin',
+      error: 'WAIT:resource:stdin:pending_input',
+      errors: 'WAIT:resource:stdin:pending_input',
       state: 'GUESS<7|@USER_GUESS@>',
       resourceLogs: [
-        { name: 'stdin', reads: ['x'], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' },
+        { name: 'stdin', reads: ['x'], writes: [], errors: ['WAIT:resource:stdin:pending_input'], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: ['Please enter digits only.\nGuess:\n'], errors: [], remainingInputText: '', outputText: 'Please enter digits only.\nGuess:\n' },
       ],
     })
@@ -1078,6 +1247,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-input-stdin"]').element.tagName).toBe('TEXTAREA')
     expect((wrapper.get('[data-test="resource-submit-random"]').element as HTMLButtonElement).disabled).toBe(true)
     expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.get('[data-test="resource-input-random"]').element as HTMLTextAreaElement).readOnly).toBe(false)
+    expect(wrapper.get('[data-test="resource-input-help-random"]').text()).toBe('preload input for the next run')
     expect(wrapper.find('[data-test="playground-js-procs"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="resource-input-random"]').setValue('7')
@@ -1122,11 +1293,11 @@ describe('Go-WASM demo UI', () => {
       exitCode: 1,
       stdout: '',
       stderr: '',
-      error: 'ERR:resource:stdin:pending_input:stdin',
-      errors: 'ERR:resource:stdin:pending_input:stdin',
+      error: 'WAIT:resource:stdin:pending_input',
+      errors: 'WAIT:resource:stdin:pending_input',
       state: 'read',
       resourceLogs: [
-        { name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' },
+        { name: 'stdin', reads: [], writes: [], errors: ['WAIT:resource:stdin:pending_input'], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
         { name: 'stderr', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
       ],
@@ -1165,10 +1336,10 @@ describe('Go-WASM demo UI', () => {
       exitCode: 1,
       stdout: '',
       stderr: '',
-      error: 'ERR:resource:stdin:pending_input:stdin',
-      errors: 'ERR:resource:stdin:pending_input:stdin',
+      error: 'WAIT:resource:stdin:pending_input',
+      errors: 'WAIT:resource:stdin:pending_input',
       state: 'got:@IN@',
-      resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+      resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['WAIT:resource:stdin:pending_input'], remainingInputText: '', outputText: '' }],
     })
     await wrapper.get('[data-test="playground-continue"]').trigger('click')
     await flush()

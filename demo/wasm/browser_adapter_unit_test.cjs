@@ -99,11 +99,11 @@ async function rejectsWith(promise, pattern) {
   });
   resource.resources.echo.write('ignored by reads\n');
   assert.strictEqual(resource.resources.echo.readLine(), '  ping  \nlast');
-  assert.strictEqual(resource.resources.echo.readLine().error, 'pending_input:echo');
+  assert.strictEqual(resource.resources.echo.readLine().error, 'WAIT:resource:echo:pending_input');
   const echoLog = resource.logs.find((log) => log.name === 'echo');
   assert.deepStrictEqual(Array.from(echoLog.writes), ['ignored by reads\n']);
   assert.deepStrictEqual(Array.from(echoLog.reads), ['  ping  \nlast']);
-  assert.deepStrictEqual(Array.from(echoLog.errors), ['pending_input:echo']);
+  assert.deepStrictEqual(Array.from(echoLog.errors), ['WAIT:resource:echo:pending_input']);
   assert.strictEqual(echoLog.remainingInputText, '');
   assert.strictEqual(echoLog.outputText, 'ignored by reads\n');
 

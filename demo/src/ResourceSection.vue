@@ -9,12 +9,13 @@
           empty line in {{ countdownSeconds }}s
         </span>
       </div>
-      <p class="resource-field-help">one line is consumed per request</p>
+      <p class="resource-field-help" :data-test="`resource-input-help-${resource.name}`">{{ inputHelp }}</p>
       <Textarea
         :id="inputId"
         :model-value="input"
         :data-attention="attention === 'input' ? 'input' : undefined"
         :data-test="`resource-input-${resource.name}`"
+        :readonly="inputReadonly"
         spellcheck="false"
         wrap="off"
         @update:model-value="$emit('update:input', String($event))"
@@ -57,6 +58,8 @@ const props = defineProps<{
   canSubmit: boolean
   showInput: boolean
   showOutput: boolean
+  inputReadonly?: boolean
+  inputHelp: string
   countdownSeconds?: number
   attention?: 'input' | 'output'
 }>()
