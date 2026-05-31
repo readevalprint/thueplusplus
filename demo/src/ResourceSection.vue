@@ -83,10 +83,13 @@ function triggerOutputAttention(): void {
 }
 
 watch(() => props.output, async () => {
-  triggerOutputAttention()
   await nextTick()
   const element = outputTextarea.value?.textarea
   if (element) element.scrollTop = element.scrollHeight
+})
+
+watch(() => props.attention, attention => {
+  if (attention === 'output') triggerOutputAttention()
 })
 
 onBeforeUnmount(() => {
