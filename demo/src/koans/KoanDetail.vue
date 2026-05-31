@@ -1,7 +1,5 @@
 <template>
-  <article class="readme-document koan-detail-document" :data-test="`koan-${koan.slug}`">
-    <KoanBreadcrumbs :koan="koan" />
-
+  <article class="koan-detail-document" :data-test="`koan-${koan.slug}`">
     <section class="koan-playground-region" aria-label="Try It">
       <PlaygroundSurface
         mode="full"
@@ -11,6 +9,9 @@
         :show-test-selector="false"
         :sync-url="false"
         :koan="koan"
+        :koans="koans"
+        :previous-koan="previousKoan"
+        :next-koan="nextKoan"
       />
     </section>
   </article>
@@ -18,10 +19,12 @@
 
 <script setup lang="ts">
 import PlaygroundSurface from '../PlaygroundSurface.vue'
-import KoanBreadcrumbs from './KoanBreadcrumbs.vue'
 import type { KoanEntry } from './types'
 
 defineProps<{
   koan: KoanEntry
+  koans: KoanEntry[]
+  previousKoan?: KoanEntry
+  nextKoan?: KoanEntry
 }>()
 </script>

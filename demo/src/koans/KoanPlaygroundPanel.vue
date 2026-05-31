@@ -3,7 +3,53 @@
     <section class="koan-playground-section" aria-labelledby="koan-panel-title">
       <header class="koan-playground-header">
         <div>
-          <h3 id="koan-panel-title">{{ koan.title }}</h3>
+          <nav class="koan-title-nav" aria-label="Koan navigation" data-test="koan-title-nav">
+            <Button
+              v-if="previousKoan"
+              as="a"
+              variant="outline"
+              size="sm"
+              :href="previousKoan.path"
+              :aria-label="`Previous koan: ${previousKoan.title}`"
+              data-test="koan-previous"
+            >
+              ←
+            </Button>
+            <Button v-else type="button" variant="outline" size="sm" disabled data-test="koan-previous-disabled" aria-label="No previous koan">
+              ←
+            </Button>
+
+            <Select :model-value="koan.slug" @update:model-value="selectKoan">
+              <SelectTrigger id="koan-panel-title" class="koan-title-select" data-test="koan-title-select" aria-label="Select koan">
+                {{ koan.title }}
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in koanOptions"
+                  :key="option.slug"
+                  :value="option.slug"
+                  :data-test="`koan-title-option-${option.slug}`"
+                >
+                  {{ option.title }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              v-if="nextKoan"
+              as="a"
+              variant="outline"
+              size="sm"
+              :href="nextKoan.path"
+              :aria-label="`Next koan: ${nextKoan.title}`"
+              data-test="koan-next"
+            >
+              →
+            </Button>
+            <Button v-else type="button" variant="outline" size="sm" disabled data-test="koan-next-disabled" aria-label="No next koan">
+              →
+            </Button>
+          </nav>
           <p data-test="koan-summary">{{ koan.summary }}</p>
         </div>
       </header>
@@ -12,9 +58,20 @@
         <h3>tests</h3>
         <span class="koan-tests-summary" data-test="koan-results-summary">{{ summaryText }}</span>
       </div>
-      <Button type="button" data-test="koan-run-tests" :disabled="running" @click="$emit('run')">
-        {{ running ? 'Running…' : 'Run Tests' }}
-      </Button>
+      <div class="koan-tests-actions">
+        <Button type="button" data-test="koan-run-tests" :disabled="running" @click="$emit('run')">
+          {{ running ? 'Running…' : 'Run Tests' }}
+        </Button>
+        <label class="koan-tests-auto-toggle">
+          <input
+            type="checkbox"
+            :checked="auto"
+            data-test="koan-auto-tests"
+            @change="$emit('update:auto', ($event.target as HTMLInputElement).checked)"
+          >
+          auto
+        </label>
+      </div>
 
       <ItemGroup class="koan-test-items" aria-label="Koan test cases">
         <Item
@@ -108,6 +165,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
 import type { KoanEntry, KoanTestCase, KoanTestResource } from './types'
 import type { KoanResourceResult, KoanTestResult } from './runKoanTests'
@@ -115,15 +173,21 @@ import KoanSolutionsTable from './KoanSolutionsTable.vue'
 
 const props = defineProps<{
   koan: KoanEntry
+  koans?: KoanEntry[]
+  previousKoan?: KoanEntry
+  nextKoan?: KoanEntry
   running: boolean
+  auto: boolean
   results: KoanTestResult[] | null
 }>()
 
 defineEmits<{
   run: []
+  'update:auto': [value: boolean]
 }>()
 
 const expandedOverrides = ref<Record<string, boolean>>({})
+const koanOptions = computed(() => props.koans?.length ? props.koans : [props.koan])
 const resultByName = computed(() => new Map((props.results ?? []).map(result => [result.name, result])))
 const passedCount = computed(() => props.results?.filter(result => result.passed).length ?? 0)
 const failedCount = computed(() => props.results?.filter(result => !result.passed).length ?? 0)
@@ -136,6 +200,12 @@ const summaryText = computed(() => {
 watch(() => props.results, () => {
   expandedOverrides.value = {}
 })
+
+function selectKoan(value: unknown): void {
+  if (typeof value !== 'string' || value === props.koan.slug) return
+  const selected = koanOptions.value.find(option => option.slug === value)
+  window.location.href = selected?.path ?? `/koans/${encodeURIComponent(value)}/`
+}
 
 function resultFor(name: string): KoanTestResult | undefined {
   return resultByName.value.get(name)
