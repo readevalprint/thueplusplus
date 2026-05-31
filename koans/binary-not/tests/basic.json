@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "zero to one",
+      "resources": {
+        "stdin": {
+          "buffer": "0\n"
+        },
+        "stdout": {
+          "expected_output": "1\n"
+        }
+      },
+      "exit_code": 0
+    },
+    {
+      "name": "one to zero",
+      "resources": {
+        "stdin": {
+          "buffer": "1\n"
+        },
+        "stdout": {
+          "expected_output": "0\n"
+        }
+      },
+      "exit_code": 0
+    }
+  ]
+}

@@ -4,10 +4,9 @@
 </template>
 
 <script setup lang="ts">
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
-import 'monaco-editor/min/vs/editor/editor.main.css'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { thueppLanguageConfiguration, thueppMonarchLanguage } from './thueppMonarch'
+import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import { registerThueppMonacoLanguage } from './thueppMonacoSetup'
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -23,53 +22,26 @@ const emit = defineEmits<{
 }>()
 
 const container = ref<HTMLElement | null>(null)
-let editor: monaco.editor.IStandaloneCodeEditor | undefined
-let matchDecorations: monaco.editor.IEditorDecorationsCollection | undefined
+let monaco: typeof Monaco | undefined
+let editor: Monaco.editor.IStandaloneCodeEditor | undefined
+let matchDecorations: Monaco.editor.IEditorDecorationsCollection | undefined
 let resizeObserver: ResizeObserver | undefined
 let applyingExternalValue = false
 
 interface RulesEditorElement extends HTMLElement {
   __thueppSetValue?: (value: string) => void
+  __thueppGetValue?: () => string
 }
 
-function registerThueppLanguage(): void {
-  if (!monaco.languages.getLanguages().some(language => language.id === 'thuepp')) {
-    monaco.languages.register({ id: 'thuepp', extensions: ['.tpp'], aliases: ['thue++', 'thuepp'] })
-  }
-  monaco.languages.setMonarchTokensProvider('thuepp', thueppMonarchLanguage)
-  monaco.languages.setLanguageConfiguration('thuepp', thueppLanguageConfiguration)
-  monaco.editor.defineTheme('thuepp-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [
-      { token: 'operator.alias.thuepp', foreground: 'fbbf24', fontStyle: 'bold' },
-      { token: 'type.identifier.alias.thuepp', foreground: 'fde68a', fontStyle: 'bold' },
-      { token: 'operator.thuepp', foreground: 'c4b5fd' },
-      { token: 'keyword.separator.thuepp', foreground: 'f9a8d4', fontStyle: 'bold' },
-      { token: 'type.identifier.thuepp', foreground: '93c5fd' },
-      { token: 'variable.thuepp', foreground: 'fbbf24' },
-      { token: 'regexp.thuepp', foreground: '86efac' },
-      { token: 'regexp.escape.thuepp', foreground: '67e8f9' },
-      { token: 'constant.thuepp', foreground: 'fca5a5' },
-      { token: 'number.thuepp', foreground: 'fdba74' },
-      { token: 'invalid.thuepp', foreground: 'ff7a90', fontStyle: 'bold' },
-    ],
-    colors: {
-      'editor.background': '#070708',
-      'editor.foreground': '#f5f5f6',
-      'editorLineNumber.foreground': '#74747e',
-      'editorLineNumber.activeForeground': '#f5f5f6',
-      'editorCursor.foreground': '#f5f5f6',
-      'editor.selectionBackground': '#3a3a42',
-      'editor.inactiveSelectionBackground': '#26262a',
-      'editorGutter.background': '#070708',
-    },
-  })
+function registerThueppLanguage(monacoApi: typeof Monaco): void {
+  registerThueppMonacoLanguage(monacoApi)
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!container.value) return
-  registerThueppLanguage()
+  await import('monaco-editor/min/vs/editor/editor.main.css')
+  monaco = await import('monaco-editor/esm/vs/editor/editor.api.js')
+  registerThueppLanguage(monaco)
   editor = monaco.editor.create(container.value, {
     value: props.modelValue,
     language: 'thuepp',
@@ -109,6 +81,7 @@ onMounted(() => {
     editor.setValue(value)
     emit('update:modelValue', value)
   }
+  ;(container.value as RulesEditorElement).__thueppGetValue = () => editor?.getValue() ?? ''
   resizeObserver = new ResizeObserver(() => editor?.layout())
   resizeObserver.observe(container.value)
 })
@@ -130,7 +103,7 @@ watch(() => props.readonly, value => {
 })
 
 function updateMatchedRuleDecoration(line: number | undefined): void {
-  if (!editor || !matchDecorations) return
+  if (!editor || !matchDecorations || !monaco) return
   const model = editor.getModel()
   if (!line || !model || line < 1 || line > model.getLineCount()) {
     matchDecorations.set([])
@@ -153,7 +126,10 @@ function updateMatchedRuleDecoration(line: number | undefined): void {
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
-  if (container.value) delete (container.value as RulesEditorElement).__thueppSetValue
+  if (container.value) {
+    delete (container.value as RulesEditorElement).__thueppSetValue
+    delete (container.value as RulesEditorElement).__thueppGetValue
+  }
   editor?.dispose()
 })
 </script>

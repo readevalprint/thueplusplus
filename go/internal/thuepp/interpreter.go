@@ -853,6 +853,12 @@ func decodeReplacementEscapes(text string) string {
 }
 
 func formatResourceError(name string, err error) string {
+	if strings.HasPrefix(err.Error(), "WAIT:") {
+		return err.Error()
+	}
+	if strings.HasPrefix(err.Error(), "pending_input") {
+		return fmt.Sprintf("WAIT:resource:%s:pending_input", name)
+	}
 	if resourceErr, ok := err.(resourceError); ok && resourceErr.omitName {
 		return fmt.Sprintf("ERR:resource:%v", err)
 	}

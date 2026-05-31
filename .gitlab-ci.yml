@@ -1,12 +1,23 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
+include:
+  - template: Security/SAST.gitlab-ci.yml
+    rules:
+      - if: '$CI_SERVER_HOST != "gitlab.com"'
+  - template: Security/Secret-Detection.gitlab-ci.yml
+    rules:
+      - if: '$CI_SERVER_HOST != "gitlab.com"'
+
 stages:
   - test
+  - pages
+  - secret-detection
 
 variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   UV_LINK_MODE: copy
   GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
   GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
+  SECRET_DETECTION_ENABLED: "true"
 
 cache:
   key: "$CI_COMMIT_REF_SLUG"
@@ -14,9 +25,12 @@ cache:
     - .cache/uv/
     - .cache/go-build/
     - .cache/go-mod/
+    - demo/.npm/
 
 test:
   image: golang:1.24.6-bookworm
+  rules:
+    - if: '$CI_SERVER_HOST != "gitlab.com"'
   before_script:
     - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
     - |
@@ -29,3 +43,32 @@ test:
     - go version
   script:
     - make test
+
+pages:
+  image: node:22-bookworm
+  stage: pages
+  rules:
+    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends ca-certificates curl make
+    - |
+      case "$(uname -m)" in
+        x86_64) GO_ARCH=amd64 ;;
+        aarch64|arm64) GO_ARCH=arm64 ;;
+        *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+      esac
+      curl -fsSL "https://go.dev/dl/go1.24.6.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tgz
+      tar -C /usr/local -xzf /tmp/go.tgz
+      export PATH="/usr/local/go/bin:$PATH"
+      go version
+    - node --version
+    - npm --version
+  script:
+    - export PATH="/usr/local/go/bin:$PATH"
+    - make demo-build
+    - rm -rf public
+    - cp -R demo/dist public
+  artifacts:
+    paths:
+      - public

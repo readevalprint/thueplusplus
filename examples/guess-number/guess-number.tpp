@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-
 NUMBER <- [0-9]+
 
 PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*

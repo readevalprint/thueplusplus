@@ -1,0 +1,58 @@
+{
+  "cases": [
+    {
+      "backends": {
+        "go": {
+          "covered_rules": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "cumulative_state_bytes": 45,
+          "eval_steps": 10,
+          "output_sha256": "079d6b1bc11d46188aacb49e0136ce18ae22d4c46f285ddf0379502ad6b64393",
+          "peak_state_bytes": 9,
+          "successful_rewrites": 4
+        }
+      },
+      "exit_code": 0,
+      "manifest": "koans/fixed-greet/tests/basic.json",
+      "name": "default state",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "f59ea0ac31c748774d160e1f55a5629fbe93458c7655fda47cb7458797da54d3"
+    }
+  ],
+  "coverage": {
+    "eligible": true,
+    "missing_by_backend": {
+      "go": []
+    },
+    "rule_lines": [
+      9,
+      10,
+      11,
+      12
+    ]
+  },
+  "cumulative_state_bytes": 45,
+  "koan": "fixed-greet",
+  "peak_state_bytes": 9,
+  "rank": 2,
+  "rule_count": 4,
+  "schema_version": 1,
+  "solution_id": "2026-05-29-staged-greeting",
+  "solution_metadata": {
+    "author": "Tim Watts",
+    "slug": "staged-greeting",
+    "summary": "Route through a READY state before printing the greeting.",
+    "title": "Staged Greeting",
+    "website": "https://readevalprint.com"
+  },
+  "solution_path": "koans/fixed-greet/solutions/2026-05-29-staged-greeting.tpp",
+  "solution_sha256": "807ed6613b74a2a492eed17f9fcf8b9339d4f1db2fbb6721cc3c7000f3dbb7a0",
+  "source_bytes": 311,
+  "source_sha256": "807ed6613b74a2a492eed17f9fcf8b9339d4f1db2fbb6721cc3c7000f3dbb7a0",
+  "successful_rewrites": 4,
+  "total_probes": 10
+}

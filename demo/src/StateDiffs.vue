@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
-  <section ref="timeline" class="state-diffs" data-test="playground-diffs" aria-label="timeline">
+  <section ref="timeline" class="state-diffs" data-test="playground-diffs" aria-label="state history">
     <Table>
       <TableBody>
         <template v-if="table.getRowModel().rows.length">

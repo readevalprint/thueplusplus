@@ -4,7 +4,7 @@
     :mode="mode"
     chrome="page"
     controls="debug"
-    :header="true"
+    :header="false"
     :picker="true"
     :show-test-selector="true"
     :sync-url="true"

@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
-# thue++ Go-WASM demo
+# Thue++ Go-WASM demo
 
-This is a small Vite/Vue browser demo shell for the Go-WASM thue++ adapter.
+This is a small Vite/Vue browser demo shell for the Go-WASM Thue++ adapter.
 
-The demo is intentionally not a JavaScript implementation of thue++. It imports the real browser worker adapter from `../js/wasm/`, which loads the Go WASM module and supplies browser resources through callbacks.
+The demo is intentionally not a JavaScript implementation of Thue++. It imports the real browser worker adapter from `wasm/`, which loads the Go WASM module and supplies browser resources through callbacks.
 
 ## Commands
 
@@ -29,7 +29,7 @@ Before serving the demo, run `make demo-build` from the repository root. That ta
 
 ## What the demo tests cover
 
-The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/wasm/browser_adapter_unit_test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker.
+The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `demo/wasm/browser_adapter_unit_test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker.
 
 `DESIGN.md` records the demo's project-owned visual direction: a dark formal interpreter workbench with tokenized colors, code-first panels, visible Go-WASM/Worker status, and explicit guardrails against implying a JavaScript rule evaluator or subprocess emulation.
 
@@ -41,7 +41,9 @@ The playground treats the program editor as an exact source view. Loading a bund
 
 The state textarea is derived from an explicit first bare `::=` separator and preserves all following text as the initial state, including embedded newlines, or from a selected manifest case input. Files without a separator start with an empty state. Clearing the state textarea sends an explicit empty input override to the Go-WASM runner; it must not fall back to hidden state embedded in the source text.
 
-The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row still restores that checkpoint, and rows after the selected checkpoint remain marked as future/stale until the next step prunes them.
+The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row restores that immutable checkpoint, including resource input/output buffers. Rows after the selected checkpoint remain marked as future/stale until execution or resource-buffer edits branch from the selected checkpoint and prune them.
+
+Resource textareas are working inputs for the next execution, not edits to historical rows. If a resource buffer is changed while an older checkpoint is selected, future rows are pruned immediately and the next Step/Play/End uses the edited buffer. Selecting another history row restores that row's saved resource snapshot and discards uncommitted resource edits. Waiting-for-input rows are passive checkpoints when reselected: they restore resource data, but do not restart submit buttons or countdown timers until execution reaches the read again. Output attention is reserved for output produced by execution, not passive history restoration.
 
 ## Embeddable playground routes
 
@@ -81,7 +83,7 @@ For native Vue embedding, use `PlaygroundSurface.vue` with the same concepts as 
 ## Boundaries
 
 - Native Python/Go TOML manifests remain the semantic conformance suite (`make test`).
-- This demo is not semantic conformance for thue++; it is a browser adapter/UI smoke suite.
+- This demo is not semantic conformance for Thue++; it is a browser adapter/UI smoke suite.
 - Browser resources are callbacks supplied to the Go-WASM adapter, not OS subprocesses. In-browser runs cannot spawn the process fixtures used by native examples.
 - Include files are resolved from the adapter include map passed by the UI, not from the browser filesystem.
-- The adapter behavior follows the Go-WASM browser callback resource work from GLKB #192 and is documented in [`../js/wasm/README.md`](../js/wasm/README.md).
+- The adapter behavior follows the Go-WASM browser callback resource work from GLKB #192 and is documented in [`wasm/README.md`](wasm/README.md).

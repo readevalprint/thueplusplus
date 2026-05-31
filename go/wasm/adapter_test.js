@@ -2,7 +2,7 @@
 const assert = require('assert');
 const path = require('path');
 const { Worker } = require('worker_threads');
-const { initThuePP } = require('../../js/wasm/node.cjs');
+const { initThuePP } = require('../../demo/wasm/node.cjs');
 
 const wasmPath = process.env.THUEPP_WASM || path.join(__dirname, '..', '..', 'build', 'thuepp.wasm');
 
@@ -81,7 +81,7 @@ function request(worker, message) {
   assert.strictEqual(invalidData.exitCode, 1, JSON.stringify(invalidData));
   assert.match(invalidData.error || '', /Invalid rule syntax: \^x\$ ::% data/);
 
-  const worker = new Worker(path.join(__dirname, '..', '..', 'js', 'wasm', 'node-worker.cjs'), {
+  const worker = new Worker(path.join(__dirname, '..', '..', 'demo', 'wasm', 'node-worker.cjs'), {
     workerData: { wasmPath },
   });
   try {

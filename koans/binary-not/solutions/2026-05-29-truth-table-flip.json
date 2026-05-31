@@ -1,0 +1,82 @@
+{
+  "cases": [
+    {
+      "backends": {
+        "go": {
+          "covered_rules": [
+            9,
+            10,
+            12,
+            14
+          ],
+          "cumulative_state_bytes": 38,
+          "eval_steps": 13,
+          "output_sha256": "ff87ddfd1c96c4b18e90cd418c694cfc4ecdf84a4fbda79b429d3558989d9fa0",
+          "peak_state_bytes": 10,
+          "successful_rewrites": 4
+        }
+      },
+      "exit_code": 0,
+      "manifest": "koans/binary-not/tests/basic.json",
+      "name": "zero to one",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "backends": {
+        "go": {
+          "covered_rules": [
+            9,
+            11,
+            13,
+            14
+          ],
+          "cumulative_state_bytes": 38,
+          "eval_steps": 15,
+          "output_sha256": "07976480d80506ad906774aa61a2fb6f1b2311d5befc6cad48f36e8b6a53fed9",
+          "peak_state_bytes": 10,
+          "successful_rewrites": 4
+        }
+      },
+      "exit_code": 0,
+      "manifest": "koans/binary-not/tests/basic.json",
+      "name": "one to zero",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ],
+  "coverage": {
+    "eligible": true,
+    "missing_by_backend": {
+      "go": []
+    },
+    "rule_lines": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ]
+  },
+  "cumulative_state_bytes": 76,
+  "koan": "binary-not",
+  "peak_state_bytes": 10,
+  "rank": 1,
+  "rule_count": 6,
+  "schema_version": 1,
+  "solution_id": "2026-05-29-truth-table-flip",
+  "solution_metadata": {
+    "author": "Tim Watts",
+    "slug": "truth-table-flip",
+    "summary": "Handle each binary input as its own rewrite row.",
+    "title": "Truth Table Flip",
+    "website": "https://readevalprint.com"
+  },
+  "solution_path": "koans/binary-not/solutions/2026-05-29-truth-table-flip.tpp",
+  "solution_sha256": "83c66992dc3ab869d14b0a65a2e59de5eef57ccbcd4bc360e3a90fae45c19373",
+  "source_bytes": 328,
+  "source_sha256": "83c66992dc3ab869d14b0a65a2e59de5eef57ccbcd4bc360e3a90fae45c19373",
+  "successful_rewrites": 8,
+  "total_probes": 28
+}

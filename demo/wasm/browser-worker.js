@@ -65,7 +65,7 @@ function buildResources(options) {
     if (resources[name]) return;
     const config = configsByName.get(name) || {};
     const buffer = { text: String(config.inputText ?? fallbackInput) };
-    const submittedValueMode = Object.prototype.hasOwnProperty.call(config, 'inputText');
+    const submittedValueMode = Object.prototype.hasOwnProperty.call(config, 'inputText') && !config.lineMode;
     const log = { name, reads: [], writes: [], errors: [], remainingInputText: buffer.text, outputText: '' };
     logs.push(log);
     resources[name] = {
@@ -76,7 +76,7 @@ function buildResources(options) {
           return { error: String(config.readError) };
         }
         if (!buffer.text) {
-          const pending = `pending_input:${name}`;
+          const pending = `WAIT:resource:${name}:pending_input`;
           log.errors.push(pending);
           log.remainingInputText = buffer.text;
           return { error: pending };

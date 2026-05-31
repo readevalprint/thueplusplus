@@ -224,7 +224,7 @@ func jsValueToString(v js.Value) (string, error) {
 		return v.String(), nil
 	}
 	if v.Type() == js.TypeObject && v.Get("error").Type() != js.TypeUndefined {
-		return "", fmt.Errorf(v.Get("error").String())
+		return "", fmt.Errorf("%s", v.Get("error").String())
 	}
 	return "", fmt.Errorf("callback returned unsupported value type %s", v.Type().String())
 }

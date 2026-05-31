@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Numeric builtin contract
 
-This document is the source contract for numeric inputs and outputs used by the built-in numeric operations in thue++ examples and interpreters.
+This document is the source contract for numeric inputs and outputs used by the built-in numeric operations in Thue++ examples and interpreters.
 
 Numeric builtins are deterministic exact-rational operations. They do not use binary floating point. Each accepted numeric literal is capped at 4096 characters before exact-rational parsing, so parser and arithmetic cost are not bounded only by the optional interpreter state-size limit.
 
@@ -94,7 +94,7 @@ Current behavior:
 | `add:0.1,0.2` | `3/10` |
 | Lisp `(/ 7 2)` | `7/2` |
 
-Migrate consumers by treating numeric builtin output as an exact rational string: either consume reduced `numerator/denominator` values directly, or add an explicitly named decimal-formatting operation at the consumer boundary. Do not depend on division emitting decimal strings; no decimal formatting primitive exists in thue++ today.
+Migrate consumers by treating numeric builtin output as an exact rational string: either consume reduced `numerator/denominator` values directly, or add an explicitly named decimal-formatting operation at the consumer boundary. Do not depend on division emitting decimal strings; no decimal formatting primitive exists in Thue++ today.
 
 ## Modulo policy
 

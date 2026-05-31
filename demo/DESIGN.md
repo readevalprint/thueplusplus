@@ -2,7 +2,7 @@
 ---
 version: alpha
 name: thuepp-browser-workbench
-description: "Dark formal interpreter workbench for the thue++ browser demo: a near-black developer surface, one electric accent, code-first panels, and visible runtime/adapter boundaries."
+description: "Dark formal interpreter workbench for the Thue++ browser demo: a near-black developer surface, one electric accent, code-first panels, and visible runtime/adapter boundaries."
 colors:
   primary: "#00D992"
   primary-soft: "#7FFFD2"
@@ -108,7 +108,7 @@ components:
 
 ## Overview
 
-The browser demo should feel like a formal interpreter workbench, not a generic dark form. It presents a real thue++ runtime compiled to Go-WASM and isolates execution in a Web Worker. The design should constantly reinforce that boundary: Go owns semantics; JavaScript supplies browser resources and observability.
+The browser demo should feel like a formal interpreter workbench, not a generic dark form. It presents a real Thue++ runtime compiled to Go-WASM and isolates execution in a Web Worker. The design should constantly reinforce that boundary: Go owns semantics; JavaScript supplies browser resources and observability.
 
 The visual language borrows broad patterns from developer-tool references such as VoltAgent, Linear, Warp, Cursor, and Vercel without copying their brands: near-black canvas, one disciplined accent, code/editor surfaces, compact status chips, and dense but readable panels.
 
@@ -162,7 +162,7 @@ Do:
 
 Don't:
 
-- Suggest JavaScript evaluates thue++ rules.
+- Suggest JavaScript evaluates Thue++ rules.
 - Hide raw diagnostics behind decorative summaries.
 - Copy a third-party brand identity or logo style.
 - Add a component framework just for visual polish.

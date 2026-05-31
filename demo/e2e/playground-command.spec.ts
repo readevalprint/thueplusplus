@@ -2,34 +2,181 @@
 import { expect, test, type Page } from '@playwright/test'
 
 async function fillRules(page: Page, value: string): Promise<void> {
-  await page.getByTestId('playground-rules').evaluate((element, text) => {
+  const rules = page.getByTestId('playground-rules')
+  await expect(rules).toBeVisible()
+  await expect.poll(async () => rules.evaluate(element => {
     const editorElement = element as HTMLElement & { __thueppSetValue?: (value: string) => void }
-    if (!editorElement.__thueppSetValue) throw new Error('rules Monaco editor is not ready')
-    editorElement.__thueppSetValue(text)
+    return Boolean(editorElement.__thueppSetValue)
+  })).toBe(true)
+  await rules.evaluate((element, text) => {
+    const editorElement = element as HTMLElement & { __thueppSetValue?: (value: string) => void }
+    editorElement.__thueppSetValue?.(text)
   }, value)
 }
 
-test('playground selector searches by path/case but not input', async ({ page }) => {
+function collectRuntimeErrors(page: Page): string[] {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+  return errors
+}
+
+async function openExampleMenuGroup(page: Page, label: string): Promise<void> {
+  const trigger = page.getByTestId('test-case-menu-trigger').filter({ hasText: label })
+  await trigger.dispatchEvent('pointerdown')
+  await trigger.click()
+}
+
+test('koan detail route renders a usable full-width solve-first playground', async ({ page }) => {
+  const runtimeErrors = collectRuntimeErrors(page)
+  await page.goto('/koans/fixed-greet/')
+
+  const pageRoot = page.getByTestId('koans-page')
+  const topbar = page.getByTestId('site-topbar')
+  const topbarInner = page.locator('.site-topbar-inner')
+  const surface = page.getByTestId('playground-full-surface')
+  const koanPanel = page.getByTestId('koan-playground-panel')
+  const solutions = page.getByTestId('koan-solutions-panel')
+  const rules = page.getByTestId('playground-rules')
+  const state = page.getByTestId('playground-state')
+  const resources = page.getByTestId('resource-sections').first()
+
+  await expect(page.getByTestId('koan-toc')).toHaveCount(0)
+  await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
+  await expect(pageRoot).toHaveClass(/koan-detail-page/)
+  await expect(page.getByTestId('koan-fixed-greet')).not.toHaveClass(/readme-document/)
+  await expect(koanPanel).toBeVisible()
+  await expect(page.getByTestId('koan-title-nav')).toBeVisible()
+  await expect(page.getByTestId('koan-title-select')).toContainText('Fixed Greeting')
+  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/binary-not/')
+  await expect(page.getByTestId('koan-next-disabled')).toBeVisible()
+  await expect(solutions).toBeVisible()
+  await expect(page.getByTestId('koan-run-tests')).toBeVisible()
+  await expect(page.getByTestId('koan-load-hint')).toHaveCount(0)
+  await expect.poll(async () => rules.evaluate(element => {
+    const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
+    return editorElement.__thueppGetValue?.() ?? ''
+  })).toContain('# Goal: print exactly Hello, koan!')
+  await expect(page.getByTestId('playground-state')).toHaveValue('START')
+  await expect(page.getByTestId('koan-test-details-default-state')).toHaveCount(0)
+  await page.getByTestId('koan-test-toggle-default-state').click()
+  await expect(page.getByTestId('koan-test-details-default-state')).toBeVisible()
+  await expect(page.getByTestId('koan-test-resource-fixture-expected-default-state-stdout')).toContainText('Hello, koan!')
+  await expect(rules).toBeVisible()
+  await expect(state).toBeVisible()
+  await expect(resources).toBeVisible()
+  await expect(koanPanel).not.toHaveAttribute('data-slot', 'card')
+  await expect(solutions).not.toHaveAttribute('data-slot', 'card')
+
+  const [pageBox, topbarBox, topbarInnerBox, surfaceBox, koanBox, solutionsBox, rulesBox, stateBox, resourcesBox] = await Promise.all([
+    pageRoot.boundingBox(),
+    topbar.boundingBox(),
+    topbarInner.boundingBox(),
+    surface.boundingBox(),
+    koanPanel.boundingBox(),
+    solutions.boundingBox(),
+    rules.boundingBox(),
+    state.boundingBox(),
+    resources.boundingBox(),
+  ])
+  expect(pageBox?.width ?? 0).toBeGreaterThan(1100)
+  const viewportWidth = page.viewportSize()?.width ?? 0
+  expect(topbarBox?.width ?? 0).toBeGreaterThanOrEqual(viewportWidth - 1)
+  expect(topbarInnerBox?.width ?? 0).toBeGreaterThanOrEqual(viewportWidth - 1)
+  expect(topbarInnerBox?.x ?? 0).toBeLessThanOrEqual(1)
+  expect(surfaceBox?.width ?? 0).toBeGreaterThan(1000)
+  expect(surfaceBox?.height ?? 0).toBeGreaterThan(400)
+  const pageScroll = await page.evaluate(() => (document.scrollingElement?.scrollHeight ?? 0) - window.innerHeight)
+  expect(pageScroll).toBeLessThanOrEqual(1)
+  expect(koanBox?.height ?? 0).toBeGreaterThan(180)
+  expect(solutionsBox?.height ?? 0).toBeGreaterThan(80)
+  expect(rulesBox?.height ?? 0).toBeGreaterThan(250)
+  expect(Math.abs((solutionsBox?.x ?? 0) - (koanBox?.x ?? 0))).toBeLessThan(8)
+  expect(solutionsBox!.y).toBeGreaterThan(koanBox!.y)
+  expect(solutionsBox!.x).toBeLessThan(rulesBox!.x)
+  expect(koanBox!.x).toBeLessThan(rulesBox!.x)
+  expect(rulesBox!.x).toBeLessThan(stateBox!.x)
+  expect(stateBox!.x).toBeLessThan(resourcesBox!.x)
+
+  await page.getByTestId('solution-sort-title').click()
+  await expect(page.getByTestId('koan-solutions-table').locator('tbody tr').first()).toContainText('Direct Greeting')
+  await page.getByTestId('solution-sort-title').click()
+  await expect(page.getByTestId('koan-solutions-table').locator('tbody tr').first()).toContainText('Staged Greeting')
+  await page.getByTestId('solution-2026-05-29-direct-greeting').click()
+  await expect(page).toHaveURL(/\/koans\/fixed-greet\/2026-05-29-direct-greeting\/?$/)
+  expect(runtimeErrors).toEqual([])
+})
+
+test('koan title dropdown jumps directly to another koan', async ({ page }) => {
+  const runtimeErrors = collectRuntimeErrors(page)
+  await page.goto('/koans/binary-not/')
+
+  await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
+  await expect(page.getByTestId('koan-previous-disabled')).toBeVisible()
+  await expect(page.getByTestId('koan-next')).toHaveAttribute('href', '/koans/fixed-greet/')
+  await expect(page.getByTestId('koan-title-select')).toContainText('Binary Not')
+
+  await page.getByTestId('koan-title-select').click()
+  await page.getByTestId('koan-title-option-fixed-greet').click()
+
+  await expect(page).toHaveURL(/\/koans\/fixed-greet\/?$/)
+  await expect(page.getByTestId('koan-title-select')).toContainText('Fixed Greeting')
+  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/binary-not/')
+  await expect(page.getByTestId('koan-next-disabled')).toBeVisible()
+  expect(runtimeErrors).toEqual([])
+})
+
+test('koan run tests reports passing and failing browser results', async ({ page }) => {
+  const runtimeErrors = collectRuntimeErrors(page)
+  await page.goto('/koans/binary-not/')
+
+  await fillRules(page, '@IN@ ::< 1 stdin\n^0$ ::= OUT1\\nEXIT\n^1$ ::= OUT0\\nEXIT\nOUT1 ::> stdout 1\\n\nOUT0 ::> stdout 0\\n\n^EXIT$ ::- 0\n::=\n@IN@')
+  await page.getByTestId('koan-run-tests').click()
+
+  await expect(page.getByTestId('koan-results-summary')).toContainText('2 passing', { timeout: 5000 })
+  await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'pass')
+  await expect(page.getByTestId('koan-test-one-to-zero')).toHaveAttribute('data-status', 'pass')
+  await expect(page.getByTestId('koan-debug-zero-to-one')).toHaveCount(0)
+
+  await fillRules(page, '0 ::= 1')
+  await page.getByTestId('koan-run-tests').click()
+
+  await expect(page.getByTestId('koan-results-summary')).toContainText('0 passing · 2 failing', { timeout: 5000 })
+  await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'fail')
+  await expect(page.getByTestId('koan-test-details-zero-to-one')).toBeVisible()
+  await expect(page.getByTestId('koan-test-resource-input-zero-to-one-stdin')).toContainText('0')
+  const diff = page.getByTestId('koan-test-resource-diff-zero-to-one-stdout')
+  const actual = page.getByTestId('koan-test-resource-actual-zero-to-one-stdout')
+  const expected = page.getByTestId('koan-test-resource-expected-zero-to-one-stdout')
+  await expect(diff).toContainText('stdout actual vs expected')
+  await expect(actual).toContainText('')
+  await expect(actual).toHaveClass(/removed/)
+  await expect(expected).toContainText('1')
+  await expect(expected).toHaveClass(/added/)
+  await expect(diff.locator('.state-diff-line')).toHaveText(['-', '+1'])
+  await page.getByTestId('koan-test-toggle-zero-to-one').click()
+  await expect(page.getByTestId('koan-test-details-zero-to-one')).toHaveCount(0)
+  expect(runtimeErrors).toEqual([])
+})
+
+test('playground selector exposes curated groups instead of command search', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
-  await page.getByTestId('test-case-command-trigger').click()
-  const search = page.getByTestId('test-case-command-input')
+  await expect(page.getByTestId('test-case-command-trigger')).toHaveCount(0)
+  await expect(page.getByTestId('test-case-command-input')).toHaveCount(0)
+  await expect(page.getByTestId('test-case-menu-trigger')).toHaveText(['Basic rules', 'I/O', 'Resources', 'Calcs', 'Forth', 'Lisp'])
 
-  await search.fill('closure_binding_flattening zero arg')
-  await expect(page.getByTestId('test-case-option').first()).toBeVisible()
-  await expect(page.getByTestId('test-case-option-path').first()).toContainText('closure_binding_flattening.toml')
-  await expect(page.getByTestId('test-case-option-name').first()).toContainText('zero arg')
-  await expect(page.getByTestId('test-case-option-input-preview').first()).toContainText('fn')
-
-  await search.fill('100')
-  await expect(page.getByTestId('test-case-command-empty')).toBeVisible()
+  await openExampleMenuGroup(page, 'Lisp')
+  await expect(page.getByTestId('test-case-menu-case').filter({ hasText: 'Closure call' })).toBeVisible()
+  await expect(page.getByTestId('test-case-menu-case').filter({ hasText: 'Calls a zero-argument closure and returns the body value.' })).toBeVisible()
 })
 
 test('clicking a test case loads rules, state, and resources without running', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
 
-  await page.getByTestId('test-case-command-trigger').click()
-  await page.getByTestId('test-case-command-input').fill('zero arg closure call still evaluates body')
-  await page.getByTestId('test-case-option').first().click()
+  await openExampleMenuGroup(page, 'Lisp')
+  await page.getByTestId('test-case-menu-case').filter({ hasText: 'Closure call' }).first().click()
 
   await expect(page.getByTestId('playground-state')).toHaveValue('((fn () 7))')
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
@@ -37,17 +184,15 @@ test('clicking a test case loads rules, state, and resources without running', a
   await expect(page.getByTestId('terminal')).toHaveCount(0)
 })
 
-test('command palette can load top-level manifest tests without dropping hash-prefixed source rows', async ({ page }) => {
+test('example menu can load a top-level manifest test', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
 
-  await page.getByTestId('test-case-command-trigger').click()
-  await page.getByTestId('test-case-command-input').fill('source row beginning with hash')
-  await page.getByTestId('test-case-option').first().click()
+  await openExampleMenuGroup(page, 'Basic rules')
+  await page.getByTestId('test-case-menu-case').filter({ hasText: 'Hello rewrite' }).first().click()
 
-  await expect(page.getByTestId('test-case-command-current')).toContainText('source_hash_rule.toml')
-  await expect(page.getByTestId('playground-rules')).toContainText('#x ::= y')
-  await expect(page.getByTestId('playground-rules')).toContainText('^y$ ::> stdout source-row-rule\\n')
-  await expect(page.getByTestId('playground-state')).toHaveValue('#x')
+  await expect(page.getByTestId('playground-selected-case')).toContainText('examples/hello/tests/basic.toml')
+  await expect(page.getByTestId('playground-rules')).toContainText('Hello, World')
+  await expect(page.getByTestId('playground-state')).toHaveValue('START')
 })
 
 test('step button writes stdout without a shell simulator', async ({ page }) => {
@@ -59,7 +204,6 @@ test('step button writes stdout without a shell simulator', async ({ page }) => 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Hello, World!\n')
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue('')
-  await expect(page.getByTestId('playground-diffs')).toContainText('#1 row 1')
   await expect(page.getByTestId('playground-diffs')).toContainText('hello ::> stdout Hello, World!\\n')
   await expect(page.getByTestId('terminal')).toHaveCount(0)
   await expect(page.getByTestId('playground-reset')).toBeVisible()
@@ -73,10 +217,11 @@ test('empty history and resources do not show helper labels', async ({ page }) =
   await expect(page.getByTestId('playground-pause')).toHaveAttribute('aria-label', 'Pause')
   await expect(page.getByTestId('playground-pause')).toBeDisabled()
   await expect(page.getByTestId('resource-section-stdin')).toContainText('stdin')
-  await expect(page.getByTestId('resource-section-stdin')).not.toContainText('input')
+  await expect(page.getByTestId('resource-section-stdin')).toContainText('stdin input buffer')
+  await expect(page.getByTestId('resource-section-stdin')).toContainText('preload input for the next run')
   await expect(page.getByTestId('resource-section-stdin')).not.toContainText('read')
   await expect(page.getByTestId('resource-section-stdout')).toContainText('stdout')
-  await expect(page.getByTestId('resource-section-stdout')).not.toContainText('output')
+  await expect(page.getByTestId('resource-section-stdout')).toContainText('stdout output')
   await expect(page.getByTestId('resource-section-stdout')).not.toContainText('write')
 })
 
@@ -87,9 +232,9 @@ test('failed matched builtin appears in state history', async ({ page }) => {
 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('exited 1')
-  await expect(page.getByTestId('playground-step')).toBeEnabled()
-  await expect(page.getByTestId('playground-continue')).toBeEnabled()
-  await expect(page.getByTestId('playground-diffs')).toContainText('#1 row 1')
+  await expect(page.getByTestId('playground-step')).toBeDisabled()
+  await expect(page.getByTestId('playground-continue')).toHaveCount(0)
+  await expect(page.getByTestId('playground-restart')).toBeEnabled()
   await expect(page.getByTestId('playground-diff-error')).toContainText("Builtin 'div' division by zero")
 
   await page.getByTestId('playground-state').fill('div:2,1')
@@ -107,17 +252,17 @@ test('parse-time builtin errors appear in state history', async ({ page }) => {
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('exited 1')
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue("Line 1: Unknown builtin 'nope'")
-  await expect(page.getByTestId('playground-diffs')).toContainText('#1 row 1')
   await expect(page.getByTestId('playground-diffs')).toContainText('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
   await expect(page.getByTestId('playground-diff-error')).toContainText("Line 1: Unknown builtin 'nope'")
 
-  await expect(page.getByTestId('playground-step')).toBeEnabled()
+  await expect(page.getByTestId('playground-step')).toBeDisabled()
+  await expect(page.getByTestId('playground-restart')).toBeEnabled()
   await page.getByTestId('playground-state').fill('2,3')
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue("Line 1: Unknown builtin 'nope'\nLine 1: Unknown builtin 'nope'")
 })
 
-test('timeline click restores state and step prunes future rows', async ({ page }) => {
+test('state history click restores state and step prunes future rows', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^start$ ::= middle\n^middle$ ::= done')
   await page.getByTestId('playground-state').fill('start')
@@ -145,12 +290,26 @@ test('timeline click restores state and step prunes future rows', async ({ page 
   await expect(page.getByTestId('playground-state')).toHaveValue('branch')
 })
 
+test('prefilled stdin buffer is consumed without waiting for submit', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await fillRules(page, '@IN@ ::< 30 stdin')
+  await page.getByTestId('playground-state').fill('@IN@')
+  await page.getByTestId('resource-input-stdin').fill('Ada\nLovelace\n')
+
+  await page.getByTestId('playground-step').click()
+
+  await expect(page.getByTestId('playground-status')).toContainText('stepped')
+  await expect(page.getByTestId('playground-state')).toHaveValue('Ada')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('Lovelace\n')
+  await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
+  await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
+})
+
 test('stdin submit resumes the last step command', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, 'PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30 stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
   await page.getByTestId('playground-state').fill('read')
 
-  await page.getByTestId('resource-input-stdin').fill('Ada')
   await expect(page.getByTestId('stdin-send')).toHaveCount(0)
   await expect(page.getByTestId('stdin-queue')).toHaveCount(0)
   await expect(page.getByTestId('resource-ready-stdin')).toHaveCount(0)
@@ -162,6 +321,7 @@ test('stdin submit resumes the last step command', async ({ page }) => {
   await expect(page.getByTestId('playground-state')).toHaveValue(/got:@IN@/)
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
 
+  await page.getByTestId('resource-input-stdin').fill('Ada')
   await page.getByTestId('resource-submit-stdin').click()
   await expect(page.getByTestId('playground-state')).toHaveValue('got:Ada')
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
@@ -169,6 +329,54 @@ test('stdin submit resumes the last step command', async ({ page }) => {
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Ada\n')
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
+})
+
+test('stdin countdown submits an empty line and hides after resuming', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await fillRules(page, '@IN@ ::< 1 stdin')
+  await page.getByTestId('playground-state').fill('@IN@')
+
+  await page.getByTestId('playground-step').click()
+  await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
+  await expect(page.getByTestId('resource-countdown-stdin')).toContainText(/empty line in [01]s/)
+
+  await expect(page.getByTestId('playground-state')).toHaveValue('', { timeout: 2500 })
+  await expect(page.getByTestId('playground-status')).toContainText('stepped')
+  await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
+})
+
+test('pending read countdown consumes a typed line instead of stranding the loop', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await fillRules(page, '@IN@ ::< 1 stdin\n^1$ ::= OUT\\nEXIT\nOUT ::> stdout 1\\n\n^EXIT$ ::- 0\n^$ ::= @IN@')
+  await page.getByTestId('playground-state').fill('@IN@')
+
+  await page.getByTestId('playground-continue').click()
+  await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
+  await expect(page.getByTestId('resource-countdown-stdin')).toContainText(/empty line in [01]s/)
+  await page.getByTestId('resource-input-stdin').fill('1')
+
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('1\n', { timeout: 3000 })
+  await expect(page.getByTestId('playground-status')).toContainText('exited 0')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
+  await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
+})
+
+test('state history restores matching resource output snapshots', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await fillRules(page, '^a$ ::> stdout A\\n\n^$ ::= b\n^b$ ::> stdout B\\n')
+  await page.getByTestId('playground-state').fill('a')
+
+  await page.getByTestId('playground-step').click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('A\n')
+  await page.getByTestId('playground-step').click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('A\n')
+  await page.getByTestId('playground-step').click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('A\nB\n')
+
+  await page.locator('.state-diff-row').nth(1).click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('A\n')
+  await page.locator('.state-diff-row').nth(3).click()
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('A\nB\n')
 })
 
 test('resource sections are derived from rules and stdio is pinned', async ({ page }) => {
@@ -183,24 +391,13 @@ test('resource sections are derived from rules and stdio is pinned', async ({ pa
   await expect(page.getByTestId('resource-submit-random')).toBeDisabled()
   await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
 
+  await page.getByTestId('resource-input-random').fill('7')
+  await page.getByTestId('resource-input-stdin').fill('x\n3\n8\n7\n')
+
   await expect(page.getByTestId('playground-auto')).toHaveCount(0)
   await page.getByTestId('playground-continue').click()
 
-  await expect(page.getByTestId('playground-status')).toContainText('waiting for random')
-  await expect(page.getByTestId('resource-submit-random')).toBeEnabled()
-  await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
-  await page.getByTestId('resource-input-random').fill('7')
-  await page.getByTestId('resource-submit-random').click()
-
-  await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
-  await expect(page.getByTestId('resource-submit-random')).toBeDisabled()
-  await expect(page.getByTestId('resource-submit-stdin')).toBeEnabled()
-  for (const guess of ['x', '3', '8', '7']) {
-    await page.getByTestId('resource-input-stdin').fill(guess)
-    await page.getByTestId('resource-submit-stdin').click()
-  }
-
-  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n', { timeout: 5000 })
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n', { timeout: 10000 })
   await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
   await expect(page.getByTestId('resource-input-random')).toHaveValue('')
 })
@@ -217,7 +414,7 @@ test('embed route starts on requested section and opens full playground with cur
 
 test('playground compact mode and embed header query params are observable', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp&mode=compact&section=trace')
-  await expect(page.getByTestId('playground-header')).toBeVisible()
+  await expect(page.getByTestId('playground-header')).toHaveCount(0)
   await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
   await expect(page.getByTestId('embed-section-panel')).toContainText('trace')
 
@@ -237,7 +434,7 @@ test('embed run executes through the shared worker path and writes stdout', asyn
 test('embed demo lists preset embed examples', async ({ page }) => {
   await page.goto('/embed/demo')
 
-  await expect(page.getByRole('heading', { name: 'Compact thue++ playground embeds' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Compact Thue++ playground embeds' })).toBeVisible()
   await expect(page.getByText('Output-focused runnable snippet')).toBeVisible()
   await expect(page.getByTestId('playground-compact-surface')).toHaveCount(3)
 })

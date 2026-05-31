@@ -3,10 +3,13 @@
   <main ref="surfaceRoot" class="playground-route playground-surface" :class="[`playground-chrome-${props.chrome}`, { 'playground-compact-layout': isCompactLayout }]" :data-mode="props.mode" :data-compact="isCompactLayout ? 'true' : 'false'">
     <header v-if="showHeader" class="playground-route-header" data-test="playground-header">
       <h1>{{ props.title }}</h1>
-      <TestCaseCommand v-if="showPicker" :options="testCaseOptions" @select="selectTestCase" />
     </header>
 
     <p v-if="loadError" class="error-text">{{ loadError }}</p>
+
+    <section v-if="showPicker" data-test="test-case-pane">
+      <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
+    </section>
 
     <section v-if="isCompactLayout" class="playground-embed-layout" data-test="playground-compact-surface">
       <header class="playground-embed-topbar" data-test="embed-topbar">
@@ -17,7 +20,8 @@
         <div class="playground-embed-actions">
           <Button v-if="showRunButton" type="button" variant="secondary" data-test="embed-run" :disabled="!canRun" @click="() => runCompactProgram()">Run</Button>
           <Button v-if="showStepControls" type="button" variant="secondary" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">Step</Button>
-          <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">Play</Button>
+          <Button v-if="showDebugControls && canRun" type="button" variant="secondary" data-test="playground-continue" :title="continueTitle" @click="() => continueProgram()">Play</Button>
+          <Button v-else-if="showDebugControls" type="button" variant="secondary" data-test="playground-restart" :disabled="isBusy" title="Restart" @click="() => restartProgram()">Restart</Button>
           <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">Pause</Button>
           <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-end" :disabled="!canRun" :title="endTitle" @click="() => endProgram()">End</Button>
           <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" @click="resetToFirstState">Reset</Button>
@@ -26,11 +30,28 @@
         </div>
       </header>
 
-      <TestCaseCommand v-if="showPicker" :options="testCaseOptions" @select="selectTestCase" />
+      <KoanPlaygroundPanel
+        v-if="props.koan"
+        :koan="props.koan"
+        :koans="props.koans"
+        :previous-koan="props.previousKoan"
+        :next-koan="props.nextKoan"
+        :running="koanTestsRunning"
+        :auto="koanTestsAuto"
+        :results="koanResults"
+        @run="runCurrentKoanTests"
+        @update:auto="setKoanTestsAuto"
+      />
 
-      <Card class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
-        <CardHeader class="playground-rules-header">
-          <CardTitle>program rules</CardTitle>
+      <section class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
+        <header class="playground-panel-header playground-rules-header">
+          <div class="playground-rules-title-block">
+            <div class="playground-panel-title">program rules</div>
+            <p v-if="selectedCaseLabel" class="playground-selected-case" data-test="playground-selected-case">
+              <span>{{ selectedCaseLabel }}</span>
+              <small>{{ selectedCaseSource }}</small>
+            </p>
+          </div>
           <div v-if="showDebugControls" class="playground-rules-options">
             <ButtonGroup class="playground-speed-links" aria-label="Step speed">
               <Button v-for="option in continueSpeedOptions" :key="option.value" type="button" :variant="continueSpeed === option.value ? 'secondary' : 'ghost'" size="sm" :data-selected="continueSpeed === option.value" :data-test="`playground-speed-${option.value}`" :disabled="isBusy" @click="continueSpeed = option.value">{{ option.label }}</Button>
@@ -42,47 +63,67 @@
               </ButtonGroup>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        </header>
+        <div class="playground-panel-content">
           <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <nav class="playground-section-tabs" aria-label="playground sections" data-test="embed-section-tabs">
         <Button v-for="section in sectionTabs" :key="section.id" type="button" variant="secondary" :class="{ active: activeSection === section.id }" :data-section="section.id" @click="setActiveSection(section.id)">{{ section.label }}</Button>
       </nav>
 
-      <Card class="playground-section-panel" data-test="embed-section-panel">
-        <CardHeader>
-          <CardTitle>{{ activeSection }}</CardTitle>
+      <section class="playground-section-panel" data-test="embed-section-panel">
+        <header class="playground-panel-header">
+          <div class="playground-panel-title">{{ activeSection }}</div>
           <div v-if="activeSection === 'output'" class="playground-output-tabs" data-test="embed-output-tabs">
             <Button type="button" size="sm" variant="secondary" :class="{ active: activeOutputTab === 'stdout' }" data-output-tab="stdout" @click="setActiveOutputTab('stdout')">stdout</Button>
             <Button type="button" size="sm" variant="secondary" :class="{ active: activeOutputTab === 'stderr' }" data-output-tab="stderr" @click="setActiveOutputTab('stderr')">stderr</Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </header>
+        <div class="playground-panel-content">
           <template v-if="activeSection === 'output'">
             <Textarea v-if="activeOutputTab === 'stdout'" :model-value="resourceOutputText('stdout')" data-test="resource-output-stdout" readonly spellcheck="false" wrap="off" />
             <Textarea v-else :model-value="resourceOutputText('stderr')" data-test="resource-output-stderr" readonly spellcheck="false" wrap="off" />
           </template>
           <Textarea v-else-if="activeSection === 'state'" v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
           <div v-else-if="activeSection === 'input'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections.filter(showResourceInput)" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="false" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+            <ResourceSection v-for="resource in resourceSections.filter(showResourceInput)" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="false" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
           <StateDiffs v-else-if="activeSection === 'trace'" :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
           <div v-else-if="activeSection === 'resources'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
           <Textarea v-else :model-value="rulesText" data-test="embed-source-text" readonly spellcheck="false" wrap="off" />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </section>
 
-    <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" auto-save-id="playground-columns" data-test="playground-full-surface">
-      <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
-        <Card class="playground-rules-pane">
-          <CardHeader class="playground-rules-header">
-            <CardTitle>program rules</CardTitle>
+    <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" :auto-save-id="props.koan ? 'playground-koan-columns' : 'playground-columns'" data-test="playground-full-surface">
+      <ResizablePanel v-if="props.koan" :default-size="24" :min-size="16" class="playground-column playground-koan-column">
+        <KoanPlaygroundPanel
+          :koan="props.koan"
+          :koans="props.koans"
+          :previous-koan="props.previousKoan"
+          :next-koan="props.nextKoan"
+          :running="koanTestsRunning"
+          :auto="koanTestsAuto"
+          :results="koanResults"
+          @run="runCurrentKoanTests"
+          @update:auto="setKoanTestsAuto"
+        />
+      </ResizablePanel>
+      <ResizableHandle v-if="props.koan" />
+      <ResizablePanel :default-size="props.koan ? 32 : 42" :min-size="24" class="playground-column playground-rules-column">
+        <section class="playground-rules-pane">
+          <header class="playground-panel-header playground-rules-header">
+            <div class="playground-rules-title-block">
+              <div class="playground-panel-title">program rules</div>
+              <p v-if="selectedCaseLabel" class="playground-selected-case" data-test="playground-selected-case">
+                <span>{{ selectedCaseLabel }}</span>
+                <small>{{ selectedCaseSource }}</small>
+              </p>
+            </div>
             <div class="playground-rules-toolbar">
               <Button type="button" variant="secondary" size="icon" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" aria-label="Reset to first state" @click="resetToFirstState">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M11 5v14l-9-7 9-7zm11 0v14l-9-7 9-7z" /></svg>
@@ -93,8 +134,11 @@
               <Button type="button" variant="secondary" size="icon" data-test="playground-pause" :disabled="!continuing" title="Pause" aria-label="Pause" @click="pauseProgram">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" /></svg>
               </Button>
-              <Button type="button" variant="secondary" size="icon" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">
+              <Button v-if="canRun" type="button" variant="secondary" size="icon" data-test="playground-continue" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" /></svg>
+              </Button>
+              <Button v-else type="button" variant="secondary" size="icon" data-test="playground-restart" :disabled="isBusy" title="Restart" aria-label="Restart" @click="() => restartProgram()">
+                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5V2L7 7l5 5V8c2.76 0 5 2.24 5 5 0 .86-.22 1.67-.6 2.38l1.46 1.46A6.95 6.95 0 0 0 19 13c0-3.86-3.14-7-7-7zm-5 5.62A6.95 6.95 0 0 0 5 15c0 3.86 3.14 7 7 7v3l5-5-5-5v3c-2.76 0-5-2.24-5-5 0-.86.22-1.67.6-2.38L6.14 9.16A6.95 6.95 0 0 0 5 13z" /></svg>
               </Button>
               <Button type="button" variant="secondary" size="icon" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">
                 <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512"><path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" /></svg>
@@ -109,30 +153,52 @@
               </ButtonGroup>
               <div class="playground-max-steps" data-test="playground-max-steps"><span>max steps:</span><ButtonGroup aria-label="Max steps"><Button v-for="option in maxStepOptions" :key="option" type="button" :variant="maxSteps === option ? 'secondary' : 'ghost'" size="sm" :data-selected="maxSteps === option" :data-test="`playground-max-steps-${option}`" :disabled="isBusy" @click="maxSteps = option">{{ option }}</Button></ButtonGroup></div>
             </div>
-          </CardHeader>
-          <CardContent>
+          </header>
+          <div class="playground-panel-content">
             <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-state-column">
-        <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
-          <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row"><Card class="playground-state-pane"><CardHeader><CardTitle>program state</CardTitle><Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge></CardHeader><CardContent><Textarea v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" /></CardContent></Card></ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel :default-size="42" :min-size="18" class="playground-row playground-timeline-row"><Card class="playground-diffs-pane"><CardHeader><CardTitle>timeline</CardTitle></CardHeader><CardContent><StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" /></CardContent></Card></ResizablePanel>
-        </ResizablePanelGroup>
+      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
+        <div class="playground-state-stack" data-test="playground-state-stack">
+          <section class="playground-state-pane">
+            <header class="playground-panel-header">
+              <div class="playground-panel-title">program state</div>
+              <Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge>
+            </header>
+            <div class="playground-panel-content">
+              <Textarea v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
+            </div>
+          </section>
+          <section class="playground-diffs-pane">
+            <header class="playground-panel-header">
+              <div class="playground-panel-title">state history</div>
+            </header>
+            <div class="playground-panel-content">
+              <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+            </div>
+          </section>
+        </div>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
+      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column">
+        <section class="playground-resources-pane" data-test="resource-sections">
+          <header class="playground-panel-header">
+            <div class="playground-panel-title">resources</div>
+          </header>
+          <div class="playground-panel-content resource-list">
+            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+          </div>
+        </section>
+      </ResizablePanel>
     </ResizablePanelGroup>
   </main>
 </template>
 
 <script setup lang="ts">
 import { diffChars } from 'diff'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -141,10 +207,13 @@ import { Textarea } from '@/components/ui/textarea'
 import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
-import TestCaseCommand from './TestCaseCommand.vue'
+import TestCaseMenu from './TestCaseMenu.vue'
+import KoanPlaygroundPanel from './koans/KoanPlaygroundPanel.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
+import { runKoanTests, type KoanTestResult } from './koans/runKoanTests'
+import type { KoanEntry } from './koans/types'
 
 export type PlaygroundSection = 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
 export type PlaygroundMode = 'auto' | 'full' | 'compact' | 'mini' | 'debug'
@@ -168,6 +237,10 @@ const props = withDefaults(defineProps<{
   showOpenFull?: boolean
   syncUrl?: boolean
   title?: string
+  koan?: KoanEntry
+  koans?: KoanEntry[]
+  previousKoan?: KoanEntry
+  nextKoan?: KoanEntry
 }>(), {
   mode: 'auto',
   chrome: 'page',
@@ -257,6 +330,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   surfaceResizeObserver?.disconnect()
+  stopPendingCountdown()
+  cancelPendingKoanTestDebounce()
+  abortKoanTestRun()
 })
 
 
@@ -295,9 +371,14 @@ const rulesText = ref('')
 const stateText = ref('')
 const resourceInputs = ref<Record<string, string>>({})
 const resourceSubmittedInputs = ref<Record<string, string>>({})
-const resourceLogs = ref<Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }>>({})
+const resourceLogs = ref<Record<string, ResourceLogSnapshot>>({})
 const resourceOutputs = ref<Record<string, string>>({})
 const resourceAttention = ref<Record<string, 'input' | 'output'>>({})
+const pendingResourceName = ref('')
+const pendingResourceTimeoutSeconds = ref<number | undefined>()
+const pendingResourceCountdownSeconds = ref<number | undefined>()
+const pendingResourceDeadlineMs = ref<number | undefined>()
+let pendingResourceTimer: ReturnType<typeof window.setInterval> | undefined
 const loadError = ref('')
 const running = ref(false)
 const continuing = ref(false)
@@ -305,23 +386,39 @@ const pauseRequested = ref(false)
 const statusText = ref('idle')
 const stateDiffs = ref<StateDiffEntry[]>([])
 const selectedHistoryKey = ref<string | undefined>()
+const terminalHistoryKey = ref<string | undefined>()
 const baseState = ref('')
 const lastRunMode = ref<'step' | 'continue' | 'end'>('step')
 const continueSpeed = ref<ContinueSpeed>('10')
 const maxSteps = ref(10000)
 const matchedRuleLine = ref<number | undefined>()
+const selectedTestCase = ref<TestCaseOption | undefined>()
+const koanResults = ref<KoanTestResult[] | null>(null)
+const koanTestsRunning = ref(false)
+const koanTestsAuto = ref(false)
+let koanTestRunId = 0
+let koanTestAbortController: AbortController | undefined
+let koanTestDebounceTimer: ReturnType<typeof window.setTimeout> | undefined
 
-const resourceSections = computed(() => extractResources(rulesText.value))
+const runnableRulesText = computed(() => splitProgramSource(rulesText.value).rules)
+const resourceSections = computed(() => mergeResourceSections(extractResources(runnableRulesText.value), []))
+const selectedCaseLabel = computed(() => selectedTestCase.value?.caseName ?? '')
+const selectedCaseSource = computed(() => selectedTestCase.value?.manifestPath ?? '')
 const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
 const isBusy = computed(() => running.value || continuing.value)
+const atTerminalHistoryEntry = computed(() => selectedHistoryKey.value !== undefined && selectedHistoryKey.value === terminalHistoryKey.value)
 const canReset = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
 const canUndo = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
-const canRun = computed(() => !isBusy.value)
-const requestedResourceName = computed(() => statusText.value.match(/^waiting for ([A-Za-z_][A-Za-z0-9_-]*)$/)?.[1])
+const canRun = computed(() => !isBusy.value && !atTerminalHistoryEntry.value)
+const requestedResourceName = computed(() => pendingResourceName.value)
 const stepTitle = computed(() => 'Step forward')
 const continueTitle = computed(() => 'Play')
 const endTitle = computed(() => `End without rendering intermediate states (max ${maxSteps.value} steps)`)
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
+
+watch(runnableRulesText, () => {
+  scheduleKoanTestRun()
+})
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -341,6 +438,21 @@ interface ResourceUsage {
   writes: boolean
 }
 
+interface ResourceLogSnapshot {
+  reads: string[]
+  writes: string[]
+  errors: string[]
+  remainingInputText?: string
+  outputText?: string
+}
+
+interface ResourceSnapshot {
+  inputs: Record<string, string>
+  submittedInputs: Record<string, string>
+  logs: Record<string, ResourceLogSnapshot>
+  outputs: Record<string, string>
+}
+
 interface DiffPart {
   key: string
   text: string
@@ -357,6 +469,7 @@ interface StateDiffEntry {
   stateAfter: string
   before: DiffPart[]
   after: DiffPart[]
+  resources: ResourceSnapshot
   error?: string
   note?: string
 }
@@ -395,14 +508,36 @@ function markResource(resources: Map<string, ResourceUsage>, name: string, mode:
   resources.set(name, current)
 }
 
+function mergeResourceSections(base: ResourceUsage[], loadedNames: string[]): ResourceUsage[] {
+  const byName = new Map(base.map(resource => [resource.name, { ...resource }]))
+  for (const name of loadedNames) {
+    const current = byName.get(name) ?? { name, reads: false, writes: false }
+    if (name === 'stdout' || name === 'stderr') current.writes = true
+    else current.reads = true
+    byName.set(name, current)
+  }
+  const stdioOrder = new Map([['stdout', 0], ['stdin', 1], ['stderr', 2]])
+  return [...byName.values()].sort((a, b) => {
+    const left = stdioOrder.get(a.name)
+    const right = stdioOrder.get(b.name)
+    if (left !== undefined || right !== undefined) return (left ?? Number.MAX_SAFE_INTEGER) - (right ?? Number.MAX_SAFE_INTEGER)
+    return a.name.localeCompare(b.name)
+  })
+}
+
 function setResourceInput(name: string, value: string): void {
   resourceInputs.value = { ...resourceInputs.value, [name]: value }
   const { [name]: _removed, ...remainingSubmitted } = resourceSubmittedInputs.value
   resourceSubmittedInputs.value = remainingSubmitted
+  if (selectedHistoryCursor.value >= 0 && selectedHistoryCursor.value < stateDiffs.value.length - 1) {
+    pruneFutureHistory()
+    statusText.value = 'resource input edited; next run branches here'
+  }
 }
 
 async function submitResource(name: string): Promise<void> {
   if (requestedResourceName.value !== name) return
+  stopPendingCountdown()
   const value = resourceInputs.value[name] ?? ''
   resourceSubmittedInputs.value = { ...resourceSubmittedInputs.value, [name]: value }
   if (lastRunMode.value === 'end') await endProgram()
@@ -411,7 +546,7 @@ async function submitResource(name: string): Promise<void> {
 }
 
 function isResourceReady(name: string): boolean {
-  return (resourceSubmittedInputs.value[name] ?? '').length > 0
+  return Object.prototype.hasOwnProperty.call(resourceSubmittedInputs.value, name)
 }
 
 async function focusResourceInput(name: string): Promise<void> {
@@ -428,6 +563,16 @@ function showResourceOutput(resource: ResourceUsage): boolean {
   return resource.name === 'stdout' || resource.name === 'stderr' || resource.writes
 }
 
+function resourceInputReadonly(_name: string): boolean {
+  return isBusy.value
+}
+
+function resourceInputHelp(name: string): string {
+  if (isBusy.value) return 'running; input is locked until the next pause'
+  if (requestedResourceName.value === name) return 'program is waiting; submit one response'
+  return 'preload input for the next run'
+}
+
 function resourceOutputText(name: string): string {
   return resourceOutputs.value[name] ?? ''
 }
@@ -435,14 +580,26 @@ function resourceOutputText(name: string): string {
 function resourceConfigs() {
   return resourceSections.value.map(resource => ({
     name: resource.name,
-    inputText: isResourceReady(resource.name) ? (resourceSubmittedInputs.value[resource.name] ?? '') : '',
+    inputText: resourceInputTextForRun(resource.name),
+    lineMode: true,
     readError: undefined,
   }))
+}
+
+function resourceInputTextForRun(name: string): string {
+  if (isResourceReady(name)) return submittedResourceInputText(name)
+  return resourceInputs.value[name] ?? ''
+}
+
+function submittedResourceInputText(name: string): string {
+  const value = resourceSubmittedInputs.value[name] ?? ''
+  return value === '' ? '\n' : value
 }
 
 function loadFile(file: string): void {
   const normalized = normalizeFileParam(file)
   const source = examplesByPublicPath[normalized]
+  selectedTestCase.value = undefined
   fileParam.value = normalized
   sourcePath.value = normalized.replace(/^\.\//, '')
   if (!source) {
@@ -452,7 +609,7 @@ function loadFile(file: string): void {
     return
   }
   const split = splitProgramSource(source)
-  rulesText.value = split.rules
+  rulesText.value = source
   stateText.value = ''
   if (stateText.value === '') stateText.value = split.state
   loadError.value = split.error
@@ -469,7 +626,7 @@ function seedStateFromSource(source = rulesText.value): void {
   stateText.value = ''
   const split = splitProgramSource(source)
   loadError.value = split.error
-  rulesText.value = split.rules
+  rulesText.value = source
   if (stateText.value === '') stateText.value = split.state
   clearRun()
 }
@@ -477,7 +634,8 @@ function seedStateFromSource(source = rulesText.value): void {
 function selectTestCase(testCase: TestCaseOption): void {
   const file = `./${testCase.programPath}`
   loadFile(file)
-  stateText.value = testCase.input
+  selectedTestCase.value = testCase
+  if (testCase.hasInput) stateText.value = testCase.input
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
   if (props.syncUrl) {
     const url = new URL(window.location.href)
@@ -487,7 +645,86 @@ function selectTestCase(testCase: TestCaseOption): void {
   }
 }
 
+async function runCurrentKoanTests(): Promise<void> {
+  await startKoanTestRun()
+}
+
+function setKoanTestsAuto(value: boolean): void {
+  koanTestsAuto.value = value
+  if (value) scheduleKoanTestRun()
+  else cancelPendingKoanTestDebounce()
+}
+
+function scheduleKoanTestRun(): void {
+  if (!props.koan || !koanTestsAuto.value) return
+  cancelPendingKoanTestDebounce()
+  koanTestDebounceTimer = window.setTimeout(() => {
+    koanTestDebounceTimer = undefined
+    void startKoanTestRun()
+  }, 300)
+}
+
+async function startKoanTestRun(): Promise<void> {
+  if (!props.koan) return
+  cancelPendingKoanTestDebounce()
+  abortKoanTestRun()
+  const runId = ++koanTestRunId
+  const controller = new AbortController()
+  koanTestAbortController = controller
+  koanTestsRunning.value = true
+  const source = runnableRulesText.value
+  try {
+    const results = await runKoanTests(props.koan, source, controller.signal)
+    if (runId === koanTestRunId && !controller.signal.aborted) koanResults.value = results
+  } catch (error) {
+    if (!isAbortError(error)) throw error
+  } finally {
+    if (runId === koanTestRunId) {
+      koanTestsRunning.value = false
+      koanTestAbortController = undefined
+    }
+  }
+}
+
+function cancelPendingKoanTestDebounce(): void {
+  if (koanTestDebounceTimer === undefined) return
+  window.clearTimeout(koanTestDebounceTimer)
+  koanTestDebounceTimer = undefined
+}
+
+function abortKoanTestRun(): void {
+  koanTestAbortController?.abort()
+  koanTestAbortController = undefined
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+function initializeKoanAttempt(): void {
+  if (!props.koan) return
+  fileParam.value = `./koans/${props.koan.slug}/attempt.tpp`
+  sourcePath.value = `koans/${props.koan.slug}/attempt.tpp`
+  rulesText.value = ''
+  stateText.value = ''
+  loadError.value = ''
+  clearRun()
+  loadKoanHintIfEditorEmpty()
+}
+
+function loadKoanHintIfEditorEmpty(): void {
+  if (!props.koan?.hintSource) return
+  if (rulesText.value.trim() !== '') return
+  const split = splitProgramSource(props.koan.hintSource)
+  rulesText.value = props.koan.hintSource
+  stateText.value = split.state
+  loadError.value = split.error
+  selectedTestCase.value = undefined
+  resourceInputs.value = {}
+  clearRun()
+}
+
 function clearRun(): void {
+  stopPendingCountdown()
   running.value = false
   continuing.value = false
   pauseRequested.value = false
@@ -500,10 +737,44 @@ function clearRun(): void {
 }
 
 function clearDiffs(): void {
+  stopPendingCountdown()
   stateDiffs.value = []
   selectedHistoryKey.value = undefined
+  terminalHistoryKey.value = undefined
   baseState.value = stateText.value
   matchedRuleLine.value = undefined
+}
+
+function cloneResourceLog(log: ResourceLogSnapshot): ResourceLogSnapshot {
+  return {
+    reads: [...log.reads],
+    writes: [...log.writes],
+    errors: [...log.errors],
+    remainingInputText: log.remainingInputText,
+    outputText: log.outputText,
+  }
+}
+
+function cloneRecord(value: Record<string, string>): Record<string, string> {
+  return { ...value }
+}
+
+function resourceSnapshot(): ResourceSnapshot {
+  return {
+    inputs: cloneRecord(resourceInputs.value),
+    submittedInputs: cloneRecord(resourceSubmittedInputs.value),
+    logs: Object.fromEntries(Object.entries(resourceLogs.value).map(([name, log]) => [name, cloneResourceLog(log)])),
+    outputs: cloneRecord(resourceOutputs.value),
+  }
+}
+
+function restoreResourceSnapshot(snapshot: ResourceSnapshot): void {
+  resourceInputs.value = cloneRecord(snapshot.inputs)
+  resourceSubmittedInputs.value = cloneRecord(snapshot.submittedInputs)
+  resourceLogs.value = Object.fromEntries(Object.entries(snapshot.logs).map(([name, log]) => [name, cloneResourceLog(log)]))
+  resourceOutputs.value = cloneRecord(snapshot.outputs)
+  resourceAttention.value = {}
+  stopPendingCountdown()
 }
 
 async function stepProgram(): Promise<void> {
@@ -547,6 +818,13 @@ function pauseProgram(): void {
   statusText.value = 'pausing'
 }
 
+async function restartProgram(): Promise<void> {
+  if (isBusy.value) return
+  if (stateDiffs.value.length > 0) selectHistoryEntry(stateDiffs.value[0].key)
+  terminalHistoryKey.value = undefined
+  await continueProgram()
+}
+
 type RunStatus = 'stepped' | 'exited' | 'waiting' | 'errored'
 
 async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean; collapsedHistory?: boolean }): Promise<RunStatus | undefined> {
@@ -563,7 +841,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
   const runState = stateText.value
   try {
     const result = await runWithWorker({
-      sourceText: rulesText.value,
+      sourceText: runnableRulesText.value,
       sourcePath: sourcePath.value,
       input: runState,
       maxEvals: maxSteps.value,
@@ -575,26 +853,30 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
     })
     const stderr = [...new Set([result.stderr, result.error, result.errors].filter(Boolean))].join('\n')
     applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
+    const resourcesAfterRun = resourceSnapshot()
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
     const trace = result.trace ?? []
-    appendStateDiffs(trace)
-    if (options.collapsedHistory) appendCollapsedEndDiff(runState, nextState ?? runState, result.evalCount)
+    appendStateDiffs(trace, resourcesAfterRun)
+    if (options.collapsedHistory) appendCollapsedEndDiff(runState, nextState ?? runState, result.evalCount, resourcesAfterRun)
     const pendingResource = pendingInputResource(result)
-    if (trace.length === 0 && stderr && !pendingResource) appendStepErrorDiff(stderr, runState)
+    if (trace.length === 0 && stderr && !pendingResource) appendStepErrorDiff(stderr, runState, resourcesAfterRun)
     updateMatchedRuleLine(trace)
     if (pendingResource) {
       statusText.value = `waiting for ${pendingResource}`
+      startPendingCountdown(pendingResource, pendingInputTimeoutSeconds(trace, pendingResource))
       activeSection.value = 'input'
       await focusResourceInput(pendingResource)
       return 'waiting'
     } else {
+      stopPendingCountdown()
       const stepped = options.stepLimit === 1 && trace.length > 0 && !result.exitCode && !stderr && !trace.some(event => event.exitCode !== undefined)
       if (stepped) {
         statusText.value = 'stepped'
         return 'stepped'
       }
       statusText.value = `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
+      terminalHistoryKey.value = selectedHistoryKey.value
       if (stderr) {
         activeSection.value = 'output'
         activeOutputTab.value = 'stderr'
@@ -602,9 +884,10 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       return 'exited'
     }
   } catch (error) {
+    stopPendingCountdown()
     const stderr = error instanceof Error ? error.message : String(error)
     const nextStderr = `${resourceOutputs.value.stderr ?? ''}${stderr}`
-    resourceAttention.value = nextStderr !== (resourceOutputs.value.stderr ?? '') ? { stderr: 'output' } : {}
+    resourceAttention.value = {}
     resourceOutputs.value = { ...resourceOutputs.value, stderr: nextStderr }
     statusText.value = 'errored'
     activeSection.value = 'output'
@@ -628,7 +911,7 @@ function waitForContinueDelay(): Promise<void> {
   })
 }
 
-function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, evalCount?: number): void {
+function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, evalCount: number | undefined, resources: ResourceSnapshot): void {
   const previousStep = Math.max(0, ...stateDiffs.value.map(entry => entry.step))
   const step = Math.max(previousStep + 1, evalCount ?? previousStep + 1)
   const { before, after } = compactCharDiff(stateBefore, stateAfter)
@@ -641,6 +924,7 @@ function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, evalCou
     stateAfter,
     before,
     after,
+    resources,
     note: stateBefore === stateAfter ? 'no state change' : undefined,
   }
   stateDiffs.value = [...stateDiffs.value, entry]
@@ -658,20 +942,46 @@ function appendInitialStateDiff(state: string): void {
     stateAfter: state,
     before,
     after,
+    resources: resourceSnapshot(),
   }]
   selectedHistoryKey.value = 'initial-0'
 }
 
-function appendStateDiffs(trace: DemoTraceEvent[]): void {
-  const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index))
+function appendStateDiffs(trace: DemoTraceEvent[], resources: ResourceSnapshot): void {
+  if (trace.length > 1) {
+    appendMultiTraceCollapsedDiff(trace, resources)
+    return
+  }
+  const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index, resources))
   if (entries.length === 0) return
   stateDiffs.value = [...stateDiffs.value, ...entries]
   selectedHistoryKey.value = entries.at(-1)?.key
 }
 
-function appendStepErrorDiff(error: string, state: string): void {
+function appendMultiTraceCollapsedDiff(trace: DemoTraceEvent[], resources: ResourceSnapshot): void {
+  const first = trace[0]
+  const last = trace.at(-1)
+  if (!first || !last) return
+  const { before, after } = compactCharDiff(first.stateBefore, last.stateAfter)
+  const entry = {
+    key: `trace-${first.step}-${last.step}-${stateDiffs.value.length}`,
+    step: last.step,
+    row: last.lineNumber,
+    rule: `${trace.length} traced steps collapsed`,
+    stateBefore: first.stateBefore,
+    stateAfter: last.stateAfter,
+    before,
+    after,
+    resources,
+    note: 'resource snapshot captured after the worker batch',
+  }
+  stateDiffs.value = [...stateDiffs.value, entry]
+  selectedHistoryKey.value = entry.key
+}
+
+function appendStepErrorDiff(error: string, state: string, resources: ResourceSnapshot): void {
   const row = lineNumberFromError(error) ?? 1
-  const rule = rulesText.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[row - 1]?.trim() || '(no matching rule trace)'
+  const rule = runnableRulesText.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')[row - 1]?.trim() || '(no matching rule trace)'
   const step = stateDiffs.value.length
   const entry = {
     key: `error-${step}-${row}`,
@@ -682,6 +992,7 @@ function appendStepErrorDiff(error: string, state: string): void {
     stateAfter: state,
     before: [{ key: 'b-0', text: state, changed: false }],
     after: [{ key: 'a-0', text: state, changed: false }],
+    resources,
     error,
   }
   stateDiffs.value = [...stateDiffs.value, entry]
@@ -691,7 +1002,11 @@ function appendStepErrorDiff(error: string, state: string): void {
 function pruneFutureHistory(): void {
   const index = selectedHistoryCursor.value
   if (index >= 0 && index < stateDiffs.value.length - 1) {
-    stateDiffs.value = stateDiffs.value.slice(0, index + 1)
+    const kept = stateDiffs.value.slice(0, index + 1)
+    stateDiffs.value = kept
+    if (terminalHistoryKey.value && !kept.some(entry => entry.key === terminalHistoryKey.value)) {
+      terminalHistoryKey.value = undefined
+    }
   }
 }
 
@@ -700,6 +1015,7 @@ function selectHistoryEntry(key: string): void {
   if (!entry) return
   selectedHistoryKey.value = entry.key
   stateText.value = entry.stateAfter
+  restoreResourceSnapshot(entry.resources)
   matchedRuleLine.value = entry.row > 0 ? entry.row : undefined
   statusText.value = entry.step === 0 ? 'checkpoint initial' : `checkpoint #${entry.step}`
 }
@@ -727,7 +1043,7 @@ function updateMatchedRuleLine(trace: DemoTraceEvent[]): void {
   matchedRuleLine.value = event?.lineNumber
 }
 
-function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] {
+function stateDiffEntry(event: DemoTraceEvent, index: number, resources: ResourceSnapshot): StateDiffEntry[] {
   const error = event.error
   const note = !error && event.stateBefore === event.stateAfter ? stateHistoryNote(event) : undefined
   const { before, after } = compactCharDiff(event.stateBefore, event.stateAfter)
@@ -740,6 +1056,7 @@ function stateDiffEntry(event: DemoTraceEvent, index: number): StateDiffEntry[] 
     stateAfter: event.stateAfter,
     before,
     after,
+    resources,
     error,
     note,
   }]
@@ -839,12 +1156,61 @@ function splitEllipsisPart(text: string, changed: boolean, keyPrefix: string): D
 
 function pendingInputResource(result?: { error?: string; errors?: string }): string {
   const text = [result?.error ?? '', result?.errors ?? '', ...Object.values(resourceLogs.value).flatMap(log => log.errors)].join('\n')
-  const match = text.match(/pending_input:([A-Za-z_][A-Za-z0-9_-]*)/)
-  return match?.[1] ?? ''
+  const match = text.match(/WAIT:resource:([A-Za-z_][A-Za-z0-9_-]*):pending_input|pending_input:([A-Za-z_][A-Za-z0-9_-]*)/)
+  return match?.[1] ?? match?.[2] ?? ''
+}
+
+function pendingInputTimeoutSeconds(trace: DemoTraceEvent[], resourceName: string): number | undefined {
+  const event = [...trace].reverse().find(item => item.error?.includes(`WAIT:resource:${resourceName}:pending_input`) || item.error?.includes(`pending_input:${resourceName}`))
+  if (!event) return undefined
+  const rule = ruleTextForEvent(event)
+  const escapedName = resourceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = rule.match(new RegExp(`::<\\s+([0-9]+(?:\\.[0-9]+)?)\\s+${escapedName}\\b`))
+  if (!match) return undefined
+  const seconds = Number.parseFloat(match[1])
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined
+}
+
+function countdownForResource(name: string): number | undefined {
+  return pendingResourceName.value === name ? pendingResourceCountdownSeconds.value : undefined
+}
+
+function startPendingCountdown(name: string, timeoutSeconds?: number): void {
+  stopPendingCountdown()
+  pendingResourceName.value = name
+  pendingResourceTimeoutSeconds.value = timeoutSeconds
+  if (timeoutSeconds === undefined) return
+  const deadline = Date.now() + Math.ceil(timeoutSeconds * 1000)
+  pendingResourceDeadlineMs.value = deadline
+  pendingResourceCountdownSeconds.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+  pendingResourceTimer = window.setInterval(() => {
+    updatePendingCountdown()
+  }, 250)
+}
+
+function updatePendingCountdown(): void {
+  if (!pendingResourceName.value || pendingResourceTimeoutSeconds.value === undefined || pendingResourceDeadlineMs.value === undefined) return
+  const end = pendingResourceDeadlineMs.value
+  const remaining = Math.max(0, Math.ceil((end - Date.now()) / 1000))
+  pendingResourceCountdownSeconds.value = remaining
+  if (remaining > 0) return
+  const name = pendingResourceName.value
+  void submitResource(name)
+}
+
+function stopPendingCountdown(): void {
+  if (pendingResourceTimer) {
+    window.clearInterval(pendingResourceTimer)
+    pendingResourceTimer = undefined
+  }
+  pendingResourceName.value = ''
+  pendingResourceTimeoutSeconds.value = undefined
+  pendingResourceCountdownSeconds.value = undefined
+  pendingResourceDeadlineMs.value = undefined
 }
 
 function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?: string[]; errors?: string[]; remainingInputText?: string; outputText?: string }>, stdout: string, stderr: string): void {
-  const nextLogs: Record<string, { reads: string[]; writes: string[]; errors: string[]; remainingInputText?: string; outputText?: string }> = {}
+  const nextLogs: Record<string, ResourceLogSnapshot> = {}
   const nextInputs = { ...resourceInputs.value }
   const nextSubmittedInputs = { ...resourceSubmittedInputs.value }
   const nextOutputs: Record<string, string> = { ...resourceOutputs.value }
@@ -857,9 +1223,10 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
       outputText: log.outputText,
     }
     nextLogs[log.name] = normalized
-    if (log.remainingInputText !== undefined && (nextSubmittedInputs[log.name] ?? '').length > 0) {
+    if (log.remainingInputText !== undefined && (Object.prototype.hasOwnProperty.call(nextSubmittedInputs, log.name) || normalized.reads.length > 0)) {
       nextInputs[log.name] = log.remainingInputText
-      nextSubmittedInputs[log.name] = log.remainingInputText
+      if (log.remainingInputText === '') delete nextSubmittedInputs[log.name]
+      else nextSubmittedInputs[log.name] = log.remainingInputText
     }
     const outputText = log.outputText ?? (normalized.writes.length > 0 ? normalized.writes.join('') : undefined)
     if (outputText !== undefined) nextOutputs[log.name] = `${nextOutputs[log.name] ?? ''}${outputText}`
@@ -868,23 +1235,31 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
   const hasStderrLog = logs.some(log => log.name === 'stderr' && (Boolean(log.outputText) || (log.writes?.length ?? 0) > 0))
   if (stdout && !hasStdoutLog) nextOutputs.stdout = `${nextOutputs.stdout ?? ''}${stdout}`
   if (stderr && !hasStderrLog) nextOutputs.stderr = appendErrorTranscript(nextOutputs.stderr ?? '', stderr)
-  resourceAttention.value = changedResourceTextareas(resourceInputs.value, nextInputs, resourceOutputs.value, nextOutputs)
+  const inputAttention = changedResourceInputs(resourceInputs.value, nextInputs)
+  const outputAttention = changedResourceOutputs(resourceOutputs.value, nextOutputs)
+  resourceAttention.value = { ...inputAttention, ...outputAttention }
   resourceLogs.value = nextLogs
   resourceInputs.value = nextInputs
   resourceSubmittedInputs.value = nextSubmittedInputs
   resourceOutputs.value = nextOutputs
 }
 
-function changedResourceTextareas(
+function changedResourceInputs(
   previousInputs: Record<string, string>,
   nextInputs: Record<string, string>,
-  previousOutputs: Record<string, string>,
-  nextOutputs: Record<string, string>,
-): Record<string, 'input' | 'output'> {
-  const attention: Record<string, 'input' | 'output'> = {}
+): Record<string, 'input'> {
+  const attention: Record<string, 'input'> = {}
   for (const [name, next] of Object.entries(nextInputs)) {
     if ((previousInputs[name] ?? '') !== next) attention[name] = 'input'
   }
+  return attention
+}
+
+function changedResourceOutputs(
+  previousOutputs: Record<string, string>,
+  nextOutputs: Record<string, string>,
+): Record<string, 'output'> {
+  const attention: Record<string, 'output'> = {}
   for (const [name, next] of Object.entries(nextOutputs)) {
     if ((previousOutputs[name] ?? '') !== next) attention[name] = 'output'
   }
@@ -906,6 +1281,10 @@ async function runCompactProgram(): Promise<void> {
 function loadInitialSelection(): void {
   const testParam = props.test ?? routeSearchParams.get('test')
   const caseParam = props.caseName ?? routeSearchParams.get('case')
+  if (props.koan) {
+    initializeKoanAttempt()
+    return
+  }
   loadFile(fileParam.value)
   if (!testParam && !caseParam) return
   const cleanTest = testParam?.replace(/^\.\//, '')
