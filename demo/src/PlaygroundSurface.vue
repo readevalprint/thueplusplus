@@ -372,7 +372,7 @@ const resourceInputs = ref<Record<string, string>>({})
 const resourceSubmittedInputs = ref<Record<string, string>>({})
 const resourceLogs = ref<Record<string, ResourceLogSnapshot>>({})
 const resourceOutputs = ref<Record<string, string>>({})
-const resourceAttention = ref<Record<string, 'input'>>({})
+const resourceAttention = ref<Record<string, 'input' | 'output'>>({})
 const pendingResourceName = ref('')
 const pendingResourceTimeoutSeconds = ref<number | undefined>()
 const pendingResourceCountdownSeconds = ref<number | undefined>()
@@ -528,6 +528,10 @@ function setResourceInput(name: string, value: string): void {
   resourceInputs.value = { ...resourceInputs.value, [name]: value }
   const { [name]: _removed, ...remainingSubmitted } = resourceSubmittedInputs.value
   resourceSubmittedInputs.value = remainingSubmitted
+  if (selectedHistoryCursor.value >= 0 && selectedHistoryCursor.value < stateDiffs.value.length - 1) {
+    pruneFutureHistory()
+    statusText.value = 'resource input edited; next run branches here'
+  }
 }
 
 async function submitResource(name: string): Promise<void> {
@@ -943,10 +947,35 @@ function appendInitialStateDiff(state: string): void {
 }
 
 function appendStateDiffs(trace: DemoTraceEvent[], resources: ResourceSnapshot): void {
+  if (trace.length > 1) {
+    appendMultiTraceCollapsedDiff(trace, resources)
+    return
+  }
   const entries = trace.flatMap((event, index) => stateDiffEntry(event, stateDiffs.value.length + index, resources))
   if (entries.length === 0) return
   stateDiffs.value = [...stateDiffs.value, ...entries]
   selectedHistoryKey.value = entries.at(-1)?.key
+}
+
+function appendMultiTraceCollapsedDiff(trace: DemoTraceEvent[], resources: ResourceSnapshot): void {
+  const first = trace[0]
+  const last = trace.at(-1)
+  if (!first || !last) return
+  const { before, after } = compactCharDiff(first.stateBefore, last.stateAfter)
+  const entry = {
+    key: `trace-${first.step}-${last.step}-${stateDiffs.value.length}`,
+    step: last.step,
+    row: last.lineNumber,
+    rule: `${trace.length} traced steps collapsed`,
+    stateBefore: first.stateBefore,
+    stateAfter: last.stateAfter,
+    before,
+    after,
+    resources,
+    note: 'resource snapshot captured after the worker batch',
+  }
+  stateDiffs.value = [...stateDiffs.value, entry]
+  selectedHistoryKey.value = entry.key
 }
 
 function appendStepErrorDiff(error: string, state: string, resources: ResourceSnapshot): void {
@@ -1205,7 +1234,9 @@ function applyResourceLogs(logs: Array<{ name: string; reads?: string[]; writes?
   const hasStderrLog = logs.some(log => log.name === 'stderr' && (Boolean(log.outputText) || (log.writes?.length ?? 0) > 0))
   if (stdout && !hasStdoutLog) nextOutputs.stdout = `${nextOutputs.stdout ?? ''}${stdout}`
   if (stderr && !hasStderrLog) nextOutputs.stderr = appendErrorTranscript(nextOutputs.stderr ?? '', stderr)
-  resourceAttention.value = changedResourceInputs(resourceInputs.value, nextInputs)
+  const inputAttention = changedResourceInputs(resourceInputs.value, nextInputs)
+  const outputAttention = changedResourceOutputs(resourceOutputs.value, nextOutputs)
+  resourceAttention.value = { ...inputAttention, ...outputAttention }
   resourceLogs.value = nextLogs
   resourceInputs.value = nextInputs
   resourceSubmittedInputs.value = nextSubmittedInputs
@@ -1219,6 +1250,17 @@ function changedResourceInputs(
   const attention: Record<string, 'input'> = {}
   for (const [name, next] of Object.entries(nextInputs)) {
     if ((previousInputs[name] ?? '') !== next) attention[name] = 'input'
+  }
+  return attention
+}
+
+function changedResourceOutputs(
+  previousOutputs: Record<string, string>,
+  nextOutputs: Record<string, string>,
+): Record<string, 'output'> {
+  const attention: Record<string, 'output'> = {}
+  for (const [name, next] of Object.entries(nextOutputs)) {
+    if ((previousOutputs[name] ?? '') !== next) attention[name] = 'output'
   }
   return attention
 }

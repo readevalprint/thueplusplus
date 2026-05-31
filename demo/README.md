@@ -40,7 +40,9 @@ The playground treats the program editor as an exact source view. Loading a bund
 
 The state textarea is derived from an explicit first bare `::=` separator and preserves all following text as the initial state, including embedded newlines, or from a selected manifest case input. Files without a separator start with an empty state. Clearing the state textarea sends an explicit empty input override to the Go-WASM runner; it must not fall back to hidden state embedded in the source text.
 
-The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row still restores that checkpoint, and rows after the selected checkpoint remain marked as future/stale until the next step prunes them.
+The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row restores that immutable checkpoint, including resource input/output buffers. Rows after the selected checkpoint remain marked as future/stale until execution or resource-buffer edits branch from the selected checkpoint and prune them.
+
+Resource textareas are working inputs for the next execution, not edits to historical rows. If a resource buffer is changed while an older checkpoint is selected, future rows are pruned immediately and the next Step/Play/End uses the edited buffer. Selecting another history row restores that row's saved resource snapshot and discards uncommitted resource edits. Waiting-for-input rows are passive checkpoints when reselected: they restore resource data, but do not restart submit buttons or countdown timers until execution reaches the read again. Output attention is reserved for output produced by execution, not passive history restoration.
 
 ## Embeddable playground routes
 

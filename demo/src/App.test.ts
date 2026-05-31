@@ -960,6 +960,220 @@ describe('Go-WASM demo UI', () => {
     expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it('restores partially consumed resource input when selecting history rows', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
+    const wrapper = await mountApp({ attachTo: document.body })
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30 stdin\n^Ada$ ::= done')
+    await wrapper.get('[data-test="playground-state"]').setValue('@IN@')
+    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada\nLovelace\n')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'Ada',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: 'Ada', stateAfter: 'Ada' }],
+      resourceLogs: [{ name: 'stdin', reads: ['Ada'], writes: [], errors: [], remainingInputText: 'Lovelace\n', outputText: '' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'done',
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/echo/echo.tpp', lineNumber: 2, operator: '::=', lhs: '^Ada$', matchStart: 0, matchEnd: 3, groups: {}, stateBefore: 'Ada', replacement: 'done', stateAfter: 'done' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    const entries = wrapper.findAll('.state-diff-row')
+    expect(entries).toHaveLength(3)
+    expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', 'Lovelace\n')
+
+    await entries[0].trigger('click')
+    expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', 'Ada\nLovelace\n')
+
+    await entries[1].trigger('click')
+    expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', 'Lovelace\n')
+  })
+
+  it('prunes future checkpoints immediately when editing resource input on a selected checkpoint', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
+    const wrapper = await mountApp({ attachTo: document.body })
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30 stdin\n^Ada$ ::= done')
+    await wrapper.get('[data-test="playground-state"]').setValue('@IN@')
+    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada\nLovelace\n')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'Ada',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: 'Ada', stateAfter: 'Ada' }],
+      resourceLogs: [{ name: 'stdin', reads: ['Ada'], writes: [], errors: [], remainingInputText: 'Lovelace\n', outputText: '' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'done',
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/echo/echo.tpp', lineNumber: 2, operator: '::=', lhs: '^Ada$', matchStart: 0, matchEnd: 3, groups: {}, stateBefore: 'Ada', replacement: 'done', stateAfter: 'done' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    let entries = wrapper.findAll('.state-diff-row')
+    await entries[1].trigger('click')
+    expect(wrapper.findAll('.state-diff-row')).toHaveLength(3)
+    expect(wrapper.findAll('.state-diff-row')[2].attributes('data-future')).toBe('true')
+
+    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Grace\n')
+    await flush()
+
+    entries = wrapper.findAll('.state-diff-row')
+    expect(entries).toHaveLength(2)
+    expect(entries[1].attributes('data-selected')).toBe('true')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('resource input edited; next run branches here')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'Grace',
+      trace: [{ step: 3, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: 'Ada', replacement: 'Grace', stateAfter: 'Grace' }],
+      resourceLogs: [{ name: 'stdin', reads: ['Grace'], writes: [], errors: [], remainingInputText: '', outputText: '' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker.mock.calls[2][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'Grace\n', lineMode: true, readError: undefined })
+    expect(wrapper.findAll('.state-diff-row')).toHaveLength(3)
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'Grace')
+  })
+
+  it('treats waiting history rows as passive checkpoints when reselected', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
+    const wrapper = await mountApp({ attachTo: document.body })
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30 stdin\n^start$ ::= other')
+    await wrapper.get('[data-test="playground-state"]').setValue('@IN@')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 1,
+      stdout: '',
+      stderr: '',
+      error: 'ERR:resource:stdin:pending_input:stdin',
+      errors: 'ERR:resource:stdin:pending_input:stdin',
+      state: '@IN@',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: '', stateAfter: '@IN@', error: 'ERR:resource:stdin:pending_input:stdin' }],
+      resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
+    expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(false)
+
+    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada')
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'Ada',
+      trace: [{ step: 2, ruleIndex: 0, sourcePath: 'examples/echo/echo.tpp', lineNumber: 1, operator: '::<', lhs: '@IN@', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: '@IN@', replacement: 'Ada', stateAfter: 'Ada' }],
+      resourceLogs: [{ name: 'stdin', reads: ['Ada'], writes: [], errors: [], remainingInputText: '', outputText: '' }],
+    })
+    await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
+    await flush()
+
+    const entries = wrapper.findAll('.state-diff-row')
+    await entries[1].trigger('click')
+
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint #1')
+    expect((wrapper.get('[data-test="resource-submit-stdin"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.find('[data-test="resource-countdown-stdin"]').exists()).toBe(false)
+  })
+
+  it('does not mark restored output snapshots as newly written output', async () => {
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+      const wrapper = await mountApp()
+      await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\\\n\n^$ ::= b\n^b$ ::> stdout B\\\\n')
+      await wrapper.get('[data-test="playground-state"]').setValue('a')
+
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: 'A\n',
+        stderr: '',
+        state: '',
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: '' }],
+        resourceLogs: [{ name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' }],
+      })
+      await wrapper.get('[data-test="playground-step"]').trigger('click')
+      await flush()
+
+      await vi.advanceTimersByTimeAsync(1000)
+      await flush()
+      expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBeUndefined()
+
+      mockedRunWithWorker.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: 'B\n',
+        stderr: '',
+        state: '',
+        trace: [{ step: 2, ruleIndex: 2, sourcePath: 'examples/hello/hello.tpp', lineNumber: 3, operator: '::>', lhs: '^b$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'b', replacement: '', stateAfter: '' }],
+        resourceLogs: [{ name: 'stdout', reads: [], writes: ['B\n'], errors: [], remainingInputText: '', outputText: 'B\n' }],
+      })
+      await wrapper.get('[data-test="playground-step"]').trigger('click')
+      await flush()
+      expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBe('output')
+
+      await vi.advanceTimersByTimeAsync(1000)
+      await flush()
+      const entries = wrapper.findAll('.state-diff-row')
+      await entries[1].trigger('click')
+      await flush()
+
+      expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
+      expect(wrapper.get('[data-test="resource-output-stdout"]').attributes('data-attention')).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('collapses multi-trace worker results instead of assigning one final resource snapshot to multiple rows', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = await mountApp({ attachTo: document.body })
+    await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\\\n\n^$ ::= b')
+    await wrapper.get('[data-test="playground-state"]').setValue('a')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: 'A\n',
+      stderr: '',
+      state: 'b',
+      trace: [
+        { step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: '' },
+        { step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 3, operator: '::=', lhs: '^$', matchStart: 0, matchEnd: 0, groups: {}, stateBefore: '', replacement: 'b', stateAfter: 'b' },
+      ],
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' }],
+    })
+
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    const entries = wrapper.findAll('.state-diff-row')
+    expect(entries).toHaveLength(2)
+    expect(entries[1].text()).toContain('2 traced steps collapsed')
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
+  })
+
   it('uses visible resource buffers on the next run without requiring submit', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
