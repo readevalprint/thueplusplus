@@ -28,6 +28,7 @@ OUT ::> stdout hi
 
 
 def test_load_cases_requires_resource_shaped_json() -> None:
+    assert kg.KOAN_TEST_SCHEMA["case_keys"] == ["name", "resources", "exit_code"]
     cases = kg.load_cases(ROOT / "koans/fixed-greet")
     assert cases
     assert all("resources" in case for case in cases)
@@ -66,7 +67,7 @@ def test_normalize_case_requires_exit_code() -> None:
     try:
         kg.normalize_case(manifest, raw_case, 1)
     except RuntimeError as error:
-        assert "must define exit_code" in str(error)
+        assert "missing required keys: exit_code" in str(error)
     else:
         raise AssertionError("exit_code should be required")
 

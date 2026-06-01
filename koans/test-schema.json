@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "manifest_keys": ["cases"],
+  "case_keys": ["name", "resources", "exit_code"],
+  "required_case_keys": ["name", "resources", "exit_code"],
+  "resource_keys": ["buffer", "expected_output"],
+  "resource_name_pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+  "expected_output_resources": ["stdout", "stderr"]
+}

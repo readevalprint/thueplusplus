@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { KoanEntry, KoanMetricRecord, KoanSolution, KoanTestCase, KoanTestManifest } from './types'
 
+const schemaModules = import.meta.glob('../../../koans/test-schema.json', {
+  import: 'default',
+  eager: true,
+})
+
 const readmeModules = import.meta.glob('../../../koans/*/readme.md', {
   query: '?raw',
   import: 'default',
@@ -29,6 +34,23 @@ const solutionSourceModules = import.meta.glob('../../../koans/*/solutions/*.tpp
   eager: true,
 })
 
+interface KoanTestSchema {
+  manifest_keys: string[]
+  case_keys: string[]
+  required_case_keys: string[]
+  resource_keys: string[]
+  resource_name_pattern: string
+  expected_output_resources: string[]
+}
+
+const koanTestSchema = Object.values(schemaModules)[0] as KoanTestSchema
+const manifestKeys = new Set(koanTestSchema.manifest_keys)
+const caseKeys = new Set(koanTestSchema.case_keys)
+const requiredCaseKeys = new Set(koanTestSchema.required_case_keys)
+const resourceKeys = new Set(koanTestSchema.resource_keys)
+const resourceNamePattern = new RegExp(koanTestSchema.resource_name_pattern)
+const expectedOutputResources = new Set(koanTestSchema.expected_output_resources)
+
 export const koans: KoanEntry[] = Object.entries(readmeModules)
   .map(([readmePath, rawMarkdown]) => {
     const slug = koanSlugFromReadmePath(readmePath)
@@ -56,18 +78,81 @@ function testsForSlug(slug: string): KoanTestCase[] {
 }
 
 export function validateKoanTestManifest(rawManifest: unknown, sourcePath = 'koan manifest'): KoanTestManifest {
-  if (!rawManifest || typeof rawManifest !== 'object' || !Array.isArray((rawManifest as KoanTestManifest).cases)) {
-    throw new Error(`${sourcePath} must contain cases array`)
+  if (!rawManifest || typeof rawManifest !== 'object' || Array.isArray(rawManifest)) {
+    throw new Error(`${sourcePath} must contain a JSON object`)
   }
-  const manifest = rawManifest as KoanTestManifest
-  manifest.cases.forEach((testCase, caseIndex) => {
-    Object.entries(testCase.resources ?? {}).forEach(([resourceName, resource]) => {
-      if (typeof resource.expected_output === 'string' && resourceName !== 'stdout' && resourceName !== 'stderr') {
-        throw new Error(`${sourcePath} case ${caseIndex + 1} resource ${resourceName} expected_output is supported only for stdout or stderr`)
+  const manifestObject = rawManifest as Record<string, unknown>
+  const unknownManifestKeys = Object.keys(manifestObject).filter(key => !manifestKeys.has(key)).sort()
+  if (unknownManifestKeys.length > 0) {
+    throw new Error(`${sourcePath} has unknown top-level keys: ${unknownManifestKeys.join(', ')}`)
+  }
+  if (!Array.isArray(manifestObject.cases) || manifestObject.cases.length === 0) {
+    throw new Error(`${sourcePath} must contain non-empty cases array`)
+  }
+
+  const cases = manifestObject.cases.map((rawCase, caseIndex) => validateKoanTestCase(rawCase, sourcePath, caseIndex + 1))
+  return { cases }
+}
+
+function validateKoanTestCase(rawCase: unknown, sourcePath: string, caseNumber: number): KoanTestCase {
+  if (!rawCase || typeof rawCase !== 'object' || Array.isArray(rawCase)) {
+    throw new Error(`${sourcePath} case ${caseNumber} is not an object`)
+  }
+  const caseObject = rawCase as Record<string, unknown>
+  const unknownCaseKeys = Object.keys(caseObject).filter(key => !caseKeys.has(key)).sort()
+  if (unknownCaseKeys.length > 0) {
+    throw new Error(`${sourcePath} case ${caseNumber} has unknown keys: ${unknownCaseKeys.join(', ')}`)
+  }
+  const missingCaseKeys = [...requiredCaseKeys].filter(key => !(key in caseObject)).sort()
+  if (missingCaseKeys.length > 0) {
+    throw new Error(`${sourcePath} case ${caseNumber} is missing required keys: ${missingCaseKeys.join(', ')}`)
+  }
+  if (typeof caseObject.name !== 'string' || caseObject.name.length === 0) {
+    throw new Error(`${sourcePath} case ${caseNumber} name must be a non-empty string`)
+  }
+  const caseName = caseObject.name
+  if (!caseObject.resources || typeof caseObject.resources !== 'object' || Array.isArray(caseObject.resources) || Object.keys(caseObject.resources).length === 0) {
+    throw new Error(`${sourcePath} case ${caseNumber} must contain non-empty resources object`)
+  }
+  if (!Number.isInteger(caseObject.exit_code)) {
+    throw new Error(`${sourcePath} case ${caseNumber} exit_code must be an integer`)
+  }
+  const exitCode = caseObject.exit_code as number
+
+  const resources: Record<string, { buffer?: string, expected_output?: string }> = {}
+  Object.entries(caseObject.resources as Record<string, unknown>).forEach(([resourceName, rawResource]) => {
+    if (!resourceNamePattern.test(resourceName)) {
+      throw new Error(`${sourcePath} case ${caseNumber} has invalid resource name ${JSON.stringify(resourceName)}`)
+    }
+    if (!rawResource || typeof rawResource !== 'object' || Array.isArray(rawResource)) {
+      throw new Error(`${sourcePath} case ${caseNumber} resource ${resourceName} is not an object`)
+    }
+    const resourceObject = rawResource as Record<string, unknown>
+    const unknownResourceKeys = Object.keys(resourceObject).filter(key => !resourceKeys.has(key)).sort()
+    if (unknownResourceKeys.length > 0) {
+      throw new Error(`${sourcePath} case ${caseNumber} resource ${resourceName} has unknown keys: ${unknownResourceKeys.join(', ')}`)
+    }
+    if (!Object.keys(resourceObject).some(key => resourceKeys.has(key))) {
+      throw new Error(`${sourcePath} case ${caseNumber} resource ${resourceName} must define buffer or expected_output`)
+    }
+    if ('expected_output' in resourceObject && !expectedOutputResources.has(resourceName)) {
+      throw new Error(`${sourcePath} case ${caseNumber} resource ${resourceName} expected_output is supported only for stdout or stderr`)
+    }
+    const resource: { buffer?: string, expected_output?: string } = {}
+    Object.entries(resourceObject).forEach(([key, value]) => {
+      if (typeof value !== 'string') {
+        throw new Error(`${sourcePath} case ${caseNumber} resource ${resourceName} ${key} must be a string`)
       }
+      resource[key as 'buffer' | 'expected_output'] = value
     })
+    resources[resourceName] = resource
   })
-  return manifest
+
+  return {
+    name: caseName,
+    resources,
+    exit_code: exitCode,
+  }
 }
 
 function hintForSlug(slug: string): string | undefined {

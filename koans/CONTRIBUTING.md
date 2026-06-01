@@ -25,7 +25,8 @@ koans/
 
 ## Test manifest shape
 
-Koan manifests use a top-level `cases` array. All IO assertions are resource-shaped.
+Koan manifests use a top-level `cases` array. The canonical machine-readable schema lives in `koans/test-schema.json`; the Python generator and browser import path both load that file and enforce the same keys.
+All IO assertions are resource-shaped.
 Use normal `stdin`, `stdout`, and `stderr` resource names; `buffer` feeds an input resource and `expected_output` asserts `stdout` or `stderr` only.
 There is no per-case `state` key; use `stdin.buffer` for case input or the `.tpp` source's own final `::=` state for a shared starting state.
 There are no per-case `args` or `timeout` keys; koans should be reproducible through resource buffers and normal program rules.
