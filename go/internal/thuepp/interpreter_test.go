@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRuntimeIOUsesHostResources(t *testing.T) {
@@ -30,6 +31,31 @@ func TestRuntimeIOUsesHostResources(t *testing.T) {
 	}
 	if got := stderr.String(); got != "" {
 		t.Fatalf("stderr = %q, want empty", got)
+	}
+}
+
+func TestProcessResourceDrainsBufferedOutputAfterFastExit(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		resource := newProcessResource("worker", "printf 'alpha\\nbeta\\n'")
+		line, err := resource.ReadLine(time.Second)
+		if err != nil {
+			resource.Cleanup()
+			t.Fatalf("ReadLine #1 error on iteration %d: %v", i, err)
+		}
+		if line != "alpha" {
+			resource.Cleanup()
+			t.Fatalf("ReadLine #1 on iteration %d = %q, want alpha", i, line)
+		}
+		line, err = resource.ReadLine(time.Second)
+		if err != nil {
+			resource.Cleanup()
+			t.Fatalf("ReadLine #2 error on iteration %d: %v", i, err)
+		}
+		if line != "beta" {
+			resource.Cleanup()
+			t.Fatalf("ReadLine #2 on iteration %d = %q, want beta", i, line)
+		}
+		resource.Cleanup()
 	}
 }
 
