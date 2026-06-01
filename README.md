@@ -127,14 +127,14 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 ^START$ ::= @PROMPT@NAME<@READ@>
 @PROMPT@ ::> stdout What is your name?\n
-@READ@ ::< 30 stdin
+@READ@ ::< 30s stdin
 ^NAME<(?<name>$PCT)>$ ::> stdout hello {{name|pctdec}}!\n
 
 ::=
 START
 ```
 
-`::< 30 stdin` reads one line from `stdin` with a 30-second timeout. The line is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
+`::< 30s stdin` reads one line from `stdin` with an explicit 30-second timeout. Read timeouts are positive integer durations with `ms`, `s`, or `m` units; bare numeric seconds are invalid. The line is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
 
 The same resource interface can connect to a process. The runner binds a resource name, and Thue++ reads or writes through that name.
 
@@ -170,10 +170,10 @@ NUMBER <- [0-9]+
 
 PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
-@RANDOM_NUMBER@ ::< 5 random
+@RANDOM_NUMBER@ ::< 5s random
 
 @PROMPT@ ::> stdout Guess:\n
-@USER_GUESS@ ::< 30 stdin
+@USER_GUESS@ ::< 30s stdin
 
 @INVALID_NUMBER@ ::> stdout Please enter digits only.\n
 @TOO_LOW@ ::> stdout Too low.\n

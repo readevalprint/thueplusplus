@@ -75,8 +75,8 @@
     "website": "https://readevalprint.com"
   },
   "solution_path": "koans/binary-not/solutions/2026-05-29-truth-table-flip.tpp",
-  "solution_sha256": "83c66992dc3ab869d14b0a65a2e59de5eef57ccbcd4bc360e3a90fae45c19373",
-  "source_bytes": 328,
-  "source_sha256": "83c66992dc3ab869d14b0a65a2e59de5eef57ccbcd4bc360e3a90fae45c19373",
+  "solution_sha256": "053152cce54720a95c227f987e7ac3baa04975d2c34a6ce665f46a681b008551",
+  "source_bytes": 329,
+  "source_sha256": "053152cce54720a95c227f987e7ac3baa04975d2c34a6ce665f46a681b008551",
   "successful_rewrites": 8
 }

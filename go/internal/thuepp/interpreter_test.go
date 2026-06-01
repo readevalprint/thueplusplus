@@ -15,7 +15,7 @@ func TestRuntimeIOUsesHostResources(t *testing.T) {
 		Stderr: &stderr,
 	})
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@IN@ ::< 1 stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"); err != nil {
+	if err := interp.parseProgram("@IN@ ::< 1s stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
@@ -30,6 +30,64 @@ func TestRuntimeIOUsesHostResources(t *testing.T) {
 	}
 	if got := stderr.String(); got != "" {
 		t.Fatalf("stderr = %q, want empty", got)
+	}
+}
+
+func TestReadTimeoutAcceptsExplicitDurationUnits(t *testing.T) {
+	cases := []string{"1ms", "500ms", "1s", "1m"}
+	for _, timeout := range cases {
+		t.Run(timeout, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			interp := NewWithHostResources(HostResources{
+				Stdin:  strings.NewReader("ok\n"),
+				Stdout: &stdout,
+				Stderr: &stderr,
+			})
+			interp.ProgramPath = "test.tpp"
+			program := "@IN@ ::< " + timeout + " stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"
+			if err := interp.parseProgram(program); err != nil {
+				t.Fatal(err)
+			}
+			code, err := interp.Run()
+			if err != nil {
+				t.Fatalf("Run error: %v", err)
+			}
+			if code != 0 {
+				t.Fatalf("exit code = %d, want 0", code)
+			}
+			if got := stdout.String(); got != "ok\n" {
+				t.Fatalf("stdout = %q, want %q", got, "ok\n")
+			}
+		})
+	}
+}
+
+func TestReadTimeoutRejectsImplicitSecondsAndUnsupportedUnits(t *testing.T) {
+	cases := []string{"1", "30", "0.5", "1h", "1us", "1ns", "1sec", "0s", "0ms", "-1s"}
+	for _, timeout := range cases {
+		t.Run(timeout, func(t *testing.T) {
+			interp := NewWithHostResources(HostResources{
+				Stdin:  strings.NewReader("ok\n"),
+				Stdout: &bytes.Buffer{},
+				Stderr: &bytes.Buffer{},
+			})
+			interp.ProgramPath = "test.tpp"
+			program := "@IN@ ::< " + timeout + " stdin\n::=\n@IN@"
+			if err := interp.parseProgram(program); err != nil {
+				t.Fatal(err)
+			}
+			code, err := interp.Run()
+			if err == nil {
+				t.Fatalf("Run succeeded for timeout %q, want invalid timeout error", timeout)
+			}
+			if code != 1 {
+				t.Fatalf("exit code = %d, want 1", code)
+			}
+			want := "Line 1: invalid read timeout '" + timeout + "'"
+			if got := err.Error(); got != want {
+				t.Fatalf("error = %q, want %q", got, want)
+			}
+		})
 	}
 }
 
@@ -63,7 +121,7 @@ func TestFastExitProcessOutputIsReadable(t *testing.T) {
 	})
 	interp.AddProcBinding("once", "printf '7\\n'")
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@N@ ::< 1 once\n^(?<n>[0-9]+)$ ::> stdout {{n}}\\n\n::=\n@N@"); err != nil {
+	if err := interp.parseProgram("@N@ ::< 1s once\n^(?<n>[0-9]+)$ ::> stdout {{n}}\\n\n::=\n@N@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()

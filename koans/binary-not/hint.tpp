@@ -2,7 +2,7 @@
 GOAL: Read one line from stdin and flip a binary digit.
 
 The input buffer is provided by each koan test case.
-START ::< 1 stdin
+START ::< 1s stdin
 
 This branch is solved: input 0 should print 1.
 ^0$ ::= OUT1

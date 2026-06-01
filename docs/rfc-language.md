@@ -19,7 +19,7 @@ Print the prompt to the console and read the name from the console.
 <PRINT_PROMPT> ::> stdout What is your name?\n
 
 Input with a 30s timeout and is automatically PCT-encoded.
-<READ_NAME> ::< 30 stdin
+<READ_NAME> ::< 30s stdin
 
 Greet the provided name.
 ^GREET:(?<name>$PCT)$ ::> stdout hello {{name|pctdec}}!\n
@@ -131,7 +131,7 @@ Split `RHS` on whitespace. First token is builtin name; remaining tokens are cap
 
 ### `::<` read
 
-`RHS` must be exactly two tokens: `TIMEOUT RESOURCE`. `TIMEOUT` is a finite positive number of seconds; zero, negative, NaN, infinity, and non-numeric values are errors. `RESOURCE` matches `[A-Za-z_][A-Za-z0-9_]*` and must be readable.
+`RHS` must be exactly two tokens: `TIMEOUT RESOURCE`. `TIMEOUT` must be a positive integer duration with an explicit unit: `ms`, `s`, or `m` (for example `500ms`, `1s`, or `1m`). Bare numbers, decimals, zero, negative values, and unsupported units are errors. `RESOURCE` matches `[A-Za-z_][A-Za-z0-9_]*` and must be readable.
 
 Read exactly one newline-delimited message. Strip `\n`; if preceded by `\r`, strip that too. EOF before newline is an error. Bulk reads are unsupported. Replacement is canonical PCT encoding of the line payload.
 
