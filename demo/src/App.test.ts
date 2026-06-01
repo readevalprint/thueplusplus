@@ -41,6 +41,7 @@ vi.mock('./ReadmeCodeEditor.vue', async () => {
 })
 
 import App from './App.vue'
+import { validateKoanTestManifest } from './koans/data'
 
 vi.mock('./wasm', async () => {
   return {
@@ -139,6 +140,18 @@ describe('Go-WASM demo UI', () => {
     expect(toc.text()).toContain('Lisp eval: explicit scope as sandbox')
     expect(toc.get('a[aria-current="location"]').attributes('href')).toBe('#thue')
     expect(getComputedStyle(wrapper.get('[data-test="readme-index"]').element).paddingBottom).toBeTruthy()
+  })
+
+  it('rejects non-stdio koan expected_output in browser data validation', () => {
+    expect(() => validateKoanTestManifest({
+      cases: [{
+        name: 'custom output resource',
+        resources: {
+          file: { expected_output: 'nope\n' },
+        },
+        exit_code: 0,
+      }],
+    }, 'bad.json')).toThrow('resource file expected_output is supported only for stdout or stderr')
   })
 
   it('serves the koans index route with pilot koan links', async () => {

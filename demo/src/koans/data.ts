@@ -52,7 +52,22 @@ export const koans: KoanEntry[] = Object.entries(readmeModules)
 function testsForSlug(slug: string): KoanTestCase[] {
   return Object.entries(testModules)
     .filter(([testPath]) => koanSlugFromTestPath(testPath) === slug)
-    .flatMap(([_testPath, rawManifest]) => (rawManifest as KoanTestManifest).cases)
+    .flatMap(([testPath, rawManifest]) => validateKoanTestManifest(rawManifest, testPath).cases)
+}
+
+export function validateKoanTestManifest(rawManifest: unknown, sourcePath = 'koan manifest'): KoanTestManifest {
+  if (!rawManifest || typeof rawManifest !== 'object' || !Array.isArray((rawManifest as KoanTestManifest).cases)) {
+    throw new Error(`${sourcePath} must contain cases array`)
+  }
+  const manifest = rawManifest as KoanTestManifest
+  manifest.cases.forEach((testCase, caseIndex) => {
+    Object.entries(testCase.resources ?? {}).forEach(([resourceName, resource]) => {
+      if (typeof resource.expected_output === 'string' && resourceName !== 'stdout' && resourceName !== 'stderr') {
+        throw new Error(`${sourcePath} case ${caseIndex + 1} resource ${resourceName} expected_output is supported only for stdout or stderr`)
+      }
+    })
+  })
+  return manifest
 }
 
 function hintForSlug(slug: string): string | undefined {
