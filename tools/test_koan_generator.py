@@ -69,6 +69,44 @@ def test_normalize_case_requires_exit_code() -> None:
         raise AssertionError("exit_code should be required")
 
 
+def test_normalize_case_rejects_args_key() -> None:
+    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    raw_case = {
+        "name": "args are invalid",
+        "args": ["--flag"],
+        "resources": {
+            "stdout": {"expected_output": "ok\n"},
+        },
+        "exit_code": 0,
+    }
+
+    try:
+        kg.normalize_case(manifest, raw_case, 1)
+    except RuntimeError as error:
+        assert "unknown keys: args" in str(error)
+    else:
+        raise AssertionError("args key should be rejected")
+
+
+def test_normalize_case_rejects_timeout_key() -> None:
+    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    raw_case = {
+        "name": "timeout is invalid",
+        "timeout": 1,
+        "resources": {
+            "stdout": {"expected_output": "ok\n"},
+        },
+        "exit_code": 0,
+    }
+
+    try:
+        kg.normalize_case(manifest, raw_case, 1)
+    except RuntimeError as error:
+        assert "unknown keys: timeout" in str(error)
+    else:
+        raise AssertionError("timeout key should be rejected")
+
+
 def test_solution_filenames_use_date_and_front_matter_slug() -> None:
     for solution in (ROOT / "koans").glob("*/solutions/*.tpp"):
         metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))
