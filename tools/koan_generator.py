@@ -277,9 +277,10 @@ def stdin_buffer(case: dict[str, Any]) -> str:
 def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str) -> BackendResult:
     with tempfile.NamedTemporaryFile(prefix="koan-coverage-", delete=False) as tmp:
         coverage_path = Path(tmp.name)
+    with tempfile.NamedTemporaryFile(prefix="koan-metrics-coverage-", delete=False) as tmp:
+        metrics_coverage_path = Path(tmp.name)
     try:
         command, cwd = backend_command(backend, solution.resolve(), coverage_path, eval_limit, case)
-        command.insert(4, "--debug")
         proc = subprocess.run(
             command,
             cwd=cwd,
@@ -289,19 +290,26 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
             timeout=GENERATOR_CASE_TIMEOUT_SECONDS,
         )
         coverage = parse_coverage(coverage_path, solution)
+        metrics_command, _ = backend_command(backend, solution.resolve(), metrics_coverage_path, eval_limit, case)
+        metrics_command.insert(4, "--debug")
+        metrics_proc = subprocess.run(
+            metrics_command,
+            cwd=cwd,
+            input=stdin_buffer(case),
+            text=True,
+            capture_output=True,
+            timeout=GENERATOR_CASE_TIMEOUT_SECONDS,
+        )
     finally:
         coverage_path.unlink(missing_ok=True)
-    stderr_for_expect = "\n".join(
-        line for line in proc.stderr.splitlines()
-        if line and not re.match(r"^\[\d+\] ", line)
-    )
-    eval_check_count, cumulative_state_bytes = parse_debug_metrics(proc.stderr)
+        metrics_coverage_path.unlink(missing_ok=True)
+    eval_check_count, cumulative_state_bytes = parse_debug_metrics(metrics_proc.stderr)
     return BackendResult(
         backend=backend,
         case_name=str(case["name"]),
         exit_code=proc.returncode,
         stdout=proc.stdout,
-        stderr=stderr_for_expect,
+        stderr=proc.stderr,
         coverage=coverage,
         eval_check_count=eval_check_count,
         successful_rewrites=sum(coverage.values()),

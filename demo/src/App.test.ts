@@ -42,6 +42,7 @@ vi.mock('./ReadmeCodeEditor.vue', async () => {
 
 import App from './App.vue'
 import { validateKoanTestManifest } from './koans/data'
+import { runKoanTests } from './koans/runKoanTests'
 
 vi.mock('./wasm', async () => {
   return {
@@ -521,6 +522,33 @@ describe('Go-WASM demo UI', () => {
     expect(expected.classes()).toContain('added')
     expect(diff.element.compareDocumentPosition(actual.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(actual.element.compareDocumentPosition(expected.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('compares koan stderr expectations against raw worker stderr', async () => {
+    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '[1] user line\n' })
+    const results = await runKoanTests({
+      slug: 'stderr-policy',
+      title: 'Stderr Policy',
+      summary: '',
+      readme: '',
+      path: 'koans/stderr-policy/readme.md',
+      bestSolutionId: null,
+      tests: [{
+        name: 'stderr prefix',
+        resources: { stderr: { expected_output: '[1] user line\n' } },
+        exit_code: 0,
+      }],
+      solutions: [],
+    }, '::= START')
+
+    expect(results).toHaveLength(1)
+    expect(results[0].passed).toBe(true)
+    expect(results[0].resources[0]).toEqual({
+      name: 'stderr',
+      expected: '[1] user line\n',
+      actual: '[1] user line\n',
+      passed: true,
+    })
   })
 
   it('sorts koan solutions with the shadcn data table controls', async () => {
