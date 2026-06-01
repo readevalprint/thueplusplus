@@ -11,7 +11,6 @@
           ],
           "cumulative_state_bytes": 38,
           "eval_check_count": 13,
-          "peak_state_bytes": 10,
           "successful_rewrites": 4
         }
       },
@@ -30,7 +29,6 @@
           ],
           "cumulative_state_bytes": 38,
           "eval_check_count": 15,
-          "peak_state_bytes": 10,
           "successful_rewrites": 4
         }
       },
@@ -56,7 +54,6 @@
   "cumulative_state_bytes": 76,
   "eval_check_count": 28,
   "koan": "binary-not",
-  "peak_state_bytes": 10,
   "rank": 1,
   "rule_count": 6,
   "schema_version": 1,

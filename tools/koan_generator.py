@@ -52,7 +52,6 @@ class BackendResult:
     coverage: dict[int, int]
     eval_check_count: int
     successful_rewrites: int
-    peak_state_bytes: int
     cumulative_state_bytes: int
 
 
@@ -274,7 +273,7 @@ def parse_coverage(path: Path, program: Path) -> dict[int, int]:
     return coverage
 
 
-def parse_debug_metrics(stderr: str) -> tuple[int, int, int]:
+def parse_debug_metrics(stderr: str) -> tuple[int, int]:
     # Debug lines expose probe counts and escaped state at each successful match.
     eval_check_count = 0
     state_sizes: list[int] = []
@@ -286,7 +285,7 @@ def parse_debug_metrics(stderr: str) -> tuple[int, int, int]:
         # The debug stream escapes newlines as two bytes. This is an approximate
         # state-byte metric, but it is deterministic and shared across runs.
         state_sizes.append(len(m.group(2).encode("utf-8")))
-    return eval_check_count, max(state_sizes, default=0), sum(state_sizes)
+    return eval_check_count, sum(state_sizes)
 
 
 def stdin_buffer(case: dict[str, Any]) -> str:
@@ -320,7 +319,7 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
         line for line in proc.stderr.splitlines()
         if line and not re.match(r"^\[\d+\] ", line)
     )
-    eval_check_count, peak_state_bytes, cumulative_state_bytes = parse_debug_metrics(proc.stderr)
+    eval_check_count, cumulative_state_bytes = parse_debug_metrics(proc.stderr)
     return BackendResult(
         backend=backend,
         case_name=str(case["name"]),
@@ -330,7 +329,6 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
         coverage=coverage,
         eval_check_count=eval_check_count,
         successful_rewrites=sum(coverage.values()),
-        peak_state_bytes=peak_state_bytes,
         cumulative_state_bytes=cumulative_state_bytes,
     )
 
@@ -369,7 +367,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
     totals = {
         "successful_rewrites": 0,
         "eval_check_count": 0,
-        "peak_state_bytes": 0,
         "cumulative_state_bytes": 0,
     }
     for case in cases:
@@ -379,7 +376,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
             coverage_by_backend[result.backend].update(result.coverage)
             totals["successful_rewrites"] += result.successful_rewrites
             totals["eval_check_count"] += result.eval_check_count
-            totals["peak_state_bytes"] = max(totals["peak_state_bytes"], result.peak_state_bytes)
             totals["cumulative_state_bytes"] += result.cumulative_state_bytes
         case_records.append({
             "name": case["name"],
@@ -390,7 +386,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
                     "covered_rules": sorted(result.coverage),
                     "successful_rewrites": result.successful_rewrites,
                     "eval_check_count": result.eval_check_count,
-                    "peak_state_bytes": result.peak_state_bytes,
                     "cumulative_state_bytes": result.cumulative_state_bytes,
                 }
                 for result in results
@@ -411,7 +406,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
         "rule_count": len(rules),
         "successful_rewrites": totals["successful_rewrites"],
         "eval_check_count": totals["eval_check_count"],
-        "peak_state_bytes": totals["peak_state_bytes"],
         "cumulative_state_bytes": totals["cumulative_state_bytes"],
         "coverage": {
             "eligible": eligible,
@@ -426,16 +420,20 @@ def solution_json_path(solution: Path) -> Path:
     return solution.with_suffix(".json")
 
 
+def ranking_key(record: dict[str, Any]) -> tuple[int, int, int, int, str]:
+    return (
+        record["rule_count"],
+        record["successful_rewrites"],
+        record["eval_check_count"],
+        record["cumulative_state_bytes"],
+        record["solution_id"],
+    )
+
+
 def qualifying_records(koan: Path, eval_limit: str) -> list[dict[str, Any]]:
     records = [evaluate_solution(koan, solution, eval_limit) for solution in solution_paths(koan)]
     records = [record for record in records if record["coverage"]["eligible"]]
-    records.sort(key=lambda r: (
-        r["rule_count"],
-        r["successful_rewrites"],
-        r["eval_check_count"],
-        r["cumulative_state_bytes"],
-        r["solution_id"],
-    ))
+    records.sort(key=ranking_key)
     for index, record in enumerate(records, 1):
         record["rank"] = index
     return records
