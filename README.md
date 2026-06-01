@@ -541,7 +541,7 @@ uv run python tools/check_contract.py --update-readme
 - no comment syntax: `#` is ordinary text unless the row also contains a valid operator
 - `--input` replaces the source-provided initial state for CLI runners
 - resource reads consume one newline-delimited message and PCT-encode the payload
-- execution limits such as `--max-evals` and `--max-state-bytes`
+- execution limits such as `--eval-limit` and `--max-state-bytes`
 - exact rational numeric builtins; decimal-looking input parses to rationals, never floats
 - string escape/unescape builtins over PCT payloads
 
@@ -561,7 +561,7 @@ examples/lisp/lisp.tpp:97	1
 examples/lisp/lisp.tpp:156	1
 ```
 
-A rule counts only after it applies. Failed probes, failed builtins, missing resources, and failed writes do not count.
+A rule counts only after it applies. Failed eval checks, failed builtins, missing resources, and failed writes do not count.
 
 Coverage ignores are unsupported. Every surviving rule in manifest-declared examples must be covered by fixtures. Otherwise, add a fixture or delete the rule.
 

@@ -6,7 +6,7 @@ describe('manifest test case helpers', () => {
   const manifestPath = './examples/lisp/tests/closure_binding_flattening.toml'
   const manifestText = `program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "zero arg closure call still evaluates body"
@@ -34,7 +34,7 @@ stdout_stripped = "13"
       input: '((fn () 7))',
       hasInput: true,
       inputPreview: '((fn () 7))',
-      args: ['--max-evals', '60000'],
+      args: ['--eval-limit', '60000'],
     })
     expect(cases[1].inputPreview).toContain('(let ((a 10))')
   })

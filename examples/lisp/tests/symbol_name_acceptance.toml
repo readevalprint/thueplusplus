@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "200000"]
+args = ["--eval-limit", "200000"]
 
 [[case]]
 name = "symbol constructs ordinary symbol from name string"

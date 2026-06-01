@@ -10,7 +10,7 @@
             12
           ],
           "cumulative_state_bytes": 45,
-          "eval_steps": 10,
+          "eval_check_count": 10,
           "output_sha256": "079d6b1bc11d46188aacb49e0136ce18ae22d4c46f285ddf0379502ad6b64393",
           "peak_state_bytes": 9,
           "successful_rewrites": 4
@@ -36,6 +36,7 @@
     ]
   },
   "cumulative_state_bytes": 45,
+  "eval_check_count": 10,
   "koan": "fixed-greet",
   "peak_state_bytes": 9,
   "rank": 2,
@@ -53,6 +54,5 @@
   "solution_sha256": "807ed6613b74a2a492eed17f9fcf8b9339d4f1db2fbb6721cc3c7000f3dbb7a0",
   "source_bytes": 311,
   "source_sha256": "807ed6613b74a2a492eed17f9fcf8b9339d4f1db2fbb6721cc3c7000f3dbb7a0",
-  "successful_rewrites": 4,
-  "total_probes": 10
+  "successful_rewrites": 4
 }

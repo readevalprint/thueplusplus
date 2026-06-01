@@ -21,7 +21,7 @@ for attempt in attempts:
     for name, inp, expected in cases:
         try:
             cp = subprocess.run(
-                ['uv','run','python','python/thuepp.py',attempt,'--input',inp,'--max-evals','60000'],
+                ['uv','run','python','python/thuepp.py',attempt,'--input',inp,'--eval-limit','60000'],
                 cwd=root,
                 text=True,
                 stdout=subprocess.PIPE,

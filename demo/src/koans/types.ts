@@ -8,7 +8,8 @@ export interface KoanSolution {
   source: string
   path: string
   ruleCount: number
-  steps: number
+  stepCount: number
+  evalCheckCount: number
   cumulativeStateBytes: number
 }
 
@@ -52,7 +53,8 @@ export interface KoanMetricRecord {
   koan: string
   rank: number
   rule_count: number
-  total_probes: number
+  successful_rewrites: number
+  eval_check_count: number
   cumulative_state_bytes: number
   solution_id: string
   solution_path: string

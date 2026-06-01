@@ -10,7 +10,7 @@ export interface DemoRunRequest {
   sourceText: string
   sourcePath: string
   input: string
-  maxEvals: number
+  evalLimit: number
   maxStateBytes: number
   coverage: boolean
   resources: DemoResourceConfig[]
@@ -55,7 +55,7 @@ export interface DemoRunResult {
   error?: string
   errors?: string
   state?: string
-  evalCount?: number
+  evalCheckCount?: number
   resourceLogs?: DemoResourceLog[]
   trace?: DemoTraceEvent[]
 }
@@ -90,7 +90,7 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
       sourceText: request.sourceText,
       sourcePath: request.sourcePath,
       input: request.input,
-      maxEvals: request.maxEvals,
+      evalLimit: request.evalLimit,
       maxStateBytes: request.maxStateBytes,
       coverage: request.coverage,
       resourceConfig: request.resources,

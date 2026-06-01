@@ -86,10 +86,10 @@ type Interpreter struct {
 	Rules              []Rule
 	State              string
 	Bindings           map[string]*Binding
-	MaxEvals           *int
+	EvalLimit          *int
 	MaxStateBytes      *int
-	MaxSteps           *int
-	EvalCount          int
+	StepLimit          *int
+	EvalCheckCount     int
 	Debug              bool
 	Stdout             io.Writer
 	Stderr             io.Writer
@@ -937,16 +937,16 @@ func cloneGroups(groups map[string]string) map[string]string {
 	return cloned
 }
 
-func (i *Interpreter) recordTrace(rule Rule, ruleIndex int, match matchInfo, stateBefore, replacement string, exitCode *int) {
-	i.recordTraceWithError(rule, ruleIndex, match, stateBefore, replacement, exitCode, "")
+func (i *Interpreter) recordTrace(step int, rule Rule, ruleIndex int, match matchInfo, stateBefore, replacement string, exitCode *int) {
+	i.recordTraceWithError(step, rule, ruleIndex, match, stateBefore, replacement, exitCode, "")
 }
 
-func (i *Interpreter) recordTraceWithError(rule Rule, ruleIndex int, match matchInfo, stateBefore, replacement string, exitCode *int, errorMessage string) {
+func (i *Interpreter) recordTraceWithError(step int, rule Rule, ruleIndex int, match matchInfo, stateBefore, replacement string, exitCode *int, errorMessage string) {
 	if !i.TraceEnabled {
 		return
 	}
 	i.Trace = append(i.Trace, TraceEvent{
-		Step:        i.EvalCount,
+		Step:        step,
 		RuleIndex:   ruleIndex,
 		SourcePath:  rule.SourcePath,
 		LineNumber:  rule.LineNumber,
@@ -1023,23 +1023,24 @@ func (i *Interpreter) Run() (int, error) {
 
 		applied := false
 		for ruleIndex, rule := range i.Rules {
-			if i.MaxEvals != nil && i.EvalCount >= *i.MaxEvals {
-				return 1, fmt.Errorf("Evaluation step limit (%d) exceeded", *i.MaxEvals)
+			if i.EvalLimit != nil && i.EvalCheckCount >= *i.EvalLimit {
+				return 1, fmt.Errorf("Evaluation limit (%d) exceeded", *i.EvalLimit)
 			}
-			i.EvalCount++
+			i.EvalCheckCount++
 
 			match, ok := findMatch(rule, i.State)
 			if !ok {
 				continue
 			}
 			applied = true
+			appliedStep := appliedSteps + 1
 			stateBefore := i.State
 			groups := match.groups
 			magicVars := map[string]string{"rule_index": strconv.Itoa(ruleIndex)}
 			if i.Debug {
-				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
-				fmt.Fprintf(i.Stderr, "[%d] RULE %d MATCHES STATE AT %d:%d: %s\n", i.EvalCount, rule.LineNumber, match.start, match.end, rule.LHS)
-				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
+				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCheckCount, strings.ReplaceAll(i.State, "\n", `\n`))
+				fmt.Fprintf(i.Stderr, "[%d] RULE %d MATCHES STATE AT %d:%d: %s\n", i.EvalCheckCount, rule.LineNumber, match.start, match.end, rule.LHS)
+				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCheckCount, formatDebugGroups(groups))
 			}
 			repl := ""
 			switch rule.Operator {
@@ -1047,7 +1048,7 @@ func (i *Interpreter) Run() (int, error) {
 				var err error
 				repl, err = i.expandTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				i.recordRuleCoverage(rule)
@@ -1055,7 +1056,7 @@ func (i *Interpreter) Run() (int, error) {
 				parts := strings.Fields(strings.TrimSpace(rule.RHS))
 				if len(parts) != 2 {
 					err := fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				readSpec, resource := parts[0], parts[1]
@@ -1063,24 +1064,24 @@ func (i *Interpreter) Run() (int, error) {
 				seconds, err := strconv.ParseFloat(readSpec, 64)
 				if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
 					err := fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				readTimeout = time.Duration(seconds * float64(time.Second))
 				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
 					err := fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				b := i.Bindings[resource]
 				if b == nil {
 					err := fmt.Errorf("Unknown resource '%s'", resource)
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				content, er := i.readLine(b, readTimeout)
 				if er != "" {
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, er)
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, er)
 					return 1, errors.New(er)
 				}
 				repl = pctEncode(content)
@@ -1088,7 +1089,7 @@ func (i *Interpreter) Run() (int, error) {
 			case Write:
 				expanded, err := i.expandTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				resource, content := splitResource(expanded)
@@ -1107,7 +1108,7 @@ func (i *Interpreter) Run() (int, error) {
 					value, ok := groups[arg]
 					if !ok {
 						err := fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
-						i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+						i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 						return 1, err
 					}
 					values = append(values, value)
@@ -1115,7 +1116,7 @@ func (i *Interpreter) Run() (int, error) {
 				var err error
 				repl, err = evalBuiltin(rule.BuiltinName, values)
 				if err != nil {
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				i.recordRuleCoverage(rule)
@@ -1127,23 +1128,23 @@ func (i *Interpreter) Run() (int, error) {
 				code, err := strconv.Atoi(codeStr)
 				if err != nil {
 					i.recordRuleCoverage(rule)
-					i.recordTrace(rule, ruleIndex, match, stateBefore, "", nil)
+					i.recordTrace(appliedStep, rule, ruleIndex, match, stateBefore, "", nil)
 					return 1, nil
 				}
 				i.recordRuleCoverage(rule)
-				i.recordTrace(rule, ruleIndex, match, stateBefore, "", &code)
+				i.recordTrace(appliedStep, rule, ruleIndex, match, stateBefore, "", &code)
 				return code, nil
 			}
 			if err := i.setState(i.State[:match.start] + repl + i.State[match.end:]); err != nil {
 				return 1, err
 			}
-			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
+			i.recordTrace(appliedStep, rule, ruleIndex, match, stateBefore, repl, nil)
 			appliedSteps++
-			if i.MaxSteps != nil && appliedSteps >= *i.MaxSteps {
+			if i.StepLimit != nil && appliedSteps >= *i.StepLimit {
 				return 0, nil
 			}
 			if i.Debug {
-				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
+				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCheckCount, strings.ReplaceAll(i.State, "\n", `\n`))
 			}
 			break
 		}

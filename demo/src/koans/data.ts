@@ -77,7 +77,8 @@ function solutionFromRecord(record: KoanMetricRecord): KoanSolution {
     source: sourceForRecord(record),
     path: `/koans/${record.koan}/${record.solution_id}`,
     ruleCount: record.rule_count,
-    steps: record.total_probes,
+    stepCount: record.successful_rewrites,
+    evalCheckCount: record.eval_check_count,
     cumulativeStateBytes: record.cumulative_state_bytes,
   }
 }

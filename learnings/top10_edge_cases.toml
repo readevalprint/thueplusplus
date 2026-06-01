@@ -4,7 +4,7 @@
 # Uses learnings/bo-lisp.tpp until the evaluator is promoted/cleaned up.
 program = "bo-lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "empty array head errors"

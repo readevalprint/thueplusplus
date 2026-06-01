@@ -27,7 +27,9 @@ export async function runKoanTests(koan: KoanEntry, source: string, signal?: Abo
   const results: KoanTestResult[] = []
   for (const testCase of koan.tests) {
     if (signal?.aborted) throw abortError()
-    results.push(await runKoanTest(koan, source, testCase, signal))
+    const result = await runKoanTest(koan, source, testCase, signal)
+    results.push(result)
+    if (!result.passed) break
   }
   return results
 }
@@ -38,7 +40,7 @@ async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCa
       sourceText: source,
       sourcePath: `koans/${koan.slug}/attempt.tpp`,
       input: testCase.resources.stdin?.buffer ?? '',
-      maxEvals: 10000,
+      evalLimit: 10000,
       maxStateBytes: 1_000_000,
       coverage: false,
       resources: Object.entries(testCase.resources)
@@ -93,7 +95,7 @@ async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCa
   }
 }
 
-function expectedResources(testCase: KoanTestCase): Array<{ name: string; expected: string }> {
+export function expectedResources(testCase: KoanTestCase): Array<{ name: string; expected: string }> {
   return Object.entries(testCase.resources)
     .filter((entry): entry is [string, { expected_output: string }] => typeof entry[1].expected_output === 'string')
     .map(([name, resource]) => ({ name, expected: resource.expected_output }))

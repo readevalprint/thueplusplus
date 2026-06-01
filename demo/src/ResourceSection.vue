@@ -77,9 +77,11 @@ const outputTextarea = ref<{ textarea?: HTMLTextAreaElement | null } | null>(nul
 const outputAttentionEffect = ref(false)
 let outputAttentionTimeout: ReturnType<typeof setTimeout> | undefined
 
-function triggerOutputAttention(): void {
-  outputAttentionEffect.value = true
+async function triggerOutputAttention(): Promise<void> {
   if (outputAttentionTimeout) clearTimeout(outputAttentionTimeout)
+  outputAttentionEffect.value = false
+  await nextTick()
+  outputAttentionEffect.value = true
   outputAttentionTimeout = setTimeout(() => {
     outputAttentionEffect.value = false
     outputAttentionTimeout = undefined
@@ -90,10 +92,11 @@ watch(() => props.output, async () => {
   await nextTick()
   const element = outputTextarea.value?.textarea
   if (element) element.scrollTop = element.scrollHeight
+  if (props.attention === 'output') void triggerOutputAttention()
 })
 
 watch(() => props.attention, attention => {
-  if (attention === 'output') triggerOutputAttention()
+  if (attention === 'output') void triggerOutputAttention()
 })
 
 onBeforeUnmount(() => {

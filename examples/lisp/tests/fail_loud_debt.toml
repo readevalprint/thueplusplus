@@ -5,7 +5,7 @@
 # until a focused child card changes the language contract.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "raw internal-looking W state rejected"

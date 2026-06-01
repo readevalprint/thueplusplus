@@ -5,7 +5,7 @@
 # fail-loud gaps remain in fail_loud_debt.toml.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "binary addition"

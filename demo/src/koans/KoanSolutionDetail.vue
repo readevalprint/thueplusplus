@@ -24,7 +24,7 @@
       <h2 id="solution-source">{{ solution.title }}</h2>
       <p>
         By <a :href="solution.website" rel="author noopener">{{ solution.author }}</a>.
-        {{ solution.ruleCount }} rules, {{ solution.steps }} steps, {{ solution.cumulativeStateBytes }} bytes cumulative state.
+        {{ solution.ruleCount }} rules, {{ solution.stepCount }} steps, {{ solution.evalCheckCount }} eval checks, {{ solution.cumulativeStateBytes }} bytes cumulative state.
       </p>
       <ReadmeCodeEditor
         data-test="koan-solution-source"

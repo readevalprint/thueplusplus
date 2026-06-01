@@ -107,7 +107,7 @@ Algorithm:
 ```text
 loop:
   for rule in rules:
-    count one rule probe
+    count one rule check
     find first allowed match of rule.LHS in state
     if none: continue
     result = apply operator
@@ -117,7 +117,7 @@ loop:
   return 0
 ```
 
-Only one span is replaced per action. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set a maximum evaluation step limit; every examined rule counts as one step. A host may set max state bytes; check it after replacement.
+Only one span is replaced per action. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set an evaluation limit; every examined rule counts as one eval/rule check. A host may separately limit applied steps. A host may set max state bytes; check it after replacement.
 
 ## 8. Operators
 

@@ -3,7 +3,7 @@
 # These pin sequential, non-recursive let semantics while KLETLAST is deleted.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "empty let evaluates body in caller env"

@@ -14,6 +14,29 @@ async function fillRules(page: Page, value: string): Promise<void> {
   }, value)
 }
 
+async function rulesValue(page: Page): Promise<string> {
+  const rules = page.getByTestId('playground-rules')
+  return rules.evaluate(element => {
+    const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
+    return editorElement.__thueppGetValue?.() ?? ''
+  })
+}
+
+async function currentState(page: Page): Promise<string> {
+  return page.getByTestId('playground-rules').getAttribute('data-current-state').then(value => value ?? '')
+}
+
+function sourceWithState(source: string, state: string): string {
+  const rows = source.split(/\r?\n/)
+  const separator = rows.findIndex(row => row.trim() === '::=')
+  const rules = separator >= 0 ? rows.slice(0, separator).join('\n') : source
+  return `${rules}${rules.endsWith('\n') ? '' : '\n'}::=\n${state}`
+}
+
+async function fillProgramState(page: Page, state: string): Promise<void> {
+  await fillRules(page, sourceWithState(await rulesValue(page), state))
+}
+
 function collectRuntimeErrors(page: Page): string[] {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -40,7 +63,6 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   const koanPanel = page.getByTestId('koan-playground-panel')
   const solutions = page.getByTestId('koan-solutions-panel')
   const rules = page.getByTestId('playground-rules')
-  const state = page.getByTestId('playground-state')
   const resources = page.getByTestId('resource-sections').first()
 
   await expect(page.getByTestId('koan-toc')).toHaveCount(0)
@@ -59,18 +81,17 @@ test('koan detail route renders a usable full-width solve-first playground', asy
     const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
     return editorElement.__thueppGetValue?.() ?? ''
   })).toContain('# Goal: print exactly Hello, koan!')
-  await expect(page.getByTestId('playground-state')).toHaveValue('START')
+  await expect.poll(async () => rulesValue(page)).toContain('::=\nSTART')
   await expect(page.getByTestId('koan-test-details-default-state')).toHaveCount(0)
   await page.getByTestId('koan-test-toggle-default-state').click()
   await expect(page.getByTestId('koan-test-details-default-state')).toBeVisible()
   await expect(page.getByTestId('koan-test-resource-fixture-expected-default-state-stdout')).toContainText('Hello, koan!')
   await expect(rules).toBeVisible()
-  await expect(state).toBeVisible()
   await expect(resources).toBeVisible()
   await expect(koanPanel).not.toHaveAttribute('data-slot', 'card')
   await expect(solutions).not.toHaveAttribute('data-slot', 'card')
 
-  const [pageBox, topbarBox, topbarInnerBox, surfaceBox, koanBox, solutionsBox, rulesBox, stateBox, resourcesBox] = await Promise.all([
+  const [pageBox, topbarBox, topbarInnerBox, surfaceBox, koanBox, solutionsBox, rulesBox, resourcesBox] = await Promise.all([
     pageRoot.boundingBox(),
     topbar.boundingBox(),
     topbarInner.boundingBox(),
@@ -78,7 +99,6 @@ test('koan detail route renders a usable full-width solve-first playground', asy
     koanPanel.boundingBox(),
     solutions.boundingBox(),
     rules.boundingBox(),
-    state.boundingBox(),
     resources.boundingBox(),
   ])
   expect(pageBox?.width ?? 0).toBeGreaterThan(1100)
@@ -97,8 +117,7 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   expect(solutionsBox!.y).toBeGreaterThan(koanBox!.y)
   expect(solutionsBox!.x).toBeLessThan(rulesBox!.x)
   expect(koanBox!.x).toBeLessThan(rulesBox!.x)
-  expect(rulesBox!.x).toBeLessThan(stateBox!.x)
-  expect(stateBox!.x).toBeLessThan(resourcesBox!.x)
+  expect(rulesBox!.x).toBeLessThan(resourcesBox!.x)
 
   await page.getByTestId('solution-sort-title').click()
   await expect(page.getByTestId('koan-solutions-table').locator('tbody tr').first()).toContainText('Direct Greeting')
@@ -143,8 +162,9 @@ test('koan run tests reports passing and failing browser results', async ({ page
   await fillRules(page, '0 ::= 1')
   await page.getByTestId('koan-run-tests').click()
 
-  await expect(page.getByTestId('koan-results-summary')).toContainText('0 passing · 2 failing', { timeout: 5000 })
+  await expect(page.getByTestId('koan-results-summary')).toContainText('0 passing · 1 failing', { timeout: 5000 })
   await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'fail')
+  await expect(page.getByTestId('koan-test-one-to-zero')).toHaveAttribute('data-status', 'idle')
   await expect(page.getByTestId('koan-test-details-zero-to-one')).toBeVisible()
   await expect(page.getByTestId('koan-test-resource-input-zero-to-one-stdin')).toContainText('0')
   const diff = page.getByTestId('koan-test-resource-diff-zero-to-one-stdout')
@@ -178,7 +198,7 @@ test('clicking a test case loads rules, state, and resources without running', a
   await openExampleMenuGroup(page, 'Lisp')
   await page.getByTestId('test-case-menu-case').filter({ hasText: 'Closure call' }).first().click()
 
-  await expect(page.getByTestId('playground-state')).toHaveValue('((fn () 7))')
+  await expect.poll(async () => currentState(page)).toBe('((fn () 7))')
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
   await expect(page.getByTestId('playground-status')).toContainText('idle')
   await expect(page.getByTestId('terminal')).toHaveCount(0)
@@ -192,13 +212,13 @@ test('example menu can load a top-level manifest test', async ({ page }) => {
 
   await expect(page.getByTestId('playground-selected-case')).toContainText('examples/hello/tests/basic.toml')
   await expect(page.getByTestId('playground-rules')).toContainText('Hello, World')
-  await expect(page.getByTestId('playground-state')).toHaveValue('START')
+  await expect.poll(async () => rulesValue(page)).toContain('::=\nSTART')
 })
 
 test('step button writes stdout without a shell simulator', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, 'hello ::> stdout Hello, World!\\n\ndone ::- 0\n\n::=')
-  await page.getByTestId('playground-state').fill('hello\ndone')
+  await fillProgramState(page, 'hello\ndone')
 
   await expect(page.getByTestId('playground-run')).toHaveCount(0)
   await page.getByTestId('playground-step').click()
@@ -228,7 +248,7 @@ test('empty history and resources do not show helper labels', async ({ page }) =
 test('failed matched builtin appears in state history', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^div:(?<a>[0-9]+),(?<b>[0-9]+)$ ::! div a b')
-  await page.getByTestId('playground-state').fill('div:1,0')
+  await fillProgramState(page, 'div:1,0')
 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('exited 1')
@@ -237,7 +257,7 @@ test('failed matched builtin appears in state history', async ({ page }) => {
   await expect(page.getByTestId('playground-restart')).toBeEnabled()
   await expect(page.getByTestId('playground-diff-error')).toContainText("Builtin 'div' division by zero")
 
-  await page.getByTestId('playground-state').fill('div:2,1')
+  await fillProgramState(page, 'div:2,1')
   await expect(page.getByTestId('playground-step')).toBeEnabled()
   await expect(page.getByTestId('playground-continue')).toBeEnabled()
   await expect(page.getByTestId('playground-step')).toHaveAttribute('title', 'Step forward')
@@ -247,7 +267,7 @@ test('failed matched builtin appears in state history', async ({ page }) => {
 test('parse-time builtin errors appear in state history', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
-  await page.getByTestId('playground-state').fill('1,2')
+  await fillProgramState(page, '1,2')
 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('exited 1')
@@ -257,15 +277,15 @@ test('parse-time builtin errors appear in state history', async ({ page }) => {
 
   await expect(page.getByTestId('playground-step')).toBeDisabled()
   await expect(page.getByTestId('playground-restart')).toBeEnabled()
-  await page.getByTestId('playground-state').fill('2,3')
+  await fillProgramState(page, '2,3')
   await page.getByTestId('playground-step').click()
-  await expect(page.getByTestId('resource-output-stderr')).toHaveValue("Line 1: Unknown builtin 'nope'\nLine 1: Unknown builtin 'nope'")
+  await expect(page.getByTestId('resource-output-stderr')).toHaveValue("Line 1: Unknown builtin 'nope'")
 })
 
 test('state history click restores state and step prunes future rows', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^start$ ::= middle\n^middle$ ::= done')
-  await page.getByTestId('playground-state').fill('start')
+  await fillProgramState(page, 'start')
 
   await page.getByTestId('playground-continue').click()
   await expect(page.locator('.state-diff-row')).toHaveCount(3)
@@ -273,42 +293,42 @@ test('state history click restores state and step prunes future rows', async ({ 
   await expect(page.locator('.state-diff-row').nth(0)).toContainText('initial state')
   await expect(page.locator('.state-diff-row').nth(1)).toContainText('^start$ ::= middle')
   await expect(page.locator('.state-diff-row').nth(2)).toContainText('^middle$ ::= done')
-  await expect(page.getByTestId('playground-state')).toHaveValue('done')
+  await expect.poll(async () => currentState(page)).toBe('done')
 
   await page.locator('.state-diff-row').nth(0).click()
-  await expect(page.getByTestId('playground-state')).toHaveValue('start')
-  await expect(page.getByTestId('playground-status')).toContainText('checkpoint initial')
+  await expect.poll(async () => currentState(page)).toBe('start')
+  await expect(page.getByTestId('playground-status')).toContainText('Viewing Start')
   await expect(page.locator('.state-diff-row').nth(1)).toHaveAttribute('data-future', 'true')
   await expect(page.getByTestId('playground-undo')).toBeDisabled()
 
   await page.locator('.state-diff-row').nth(1).click()
-  await fillRules(page, '^middle$ ::= branch')
+  await fillRules(page, '^middle$ ::= branch\n::=\nmiddle')
   await page.getByTestId('playground-step').click()
-  await expect(page.locator('.state-diff-row')).toHaveCount(3)
+  await expect(page.locator('.state-diff-row')).toHaveCount(2)
   await expect(page.getByTestId('playground-diffs')).not.toContainText('^middle$ ::= done')
   await expect(page.getByTestId('playground-diffs')).toContainText('^middle$ ::= branch')
-  await expect(page.getByTestId('playground-state')).toHaveValue('branch')
+  await expect.poll(async () => currentState(page)).toBe('branch')
 })
 
-test('prefilled stdin buffer is consumed without waiting for submit', async ({ page }) => {
+test('prefilled stdin buffer is copied without waiting for submit', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '@IN@ ::< 30 stdin')
-  await page.getByTestId('playground-state').fill('@IN@')
+  await fillProgramState(page, '@IN@')
   await page.getByTestId('resource-input-stdin').fill('Ada\nLovelace\n')
 
   await page.getByTestId('playground-step').click()
 
   await expect(page.getByTestId('playground-status')).toContainText('stepped')
-  await expect(page.getByTestId('playground-state')).toHaveValue('Ada')
-  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('Lovelace\n')
+  await expect.poll(async () => currentState(page)).toBe('Ada')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('Ada\nLovelace\n')
   await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
   await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
 })
 
-test('stdin submit resumes the last step command', async ({ page }) => {
+test('typing stdin after a pending read resets to the beginning', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, 'PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30 stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
-  await page.getByTestId('playground-state').fill('read')
+  await fillProgramState(page, 'read')
 
   await expect(page.getByTestId('stdin-send')).toHaveCount(0)
   await expect(page.getByTestId('stdin-queue')).toHaveCount(0)
@@ -318,53 +338,52 @@ test('stdin submit resumes the last step command', async ({ page }) => {
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
   await expect(page.getByTestId('resource-input-stdin')).toBeFocused()
-  await expect(page.getByTestId('playground-state')).toHaveValue(/got:@IN@/)
+  await expect.poll(async () => currentState(page)).toMatch(/got:@IN@/)
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
 
   await page.getByTestId('resource-input-stdin').fill('Ada')
-  await page.getByTestId('resource-submit-stdin').click()
-  await expect(page.getByTestId('playground-state')).toHaveValue('got:Ada')
+  await expect.poll(async () => currentState(page)).toBe('read')
+  await expect(page.getByTestId('playground-status')).toContainText('resource input edited; reset to initial state')
+  await expect(page.locator('.state-diff-row')).toHaveCount(0)
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
-
-  await page.getByTestId('playground-step').click()
-  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Ada\n')
-  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
+  await expect(page.getByTestId('resource-submit-stdin')).toBeDisabled()
 })
 
 test('stdin countdown submits an empty line and hides after resuming', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '@IN@ ::< 1 stdin')
-  await page.getByTestId('playground-state').fill('@IN@')
+  await fillProgramState(page, '@IN@')
 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
   await expect(page.getByTestId('resource-countdown-stdin')).toContainText(/empty line in [01]s/)
 
-  await expect(page.getByTestId('playground-state')).toHaveValue('', { timeout: 2500 })
+  await expect.poll(async () => currentState(page)).toBe('', { timeout: 2500 })
   await expect(page.getByTestId('playground-status')).toContainText('stepped')
   await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
 })
 
-test('pending read countdown consumes a typed line instead of stranding the loop', async ({ page }) => {
+test('typing during a pending read countdown resets instead of resuming', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '@IN@ ::< 1 stdin\n^1$ ::= OUT\\nEXIT\nOUT ::> stdout 1\\n\n^EXIT$ ::- 0\n^$ ::= @IN@')
-  await page.getByTestId('playground-state').fill('@IN@')
+  await fillProgramState(page, '@IN@')
 
   await page.getByTestId('playground-continue').click()
   await expect(page.getByTestId('playground-status')).toContainText('waiting for stdin')
   await expect(page.getByTestId('resource-countdown-stdin')).toContainText(/empty line in [01]s/)
   await page.getByTestId('resource-input-stdin').fill('1')
 
-  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('1\n', { timeout: 3000 })
-  await expect(page.getByTestId('playground-status')).toContainText('exited 0')
-  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
+  await expect.poll(async () => currentState(page)).toBe('@IN@')
+  await expect(page.getByTestId('playground-status')).toContainText('resource input edited; reset to initial state')
+  await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('1')
   await expect(page.getByTestId('resource-countdown-stdin')).toHaveCount(0)
 })
 
 test('state history restores matching resource output snapshots', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^a$ ::> stdout A\\n\n^$ ::= b\n^b$ ::> stdout B\\n')
-  await page.getByTestId('playground-state').fill('a')
+  await fillProgramState(page, 'a')
 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('A\n')
@@ -398,8 +417,8 @@ test('resource sections are derived from rules and stdio is pinned', async ({ pa
   await page.getByTestId('playground-continue').click()
 
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n', { timeout: 10000 })
-  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('')
-  await expect(page.getByTestId('resource-input-random')).toHaveValue('')
+  await expect(page.getByTestId('resource-input-stdin')).toHaveValue('x\n3\n8\n7\n')
+  await expect(page.getByTestId('resource-input-random')).toHaveValue('7')
 })
 
 test('embed route starts on requested section and opens full playground with current file', async ({ page }) => {
@@ -407,8 +426,8 @@ test('embed route starts on requested section and opens full playground with cur
 
   await expect(page.getByTestId('playground-header')).toHaveCount(0)
   await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
-  await expect(page.getByTestId('embed-section-panel')).toContainText('state')
-  await expect(page.getByTestId('playground-state')).toHaveValue('START')
+  await expect(page.getByTestId('embed-section-panel')).toContainText('output')
+  await expect.poll(async () => rulesValue(page)).toContain('::=\nSTART')
   await expect(page.getByTestId('embed-open-full')).toHaveAttribute('href', /\/playground\?file=.*hello\.tpp/)
 })
 

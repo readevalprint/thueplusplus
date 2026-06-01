@@ -29,7 +29,7 @@ function request(worker, message) {
     sourcePath: 'adapter-hello.tpp',
     sourceText: '^hello$ ::> stdout Hello, World!\\n\n::=\nhello',
     coverage: true,
-    maxEvals: 10,
+    evalLimit: 10,
   });
   assert.strictEqual(hello.exitCode, 0, JSON.stringify(hello));
   assert.strictEqual(hello.stdout, 'Hello, World!\n');

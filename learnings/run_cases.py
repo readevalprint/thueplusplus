@@ -15,7 +15,7 @@ for attempt in attempts:
     passed=0
     for name, inp, expected in cases:
         try:
-            cp=subprocess.run(['uv','run','python','python/thuepp.py',attempt,'--input',inp,'--max-evals','80000'],cwd=root,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+            cp=subprocess.run(['uv','run','python','python/thuepp.py',attempt,'--input',inp,'--eval-limit','80000'],cwd=root,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
             out=cp.stdout.strip(); err=cp.stderr.strip()
             ok=cp.returncode==0 and out==expected and err==''
             print(('  PASS ' if ok else '  FAIL ')+f'{name}: rc={cp.returncode} out={out!r} err={err!r}')

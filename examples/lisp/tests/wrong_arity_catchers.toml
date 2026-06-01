@@ -4,7 +4,7 @@
 # not_function, or the wrong fail-loud class.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "bare eval fails wrong arity"

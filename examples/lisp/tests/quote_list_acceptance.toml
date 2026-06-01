@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
-args = ["--max-evals", "120000"]
+args = ["--eval-limit", "120000"]
 
 [[case]]
 name = "quote symbol"

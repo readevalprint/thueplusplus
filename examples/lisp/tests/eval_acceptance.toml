@@ -2,7 +2,7 @@
 # Explicit-scope code-as-data eval acceptance.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "100000"]
+args = ["--eval-limit", "100000"]
 
 [[case]]
 name = "eval list code with explicit primitive callable and binding"

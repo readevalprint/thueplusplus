@@ -2,7 +2,7 @@
 # Focused safety cases for env-return normalization through KKEEPENV.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "zero-binding let normalizes plain first expression"
