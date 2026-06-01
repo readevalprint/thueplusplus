@@ -33,6 +33,25 @@ def test_load_cases_requires_resource_shaped_json() -> None:
     assert cases[0]["exit_code"] == 0
 
 
+def test_normalize_case_rejects_browser_only_state_key() -> None:
+    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    raw_case = {
+        "name": "browser-only state is invalid",
+        "state": "START",
+        "resources": {
+            "stdout": {"expected_output": "ok\n"},
+        },
+        "exit_code": 0,
+    }
+
+    try:
+        kg.normalize_case(manifest, raw_case, 1)
+    except RuntimeError as error:
+        assert "unknown keys: state" in str(error)
+    else:
+        raise AssertionError("state key should be rejected")
+
+
 def test_solution_filenames_use_date_and_front_matter_slug() -> None:
     for solution in (ROOT / "koans").glob("*/solutions/*.tpp"):
         metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))

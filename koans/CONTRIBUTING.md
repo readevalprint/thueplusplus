@@ -27,6 +27,7 @@ koans/
 
 Koan manifests use a top-level `cases` array. All IO assertions are resource-shaped.
 Use normal `stdin`, `stdout`, and `stderr` resource names; `buffer` feeds an input resource and `expected_output` asserts an output resource.
+There is no per-case `state` key; use `stdin.buffer` for case input or the `.tpp` source's own final `::=` state for a shared starting state.
 
 ```json
 {

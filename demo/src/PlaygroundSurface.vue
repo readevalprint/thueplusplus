@@ -714,7 +714,7 @@ async function startVisibleKoanTestRun(): Promise<void> {
 async function runVisibleKoanTest(testCase: KoanTestCase, fallbackState: string): Promise<KoanTestResult> {
   clearRun()
   sourcePath.value = `koans/${props.koan?.slug ?? 'current'}/attempt.tpp`
-  stateText.value = testCase.state ?? fallbackState
+  stateText.value = fallbackState
   resourceInputs.value = Object.fromEntries(
     Object.entries(testCase.resources)
       .filter((entry): entry is [string, { buffer: string }] => typeof entry[1].buffer === 'string')

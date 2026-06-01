@@ -114,11 +114,6 @@
               <section v-if="hasFixtureDetails(testCase)" class="koan-test-detail-section">
                 <h4>fixture</h4>
                 <div class="koan-test-fixture-stack">
-                  <div v-if="initialState(testCase) !== ''" class="koan-test-value-block">
-                    <div class="koan-test-value-label">initial state</div>
-                    <pre :data-test="`koan-test-state-${slugId(testCase.name)}`">{{ initialState(testCase) }}</pre>
-                  </div>
-
                   <div v-for="resource in testcaseResources(testCase)" :key="resource.name" class="koan-test-resource-block">
                     <div v-if="typeof resource.buffer === 'string'" class="koan-test-value-block">
                       <div class="koan-test-value-label">{{ resource.name }} buffer</div>
@@ -265,16 +260,12 @@ function toggleExpanded(name: string): void {
   }
 }
 
-function initialState(testCase: KoanTestCase): string {
-  return testCase.state ?? ''
-}
-
 function testcaseResources(testCase: KoanTestCase): Array<{ name: string } & KoanTestResource> {
   return Object.entries(testCase.resources).map(([name, resource]) => ({ name, ...resource }))
 }
 
 function hasFixtureDetails(testCase: KoanTestCase): boolean {
-  return initialState(testCase) !== '' || testcaseResources(testCase).length > 0 || typeof testCase.exit_code === 'number'
+  return testcaseResources(testCase).length > 0 || typeof testCase.exit_code === 'number'
 }
 
 function resourceFailure(testName: string, resourceName: string): KoanResourceResult | undefined {
