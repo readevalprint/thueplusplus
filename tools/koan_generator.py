@@ -29,11 +29,13 @@ ROOT = Path(__file__).resolve().parents[1]
 KOANS_ROOT = ROOT / "koans"
 LEADERBOARD_START = "<!-- koans:leaderboard:start -->"
 LEADERBOARD_END = "<!-- koans:leaderboard:end -->"
-CASE_KEYS = {"name", "resources", "exit_code"}
-RESOURCE_KEYS = {"buffer", "expected_output"}
-RESOURCE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+KOAN_TEST_SCHEMA = json.loads((KOANS_ROOT / "test-schema.json").read_text(encoding="utf-8"))
+CASE_KEYS = set(KOAN_TEST_SCHEMA["case_keys"])
+REQUIRED_CASE_KEYS = set(KOAN_TEST_SCHEMA["required_case_keys"])
+RESOURCE_KEYS = set(KOAN_TEST_SCHEMA["resource_keys"])
+RESOURCE_NAME_RE = re.compile(str(KOAN_TEST_SCHEMA["resource_name_pattern"]))
+EXPECTED_OUTPUT_RESOURCES = set(KOAN_TEST_SCHEMA["expected_output_resources"])
 GENERATOR_CASE_TIMEOUT_SECONDS = 10
-
 
 @dataclass(frozen=True)
 class BackendResult:
@@ -91,6 +93,11 @@ def normalize_case(manifest: Path, raw_case: Any, index: int) -> dict[str, Any]:
     unknown = sorted(set(raw_case) - CASE_KEYS)
     if unknown:
         raise RuntimeError(f"{rel(manifest)} case {index} has unknown keys: {', '.join(unknown)}")
+    missing = sorted(REQUIRED_CASE_KEYS - set(raw_case))
+    if missing:
+        raise RuntimeError(f"{rel(manifest)} case {index} is missing required keys: {', '.join(missing)}")
+    if not isinstance(raw_case["name"], str) or not raw_case["name"]:
+        raise RuntimeError(f"{rel(manifest)} case {index} name must be a non-empty string")
     resources = raw_case.get("resources")
     if not isinstance(resources, dict) or not resources:
         raise RuntimeError(f"{rel(manifest)} case {index} must contain non-empty resources object")
@@ -105,7 +112,7 @@ def normalize_case(manifest: Path, raw_case: Any, index: int) -> dict[str, Any]:
             raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} has unknown keys: {', '.join(resource_unknown)}")
         if not any(key in raw_resource for key in RESOURCE_KEYS):
             raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} must define buffer or expected_output")
-        if "expected_output" in raw_resource and name not in {"stdout", "stderr"}:
+        if "expected_output" in raw_resource and name not in EXPECTED_OUTPUT_RESOURCES:
             raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} expected_output is supported only for stdout or stderr")
         normalized: dict[str, str] = {}
         for key in RESOURCE_KEYS:
@@ -115,13 +122,11 @@ def normalize_case(manifest: Path, raw_case: Any, index: int) -> dict[str, Any]:
                     raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} {key} must be a string")
                 normalized[key] = value
         normalized_resources[name] = normalized
-    if "exit_code" not in raw_case:
-        raise RuntimeError(f"{rel(manifest)} case {index} must define exit_code")
     if not isinstance(raw_case["exit_code"], int):
         raise RuntimeError(f"{rel(manifest)} case {index} exit_code must be an integer")
     case = {
         "_manifest": rel(manifest),
-        "name": str(raw_case.get("name") or f"{manifest.stem}-{index}"),
+        "name": raw_case["name"],
         "resources": normalized_resources,
         "exit_code": raw_case["exit_code"],
     }
@@ -138,7 +143,7 @@ def load_cases(koan: Path) -> list[dict[str, Any]]:
         raise RuntimeError(f"{rel(koan)} has stale TOML test manifests: {', '.join(path.name for path in stale_toml)}")
     for manifest in manifests:
         data = read_json(manifest)
-        unknown = sorted(set(data) - {"cases"})
+        unknown = sorted(set(data) - set(KOAN_TEST_SCHEMA["manifest_keys"]))
         if unknown:
             raise RuntimeError(f"{rel(manifest)} has unknown top-level keys: {', '.join(unknown)}")
         raw_cases = data.get("cases")

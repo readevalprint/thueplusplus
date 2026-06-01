@@ -142,16 +142,28 @@ describe('Go-WASM demo UI', () => {
     expect(getComputedStyle(wrapper.get('[data-test="readme-index"]').element).paddingBottom).toBeTruthy()
   })
 
-  it('rejects non-stdio koan expected_output in browser data validation', () => {
-    expect(() => validateKoanTestManifest({
-      cases: [{
-        name: 'custom output resource',
-        resources: {
-          file: { expected_output: 'nope\n' },
-        },
-        exit_code: 0,
-      }],
-    }, 'bad.json')).toThrow('resource file expected_output is supported only for stdout or stderr')
+  it('rejects invalid koan manifests in browser data validation', () => {
+    const validCase = {
+      name: 'valid',
+      resources: {
+        stdin: { buffer: 'input\n' },
+        stdout: { expected_output: 'ok\n' },
+      },
+      exit_code: 0,
+    }
+
+    const invalids: Array<[unknown, string]> = [
+      [{ cases: [validCase], extra: true }, 'unknown top-level keys: extra'],
+      [{ cases: [{ ...validCase, state: 'START' }] }, 'unknown keys: state'],
+      [{ cases: [{ name: 'missing exit', resources: { stdout: { expected_output: 'ok\n' } } }] }, 'missing required keys: exit_code'],
+      [{ cases: [{ ...validCase, resources: {} }] }, 'must contain non-empty resources object'],
+      [{ cases: [{ ...validCase, resources: { file: { expected_output: 'nope\n' } } }] }, 'resource file expected_output is supported only for stdout or stderr'],
+      [{ cases: [{ ...validCase, resources: { stdout: { expected_output: 42 } } }] }, 'resource stdout expected_output must be a string'],
+    ]
+
+    invalids.forEach(([manifest, message]) => {
+      expect(() => validateKoanTestManifest(manifest, 'bad.json')).toThrow(message)
+    })
   })
 
   it('serves the koans index route with pilot koan links', async () => {
