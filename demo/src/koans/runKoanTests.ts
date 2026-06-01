@@ -52,7 +52,10 @@ async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCa
         })),
       signal,
     })
-    const actualExitCode = result.exitCode ?? (result.error || result.errors ? 1 : 0)
+    if (typeof result.exitCode !== 'number') {
+      throw new Error('worker did not return exitCode')
+    }
+    const actualExitCode = result.exitCode
     const exitCode = {
       expected: testCase.exit_code,
       actual: actualExitCode,
