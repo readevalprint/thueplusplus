@@ -239,6 +239,31 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
   })
 
+  it('shows koan exit-code mismatch diffs separately from output diffs', async () => {
+    window.history.pushState({}, '', '/koans/fixed-greet/')
+    mockedRunWithWorker.mockResolvedValue({
+      exitCode: 1,
+      stdout: 'Hello, koan!\n',
+      stderr: '',
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, koan!\n'], errors: [], outputText: 'Hello, koan!\n' }],
+    })
+    const wrapper = await mountApp()
+
+    await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\n^OUT$ ::> stdout Hello, koan!\\n^OUT$ ::- 1')
+    await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
+    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await flush()
+
+    const result = wrapper.get('[data-test="koan-test-default-state"]')
+    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 passing · 1 failing')
+    expect(result.attributes('data-status')).toBe('fail')
+    expect(wrapper.find('[data-test="koan-test-resource-diff-default-state-stdout"]').exists()).toBe(false)
+    const exitDiff = wrapper.get('[data-test="koan-test-exit-code-diff-default-state"]')
+    expect(exitDiff.text()).toContain('exit code actual vs expected')
+    expect(exitDiff.text()).toContain('1')
+    expect(exitDiff.text()).toContain('0')
+  })
+
   it('runs koan tests visibly through playground play controls when auto is off', async () => {
     vi.useFakeTimers()
     try {
