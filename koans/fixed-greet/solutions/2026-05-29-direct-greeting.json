@@ -1,40 +1,9 @@
 {
-  "cases": [
-    {
-      "backends": {
-        "go": {
-          "covered_rules": [
-            9,
-            10,
-            11
-          ],
-          "cumulative_state_bytes": 35,
-          "eval_check_count": 6,
-          "successful_rewrites": 3
-        }
-      },
-      "exit_code": 0,
-      "manifest": "koans/fixed-greet/tests/basic.json",
-      "name": "default state"
-    }
-  ],
-  "coverage": {
-    "eligible": true,
-    "missing_by_backend": {
-      "go": []
-    },
-    "rule_lines": [
-      9,
-      10,
-      11
-    ]
-  },
   "cumulative_state_bytes": 35,
   "eval_check_count": 6,
   "koan": "fixed-greet",
   "rank": 1,
   "rule_count": 3,
-  "schema_version": 1,
   "solution_id": "2026-05-29-direct-greeting",
   "solution_metadata": {
     "author": "Tim Watts",
@@ -45,7 +14,5 @@
   },
   "solution_path": "koans/fixed-greet/solutions/2026-05-29-direct-greeting.tpp",
   "solution_sha256": "326d1b9d7680b5d1595a734473e2643577d76738c39b540a963200d414d80bab",
-  "source_bytes": 294,
-  "source_sha256": "326d1b9d7680b5d1595a734473e2643577d76738c39b540a963200d414d80bab",
   "successful_rewrites": 3
 }

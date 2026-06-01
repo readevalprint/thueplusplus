@@ -140,13 +140,23 @@ def test_qualifying_records_include_pilot_koans() -> None:
     binary = kg.qualifying_records(ROOT / "koans/binary-not", "10000")
     assert len(fixed) == 2
     assert len(binary) == 1
+    generated_keys = {
+        "koan",
+        "rank",
+        "rule_count",
+        "successful_rewrites",
+        "eval_check_count",
+        "cumulative_state_bytes",
+        "solution_id",
+        "solution_path",
+        "solution_sha256",
+        "solution_metadata",
+    }
     for record in [*fixed, *binary]:
-        assert record["coverage"]["eligible"] is True
+        assert set(record) == generated_keys
         assert record["rule_count"] > 0
         assert record["successful_rewrites"] > 0
         assert record["solution_metadata"]["title"]
-        assert "peak_state_bytes" not in record
-        assert all("peak_state_bytes" not in backend for case in record["cases"] for backend in case["backends"].values())
 
 
 def test_ranking_key_matches_documented_order() -> None:

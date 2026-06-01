@@ -1,62 +1,9 @@
 {
-  "cases": [
-    {
-      "backends": {
-        "go": {
-          "covered_rules": [
-            9,
-            10,
-            12,
-            14
-          ],
-          "cumulative_state_bytes": 38,
-          "eval_check_count": 13,
-          "successful_rewrites": 4
-        }
-      },
-      "exit_code": 0,
-      "manifest": "koans/binary-not/tests/basic.json",
-      "name": "zero to one"
-    },
-    {
-      "backends": {
-        "go": {
-          "covered_rules": [
-            9,
-            11,
-            13,
-            14
-          ],
-          "cumulative_state_bytes": 38,
-          "eval_check_count": 15,
-          "successful_rewrites": 4
-        }
-      },
-      "exit_code": 0,
-      "manifest": "koans/binary-not/tests/basic.json",
-      "name": "one to zero"
-    }
-  ],
-  "coverage": {
-    "eligible": true,
-    "missing_by_backend": {
-      "go": []
-    },
-    "rule_lines": [
-      9,
-      10,
-      11,
-      12,
-      13,
-      14
-    ]
-  },
   "cumulative_state_bytes": 76,
   "eval_check_count": 28,
   "koan": "binary-not",
   "rank": 1,
   "rule_count": 6,
-  "schema_version": 1,
   "solution_id": "2026-05-29-truth-table-flip",
   "solution_metadata": {
     "author": "Tim Watts",
@@ -67,7 +14,5 @@
   },
   "solution_path": "koans/binary-not/solutions/2026-05-29-truth-table-flip.tpp",
   "solution_sha256": "053152cce54720a95c227f987e7ac3baa04975d2c34a6ce665f46a681b008551",
-  "source_bytes": 329,
-  "source_sha256": "053152cce54720a95c227f987e7ac3baa04975d2c34a6ce665f46a681b008551",
   "successful_rewrites": 8
 }

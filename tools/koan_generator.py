@@ -338,7 +338,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
     if not rule_lines:
         raise RuntimeError(f"{rel(solution)} has no executable rules")
     cases = load_cases(koan)
-    case_records: list[dict[str, Any]] = []
     coverage_by_backend: dict[str, set[int]] = {"go": set()}
     totals = {
         "successful_rewrites": 0,
@@ -353,41 +352,19 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
             totals["successful_rewrites"] += result.successful_rewrites
             totals["eval_check_count"] += result.eval_check_count
             totals["cumulative_state_bytes"] += result.cumulative_state_bytes
-        case_records.append({
-            "name": case["name"],
-            "manifest": case["_manifest"],
-            "exit_code": results[0].exit_code,
-            "backends": {
-                result.backend: {
-                    "covered_rules": sorted(result.coverage),
-                    "successful_rewrites": result.successful_rewrites,
-                    "eval_check_count": result.eval_check_count,
-                    "cumulative_state_bytes": result.cumulative_state_bytes,
-                }
-                for result in results
-            },
-        })
     missing = {backend: sorted(rule_lines - covered) for backend, covered in coverage_by_backend.items()}
     eligible = all(not lines for lines in missing.values())
     return {
-        "schema_version": 1,
         "koan": koan.name,
         "solution_id": identifier,
         "solution_sha256": digest,
         "solution_path": rel(solution),
         "solution_metadata": metadata,
-        "source_sha256": digest,
-        "source_bytes": len(solution.read_bytes()),
         "rule_count": len(rule_lines),
         "successful_rewrites": totals["successful_rewrites"],
         "eval_check_count": totals["eval_check_count"],
         "cumulative_state_bytes": totals["cumulative_state_bytes"],
-        "coverage": {
-            "eligible": eligible,
-            "rule_lines": sorted(rule_lines),
-            "missing_by_backend": missing,
-        },
-        "cases": case_records,
+        "_eligible": eligible,
     }
 
 
@@ -407,7 +384,7 @@ def ranking_key(record: dict[str, Any]) -> tuple[int, int, int, int, str]:
 
 def qualifying_records(koan: Path, eval_limit: str) -> list[dict[str, Any]]:
     records = [evaluate_solution(koan, solution, eval_limit) for solution in solution_paths(koan)]
-    records = [record for record in records if record["coverage"]["eligible"]]
+    records = [record for record in records if record.pop("_eligible")]
     records.sort(key=ranking_key)
     for index, record in enumerate(records, 1):
         record["rank"] = index
