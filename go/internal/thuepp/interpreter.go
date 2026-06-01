@@ -999,6 +999,26 @@ func (i *Interpreter) RuleCoverageTSV() string {
 	return b.String()
 }
 
+// RuleListTSV returns parser-owned executable rule metadata as sorted TSV rows:
+// rule-id<TAB>lhs operator rhs<LF>. The rule IDs use the same source path and
+// line format as --rule-coverage, so callers can compare parser-discovered
+// executable rules with applied coverage without re-scanning source text.
+func (i *Interpreter) RuleListTSV() string {
+	rows := map[string]string{}
+	ids := make([]string, 0, len(i.Rules))
+	for _, rule := range i.Rules {
+		id := i.ruleID(rule)
+		ids = append(ids, id)
+		rows[id] = fmt.Sprintf("%s %s %s", rule.LHS, rule.Operator, rule.RHS)
+	}
+	sort.Strings(ids)
+	var b strings.Builder
+	for _, id := range ids {
+		fmt.Fprintf(&b, "%s	%s\n", id, rows[id])
+	}
+	return b.String()
+}
+
 func (i *Interpreter) WriteRuleCoverage() error {
 	if i.RuleCoveragePath == "" {
 		return nil

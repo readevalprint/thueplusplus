@@ -20,12 +20,16 @@ func main() {
 	interp := thuepp.New()
 	var inputOverride *string
 	ruleCoveragePath := ""
+	listRules := false
 
 	for idx := 1; idx < len(args); {
 		arg := args[idx]
 		switch {
 		case arg == "--debug":
 			interp.Debug = true
+			idx++
+		case arg == "--list-rules":
+			listRules = true
 			idx++
 		case arg == "--rule-coverage":
 			if idx+1 >= len(args) {
@@ -107,6 +111,11 @@ func main() {
 	if err := interp.LoadProgram(program); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+	if listRules {
+		fmt.Print(interp.RuleListTSV())
+		interp.Cleanup()
+		return
 	}
 	if inputOverride != nil { // Keep rules and replace file-provided state.
 		if err := interp.ApplyInputOverride(*inputOverride); err != nil {
