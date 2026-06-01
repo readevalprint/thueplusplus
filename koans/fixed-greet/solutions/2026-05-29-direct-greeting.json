@@ -10,7 +10,6 @@
           ],
           "cumulative_state_bytes": 35,
           "eval_check_count": 6,
-          "peak_state_bytes": 9,
           "successful_rewrites": 3
         }
       },
@@ -33,7 +32,6 @@
   "cumulative_state_bytes": 35,
   "eval_check_count": 6,
   "koan": "fixed-greet",
-  "peak_state_bytes": 9,
   "rank": 1,
   "rule_count": 3,
   "schema_version": 1,

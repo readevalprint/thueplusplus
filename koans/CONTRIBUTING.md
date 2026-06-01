@@ -80,10 +80,9 @@ The main leaderboard sort is deterministic:
 
 1. fewest rules;
 2. fewest successful rewrite applications;
-3. lowest peak state bytes;
+3. lowest total evals / rule checks;
 4. lowest cumulative state bytes;
-5. lowest total evals / rule checks;
-6. lexical order by solution filename id.
+5. lexical order by solution filename id.
 
 The generator also records best-in-class winners for individual metrics in each solution JSON and renders a short records section in the leaderboard block.
 

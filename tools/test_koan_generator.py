@@ -142,6 +142,31 @@ def test_qualifying_records_include_pilot_koans() -> None:
         assert record["rule_count"] > 0
         assert record["successful_rewrites"] > 0
         assert record["solution_metadata"]["title"]
+        assert "peak_state_bytes" not in record
+        assert all("peak_state_bytes" not in backend for case in record["cases"] for backend in case["backends"].values())
+
+
+def test_ranking_key_matches_documented_order() -> None:
+    base = {
+        "rule_count": 1,
+        "successful_rewrites": 1,
+        "eval_check_count": 1,
+        "cumulative_state_bytes": 1,
+        "solution_id": "base",
+    }
+    records = [
+        {**base, "solution_id": "z"},
+        {**base, "eval_check_count": 0, "cumulative_state_bytes": 100, "solution_id": "eval-wins-before-cumulative"},
+        {**base, "successful_rewrites": 0, "solution_id": "steps-win"},
+        {**base, "rule_count": 0, "solution_id": "rules-win"},
+    ]
+
+    assert [record["solution_id"] for record in sorted(records, key=kg.ranking_key)] == [
+        "rules-win",
+        "steps-win",
+        "eval-wins-before-cumulative",
+        "z",
+    ]
 
 
 def test_solution_front_matter_is_required() -> None:
