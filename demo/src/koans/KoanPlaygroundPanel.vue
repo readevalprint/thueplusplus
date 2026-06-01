@@ -3,88 +3,54 @@
   <div class="koan-playground-panel" data-test="koan-playground-panel">
     <section class="koan-playground-section" aria-labelledby="koan-panel-title">
       <div class="koan-tests-header">
-        <h3>koans</h3>
+        <h3 id="koan-panel-title">{{ koan.title }}</h3>
       </div>
 
-      <header class="koan-playground-header">
-        <nav class="koan-title-nav" aria-label="Koan navigation" data-test="koan-title-nav">
-          <Button
-            v-if="previousKoan"
-            as="a"
-            variant="outline"
-            size="sm"
-            :href="previousKoan.path"
-            :aria-label="`Previous koan: ${previousKoan.title}`"
-            data-test="koan-previous"
-          >
-            ←
+      <Card v-if="allTestsPassed" class="koan-pass-card" data-test="koan-pass-card" aria-label="All tests passed">
+        <CardHeader>
+          <CardTitle>All tests are green.</CardTitle>
+          <CardDescription>{{ nextKoan ? 'Commit this tiny victory and keep walking.' : 'This is the last koan in the list.' }}</CardDescription>
+        </CardHeader>
+        <CardFooter v-if="nextKoan">
+          <Button as-child size="lg" class="w-full">
+            <a :href="nextKoan.path" data-test="koan-next-cta">
+              Go To Next Koan
+            </a>
           </Button>
-          <Button v-else type="button" variant="outline" size="sm" disabled data-test="koan-previous-disabled" aria-label="No previous koan">
-            ←
-          </Button>
+        </CardFooter>
+      </Card>
 
-          <Select :model-value="koan.slug" @update:model-value="selectKoan">
-            <SelectTrigger id="koan-panel-title" class="koan-title-select" data-test="koan-title-select" aria-label="Select koan">
-              {{ koan.title }}
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem
-                v-for="option in koanOptions"
-                :key="option.slug"
-                :value="option.slug"
-                :data-test="`koan-title-option-${option.slug}`"
+      <Card v-else data-test="koan-tests-card" aria-label="Koan tests">
+        <CardContent class="koan-tests-card-content">
+          <div class="koan-run-tests-row">
+            <Button
+              type="button"
+              variant="default"
+              size="lg"
+              class="koan-run-tests-cta"
+              data-test="koan-run-tests"
+              :disabled="running"
+              @click="emit('run')"
+            >
+              <span>{{ runTestsLabel }}</span>
+              <kbd aria-label="Control or Command Enter">⌘↵</kbd>
+            </Button>
+          </div>
+
+          <div class="koan-tests-actions">
+            <span class="koan-tests-summary" data-test="koan-results-summary">{{ summaryText }}</span>
+            <label class="koan-tests-auto-toggle">
+              <input
+                type="checkbox"
+                :checked="auto"
+                data-test="koan-auto-tests"
+                @change="emit('update:auto', ($event.target as HTMLInputElement).checked)"
               >
-                {{ option.title }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              auto
+            </label>
+          </div>
 
-          <Button
-            v-if="nextKoan"
-            as="a"
-            variant="outline"
-            size="sm"
-            :href="nextKoan.path"
-            :aria-label="`Next koan: ${nextKoan.title}`"
-            data-test="koan-next"
-          >
-            →
-          </Button>
-          <Button v-else type="button" variant="outline" size="sm" disabled data-test="koan-next-disabled" aria-label="No next koan">
-            →
-          </Button>
-        </nav>
-      </header>
-
-      <div class="koan-run-tests-row">
-        <Button
-          type="button"
-          variant="default"
-          size="lg"
-          class="koan-run-tests-cta"
-          data-test="koan-run-tests"
-          :disabled="running"
-          @click="emit('run')"
-        >
-          <span>{{ runTestsLabel }}</span>
-          <kbd aria-label="Control or Command Enter">⌘↵</kbd>
-        </Button>
-      </div>
-
-      <div class="koan-tests-actions">
-        <span class="koan-tests-summary" data-test="koan-results-summary">{{ summaryText }}</span>
-        <label class="koan-tests-auto-toggle">
-          <input
-            type="checkbox"
-            :checked="auto"
-            data-test="koan-auto-tests"
-            @change="emit('update:auto', ($event.target as HTMLInputElement).checked)"
-          >
-          auto
-        </label>
-      </div>
-
-      <ItemGroup class="koan-test-items" aria-label="Koan test cases">
+          <ItemGroup class="koan-test-items" aria-label="Koan test cases">
         <Item
           v-for="testCase in koan.tests"
           :key="testCase.name"
@@ -158,12 +124,13 @@
             </div>
           </ItemContent>
         </Item>
-      </ItemGroup>
-    </section>
+          </ItemGroup>
+        </CardContent>
+      </Card>
 
-    <section class="koan-playground-section koan-solutions-panel" data-test="koan-solutions-panel" aria-labelledby="koan-solutions-title">
-      <h3 id="koan-solutions-title">solutions</h3>
-      <KoanSolutionsTable :solutions="koan.solutions" />
+      <section class="koan-readme-panel" aria-label="Koan lesson" data-test="koan-readme">
+        <MarkdownDocument :markdown="koan.readme" />
+      </section>
     </section>
   </div>
 </template>
@@ -171,16 +138,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
 import type { KoanEntry, KoanTestCase, KoanTestResource } from './types'
 import type { KoanResourceResult, KoanTestResult } from './runKoanTests'
-import KoanSolutionsTable from './KoanSolutionsTable.vue'
+import MarkdownDocument from '../MarkdownDocument.vue'
 
 const props = defineProps<{
   koan: KoanEntry
-  koans?: KoanEntry[]
-  previousKoan?: KoanEntry
   nextKoan?: KoanEntry
   running: boolean
   auto: boolean
@@ -193,10 +158,10 @@ const emit = defineEmits<{
 }>()
 
 const expandedOverrides = ref<Record<string, boolean>>({})
-const koanOptions = computed(() => props.koans?.length ? props.koans : [props.koan])
 const resultByName = computed(() => new Map((props.results ?? []).map(result => [result.name, result])))
 const passedCount = computed(() => props.results?.filter(result => result.passed).length ?? 0)
 const failedCount = computed(() => props.results?.filter(result => !result.passed).length ?? 0)
+const allTestsPassed = computed(() => Boolean(props.results?.length) && failedCount.value === 0)
 const summaryText = computed(() => {
   if (!props.results) return `${props.koan.tests.length} ${props.koan.tests.length === 1 ? 'test' : 'tests'}`
   if (failedCount.value === 0) return `${passedCount.value} passing`
@@ -219,12 +184,6 @@ onUnmounted(() => {
 watch(() => props.results, () => {
   expandedOverrides.value = {}
 })
-
-function selectKoan(value: unknown): void {
-  if (typeof value !== 'string' || value === props.koan.slug) return
-  const selected = koanOptions.value.find(option => option.slug === value)
-  window.location.href = selected?.path ?? `/koans/${encodeURIComponent(value)}/`
-}
 
 function handleRunShortcut(event: KeyboardEvent): void {
   if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey) || props.running) return

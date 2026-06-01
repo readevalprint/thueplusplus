@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {
+      "name": "stdout says ok",
+      "resources": {
+        "stdout": {
+          "expected_output": "ok\n"
+        }
+      },
+      "exit_code": 0
+    }
+  ]
+}

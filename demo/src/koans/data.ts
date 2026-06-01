@@ -61,7 +61,7 @@ export const koans: KoanEntry[] = Object.entries(readmeModules)
       slug,
       title: frontMatter.title || titleFromSlug(slug),
       summary: frontMatter.description || summaryFromBody(body),
-      readme: stripGeneratedLeaderboard(body),
+      readme: body,
       path: `/koans/${slug}/`,
       bestSolutionId: solutions[0]?.id ?? null,
       tests: testsForSlug(slug),
@@ -181,10 +181,6 @@ function solutionFromRecord(record: KoanMetricRecord): KoanSolution {
     evalCheckCount: record.eval_check_count,
     cumulativeStateBytes: record.cumulative_state_bytes,
   }
-}
-
-function stripGeneratedLeaderboard(body: string): string {
-  return body.replace(/\n*<!-- koans:leaderboard:start -->[\s\S]*?<!-- koans:leaderboard:end -->\n*/g, '\n').trimEnd() + '\n'
 }
 
 function sourceForRecord(record: KoanMetricRecord): string {

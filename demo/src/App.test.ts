@@ -101,6 +101,7 @@ describe('Go-WASM demo UI', () => {
   beforeEach(() => {
     window.history.pushState({}, '', '/')
     document.body.innerHTML = ''
+    window.localStorage.clear()
     mockedRunWithWorker.mockReset()
     if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
     Object.assign(navigator, {
@@ -207,13 +208,12 @@ describe('Go-WASM demo UI', () => {
 
     expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="koan-test-default-state"]').text()).toContain('default state')
-    expect(wrapper.get('[data-test="koan-title-nav"]').text()).toContain('Fixed Greeting')
-    expect(wrapper.get('[data-test="koan-title-select"]').text()).toContain('Fixed Greeting')
-    expect(wrapper.get('[data-test="koan-previous"]').attributes('href')).toBe('/koans/binary-not/')
-    expect(wrapper.find('[data-test="koan-next-disabled"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="koan-title-nav"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="koan-solutions-panel"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('# Goal: print exactly Hello, koan!')
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Goal: print exactly Hello, koan!')
+    expect(wrapper.get('[data-test="koan-readme"]').text()).toContain('Write a Thue++ program')
     expect(wrapper.find('[data-test="koan-load-hint"]').exists()).toBe(false)
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).not.toContain('title:')
     expect(programState(wrapper)).toBe('START')
@@ -344,7 +344,7 @@ describe('Go-WASM demo UI', () => {
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
       expect(mockedRunWithWorker.mock.calls[0][0]).toEqual(expect.objectContaining({
         input: 'START',
-        evalLimit: 3000,
+        evalLimit: 1000,
         stepLimit: 1,
         trace: true,
       }))
@@ -359,21 +359,10 @@ describe('Go-WASM demo UI', () => {
       await flush()
       await flush()
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
-      expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('1 passing')
-      expect(wrapper.get('[data-test="koan-test-default-state"]').attributes('data-status')).toBe('pass')
-
-      mockedRunWithWorker.mockResolvedValueOnce({
-        exitCode: 0,
-        stdout: 'Hello, koan!\n',
-        stderr: '',
-        state: '',
-        resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, koan!\n'], errors: [], outputText: 'Hello, koan!\n' }],
-        trace: [],
-      })
-      await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
-      await flush()
-      expect(mockedRunWithWorker).toHaveBeenCalledTimes(3)
-      expect(mockedRunWithWorker.mock.calls[2][0]).toEqual(expect.objectContaining({ input: 'START' }))
+      expect(wrapper.find('[data-test="koan-tests-card"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('All tests are green')
+      expect(wrapper.get('[data-test="koan-pass-card"]').classes()).toContain('koan-pass-card')
+      expect(wrapper.find('[data-test="koan-run-tests"]').exists()).toBe(false)
     } finally {
       vi.useRealTimers()
     }
@@ -427,7 +416,46 @@ describe('Go-WASM demo UI', () => {
     }
   })
 
-  it('places the koan panel inside the full playground before rules, state, and resources', async () => {
+  it('persists the koan auto-test checkbox preference', async () => {
+    window.history.pushState({}, '', '/koans/fixed-greet/')
+    window.localStorage.setItem('thuepp.koanTestsAuto', 'true')
+    const wrapper = await mountApp()
+    const checkbox = wrapper.get('[data-test="koan-auto-tests"]').element as HTMLInputElement
+
+    expect(checkbox.checked).toBe(true)
+    await wrapper.get('[data-test="koan-auto-tests"]').setValue(false)
+    expect(window.localStorage.getItem('thuepp.koanTestsAuto')).toBe('false')
+  })
+
+  it('auto-runs koan tests with the embedded source state as fallback input', async () => {
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/koans/fixed-greet/')
+      mockedRunWithWorker.mockImplementation(async request => ({
+        exitCode: request.input === 'START' ? 0 : 1,
+        stdout: request.input === 'START' ? 'Hello, koan!\n' : '',
+        stderr: '',
+        resourceLogs: [{ name: 'stdout', reads: [], writes: request.input === 'START' ? ['Hello, koan!\n'] : [], errors: [], outputText: request.input === 'START' ? 'Hello, koan!\n' : '' }],
+      }))
+      const wrapper = await mountApp()
+      await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
+      await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, koan!\\n\n^EXIT$ ::- 0\n::=\nSTART')
+      vi.advanceTimersByTime(300)
+      await flush()
+      await flush()
+      expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
+        sourceText: '^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, koan!\\n\n^EXIT$ ::- 0\n',
+        input: 'START',
+      }))
+      expect(wrapper.find('[data-test="koan-tests-card"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('All tests are green')
+      expect(wrapper.get('[data-test="koan-pass-card"]').classes()).toContain('koan-pass-card')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('places the koan panel before rules, resources, and state history in the full playground', async () => {
     window.history.pushState({}, '', '/koans/fixed-greet/')
     const wrapper = await mountApp()
 
@@ -435,14 +463,13 @@ describe('Go-WASM demo UI', () => {
     const koanPanel = wrapper.get('[data-test="koan-playground-panel"]')
     const rulesEditor = wrapper.get('[data-test="playground-rules"]')
     const resources = wrapper.get('[data-test="resource-sections"]')
-    const solutionsPanel = wrapper.get('[data-test="koan-solutions-panel"]')
+    const stateHistory = wrapper.get('[data-test="playground-diffs"]')
 
     expect(surface.element.contains(koanPanel.element)).toBe(true)
-    expect(surface.element.contains(solutionsPanel.element)).toBe(true)
     expect(surface.element.contains(rulesEditor.element)).toBe(true)
-    expect(koanPanel.element.compareDocumentPosition(solutionsPanel.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(solutionsPanel.element.compareDocumentPosition(rulesEditor.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(koanPanel.element.compareDocumentPosition(rulesEditor.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(rulesEditor.element.compareDocumentPosition(resources.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(resources.element.compareDocumentPosition(stateHistory.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(surface.text()).toContain('Fixed Greeting')
     expect(surface.text()).toContain('program rules')
     expect(surface.text()).not.toContain('program state')
@@ -477,9 +504,7 @@ describe('Go-WASM demo UI', () => {
     })
     const wrapper = await mountApp()
 
-    expect(wrapper.find('[data-test="koan-previous-disabled"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="koan-next"]').attributes('href')).toBe('/koans/fixed-greet/')
-    expect(wrapper.get('[data-test="koan-title-select"]').text()).toContain('Binary Not')
+    expect(wrapper.find('[data-test="koan-title-nav"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('zero to one')
     expect(wrapper.get('[data-test="koan-test-one-to-zero"]').text()).toContain('one to zero')
 
@@ -491,9 +516,11 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('0\n')
     expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('1\n')
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([])
-    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('2 passing')
-    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').attributes('data-status')).toBe('pass')
-    expect(wrapper.get('[data-test="koan-test-one-to-zero"]').attributes('data-status')).toBe('pass')
+    expect(wrapper.find('[data-test="koan-tests-card"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('All tests are green')
+    expect(wrapper.get('[data-test="koan-pass-card"]').classes()).toContain('koan-pass-card')
+    expect(wrapper.get('[data-test="koan-next-cta"]').attributes('href')).toBe('/koans/core-rewrite-model/')
+    expect(wrapper.get('[data-test="koan-next-cta"]').text()).toContain('Go To Next Koan')
   })
 
   it('shows resource-shaped koan failures as stacked expected and actual diffs', async () => {
@@ -551,27 +578,13 @@ describe('Go-WASM demo UI', () => {
     })
   })
 
-  it('sorts koan solutions with the shadcn data table controls', async () => {
+  it('omits solution tables from solve-first koan playground pages', async () => {
     window.history.pushState({}, '', '/koans/fixed-greet/')
     const wrapper = await mountApp()
-    const rows = () => wrapper.get('[data-test="koan-solutions-table"]').findAll('tbody tr').map(row => row.text())
-    expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="koan-title-nav"]').text()).toContain('Fixed Greeting')
 
-    expect(rows()[0]).toContain('Direct Greeting')
-    expect(rows()[1]).toContain('Staged Greeting')
-    expect(wrapper.get('[data-test="solution-2026-05-29-direct-greeting"]').attributes('role')).toBe('link')
-    expect(wrapper.get('[data-test="solution-2026-05-29-direct-greeting"]').attributes('tabindex')).toBe('0')
-    expect(wrapper.find('thead').text()).not.toContain('Links')
-    expect(wrapper.get('[data-test="solution-2026-05-29-direct-greeting"] a[href="https://readevalprint.com"]').attributes('href')).toBe('https://readevalprint.com')
-
-    await wrapper.get('[data-test="solution-sort-title"]').trigger('click')
-    await flush()
-    await wrapper.get('[data-test="solution-sort-title"]').trigger('click')
-    await flush()
-
-    expect(rows()[0]).toContain('Staged Greeting')
-    expect(rows()[1]).toContain('Direct Greeting')
+    expect(wrapper.find('[data-test="koan-solutions-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="koan-solutions-table"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="koan-title-nav"]').exists()).toBe(false)
   })
 
   it('serves unknown koan slugs as koan not found pages', async () => {

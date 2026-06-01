@@ -1,0 +1,18 @@
+{
+  "cumulative_state_bytes": 35,
+  "eval_check_count": 6,
+  "koan": "core-rewrite-model",
+  "rank": 1,
+  "rule_count": 3,
+  "solution_id": "2026-05-29-stdout-says-ok",
+  "solution_metadata": {
+    "author": "Tim Watts",
+    "slug": "stdout-says-ok",
+    "summary": "Change the stdout text while leaving the scaffold alone.",
+    "title": "Stdout Says Ok",
+    "website": "https://readevalprint.com"
+  },
+  "solution_path": "koans/core-rewrite-model/solutions/2026-05-29-stdout-says-ok.tpp",
+  "solution_sha256": "dd950e8aa9dc1e07f9c993a1989742bde571aef945d1e514de8fe1bea5061790",
+  "successful_rewrites": 3
+}
