@@ -29,17 +29,10 @@ ROOT = Path(__file__).resolve().parents[1]
 KOANS_ROOT = ROOT / "koans"
 LEADERBOARD_START = "<!-- koans:leaderboard:start -->"
 LEADERBOARD_END = "<!-- koans:leaderboard:end -->"
-VALID_OPS = ("::=", "::<", "::>", "::-", "::!")
 CASE_KEYS = {"name", "resources", "exit_code"}
 RESOURCE_KEYS = {"buffer", "expected_output"}
 RESOURCE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 GENERATOR_CASE_TIMEOUT_SECONDS = 10
-
-
-@dataclass(frozen=True)
-class RuleInfo:
-    line: int
-    text: str
 
 
 @dataclass(frozen=True)
@@ -156,49 +149,6 @@ def load_cases(koan: Path) -> list[dict[str, Any]]:
     return cases
 
 
-def split_source_prefix(source: str) -> list[str]:
-    lines = source.splitlines()
-    for index, line in enumerate(lines):
-        if line.strip() == "::=":
-            return lines[:index]
-    return lines
-
-
-def first_unescaped_operator(line: str) -> tuple[str, str] | None:
-    best: tuple[int, str] | None = None
-    for op in VALID_OPS:
-        start = 0
-        while True:
-            idx = line.find(op, start)
-            if idx < 0:
-                break
-            backslashes = 0
-            j = idx - 1
-            while j >= 0 and line[j] == "\\":
-                backslashes += 1
-                j -= 1
-            if backslashes % 2 == 0 and (best is None or idx < best[0]):
-                best = (idx, op)
-                break
-            start = idx + 1
-    if best is None:
-        return None
-    idx, op = best
-    return line[:idx], op
-
-
-def rules_for_source(source: str) -> list[RuleInfo]:
-    rules: list[RuleInfo] = []
-    for line_no, line in enumerate(split_source_prefix(source), 1):
-        found = first_unescaped_operator(line)
-        if not found:
-            continue
-        lhs, _op = found
-        if lhs.strip():
-            rules.append(RuleInfo(line_no, line))
-    return rules
-
-
 def solution_paths(koan: Path) -> list[Path]:
     solutions = koan / "solutions"
     if not solutions.exists():
@@ -252,6 +202,27 @@ def backend_command(backend: str, program: Path, coverage_path: Path, eval_limit
     if backend == "go":
         return ["go", "run", "./cmd/thuepp", *args], ROOT / "go"
     raise AssertionError(backend)
+
+
+def parser_rule_lines(solution: Path) -> set[int]:
+    command = ["go", "run", "./cmd/thuepp", str(solution.resolve()), "--list-rules"]
+    proc = subprocess.run(command, cwd=ROOT / "go", text=True, capture_output=True, timeout=GENERATOR_CASE_TIMEOUT_SECONDS)
+    if proc.returncode != 0:
+        error = proc.stderr.strip() or proc.stdout.strip() or f"exit {proc.returncode}"
+        raise RuntimeError(f"{rel(solution)}: could not list executable rules: {error}")
+    lines: set[int] = set()
+    for row_number, row in enumerate(proc.stdout.splitlines(), 1):
+        rule_id, separator, _rule_text = row.partition("\t")
+        if not separator:
+            raise RuntimeError(f"{rel(solution)} --list-rules row {row_number}: malformed row: {row!r}")
+        source, _, line_text = rule_id.rpartition(":")
+        try:
+            line_no = int(line_text)
+        except ValueError:
+            raise RuntimeError(f"{rel(solution)} --list-rules row {row_number}: malformed rule id: {rule_id!r}") from None
+        if Path(source).name == solution.name:
+            lines.add(line_no)
+    return lines
 
 
 def parse_coverage(path: Path, program: Path) -> dict[int, int]:
@@ -358,8 +329,8 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
     digest = sha256_bytes(solution.read_bytes())
     metadata = require_solution_metadata(solution, source)
     identifier = solution_identifier(solution, metadata)
-    rules = rules_for_source(source)
-    if not rules:
+    rule_lines = parser_rule_lines(solution)
+    if not rule_lines:
         raise RuntimeError(f"{rel(solution)} has no executable rules")
     cases = load_cases(koan)
     case_records: list[dict[str, Any]] = []
@@ -391,7 +362,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
                 for result in results
             },
         })
-    rule_lines = {rule.line for rule in rules}
     missing = {backend: sorted(rule_lines - covered) for backend, covered in coverage_by_backend.items()}
     eligible = all(not lines for lines in missing.values())
     return {
@@ -403,7 +373,7 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
         "solution_metadata": metadata,
         "source_sha256": digest,
         "source_bytes": len(solution.read_bytes()),
-        "rule_count": len(rules),
+        "rule_count": len(rule_lines),
         "successful_rewrites": totals["successful_rewrites"],
         "eval_check_count": totals["eval_check_count"],
         "cumulative_state_bytes": totals["cumulative_state_bytes"],

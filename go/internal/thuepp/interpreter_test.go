@@ -178,8 +178,11 @@ func TestLoadProgramTextPreservesSourceAndCoverageTSV(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
-	if got, want := interp.RuleCoverageTSV(), "virtual/main.tpp:1\t1\nvirtual/main.tpp:2\t1\n"; got != want {
+	if got, want := interp.RuleCoverageTSV(), "virtual/main.tpp:1	1\nvirtual/main.tpp:2	1\n"; got != want {
 		t.Fatalf("RuleCoverageTSV() = %q, want %q", got, want)
+	}
+	if got, want := interp.RuleListTSV(), "virtual/main.tpp:1	foo ::= bar\nvirtual/main.tpp:2	bar ::- 0\n"; got != want {
+		t.Fatalf("RuleListTSV() = %q, want %q", got, want)
 	}
 }
 

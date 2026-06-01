@@ -14,15 +14,17 @@ sys.modules["koan_generator"] = kg
 SPEC.loader.exec_module(kg)
 
 
-def test_rules_for_source_counts_rules_before_state_marker() -> None:
-    src = r"""^START$ ::= OUT\nEXIT
+def test_parser_rule_lines_uses_go_parser_metadata(tmp_path: Path) -> None:
+    src = r"""^START$ ::= OUT
+literal \::= escaped text
 OUT ::> stdout hi
-^EXIT$ ::- 0
 ::=
-START
 ^STATE$ ::= data
 """
-    assert [rule.line for rule in kg.rules_for_source(src)] == [1, 2, 3]
+    program = tmp_path / "adversarial.tpp"
+    program.write_text(src, encoding="utf-8")
+
+    assert kg.parser_rule_lines(program) == {1, 3}
 
 
 def test_load_cases_requires_resource_shaped_json() -> None:
