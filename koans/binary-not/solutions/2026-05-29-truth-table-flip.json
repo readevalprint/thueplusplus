@@ -11,16 +11,13 @@
           ],
           "cumulative_state_bytes": 38,
           "eval_check_count": 13,
-          "output_sha256": "ff87ddfd1c96c4b18e90cd418c694cfc4ecdf84a4fbda79b429d3558989d9fa0",
           "peak_state_bytes": 10,
           "successful_rewrites": 4
         }
       },
       "exit_code": 0,
       "manifest": "koans/binary-not/tests/basic.json",
-      "name": "zero to one",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      "name": "zero to one"
     },
     {
       "backends": {
@@ -33,16 +30,13 @@
           ],
           "cumulative_state_bytes": 38,
           "eval_check_count": 15,
-          "output_sha256": "07976480d80506ad906774aa61a2fb6f1b2311d5befc6cad48f36e8b6a53fed9",
           "peak_state_bytes": 10,
           "successful_rewrites": 4
         }
       },
       "exit_code": 0,
       "manifest": "koans/binary-not/tests/basic.json",
-      "name": "one to zero",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "stdout_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      "name": "one to zero"
     }
   ],
   "coverage": {

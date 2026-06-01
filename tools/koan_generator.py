@@ -54,7 +54,6 @@ class BackendResult:
     successful_rewrites: int
     peak_state_bytes: int
     cumulative_state_bytes: int
-    output_sha256: str
 
 
 def parse_args() -> argparse.Namespace:
@@ -322,7 +321,6 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
         if line and not re.match(r"^\[\d+\] ", line)
     )
     eval_check_count, peak_state_bytes, cumulative_state_bytes = parse_debug_metrics(proc.stderr)
-    output_hash = sha256_bytes((proc.stdout + "\0" + stderr_for_expect).encode("utf-8"))
     return BackendResult(
         backend=backend,
         case_name=str(case["name"]),
@@ -334,7 +332,6 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
         successful_rewrites=sum(coverage.values()),
         peak_state_bytes=peak_state_bytes,
         cumulative_state_bytes=cumulative_state_bytes,
-        output_sha256=output_hash,
     )
 
 
@@ -387,8 +384,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
         case_records.append({
             "name": case["name"],
             "manifest": case["_manifest"],
-            "stdout_sha256": sha256_bytes(results[0].stdout.encode("utf-8")),
-            "stderr_sha256": sha256_bytes(results[0].stderr.encode("utf-8")),
             "exit_code": results[0].exit_code,
             "backends": {
                 result.backend: {
@@ -397,7 +392,6 @@ def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, 
                     "eval_check_count": result.eval_check_count,
                     "peak_state_bytes": result.peak_state_bytes,
                     "cumulative_state_bytes": result.cumulative_state_bytes,
-                    "output_sha256": result.output_sha256,
                 }
                 for result in results
             },
