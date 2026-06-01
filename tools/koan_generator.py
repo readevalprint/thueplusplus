@@ -30,9 +30,10 @@ KOANS_ROOT = ROOT / "koans"
 LEADERBOARD_START = "<!-- koans:leaderboard:start -->"
 LEADERBOARD_END = "<!-- koans:leaderboard:end -->"
 VALID_OPS = ("::=", "::<", "::>", "::-", "::!")
-CASE_KEYS = {"name", "resources", "exit_code", "args", "timeout"}
+CASE_KEYS = {"name", "resources", "exit_code"}
 RESOURCE_KEYS = {"buffer", "expected_output"}
 RESOURCE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+GENERATOR_CASE_TIMEOUT_SECONDS = 10
 
 
 @dataclass(frozen=True)
@@ -131,14 +132,6 @@ def normalize_case(manifest: Path, raw_case: Any, index: int) -> dict[str, Any]:
         "resources": normalized_resources,
         "exit_code": raw_case["exit_code"],
     }
-    if "args" in raw_case:
-        if not isinstance(raw_case["args"], list) or not all(isinstance(value, str) for value in raw_case["args"]):
-            raise RuntimeError(f"{rel(manifest)} case {index} args must be an array of strings")
-        case["args"] = raw_case["args"]
-    if "timeout" in raw_case:
-        if not isinstance(raw_case["timeout"], int | float) or raw_case["timeout"] <= 0:
-            raise RuntimeError(f"{rel(manifest)} case {index} timeout must be a positive number")
-        case["timeout"] = raw_case["timeout"]
     return case
 
 
@@ -256,8 +249,6 @@ def require_solution_metadata(solution: Path, source: str) -> dict[str, str]:
 
 def backend_command(backend: str, program: Path, coverage_path: Path, eval_limit: str, case: dict[str, Any]) -> tuple[list[str], Path]:
     args = [str(program), "--eval-limit", eval_limit, "--rule-coverage", str(coverage_path)]
-    if isinstance(case.get("args"), list):
-        args.extend(str(value) for value in case["args"])
     if backend == "go":
         return ["go", "run", "./cmd/thuepp", *args], ROOT / "go"
     raise AssertionError(backend)
@@ -319,7 +310,7 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
             input=stdin_buffer(case),
             text=True,
             capture_output=True,
-            timeout=float(case.get("timeout", 10)),
+            timeout=GENERATOR_CASE_TIMEOUT_SECONDS,
         )
         coverage = parse_coverage(coverage_path, solution)
     finally:
