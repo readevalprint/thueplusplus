@@ -5,7 +5,7 @@
 # simplifications without depending on internal V* constructors.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "let self reference without outer binding remains unbound"

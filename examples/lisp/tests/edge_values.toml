@@ -3,7 +3,7 @@
 # These cases live in the normal tests/ sweep and must stay green.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "if rejects numeric condition"

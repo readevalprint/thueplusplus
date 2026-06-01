@@ -8,7 +8,7 @@
 # ambient caller environment and no hidden core fallback.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "120000"]
+args = ["--eval-limit", "120000"]
 
 [[case]]
 name = "sandbox parses source string and runs provided square function"

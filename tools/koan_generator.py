@@ -49,7 +49,7 @@ class BackendResult:
     stdout: str
     stderr: str
     coverage: dict[int, int]
-    eval_steps: int
+    eval_check_count: int
     successful_rewrites: int
     peak_state_bytes: int
     cumulative_state_bytes: int
@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
     mode.add_argument("--all", action="store_true", help="regenerate solution JSON and leaderboard blocks")
     parser.add_argument("--koan", help="limit to one koan slug")
     parser.add_argument("--changed-files", help="newline-delimited file list for one-file submission policy checks")
-    parser.add_argument("--max-evals", default="10000", help="max eval probes passed to both backends")
+    parser.add_argument("--eval-limit", default="10000", help="max eval/rule checks passed to both backends")
     return parser.parse_args()
 
 
@@ -253,8 +253,8 @@ def require_solution_metadata(solution: Path, source: str) -> dict[str, str]:
     return metadata
 
 
-def backend_command(backend: str, program: Path, coverage_path: Path, max_evals: str, case: dict[str, Any]) -> tuple[list[str], Path]:
-    args = [str(program), "--max-evals", max_evals, "--rule-coverage", str(coverage_path)]
+def backend_command(backend: str, program: Path, coverage_path: Path, eval_limit: str, case: dict[str, Any]) -> tuple[list[str], Path]:
+    args = [str(program), "--eval-limit", eval_limit, "--rule-coverage", str(coverage_path)]
     if isinstance(case.get("args"), list):
         args.extend(str(value) for value in case["args"])
     if backend == "go":
@@ -283,17 +283,17 @@ def parse_coverage(path: Path, program: Path) -> dict[int, int]:
 
 def parse_debug_metrics(stderr: str) -> tuple[int, int, int]:
     # Debug lines expose probe counts and escaped state at each successful match.
-    eval_steps = 0
+    eval_check_count = 0
     state_sizes: list[int] = []
     for line in stderr.splitlines():
         m = re.match(r"\[(\d+)\] (?:STATE|RESULT): (.*)$", line)
         if not m:
             continue
-        eval_steps = max(eval_steps, int(m.group(1)))
+        eval_check_count = max(eval_check_count, int(m.group(1)))
         # The debug stream escapes newlines as two bytes. This is an approximate
         # state-byte metric, but it is deterministic and shared across runs.
         state_sizes.append(len(m.group(2).encode("utf-8")))
-    return eval_steps, max(state_sizes, default=0), sum(state_sizes)
+    return eval_check_count, max(state_sizes, default=0), sum(state_sizes)
 
 
 def stdin_buffer(case: dict[str, Any]) -> str:
@@ -306,11 +306,11 @@ def stdin_buffer(case: dict[str, Any]) -> str:
     return str(stdin.get("buffer", ""))
 
 
-def run_case(backend: str, solution: Path, case: dict[str, Any], max_evals: str) -> BackendResult:
+def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str) -> BackendResult:
     with tempfile.NamedTemporaryFile(prefix="koan-coverage-", delete=False) as tmp:
         coverage_path = Path(tmp.name)
     try:
-        command, cwd = backend_command(backend, solution.resolve(), coverage_path, max_evals, case)
+        command, cwd = backend_command(backend, solution.resolve(), coverage_path, eval_limit, case)
         command.insert(4, "--debug")
         proc = subprocess.run(
             command,
@@ -327,7 +327,7 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], max_evals: str)
         line for line in proc.stderr.splitlines()
         if line and not re.match(r"^\[\d+\] ", line)
     )
-    eval_steps, peak_state_bytes, cumulative_state_bytes = parse_debug_metrics(proc.stderr)
+    eval_check_count, peak_state_bytes, cumulative_state_bytes = parse_debug_metrics(proc.stderr)
     output_hash = sha256_bytes((proc.stdout + "\0" + stderr_for_expect).encode("utf-8"))
     return BackendResult(
         backend=backend,
@@ -336,7 +336,7 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], max_evals: str)
         stdout=proc.stdout,
         stderr=stderr_for_expect,
         coverage=coverage,
-        eval_steps=eval_steps,
+        eval_check_count=eval_check_count,
         successful_rewrites=sum(coverage.values()),
         peak_state_bytes=peak_state_bytes,
         cumulative_state_bytes=cumulative_state_bytes,
@@ -364,7 +364,7 @@ def assert_expect(result: BackendResult, case: dict[str, Any], scope: str) -> No
             raise RuntimeError(f"{scope}: {result.backend} resource {name} output {actual!r}, expected {expected!r}")
 
 
-def evaluate_solution(koan: Path, solution: Path, max_evals: str) -> dict[str, Any]:
+def evaluate_solution(koan: Path, solution: Path, eval_limit: str) -> dict[str, Any]:
     source = solution.read_text(encoding="utf-8")
     digest = sha256_bytes(solution.read_bytes())
     metadata = require_solution_metadata(solution, source)
@@ -377,17 +377,17 @@ def evaluate_solution(koan: Path, solution: Path, max_evals: str) -> dict[str, A
     coverage_by_backend: dict[str, set[int]] = {"go": set()}
     totals = {
         "successful_rewrites": 0,
-        "total_probes": 0,
+        "eval_check_count": 0,
         "peak_state_bytes": 0,
         "cumulative_state_bytes": 0,
     }
     for case in cases:
-        results = [run_case("go", solution, case, max_evals)]
+        results = [run_case("go", solution, case, eval_limit)]
         for result in results:
             assert_expect(result, case, f"{koan.name}:{solution.name}:{case['name']}")
             coverage_by_backend[result.backend].update(result.coverage)
             totals["successful_rewrites"] += result.successful_rewrites
-            totals["total_probes"] += result.eval_steps
+            totals["eval_check_count"] += result.eval_check_count
             totals["peak_state_bytes"] = max(totals["peak_state_bytes"], result.peak_state_bytes)
             totals["cumulative_state_bytes"] += result.cumulative_state_bytes
         case_records.append({
@@ -400,7 +400,7 @@ def evaluate_solution(koan: Path, solution: Path, max_evals: str) -> dict[str, A
                 result.backend: {
                     "covered_rules": sorted(result.coverage),
                     "successful_rewrites": result.successful_rewrites,
-                    "eval_steps": result.eval_steps,
+                    "eval_check_count": result.eval_check_count,
                     "peak_state_bytes": result.peak_state_bytes,
                     "cumulative_state_bytes": result.cumulative_state_bytes,
                     "output_sha256": result.output_sha256,
@@ -422,7 +422,7 @@ def evaluate_solution(koan: Path, solution: Path, max_evals: str) -> dict[str, A
         "source_bytes": len(solution.read_bytes()),
         "rule_count": len(rules),
         "successful_rewrites": totals["successful_rewrites"],
-        "total_probes": totals["total_probes"],
+        "eval_check_count": totals["eval_check_count"],
         "peak_state_bytes": totals["peak_state_bytes"],
         "cumulative_state_bytes": totals["cumulative_state_bytes"],
         "coverage": {
@@ -438,12 +438,13 @@ def solution_json_path(solution: Path) -> Path:
     return solution.with_suffix(".json")
 
 
-def qualifying_records(koan: Path, max_evals: str) -> list[dict[str, Any]]:
-    records = [evaluate_solution(koan, solution, max_evals) for solution in solution_paths(koan)]
+def qualifying_records(koan: Path, eval_limit: str) -> list[dict[str, Any]]:
+    records = [evaluate_solution(koan, solution, eval_limit) for solution in solution_paths(koan)]
     records = [record for record in records if record["coverage"]["eligible"]]
     records.sort(key=lambda r: (
         r["rule_count"],
-        r["total_probes"],
+        r["successful_rewrites"],
+        r["eval_check_count"],
         r["cumulative_state_bytes"],
         r["solution_id"],
     ))
@@ -465,7 +466,8 @@ def best_records(records: list[dict[str, Any]]) -> list[tuple[str, dict[str, Any
         return []
     metrics = [
         ("Fewest Rules", "rule_count"),
-        ("Lowest Step Count", "total_probes"),
+        ("Lowest Steps", "successful_rewrites"),
+        ("Lowest Eval Checks", "eval_check_count"),
         ("Lowest Cumulative State per Step", "cumulative_state_bytes"),
     ]
     winners = []
@@ -493,13 +495,13 @@ def leaderboard_block(records: list[dict[str, Any]]) -> str:
     if not records:
         return "_No qualifying solutions yet._\n"
     lines = [
-        "| Rank | Solution | Rules | Steps | Cumulative State per Step |",
-        "|---:|---|---:|---:|---:|",
+        "| Rank | Solution | Rules | Steps | Eval Checks | Cumulative State per Step |",
+        "|---:|---|---:|---:|---:|---:|",
     ]
     for record in records:
         lines.append(
             f"| {record['rank']} | {solution_label(record)} | {record['rule_count']} | "
-            f"{record['total_probes']} | {record['cumulative_state_bytes']} bytes |"
+            f"{record['successful_rewrites']} | {record['eval_check_count']} | {record['cumulative_state_bytes']} bytes |"
         )
     lines.extend(["", "### Best-In-Class Records", ""])
     for label, record in best_records(records):
@@ -534,7 +536,7 @@ def cmd_missing(args: argparse.Namespace) -> int:
     failures = []
     for koan in discover_koans(args.koan):
         try:
-            records = qualifying_records(koan, args.max_evals)
+            records = qualifying_records(koan, args.eval_limit)
             if not records:
                 failures.append(f"{koan.name}: no qualifying solutions")
         except Exception as exc:
@@ -555,7 +557,7 @@ def cmd_check_or_all(args: argparse.Namespace, write: bool) -> int:
     for koan in discover_koans(args.koan):
         print(f"=== {koan.name} ===")
         try:
-            records = qualifying_records(koan, args.max_evals)
+            records = qualifying_records(koan, args.eval_limit)
             print(f"qualifying solutions: {len(records)}")
             for record in records:
                 json_path = solution_json_path(ROOT / record["solution_path"])

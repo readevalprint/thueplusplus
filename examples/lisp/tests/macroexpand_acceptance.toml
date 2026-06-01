@@ -2,7 +2,7 @@
 # Explicit recursive macro expansion over Lisp code-as-data.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "160000"]
+args = ["--eval-limit", "160000"]
 
 [[case]]
 name = "macroexpand simple macro to code data"

@@ -2,7 +2,7 @@
 # Focused safety cases for shared strict source-expression arg collection.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "list evaluates args left-to-right with mutation"

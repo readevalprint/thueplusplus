@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { parse as parseToml } from 'smol-toml'
 
-const DEFAULT_MAX_EVALS = 10000
+const DEFAULT_EVAL_LIMIT = 10000
 
 export interface TestManifestCaseExpect {
   exit_code?: number
@@ -110,7 +110,7 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
       const caseName = typeof parsed.name === 'string' ? parsed.name : label
       const hasInput = typeof parsed.input === 'string'
       const input = hasInput ? parsed.input as string : ''
-      const args = withDefaultMaxEvals(manifestArgs)
+      const args = withDefaultEvalLimit(manifestArgs)
       options.push({
         id: `${manifestPath}::${slug(caseName) || 'default'}`,
         manifestPath,
@@ -130,7 +130,7 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
       const caseName = typeof testCase.name === 'string' ? testCase.name : `case ${index + 1}`
       const hasInput = typeof testCase.input === 'string'
       const input = hasInput ? testCase.input as string : ''
-      const args = withDefaultMaxEvals([...manifestArgs, ...asStringArray(testCase.args)])
+      const args = withDefaultEvalLimit([...manifestArgs, ...asStringArray(testCase.args)])
       options.push({
         id: `${manifestPath}::${slug(caseName)}`,
         manifestPath,
@@ -149,10 +149,10 @@ export function flattenTestManifests(manifests: Record<string, string>): TestCas
   return options
 }
 
-function withDefaultMaxEvals(args: string[]): string[] {
+function withDefaultEvalLimit(args: string[]): string[] {
   const result = [...args]
-  if (!result.some(arg => arg === '--max-evals' || arg.startsWith('--max-evals='))) {
-    result.push('--max-evals', String(DEFAULT_MAX_EVALS))
+  if (!result.some(arg => arg === '--eval-limit' || arg.startsWith('--eval-limit='))) {
+    result.push('--eval-limit', String(DEFAULT_EVAL_LIMIT))
   }
   return result
 }

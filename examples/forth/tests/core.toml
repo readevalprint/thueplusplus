@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../forth.tpp"
 timeout = 10
-args = ["--max-evals", "20000"]
+args = ["--eval-limit", "20000"]
 
 [[case]]
 name = "push integers renders top first"

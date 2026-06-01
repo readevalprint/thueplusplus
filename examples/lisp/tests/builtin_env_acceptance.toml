@@ -2,7 +2,7 @@
 # Builtins are ordinary callable values resolved through the lexical environment.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "80000"]
+args = ["--eval-limit", "80000"]
 
 [[case]]
 name = "named add uses core env"

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MAX_EVALS = 10000
+DEFAULT_EVAL_LIMIT = 10000
 INTERNAL_JOBS = 8
 DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
 
@@ -163,8 +163,8 @@ def validate_case_metadata(config_path: Path, case: dict) -> None:
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: stdin must be a string")
 
 
-def has_max_evals_arg(args: list[str]) -> bool:
-    return any(arg == "--max-evals" or arg.startswith("--max-evals=") for arg in args)
+def has_eval_limit_arg(args: list[str]) -> bool:
+    return any(arg == "--eval-limit" or arg.startswith("--eval-limit=") for arg in args)
 
 
 def build_case_args(
@@ -178,8 +178,8 @@ def build_case_args(
     program = (tests_dir / case["program"]).resolve()
     args = [str(program)]
     args.extend(case.get("args", []))
-    if not has_max_evals_arg(args):
-        args.extend(["--max-evals", str(DEFAULT_MAX_EVALS)])
+    if not has_eval_limit_arg(args):
+        args.extend(["--eval-limit", str(DEFAULT_EVAL_LIMIT)])
     if extra_args:
         args.extend(extra_args)
     bound_files: dict[str, str] = {}

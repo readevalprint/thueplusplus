@@ -2,7 +2,7 @@
 # Focused safety cases for the unified BNUM2 numeric primitive dispatcher.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "bnum2 arithmetic dispatch still works"

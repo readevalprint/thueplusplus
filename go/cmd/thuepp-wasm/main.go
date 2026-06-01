@@ -50,15 +50,15 @@ func (r *jsResource) Cleanup() {
 }
 
 type wasmResult struct {
-	ExitCode    int
-	Stdout      string
-	Stderr      string
-	Error       string
-	Errors      []string
-	CoverageTSV string
-	Trace       []thuepp.TraceEvent
-	State       string
-	EvalCount   int
+	ExitCode       int
+	Stdout         string
+	Stderr         string
+	Error          string
+	Errors         []string
+	CoverageTSV    string
+	Trace          []thuepp.TraceEvent
+	State          string
+	EvalCheckCount int
 }
 
 func main() {
@@ -105,13 +105,13 @@ func run(args []js.Value) wasmResult {
 	}
 	var stdout, stderr bytes.Buffer
 	interp := thuepp.NewWithHostResources(thuepp.HostResources{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr})
-	if err := applyIntOption(opts, "maxEvals", &interp.MaxEvals); err != nil {
+	if err := applyIntOption(opts, "evalLimit", &interp.EvalLimit); err != nil {
 		return errorResult(err.Error())
 	}
 	if err := applyIntOption(opts, "maxStateBytes", &interp.MaxStateBytes); err != nil {
 		return errorResult(err.Error())
 	}
-	if err := applyIntOption(opts, "stepLimit", &interp.MaxSteps); err != nil {
+	if err := applyIntOption(opts, "stepLimit", &interp.StepLimit); err != nil {
 		return errorResult(err.Error())
 	}
 	interp.TraceEnabled = truthy(opts.Get("trace"))
@@ -150,7 +150,7 @@ func run(args []js.Value) wasmResult {
 	}
 	exitCode, runErr := interp.Run()
 	interp.Cleanup()
-	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount}
+	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCheckCount: interp.EvalCheckCount}
 	if runErr != nil {
 		res.ExitCode = 1
 		res.Error = runErr.Error()
@@ -166,7 +166,7 @@ func run(args []js.Value) wasmResult {
 }
 
 func resultToJS(r wasmResult) js.Value {
-	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCount": r.EvalCount}
+	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCheckCount": r.EvalCheckCount}
 	if r.Error != "" {
 		obj["error"] = r.Error
 	}

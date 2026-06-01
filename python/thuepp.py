@@ -71,13 +71,13 @@ class Binding:
 class ThueppInterpreter:
     """The main thue++ interpreter.
 
-    ``max_evals`` counts each rule examined in ``run()``'s inner loop (every
-    ordered rule probe across outer steps), including probes that do not match.
+    ``eval_limit`` counts each rule examined in ``run()``'s inner loop (every
+    ordered rule checks across outer steps), including rules that do not match.
     """
 
     def __init__(
         self,
-        max_evals: Optional[int] = None,
+        eval_limit: Optional[int] = None,
         max_state_bytes: Optional[int] = None,
         debug: bool = False,
         rule_coverage_path: Optional[str] = None,
@@ -85,9 +85,9 @@ class ThueppInterpreter:
         self.rules: list[Rule] = []
         self.state: str = ""
         self.bindings: dict[str, Binding] = {}
-        self.max_evals = max_evals
+        self.eval_limit = eval_limit
         self.max_state_bytes = max_state_bytes
-        self.eval_count = 0
+        self.eval_check_count = 0
         self.debug = debug
         self.rule_coverage_path = rule_coverage_path
         self.rule_coverage_counts: dict[str, int] = {}
@@ -742,11 +742,11 @@ class ThueppInterpreter:
             applied = False
 
             for rule_index, rule in enumerate(self.rules):
-                if self.max_evals is not None and self.eval_count >= self.max_evals:
+                if self.eval_limit is not None and self.eval_check_count >= self.eval_limit:
                     raise RuntimeError(
-                        f"Evaluation step limit ({self.max_evals}) exceeded"
+                        f"Evaluation limit ({self.eval_limit}) exceeded"
                     )
-                self.eval_count += 1
+                self.eval_check_count += 1
 
                 match = self._match_state(rule, state_rows)
                 if not match:
@@ -757,13 +757,13 @@ class ThueppInterpreter:
 
                 if self.debug:
                     escaped_state = self.state.replace("\n", "\\n")
-                    print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
+                    print(f"[{self.eval_check_count}] STATE: {escaped_state}", file=sys.stderr)
                     print(
-                        f"[{self.eval_count}] RULE {rule.line_number} MATCHES STATE AT "
+                        f"[{self.eval_check_count}] RULE {rule.line_number} MATCHES STATE AT "
                         f"{match.start()}:{match.end()}: {rule.lhs}",
                         file=sys.stderr,
                     )
-                    print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
+                    print(f"[{self.eval_check_count}] GROUPS: {groups}", file=sys.stderr)
 
                 replacement: Optional[str] = None
                 magic_vars = {"rule_index": str(rule_index)}
@@ -847,7 +847,7 @@ class ThueppInterpreter:
 
                 if self.debug:
                     escaped_result = self.state.replace("\n", "\\n")
-                    print(f"[{self.eval_count}] RESULT: {escaped_result}", file=sys.stderr)
+                    print(f"[{self.eval_check_count}] RESULT: {escaped_result}", file=sys.stderr)
                     print(file=sys.stderr)
 
                 break
@@ -873,11 +873,11 @@ def main():
     )
     parser.add_argument("program", help="Path to the thue++ program")
     parser.add_argument(
-        "--max-evals",
+        "--eval-limit",
         type=int,
         help=(
-            "Maximum evaluation steps before aborting "
-            "(each rule inspected in the inner loop counts as one step, including non-matching rules)"
+            "Maximum evals/rule checks before aborting "
+            "(each rule inspected in the inner loop counts as one eval/rule check, including non-matching rules)"
         ),
     )
     parser.add_argument(
@@ -910,7 +910,7 @@ def main():
     args, remaining = parser.parse_known_args()
 
     interpreter = ThueppInterpreter(
-        max_evals=args.max_evals,
+        eval_limit=args.eval_limit,
         max_state_bytes=args.max_state_bytes,
         debug=args.debug,
         rule_coverage_path=args.rule_coverage,

@@ -4,7 +4,7 @@
 # and lexical lets together so future changes do not regress nested framing.
 program = "../lisp.tpp"
 timeout = 30
-args = ["--max-evals", "120000"]
+args = ["--eval-limit", "120000"]
 
 [[case]]
 name = "deeply nested let fn list application preserves lexical values"

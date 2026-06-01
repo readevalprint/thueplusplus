@@ -82,9 +82,14 @@ const columns: ColumnDef<KoanSolution>[] = [
     cell: ({ row }) => String(row.original.ruleCount),
   },
   {
-    accessorKey: 'steps',
+    accessorKey: 'stepCount',
     header: ({ column }) => sortButton(column, 'Steps'),
-    cell: ({ row }) => String(row.original.steps),
+    cell: ({ row }) => String(row.original.stepCount),
+  },
+  {
+    accessorKey: 'evalCheckCount',
+    header: ({ column }) => sortButton(column, 'Eval Checks'),
+    cell: ({ row }) => String(row.original.evalCheckCount),
   },
   {
     accessorKey: 'cumulativeStateBytes',

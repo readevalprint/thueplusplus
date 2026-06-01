@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
 timeout = 20
-args = ["--max-evals", "120000"]
+args = ["--eval-limit", "120000"]
 
 [[case]]
 name = "while false initially returns empty list"
@@ -87,12 +87,12 @@ stderr_stripped = "unsupported_form"
 [[case]]
 name = "non terminating while fails under eval limit"
 input = '(while true 1)'
-args = ["--max-evals", "200"]
+args = ["--eval-limit", "200"]
 
 [case.expect]
 exit_code = 1
 stdout = ""
-stderr_contains = ["Evaluation step limit (200) exceeded"]
+stderr_contains = ["Evaluation limit (200) exceeded"]
 
 [[case]]
 name = "while sequence condition must be boolean"
@@ -124,12 +124,12 @@ stdout_stripped = "1"
 [[case]]
 name = "while plain body without state change fails under eval limit"
 input = '(let ((i 0)) (while (lt i 1) 1))'
-args = ["--max-evals", "200"]
+args = ["--eval-limit", "200"]
 
 [case.expect]
 exit_code = 1
 stdout = ""
-stderr_contains = ["Evaluation step limit (200) exceeded"]
+stderr_contains = ["Evaluation limit (200) exceeded"]
 
 [[case]]
 name = "set without args fails wrong arity"

@@ -13,14 +13,15 @@ Print the opposite of a one-character binary input: `0` becomes `1\n`, and `1` b
 The smallest truth table is still a truth table. Let the tests say every row out loud.
 
 <!-- koans:leaderboard:start -->
-| Rank | Solution | Rules | Steps | Cumulative State per Step |
-|---:|---|---:|---:|---:|
-| 1 | Truth Table Flip | 6 | 28 | 76 bytes |
+| Rank | Solution | Rules | Steps | Eval Checks | Cumulative State per Step |
+|---:|---|---:|---:|---:|---:|
+| 1 | Truth Table Flip | 6 | 8 | 28 | 76 bytes |
 
 ### Best-In-Class Records
 
 - Fewest Rules: Truth Table Flip
-- Lowest Step Count: Truth Table Flip
+- Lowest Steps: Truth Table Flip
+- Lowest Eval Checks: Truth Table Flip
 - Lowest Cumulative State per Step: Truth Table Flip
 
 _Only solutions that pass every case on the Go backend with 100% rule coverage are ranked._

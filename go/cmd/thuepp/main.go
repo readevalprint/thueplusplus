@@ -49,9 +49,9 @@ func main() {
 			value := strings.TrimPrefix(arg, "--input=")
 			inputOverride = &value
 			idx++
-		case arg == "--max-evals":
+		case arg == "--eval-limit":
 			if idx+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "Error: --max-evals requires an argument")
+				fmt.Fprintln(os.Stderr, "Error: --eval-limit requires an argument")
 				os.Exit(1)
 			}
 			v, err := strconv.Atoi(args[idx+1])
@@ -59,15 +59,15 @@ func main() {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(2)
 			}
-			interp.MaxEvals = &v
+			interp.EvalLimit = &v
 			idx += 2
-		case strings.HasPrefix(arg, "--max-evals="):
-			v, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-evals="))
+		case strings.HasPrefix(arg, "--eval-limit="):
+			v, err := strconv.Atoi(strings.TrimPrefix(arg, "--eval-limit="))
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(2)
 			}
-			interp.MaxEvals = &v
+			interp.EvalLimit = &v
 			idx++
 		case arg == "--max-state-bytes":
 			if idx+1 >= len(args) {

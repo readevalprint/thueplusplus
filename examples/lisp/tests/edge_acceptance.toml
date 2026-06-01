@@ -3,7 +3,7 @@
 # These cases pin hard-won edge semantics in examples/lisp/lisp.tpp.
 program = "../lisp.tpp"
 timeout = 10
-args = ["--max-evals", "60000"]
+args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "top-level empty list renders as reader syntax"

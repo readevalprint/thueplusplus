@@ -26,14 +26,14 @@ async function runSmoke(cases) {
       sourcePath: 'hello.tpp',
       sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
       coverage: true,
-      maxEvals: 10,
+      evalLimit: 10,
     },
     {
       sourcePath: 'empty-override.tpp',
       sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
       input: '',
       coverage: true,
-      maxEvals: 10,
+      evalLimit: 10,
     },
     {
       sourceText: '^start$ ::< 1 input\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nstart',

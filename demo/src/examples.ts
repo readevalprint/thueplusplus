@@ -14,7 +14,7 @@ export interface DemoExample {
   input: string
   resources: DemoResourceExample[]
   coverage?: boolean
-  maxEvals?: number
+  evalLimit?: number
   maxStateBytes?: number
 }
 
