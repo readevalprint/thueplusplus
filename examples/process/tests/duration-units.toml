@@ -1,0 +1,11 @@
+name = "resource read duration units"
+program = "../duration-units.tpp"
+timeout = 10
+
+[bindings.procs]
+worker = "printf 'alpha\nbeta\ngamma\n'"
+
+[expect]
+stdout = "alpha/beta/gamma"
+stderr = ""
+exit_code = 0

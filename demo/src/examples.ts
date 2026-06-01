@@ -37,7 +37,7 @@ hello
     name: 'Stdin greeting',
     description: 'Reads one browser-provided stdin line and writes a greeting.',
     sourcePath: 'stdin-greeting.tpp',
-    sourceText: `^start$ ::< 1 stdin
+    sourceText: `^start$ ::< 1s stdin
 ^(?<name>[A-Za-z]+)$ ::> stdout hello {{name|pctdec}}!\\n
 
 start
@@ -53,7 +53,7 @@ start
     sourceText: `^start$ ::= WRITE\\nread
 ^WRITE$ ::> echo ping\\n
 ^read$ ::= response:@R@
-@R@ ::< 1 echo
+@R@ ::< 1s echo
 ^response:(?<value>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*)$ ::> stdout {{value|pctdec}}\\n
 
 start
@@ -81,7 +81,7 @@ start
     name: 'Resource error',
     description: 'A callback read error is surfaced intact as ERR:resource:<name>:...',
     sourcePath: 'resource-error.tpp',
-    sourceText: `^start$ ::< 1 broken
+    sourceText: `^start$ ::< 1s broken
 start
 `,
     input: '',
@@ -92,7 +92,7 @@ start
     name: 'Resource timeout',
     description: 'A resource timeout callback returns an error without any JS subprocess emulation.',
     sourcePath: 'timeout.tpp',
-    sourceText: `^start$ ::< 1 sleepy
+    sourceText: `^start$ ::< 1s sleepy
 start
 `,
     input: '',

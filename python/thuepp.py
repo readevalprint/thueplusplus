@@ -8,7 +8,6 @@ A Python implementation of the thue++ esoteric programming language.
 import argparse
 import base64
 import binascii
-import math
 import re as py_re
 import re2 as re
 import select
@@ -24,6 +23,22 @@ from typing import Any, Optional
 MAX_NUMERIC_LITERAL_CHARS = 4096
 MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE = 10000
 MAX_EXPANDED_PATTERN_BYTES = 1000000
+READ_TIMEOUT_RE = py_re.compile(r"^([1-9][0-9]*)(ms|s|m)$")
+
+
+def parse_read_timeout(spec: str) -> float:
+    match = READ_TIMEOUT_RE.fullmatch(spec)
+    if not match:
+        raise ValueError(spec)
+    amount = int(match.group(1))
+    unit = match.group(2)
+    if unit == "ms":
+        return amount / 1000
+    if unit == "s":
+        return float(amount)
+    if unit == "m":
+        return float(amount * 60)
+    raise ValueError(spec)
 RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!-])(?P<rhs>.*)$")
 ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
 ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
@@ -778,11 +793,9 @@ class ThueppInterpreter:
                         raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
                     read_spec, resource = parts
                     try:
-                        read_timeout = float(read_spec)
+                        read_timeout = parse_read_timeout(read_spec)
                     except ValueError as exc:
                         raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
-                    if not math.isfinite(read_timeout) or read_timeout <= 0:
-                        raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'")
                     if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
                         raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
                     binding = self.bindings.get(resource)

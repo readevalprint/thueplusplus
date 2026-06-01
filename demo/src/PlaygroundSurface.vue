@@ -1234,10 +1234,20 @@ function pendingInputTimeoutSeconds(trace: DemoTraceEvent[], resourceName: strin
   if (!event) return undefined
   const rule = ruleTextForEvent(event)
   const escapedName = resourceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = rule.match(new RegExp(`::<\\s+([0-9]+(?:\\.[0-9]+)?)\\s+${escapedName}\\b`))
+  const match = rule.match(new RegExp(`::<\\s+([1-9][0-9]*(?:ms|s|m))\\s+${escapedName}\\b`))
   if (!match) return undefined
-  const seconds = Number.parseFloat(match[1])
-  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined
+  return durationSeconds(match[1])
+}
+
+function durationSeconds(token: string): number | undefined {
+  const match = token.match(/^([1-9][0-9]*)(ms|s|m)$/)
+  if (!match) return undefined
+  const amount = Number.parseInt(match[1], 10)
+  if (!Number.isFinite(amount) || amount <= 0) return undefined
+  if (match[2] === 'ms') return amount / 1000
+  if (match[2] === 's') return amount
+  if (match[2] === 'm') return amount * 60
+  return undefined
 }
 
 function countdownForResource(name: string): number | undefined {

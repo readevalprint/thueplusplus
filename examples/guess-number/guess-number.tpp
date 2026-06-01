@@ -3,10 +3,10 @@ NUMBER <- [0-9]+
 
 PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
-@RANDOM_NUMBER@ ::< 5 random
+@RANDOM_NUMBER@ ::< 5s random
 
 @PROMPT@ ::> stdout Guess:\n
-@USER_GUESS@ ::< 30 stdin
+@USER_GUESS@ ::< 30s stdin
 
 @INVALID_NUMBER@ ::> stdout Please enter digits only.\n
 @TOO_LOW@ ::> stdout Too low.\n

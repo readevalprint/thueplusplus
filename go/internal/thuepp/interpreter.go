@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -36,6 +35,7 @@ var (
 	aliasDefPattern          = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
 	invalidAliasTokenPattern = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
 	namedCapturePattern      = regexp.MustCompile(`\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>`)
+	readTimeoutPattern       = regexp.MustCompile(`^([1-9][0-9]*)(ms|s|m)$`)
 )
 
 const MaxNumericLiteralChars = 4096
@@ -885,6 +885,27 @@ func (i *Interpreter) readLine(b *Binding, timeout time.Duration) (string, strin
 	return content, ""
 }
 
+func parseReadTimeout(spec string) (time.Duration, bool) {
+	match := readTimeoutPattern.FindStringSubmatch(spec)
+	if match == nil {
+		return 0, false
+	}
+	amount, err := strconv.Atoi(match[1])
+	if err != nil || amount <= 0 {
+		return 0, false
+	}
+	switch match[2] {
+	case "ms":
+		return time.Duration(amount) * time.Millisecond, true
+	case "s":
+		return time.Duration(amount) * time.Second, true
+	case "m":
+		return time.Duration(amount) * time.Minute, true
+	default:
+		return 0, false
+	}
+}
+
 func (i *Interpreter) writeString(b *Binding, content string) string {
 	if b.Resource == nil {
 		return fmt.Sprintf("ERR:resource:%s:missing host resource", b.Name)
@@ -1060,14 +1081,12 @@ func (i *Interpreter) Run() (int, error) {
 					return 1, err
 				}
 				readSpec, resource := parts[0], parts[1]
-				var readTimeout time.Duration
-				seconds, err := strconv.ParseFloat(readSpec, 64)
-				if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
+				readTimeout, ok := parseReadTimeout(readSpec)
+				if !ok {
 					err := fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
-				readTimeout = time.Duration(seconds * float64(time.Second))
 				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
 					err := fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
