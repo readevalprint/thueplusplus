@@ -93,10 +93,6 @@ func (r *processResource) ReadLine(timeout time.Duration) (string, error) {
 	case <-time.After(timeout):
 		return "", fmt.Errorf("timeout")
 	case err := <-r.exitCh:
-		lineTimeout := 100 * time.Millisecond
-		if timeout < lineTimeout {
-			lineTimeout = timeout
-		}
 		select {
 		case line, ok := <-r.outCh:
 			if ok {
@@ -106,7 +102,7 @@ func (r *processResource) ReadLine(timeout time.Duration) (string, error) {
 				}
 				return stripped, nil
 			}
-		case <-time.After(lineTimeout):
+		case <-time.After(timeout):
 		}
 		if exitErr := r.exitError(err); exitErr != nil {
 			return "", exitErr
