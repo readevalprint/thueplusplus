@@ -107,6 +107,24 @@ def test_normalize_case_rejects_timeout_key() -> None:
         raise AssertionError("timeout key should be rejected")
 
 
+def test_normalize_case_rejects_non_stdio_expected_output() -> None:
+    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    raw_case = {
+        "name": "custom output resource is invalid",
+        "resources": {
+            "file": {"expected_output": "ok\n"},
+        },
+        "exit_code": 0,
+    }
+
+    try:
+        kg.normalize_case(manifest, raw_case, 1)
+    except RuntimeError as error:
+        assert "expected_output is supported only for stdout or stderr" in str(error)
+    else:
+        raise AssertionError("non-stdio expected_output should be rejected")
+
+
 def test_solution_filenames_use_date_and_front_matter_slug() -> None:
     for solution in (ROOT / "koans").glob("*/solutions/*.tpp"):
         metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))

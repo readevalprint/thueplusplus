@@ -114,6 +114,8 @@ def normalize_case(manifest: Path, raw_case: Any, index: int) -> dict[str, Any]:
             raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} has unknown keys: {', '.join(resource_unknown)}")
         if not any(key in raw_resource for key in RESOURCE_KEYS):
             raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} must define buffer or expected_output")
+        if "expected_output" in raw_resource and name not in {"stdout", "stderr"}:
+            raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} expected_output is supported only for stdout or stderr")
         normalized: dict[str, str] = {}
         for key in RESOURCE_KEYS:
             if key in raw_resource:
