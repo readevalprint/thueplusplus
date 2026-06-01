@@ -128,6 +128,26 @@ def test_normalize_case_rejects_non_stdio_expected_output() -> None:
         raise AssertionError("non-stdio expected_output should be rejected")
 
 
+def test_stderr_expectations_compare_raw_user_visible_stderr(tmp_path: Path) -> None:
+    solution = tmp_path / "stderr-prefix.tpp"
+    solution.write_text("""^START$ ::> stderr [1] user line\\n
+^START$ ::= DONE
+^DONE$ ::- 0
+::=
+START
+""", encoding="utf-8")
+    case = {
+        "name": "stderr prefix",
+        "resources": {"stderr": {"expected_output": "[1] user line\n"}},
+        "exit_code": 0,
+    }
+
+    result = kg.run_case("go", solution, case, "10000")
+
+    kg.assert_expect(result, case, "stderr-prefix")
+    assert result.stderr == "[1] user line\n"
+
+
 def test_solution_filenames_use_date_and_front_matter_slug() -> None:
     for solution in (ROOT / "koans").glob("*/solutions/*.tpp"):
         metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))
