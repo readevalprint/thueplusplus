@@ -189,7 +189,7 @@ describe('Go-WASM demo UI', () => {
 
   it('runs koan tests from the playground rules editor and shows expected output diffs', async () => {
     window.history.pushState({}, '', '/koans/fixed-greet/')
-    mockedRunWithWorker.mockResolvedValue({ stdout: '', stderr: '' })
+    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(true)
@@ -261,6 +261,29 @@ describe('Go-WASM demo UI', () => {
     const exitDiff = wrapper.get('[data-test="koan-test-exit-code-diff-default-state"]')
     expect(exitDiff.text()).toContain('exit code actual vs expected')
     expect(exitDiff.text()).toContain('1')
+    expect(exitDiff.text()).toContain('0')
+  })
+
+  it('fails koan tests loudly when the worker omits exitCode', async () => {
+    window.history.pushState({}, '', '/koans/fixed-greet/')
+    mockedRunWithWorker.mockResolvedValue({
+      stdout: 'Hello, koan!\n',
+      stderr: '',
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, koan!\n'], errors: [], outputText: 'Hello, koan!\n' }],
+    })
+    const wrapper = await mountApp()
+
+    await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\n^OUT$ ::> stdout Hello, koan!\\n^OUT$ ::- 0')
+    await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
+    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await flush()
+
+    const result = wrapper.get('[data-test="koan-test-default-state"]')
+    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 passing · 1 failing')
+    expect(result.attributes('data-status')).toBe('fail')
+    expect(wrapper.get('[data-test="koan-test-error-default-state"]').text()).toContain('worker did not return exitCode')
+    const exitDiff = wrapper.get('[data-test="koan-test-exit-code-diff-default-state"]')
+    expect(exitDiff.text()).toContain('exit code actual vs expected')
     expect(exitDiff.text()).toContain('0')
   })
 
