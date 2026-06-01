@@ -2,7 +2,6 @@
 title: Binary Not
 description: Print the opposite of a one-character binary input.
 ---
-<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
 ## Goal
 
@@ -12,17 +11,20 @@ Print the opposite of a one-character binary input: `0` becomes `1\n`, and `1` b
 
 The smallest truth table is still a truth table. Let the tests say every row out loud.
 
-<!-- koans:leaderboard:start -->
-| Rank | Solution | Rules | Steps | Eval Checks | Cumulative State per Step |
-|---:|---|---:|---:|---:|---:|
-| 1 | Truth Table Flip | 6 | 8 | 28 | 76 bytes |
+## Starter Shape
 
-### Best-In-Class Records
+Read one line from stdin. The input buffer is provided by each koan test case.
 
-- Fewest Rules: Truth Table Flip
-- Lowest Steps: Truth Table Flip
-- Lowest Eval Checks: Truth Table Flip
-- Lowest Cumulative State per Step: Truth Table Flip
+```thue
+START ::< 1s stdin
+```
 
-_Only solutions that pass every case on the Go backend with 100% rule coverage are ranked._
-<!-- koans:leaderboard:end -->
+This branch is solved: input `0` should print `1`.
+
+```thue
+^0$ ::= OUT1
+OUT1 ::> stdout 1\n
+EXIT ::- 0
+```
+
+Add the matching branch and output rule for input `1`.

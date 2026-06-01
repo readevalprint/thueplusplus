@@ -2,25 +2,22 @@
 title: Fixed Greeting
 description: Write a Thue++ program that prints exactly Hello, koan!\n and exits with code 0.
 ---
-<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
 ## Goal
 
 Write a Thue++ program that prints exactly `Hello, koan!\n` to `stdout` and exits with code 0.
 
+## Starter Shape
 
-<!-- koans:leaderboard:start -->
-| Rank | Solution | Rules | Steps | Eval Checks | Cumulative State per Step |
-|---:|---|---:|---:|---:|---:|
-| 1 | Direct Greeting | 3 | 3 | 6 | 35 bytes |
-| 2 | Staged Greeting | 4 | 4 | 10 | 45 bytes |
+The first rule turns the starting state into two chores: write the greeting, then exit cleanly.
 
-### Best-In-Class Records
+```thue
+^START$ ::= OUT\nEXIT
+```
 
-- Fewest Rules: Direct Greeting
-- Lowest Steps: Direct Greeting
-- Lowest Eval Checks: Direct Greeting
-- Lowest Cumulative State per Step: Direct Greeting
+Now fill in the two missing chores:
 
-_Only solutions that pass every case on the Go backend with 100% rule coverage are ranked._
-<!-- koans:leaderboard:end -->
+```thue
+OUT ::> stdout Hello, koan!\n
+^EXIT$ ::- 0
+```

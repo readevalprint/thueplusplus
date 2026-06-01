@@ -9,7 +9,7 @@ stdlib plus subprocess calls to the public Go CLI.
 Modes:
   --missing  report koans without a qualifying solution
   --check    validate solutions and fail if generated files are stale
-  --all      regenerate per-solution JSON and leaderboard blocks
+  --all      regenerate per-solution JSON and solutions/readme.md leaderboard blocks
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--missing", action="store_true", help="report koans without qualifying solutions")
     mode.add_argument("--check", action="store_true", help="validate without writing; fail on stale generated files")
-    mode.add_argument("--all", action="store_true", help="regenerate solution JSON and leaderboard blocks")
+    mode.add_argument("--all", action="store_true", help="regenerate solution JSON and solutions/readme.md leaderboard blocks")
     parser.add_argument("--koan", help="limit to one koan slug")
     parser.add_argument("--changed-files", help="newline-delimited file list for one-file submission policy checks")
     parser.add_argument("--eval-limit", default="10000", help="max eval/rule checks passed to both backends")
@@ -456,8 +456,15 @@ def leaderboard_block(records: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def leaderboard_readme_path(koan: Path) -> Path:
+    return koan / "solutions" / "readme.md"
+
+
 def replace_leaderboard(koan: Path, block: str) -> str:
-    desc = koan / "readme.md"
+    desc = leaderboard_readme_path(koan)
+    if not desc.exists():
+        title = koan.name.replace("-", " ").title()
+        return f"# {title} Solutions\n\n{LEADERBOARD_START}\n{block}{LEADERBOARD_END}\n"
     text = desc.read_text(encoding="utf-8")
     if LEADERBOARD_START not in text or LEADERBOARD_END not in text:
         raise RuntimeError(f"{rel(desc)} missing leaderboard markers")
@@ -514,11 +521,12 @@ def cmd_check_or_all(args: argparse.Namespace, write: bool) -> int:
                     print(f"STALE {rel(json_path)} (run --all)")
                     failures += 1
             block = leaderboard_block(records)
-            desc = koan / "readme.md"
+            desc = leaderboard_readme_path(koan)
             expected_desc = replace_leaderboard(koan, block)
             if write:
+                desc.parent.mkdir(parents=True, exist_ok=True)
                 desc.write_text(expected_desc, encoding="utf-8")
-            elif desc.read_text(encoding="utf-8") != expected_desc:
+            elif not desc.exists() or desc.read_text(encoding="utf-8") != expected_desc:
                 print(f"STALE {rel(desc)} leaderboard block (run --all)")
                 failures += 1
         except Exception as exc:

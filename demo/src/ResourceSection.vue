@@ -25,7 +25,7 @@
     </div>
 
     <div v-if="showOutput" class="resource-field">
-      <label class="resource-field-label" :for="outputId">{{ resource.name }} output</label>
+      <label class="resource-field-label" :for="outputId">output</label>
       <Textarea
         :id="outputId"
         ref="outputTextarea"

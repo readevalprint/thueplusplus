@@ -72,7 +72,7 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   await expect(koanPanel).toBeVisible()
   await expect(page.getByTestId('koan-title-nav')).toBeVisible()
   await expect(page.getByTestId('koan-title-select')).toContainText('Fixed Greeting')
-  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/binary-not/')
+  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/core-rewrite-model/')
   await expect(page.getByTestId('koan-next-disabled')).toBeVisible()
   await expect(solutions).toBeVisible()
   await expect(page.getByTestId('koan-run-tests')).toBeVisible()
@@ -134,7 +134,7 @@ test('koan title dropdown jumps directly to another koan', async ({ page }) => {
 
   await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
   await expect(page.getByTestId('koan-previous-disabled')).toBeVisible()
-  await expect(page.getByTestId('koan-next')).toHaveAttribute('href', '/koans/fixed-greet/')
+  await expect(page.getByTestId('koan-next')).toHaveAttribute('href', '/koans/core-rewrite-model/')
   await expect(page.getByTestId('koan-title-select')).toContainText('Binary Not')
 
   await page.getByTestId('koan-title-select').click()
@@ -142,7 +142,7 @@ test('koan title dropdown jumps directly to another koan', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/koans\/fixed-greet\/?$/)
   await expect(page.getByTestId('koan-title-select')).toContainText('Fixed Greeting')
-  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/binary-not/')
+  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/core-rewrite-model/')
   await expect(page.getByTestId('koan-next-disabled')).toBeVisible()
   expect(runtimeErrors).toEqual([])
 })

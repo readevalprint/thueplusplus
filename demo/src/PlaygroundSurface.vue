@@ -33,8 +33,6 @@
       <KoanPlaygroundPanel
         v-if="props.koan"
         :koan="props.koan"
-        :koans="props.koans"
-        :previous-koan="props.previousKoan"
         :next-koan="props.nextKoan"
         :running="koanTestsRunning"
         :auto="koanTestsAuto"
@@ -102,8 +100,6 @@
       <ResizablePanel v-if="props.koan" :default-size="24" :min-size="16" class="playground-column playground-koan-column">
         <KoanPlaygroundPanel
           :koan="props.koan"
-          :koans="props.koans"
-          :previous-koan="props.previousKoan"
           :next-koan="props.nextKoan"
           :running="koanTestsRunning"
           :auto="koanTestsAuto"
@@ -168,17 +164,6 @@
         </section>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
-        <section class="playground-diffs-pane">
-          <header class="playground-panel-header">
-            <div class="playground-panel-title">state history</div>
-          </header>
-          <div class="playground-panel-content">
-            <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
-          </div>
-        </section>
-      </ResizablePanel>
-      <ResizableHandle />
       <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column">
         <section class="playground-resources-pane" data-test="resource-sections">
           <header class="playground-panel-header">
@@ -186,6 +171,17 @@
           </header>
           <div class="playground-panel-content resource-list">
             <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
+          </div>
+        </section>
+      </ResizablePanel>
+      <ResizableHandle />
+      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
+        <section class="playground-diffs-pane">
+          <header class="playground-panel-header">
+            <div class="playground-panel-title">state history</div>
+          </header>
+          <div class="playground-panel-content">
+            <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
           </div>
         </section>
       </ResizablePanel>
@@ -350,6 +346,23 @@ const repoFiles = Object.fromEntries([
 ].map(([key, value]) => [key.replace(/^\.\.\/\.\.\//, ''), value]))
 const testCaseOptions = flattenTestManifests(Object.fromEntries(Object.entries(manifestModules).map(([key, value]) => [toPublicExamplePath(key), value])))
 const initialFile = normalizeFileParam(props.file ?? routeSearchParams.get('file'))
+const KOAN_TESTS_AUTO_STORAGE_KEY = 'thuepp.koanTestsAuto'
+
+function initialKoanTestsAuto(): boolean {
+  try {
+    return window.localStorage.getItem(KOAN_TESTS_AUTO_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function persistKoanTestsAuto(value: boolean): void {
+  try {
+    window.localStorage.setItem(KOAN_TESTS_AUTO_STORAGE_KEY, value ? 'true' : 'false')
+  } catch {
+    // Ignore storage failures; auto mode still works for the current session.
+  }
+}
 
 type ContinueSpeed = '1' | '10' | '100'
 
@@ -392,7 +405,7 @@ const matchedRuleLine = ref<number | undefined>()
 const selectedTestCase = ref<TestCaseOption | undefined>()
 const koanResults = ref<KoanTestResult[] | null>(null)
 const koanTestsRunning = ref(false)
-const koanTestsAuto = ref(false)
+const koanTestsAuto = ref(initialKoanTestsAuto())
 let koanTestRunId = 0
 let koanTestAbortController: AbortController | undefined
 let koanTestDebounceTimer: ReturnType<typeof window.setTimeout> | undefined
@@ -655,6 +668,7 @@ async function runCurrentKoanTests(): Promise<void> {
 
 function setKoanTestsAuto(value: boolean): void {
   koanTestsAuto.value = value
+  persistKoanTestsAuto(value)
   if (value) scheduleKoanTestRun()
   else cancelPendingKoanTestDebounce()
 }
@@ -677,8 +691,9 @@ async function startKoanTestRun(): Promise<void> {
   koanTestAbortController = controller
   koanTestsRunning.value = true
   const source = runnableRulesText.value
+  const fallbackInput = splitProgramSource(rulesText.value).state
   try {
-    const results = await runKoanTests(props.koan, source, controller.signal)
+    const results = await runKoanTests(props.koan, source, controller.signal, fallbackInput)
     if (runId === koanTestRunId && !controller.signal.aborted) koanResults.value = results
   } catch (error) {
     if (!isAbortError(error)) throw error

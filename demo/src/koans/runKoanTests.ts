@@ -23,23 +23,23 @@ export interface KoanTestResult {
   error?: string
 }
 
-export async function runKoanTests(koan: KoanEntry, source: string, signal?: AbortSignal): Promise<KoanTestResult[]> {
+export async function runKoanTests(koan: KoanEntry, source: string, signal?: AbortSignal, fallbackInput = ''): Promise<KoanTestResult[]> {
   const results: KoanTestResult[] = []
   for (const testCase of koan.tests) {
     if (signal?.aborted) throw abortError()
-    const result = await runKoanTest(koan, source, testCase, signal)
+    const result = await runKoanTest(koan, source, testCase, signal, fallbackInput)
     results.push(result)
     if (!result.passed) break
   }
   return results
 }
 
-async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCase, signal?: AbortSignal): Promise<KoanTestResult> {
+async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCase, signal?: AbortSignal, fallbackInput = ''): Promise<KoanTestResult> {
   try {
     const result = await runWithWorker({
       sourceText: source,
       sourcePath: `koans/${koan.slug}/attempt.tpp`,
-      input: testCase.resources.stdin?.buffer ?? '',
+      input: testCase.resources.stdin?.buffer ?? fallbackInput,
       evalLimit: 10000,
       maxStateBytes: 1_000_000,
       coverage: false,
