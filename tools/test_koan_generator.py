@@ -52,6 +52,23 @@ def test_normalize_case_rejects_browser_only_state_key() -> None:
         raise AssertionError("state key should be rejected")
 
 
+def test_normalize_case_requires_exit_code() -> None:
+    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    raw_case = {
+        "name": "missing exit code is invalid",
+        "resources": {
+            "stdout": {"expected_output": "ok\n"},
+        },
+    }
+
+    try:
+        kg.normalize_case(manifest, raw_case, 1)
+    except RuntimeError as error:
+        assert "must define exit_code" in str(error)
+    else:
+        raise AssertionError("exit_code should be required")
+
+
 def test_solution_filenames_use_date_and_front_matter_slug() -> None:
     for solution in (ROOT / "koans").glob("*/solutions/*.tpp"):
         metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))

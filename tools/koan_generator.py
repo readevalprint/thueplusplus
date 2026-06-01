@@ -121,15 +121,16 @@ def normalize_case(manifest: Path, raw_case: Any, index: int) -> dict[str, Any]:
                     raise RuntimeError(f"{rel(manifest)} case {index} resource {name!r} {key} must be a string")
                 normalized[key] = value
         normalized_resources[name] = normalized
+    if "exit_code" not in raw_case:
+        raise RuntimeError(f"{rel(manifest)} case {index} must define exit_code")
+    if not isinstance(raw_case["exit_code"], int):
+        raise RuntimeError(f"{rel(manifest)} case {index} exit_code must be an integer")
     case = {
         "_manifest": rel(manifest),
         "name": str(raw_case.get("name") or f"{manifest.stem}-{index}"),
         "resources": normalized_resources,
+        "exit_code": raw_case["exit_code"],
     }
-    if "exit_code" in raw_case:
-        if not isinstance(raw_case["exit_code"], int):
-            raise RuntimeError(f"{rel(manifest)} case {index} exit_code must be an integer")
-        case["exit_code"] = raw_case["exit_code"]
     if "args" in raw_case:
         if not isinstance(raw_case["args"], list) or not all(isinstance(value, str) for value in raw_case["args"]):
             raise RuntimeError(f"{rel(manifest)} case {index} args must be an array of strings")
@@ -345,7 +346,7 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
 
 
 def assert_expect(result: BackendResult, case: dict[str, Any], scope: str) -> None:
-    if "exit_code" in case and result.exit_code != int(case["exit_code"]):
+    if result.exit_code != int(case["exit_code"]):
         raise RuntimeError(f"{scope}: {result.backend} exit_code {result.exit_code}, expected {case['exit_code']}")
     resources = case.get("resources", {})
     if not isinstance(resources, dict):
