@@ -11,16 +11,13 @@
           ],
           "cumulative_state_bytes": 45,
           "eval_check_count": 10,
-          "output_sha256": "079d6b1bc11d46188aacb49e0136ce18ae22d4c46f285ddf0379502ad6b64393",
           "peak_state_bytes": 9,
           "successful_rewrites": 4
         }
       },
       "exit_code": 0,
       "manifest": "koans/fixed-greet/tests/basic.json",
-      "name": "default state",
-      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "stdout_sha256": "f59ea0ac31c748774d160e1f55a5629fbe93458c7655fda47cb7458797da54d3"
+      "name": "default state"
     }
   ],
   "coverage": {
