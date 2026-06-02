@@ -30,15 +30,15 @@
         </div>
       </header>
 
-      <KoanPlaygroundPanel
-        v-if="props.koan"
-        :koan="props.koan"
-        :next-koan="props.nextKoan"
-        :running="koanTestsRunning"
-        :auto="koanTestsAuto"
-        :results="koanResults"
-        @run="runCurrentKoanTests"
-        @update:auto="setKoanTestsAuto"
+      <ChallengePlaygroundPanel
+        v-if="props.challenge"
+        :challenge="props.challenge"
+        :next-challenge="props.nextChallenge"
+        :running="challengeTestsRunning"
+        :auto="challengeTestsAuto"
+        :results="challengeResults"
+        @run="runCurrentChallengeTests"
+        @update:auto="setChallengeTestsAuto"
       />
 
       <section class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
@@ -96,20 +96,20 @@
       </section>
     </section>
 
-    <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" :auto-save-id="props.koan ? 'playground-koan-columns' : 'playground-columns'" data-test="playground-full-surface">
-      <ResizablePanel v-if="props.koan" :default-size="24" :min-size="16" class="playground-column playground-koan-column">
-        <KoanPlaygroundPanel
-          :koan="props.koan"
-          :next-koan="props.nextKoan"
-          :running="koanTestsRunning"
-          :auto="koanTestsAuto"
-          :results="koanResults"
-          @run="runCurrentKoanTests"
-          @update:auto="setKoanTestsAuto"
+    <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" :auto-save-id="props.challenge ? 'playground-challenge-columns' : 'playground-columns'" data-test="playground-full-surface">
+      <ResizablePanel v-if="props.challenge" :default-size="24" :min-size="16" class="playground-column playground-challenge-column">
+        <ChallengePlaygroundPanel
+          :challenge="props.challenge"
+          :next-challenge="props.nextChallenge"
+          :running="challengeTestsRunning"
+          :auto="challengeTestsAuto"
+          :results="challengeResults"
+          @run="runCurrentChallengeTests"
+          @update:auto="setChallengeTestsAuto"
         />
       </ResizablePanel>
-      <ResizableHandle v-if="props.koan" />
-      <ResizablePanel :default-size="props.koan ? 32 : 42" :min-size="24" class="playground-column playground-rules-column">
+      <ResizableHandle v-if="props.challenge" />
+      <ResizablePanel :default-size="props.challenge ? 32 : 42" :min-size="24" class="playground-column playground-rules-column">
         <section class="playground-rules-pane">
           <header class="playground-panel-header playground-rules-header">
             <div class="playground-rules-title-block">
@@ -164,7 +164,7 @@
         </section>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-resources-column">
+      <ResizablePanel :default-size="props.challenge ? 22 : 29" :min-size="20" class="playground-column playground-resources-column">
         <section class="playground-resources-pane" data-test="resource-sections">
           <header class="playground-panel-header">
             <div class="playground-panel-title">resources</div>
@@ -175,7 +175,7 @@
         </section>
       </ResizablePanel>
       <ResizableHandle />
-      <ResizablePanel :default-size="props.koan ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
+      <ResizablePanel :default-size="props.challenge ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
         <section class="playground-diffs-pane">
           <header class="playground-panel-header">
             <div class="playground-panel-title">state history</div>
@@ -201,12 +201,12 @@ import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
 import TestCaseMenu from './TestCaseMenu.vue'
-import KoanPlaygroundPanel from './koans/KoanPlaygroundPanel.vue'
+import ChallengePlaygroundPanel from './challenges/ChallengePlaygroundPanel.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
-import { runKoanTests, expectedResources, type KoanTestResult } from './koans/runKoanTests'
-import type { KoanEntry, KoanTestCase } from './koans/types'
+import { runChallengeTests, expectedResources, type ChallengeTestResult } from './challenges/runChallengeTests'
+import type { ChallengeEntry, ChallengeTestCase } from './challenges/types'
 
 export type PlaygroundSection = 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
 export type PlaygroundMode = 'auto' | 'full' | 'compact' | 'mini' | 'debug'
@@ -230,10 +230,10 @@ const props = withDefaults(defineProps<{
   showOpenFull?: boolean
   syncUrl?: boolean
   title?: string
-  koan?: KoanEntry
-  koans?: KoanEntry[]
-  previousKoan?: KoanEntry
-  nextKoan?: KoanEntry
+  challenge?: ChallengeEntry
+  challenges?: ChallengeEntry[]
+  previousChallenge?: ChallengeEntry
+  nextChallenge?: ChallengeEntry
 }>(), {
   mode: 'auto',
   chrome: 'page',
@@ -322,8 +322,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   surfaceResizeObserver?.disconnect()
   stopPendingCountdown()
-  cancelPendingKoanTestDebounce()
-  abortKoanTestRun()
+  cancelPendingChallengeTestDebounce()
+  abortChallengeTestRun()
 })
 
 
@@ -346,19 +346,19 @@ const repoFiles = Object.fromEntries([
 ].map(([key, value]) => [key.replace(/^\.\.\/\.\.\//, ''), value]))
 const testCaseOptions = flattenTestManifests(Object.fromEntries(Object.entries(manifestModules).map(([key, value]) => [toPublicExamplePath(key), value])))
 const initialFile = normalizeFileParam(props.file ?? routeSearchParams.get('file'))
-const KOAN_TESTS_AUTO_STORAGE_KEY = 'thuepp.koanTestsAuto'
+const CHALLENGE_TESTS_AUTO_STORAGE_KEY = 'thuepp.challengeTestsAuto'
 
-function initialKoanTestsAuto(): boolean {
+function initialChallengeTestsAuto(): boolean {
   try {
-    return window.localStorage.getItem(KOAN_TESTS_AUTO_STORAGE_KEY) === 'true'
+    return window.localStorage.getItem(CHALLENGE_TESTS_AUTO_STORAGE_KEY) === 'true'
   } catch {
     return false
   }
 }
 
-function persistKoanTestsAuto(value: boolean): void {
+function persistChallengeTestsAuto(value: boolean): void {
   try {
-    window.localStorage.setItem(KOAN_TESTS_AUTO_STORAGE_KEY, value ? 'true' : 'false')
+    window.localStorage.setItem(CHALLENGE_TESTS_AUTO_STORAGE_KEY, value ? 'true' : 'false')
   } catch {
     // Ignore storage failures; auto mode still works for the current session.
   }
@@ -403,12 +403,12 @@ const continueSpeed = ref<ContinueSpeed>('10')
 const stepLimit = ref(10000)
 const matchedRuleLine = ref<number | undefined>()
 const selectedTestCase = ref<TestCaseOption | undefined>()
-const koanResults = ref<KoanTestResult[] | null>(null)
-const koanTestsRunning = ref(false)
-const koanTestsAuto = ref(initialKoanTestsAuto())
-let koanTestRunId = 0
-let koanTestAbortController: AbortController | undefined
-let koanTestDebounceTimer: ReturnType<typeof window.setTimeout> | undefined
+const challengeResults = ref<ChallengeTestResult[] | null>(null)
+const challengeTestsRunning = ref(false)
+const challengeTestsAuto = ref(initialChallengeTestsAuto())
+let challengeTestRunId = 0
+let challengeTestAbortController: AbortController | undefined
+let challengeTestDebounceTimer: ReturnType<typeof window.setTimeout> | undefined
 
 const runnableRulesText = computed(() => splitProgramSource(rulesText.value).rules)
 const ruleCount = computed(() => runnableRulesText.value.split(/\r?\n/).filter(row => /::=|::!|::<|::>|::-/.test(row)).length)
@@ -429,7 +429,7 @@ const endTitle = computed(() => `End without rendering intermediate steps (limit
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
 
 watch(runnableRulesText, () => {
-  scheduleKoanTestRun()
+  scheduleChallengeTestRun()
 })
 
 function toPublicExamplePath(globPath: string): string {
@@ -661,74 +661,74 @@ function selectTestCase(testCase: TestCaseOption): void {
   }
 }
 
-async function runCurrentKoanTests(): Promise<void> {
-  if (koanTestsAuto.value) await startKoanTestRun()
-  else await startVisibleKoanTestRun()
+async function runCurrentChallengeTests(): Promise<void> {
+  if (challengeTestsAuto.value) await startChallengeTestRun()
+  else await startVisibleChallengeTestRun()
 }
 
-function setKoanTestsAuto(value: boolean): void {
-  koanTestsAuto.value = value
-  persistKoanTestsAuto(value)
-  if (value) scheduleKoanTestRun()
-  else cancelPendingKoanTestDebounce()
+function setChallengeTestsAuto(value: boolean): void {
+  challengeTestsAuto.value = value
+  persistChallengeTestsAuto(value)
+  if (value) scheduleChallengeTestRun()
+  else cancelPendingChallengeTestDebounce()
 }
 
-function scheduleKoanTestRun(): void {
-  if (!props.koan || !koanTestsAuto.value) return
-  cancelPendingKoanTestDebounce()
-  koanTestDebounceTimer = window.setTimeout(() => {
-    koanTestDebounceTimer = undefined
-    void startKoanTestRun()
+function scheduleChallengeTestRun(): void {
+  if (!props.challenge || !challengeTestsAuto.value) return
+  cancelPendingChallengeTestDebounce()
+  challengeTestDebounceTimer = window.setTimeout(() => {
+    challengeTestDebounceTimer = undefined
+    void startChallengeTestRun()
   }, 300)
 }
 
-async function startKoanTestRun(): Promise<void> {
-  if (!props.koan) return
-  cancelPendingKoanTestDebounce()
-  abortKoanTestRun()
-  const runId = ++koanTestRunId
+async function startChallengeTestRun(): Promise<void> {
+  if (!props.challenge) return
+  cancelPendingChallengeTestDebounce()
+  abortChallengeTestRun()
+  const runId = ++challengeTestRunId
   const controller = new AbortController()
-  koanTestAbortController = controller
-  koanTestsRunning.value = true
+  challengeTestAbortController = controller
+  challengeTestsRunning.value = true
   const source = runnableRulesText.value
   const fallbackInput = splitProgramSource(rulesText.value).state
   try {
-    const results = await runKoanTests(props.koan, source, controller.signal, fallbackInput)
-    if (runId === koanTestRunId && !controller.signal.aborted) koanResults.value = results
+    const results = await runChallengeTests(props.challenge, source, controller.signal, fallbackInput)
+    if (runId === challengeTestRunId && !controller.signal.aborted) challengeResults.value = results
   } catch (error) {
     if (!isAbortError(error)) throw error
   } finally {
-    if (runId === koanTestRunId) {
-      koanTestsRunning.value = false
-      koanTestAbortController = undefined
+    if (runId === challengeTestRunId) {
+      challengeTestsRunning.value = false
+      challengeTestAbortController = undefined
     }
   }
 }
 
-async function startVisibleKoanTestRun(): Promise<void> {
-  if (!props.koan || koanTestsRunning.value) return
-  cancelPendingKoanTestDebounce()
-  abortKoanTestRun()
-  koanTestRunId += 1
-  koanTestsRunning.value = true
-  koanResults.value = []
-  const results: KoanTestResult[] = []
+async function startVisibleChallengeTestRun(): Promise<void> {
+  if (!props.challenge || challengeTestsRunning.value) return
+  cancelPendingChallengeTestDebounce()
+  abortChallengeTestRun()
+  challengeTestRunId += 1
+  challengeTestsRunning.value = true
+  challengeResults.value = []
+  const results: ChallengeTestResult[] = []
   const fallbackState = splitProgramSource(rulesText.value).state
   try {
-    for (const testCase of props.koan.tests) {
-      const result = await runVisibleKoanTest(testCase, fallbackState)
+    for (const testCase of props.challenge.tests) {
+      const result = await runVisibleChallengeTest(testCase, fallbackState)
       results.push(result)
-      koanResults.value = [...results]
+      challengeResults.value = [...results]
       if (!result.passed) break
     }
   } finally {
-    koanTestsRunning.value = false
+    challengeTestsRunning.value = false
   }
 }
 
-async function runVisibleKoanTest(testCase: KoanTestCase, fallbackState: string): Promise<KoanTestResult> {
+async function runVisibleChallengeTest(testCase: ChallengeTestCase, fallbackState: string): Promise<ChallengeTestResult> {
   clearRun()
-  sourcePath.value = `koans/${props.koan?.slug ?? 'current'}/attempt.tpp`
+  sourcePath.value = `challenges/${props.challenge?.slug ?? 'current'}/attempt.tpp`
   stateText.value = fallbackState
   resourceInputs.value = Object.fromEntries(
     Object.entries(testCase.resources)
@@ -737,10 +737,10 @@ async function runVisibleKoanTest(testCase: KoanTestCase, fallbackState: string)
   )
   await nextTick()
   await continueProgram()
-  return visibleKoanTestResult(testCase)
+  return visibleChallengeTestResult(testCase)
 }
 
-function visibleKoanTestResult(testCase: KoanTestCase): KoanTestResult {
+function visibleChallengeTestResult(testCase: ChallengeTestCase): ChallengeTestResult {
   const actualExitCode = lastRunExitCode.value
   const exitCode = {
     expected: testCase.exit_code,
@@ -765,35 +765,35 @@ function visibleKoanTestResult(testCase: KoanTestCase): KoanTestResult {
   }
 }
 
-function cancelPendingKoanTestDebounce(): void {
-  if (koanTestDebounceTimer === undefined) return
-  window.clearTimeout(koanTestDebounceTimer)
-  koanTestDebounceTimer = undefined
+function cancelPendingChallengeTestDebounce(): void {
+  if (challengeTestDebounceTimer === undefined) return
+  window.clearTimeout(challengeTestDebounceTimer)
+  challengeTestDebounceTimer = undefined
 }
 
-function abortKoanTestRun(): void {
-  koanTestAbortController?.abort()
-  koanTestAbortController = undefined
+function abortChallengeTestRun(): void {
+  challengeTestAbortController?.abort()
+  challengeTestAbortController = undefined
 }
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
 }
-function initializeKoanAttempt(): void {
-  if (!props.koan) return
-  fileParam.value = `./koans/${props.koan.slug}/attempt.tpp`
-  sourcePath.value = `koans/${props.koan.slug}/attempt.tpp`
+function initializeChallengeAttempt(): void {
+  if (!props.challenge) return
+  fileParam.value = `./challenges/${props.challenge.slug}/attempt.tpp`
+  sourcePath.value = `challenges/${props.challenge.slug}/attempt.tpp`
   rulesText.value = ''
   loadError.value = ''
   clearRun()
-  loadKoanHintIfEditorEmpty()
+  loadChallengeHintIfEditorEmpty()
 }
 
-function loadKoanHintIfEditorEmpty(): void {
-  if (!props.koan?.hintSource) return
+function loadChallengeHintIfEditorEmpty(): void {
+  if (!props.challenge?.hintSource) return
   if (rulesText.value.trim() !== '') return
-  const split = splitProgramSource(props.koan.hintSource)
-  rulesText.value = props.koan.hintSource
+  const split = splitProgramSource(props.challenge.hintSource)
+  rulesText.value = props.challenge.hintSource
   stateText.value = split.state
   loadError.value = split.error
   selectedTestCase.value = undefined
@@ -1373,8 +1373,8 @@ async function runCompactProgram(): Promise<void> {
 function loadInitialSelection(): void {
   const testParam = props.test ?? routeSearchParams.get('test')
   const caseParam = props.caseName ?? routeSearchParams.get('case')
-  if (props.koan) {
-    initializeKoanAttempt()
+  if (props.challenge) {
+    initializeChallengeAttempt()
     return
   }
   loadFile(fileParam.value)

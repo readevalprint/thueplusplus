@@ -4,17 +4,55 @@
     <header class="site-topbar" data-test="site-topbar">
       <div class="site-topbar-inner">
         <a class="site-brand" href="/" aria-label="Thue++ home">Thue++</a>
-        <nav class="site-nav" aria-label="Main navigation">
-          <a href="/" :aria-current="isDocsRoute ? 'page' : undefined">Docs</a>
-          <a href="/playground" :aria-current="isPlaygroundRoute ? 'page' : undefined">Playground</a>
-          <a href="/koans" :aria-current="isKoansRoute ? 'page' : undefined">Koans</a>
-          <a href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">GitLab</a>
-          <a href="https://x.com/thuelang" rel="noreferrer">Twitter</a>
-        </nav>
+        <NavigationMenu class="site-nav" aria-label="Main navigation" viewport-align="end">
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuLink as-child :class="navigationMenuTriggerStyle()" :data-active="isDocsRoute ? '' : undefined">
+                <a href="/" :aria-current="isDocsRoute ? 'page' : undefined">Docs</a>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink as-child :class="navigationMenuTriggerStyle()" :data-active="isPlaygroundRoute ? '' : undefined">
+                <a href="/playground" :aria-current="isPlaygroundRoute ? 'page' : undefined">Playground</a>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem data-test="site-nav-challenges">
+              <NavigationMenuTrigger :data-active="isChallengesRoute ? '' : undefined">Challenges</NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <ul class="grid w-[280px] gap-1">
+                  <li>
+                    <NavigationMenuLink as-child :data-active="isChallengesIndexRoute ? '' : undefined">
+                      <a href="/challenges" :aria-current="isChallengesIndexRoute ? 'page' : undefined">All Challenges</a>
+                    </NavigationMenuLink>
+                  </li>
+                  <li v-for="challenge in challenges" :key="challenge.slug">
+                    <NavigationMenuLink as-child :data-active="challenge.slug === challengeSlug ? '' : undefined">
+                      <a
+                        :href="challenge.path"
+                        :data-test="`site-nav-challenge-${challenge.slug}`"
+                        :aria-current="challenge.slug === challengeSlug ? 'page' : undefined"
+                      >{{ challenge.title }}</a>
+                    </NavigationMenuLink>
+                  </li>
+                </ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink as-child :class="navigationMenuTriggerStyle()">
+                <a href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">GitLab</a>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink as-child :class="navigationMenuTriggerStyle()">
+                <a href="https://x.com/thuelang" rel="noreferrer">Twitter</a>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
       </div>
     </header>
     <PlaygroundPage v-if="isPlaygroundRoute" />
-    <KoansPage v-else-if="isKoansRoute" :selected-slug="koanSlug" :selected-solution-id="koanSolutionId" />
+    <ChallengesPage v-else-if="isChallengesRoute" :selected-slug="challengeSlug" :solutions-route="isChallengeSolutionsRoute" :selected-solution-id="challengeSolutionId" />
     <ReadmePage v-else />
   </template>
   <EmbedDemoPage v-else-if="isEmbedDemoRoute" />
@@ -24,11 +62,20 @@
 <script setup lang="ts">
 import { computed, watchEffect } from 'vue'
 import EmbedDemoPage from './EmbedDemoPage.vue'
-import KoansPage from './KoansPage.vue'
+import ChallengesPage from './ChallengesPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
 import PlaygroundSurface from './PlaygroundSurface.vue'
 import ReadmePage from './ReadmePage.vue'
-import { koans } from './koans/data'
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from './components/ui/navigation-menu'
+import { challenges } from './challenges/data'
 
 interface EmbedRouteProps {
   file?: string
@@ -47,17 +94,24 @@ interface EmbedRouteProps {
 }
 
 const routePath = computed(() => normalizedPath() || '/')
-const koansRouteMatch = computed(() => routePath.value.match(/(?:^|\/)koans(?:\/([^/]+)(?:\/([^/]+))?)?$/))
-const koanSlug = computed(() => koansRouteMatch.value?.[1] ? decodeURIComponent(koansRouteMatch.value[1]) : undefined)
-const koanSolutionId = computed(() => koansRouteMatch.value?.[2] ? decodeURIComponent(koansRouteMatch.value[2]).toLowerCase() : undefined)
-const selectedKoan = computed(() => koans.find((koan) => koan.slug === koanSlug.value))
-const selectedSolution = computed(() => selectedKoan.value?.solutions.find(solution => solution.id === koanSolutionId.value))
+const challengesRouteMatch = computed(() => routePath.value.match(/(?:^|\/)challenges(?:\/([^/]+)(?:\/([^/]+)(?:\/([^/]+))?)?)?$/))
+const challengeSlug = computed(() => challengesRouteMatch.value?.[1] ? decodeURIComponent(challengesRouteMatch.value[1]) : undefined)
+const challengeSecondSegment = computed(() => challengesRouteMatch.value?.[2] ? decodeURIComponent(challengesRouteMatch.value[2]) : undefined)
+const isChallengeSolutionsRoute = computed(() => challengeSecondSegment.value === 'solutions')
+const challengeSolutionId = computed(() => {
+  if (!challengesRouteMatch.value) return undefined
+  if (isChallengeSolutionsRoute.value) return challengesRouteMatch.value[3] ? decodeURIComponent(challengesRouteMatch.value[3]).toLowerCase() : undefined
+  return challengeSecondSegment.value ? challengeSecondSegment.value.toLowerCase() : undefined
+})
+const selectedChallenge = computed(() => challenges.find((challenge) => challenge.slug === challengeSlug.value))
+const selectedSolution = computed(() => selectedChallenge.value?.solutions.find(solution => solution.id === challengeSolutionId.value))
 const isPlaygroundRoute = computed(() => routePath.value.endsWith('/playground'))
-const isKoansRoute = computed(() => Boolean(koansRouteMatch.value))
+const isChallengesRoute = computed(() => Boolean(challengesRouteMatch.value))
+const isChallengesIndexRoute = computed(() => isChallengesRoute.value && !challengeSlug.value)
 const isEmbedDemoRoute = computed(() => routePath.value.endsWith('/embed/demo'))
 const isEmbedRoute = computed(() => routePath.value.endsWith('/embed'))
 const showSiteTopbar = computed(() => !isEmbedDemoRoute.value && !isEmbedRoute.value)
-const isDocsRoute = computed(() => showSiteTopbar.value && !isPlaygroundRoute.value && !isKoansRoute.value)
+const isDocsRoute = computed(() => showSiteTopbar.value && !isPlaygroundRoute.value && !isChallengesRoute.value)
 const embedProps = computed<EmbedRouteProps>(() => {
   const params = new URLSearchParams(window.location.search)
   return {
@@ -92,12 +146,15 @@ watchEffect(() => {
       canonical: 'https://thuelang.org/embed',
       robots: 'noindex,follow',
     })
-  } else if (isKoansRoute.value) {
-    const koanMetadata = selectedKoan.value
+  } else if (isChallengesRoute.value) {
+    const challengeMetadata = selectedChallenge.value
+    const challengeCanonicalPath = challengeSlug.value
+      ? `/challenges/${encodeURIComponent(challengeSlug.value)}${isChallengeSolutionsRoute.value ? `/solutions${challengeSolutionId.value ? `/${encodeURIComponent(challengeSolutionId.value)}` : ''}` : challengeSolutionId.value ? `/${encodeURIComponent(challengeSolutionId.value)}` : ''}`
+      : '/challenges'
     setPageMetadata({
-      title: selectedSolution.value && koanMetadata ? `${selectedSolution.value.title} — ${koanMetadata.title} — Thue++ Koan` : koanMetadata ? `${koanMetadata.title} — Thue++ Koan` : 'Learn Thue++ — Koans',
-      description: koanMetadata?.summary ?? 'Learn Thue++ in small steps and compare your answers with others.',
-      canonical: `https://thuelang.org/koans${koanSlug.value ? `/${encodeURIComponent(koanSlug.value)}${koanSolutionId.value ? `/${encodeURIComponent(koanSolutionId.value)}` : ''}` : ''}`,
+      title: selectedSolution.value && challengeMetadata ? `${selectedSolution.value.title} — ${challengeMetadata.title} — Thue++ Challenge Solution` : isChallengeSolutionsRoute.value && challengeMetadata ? `${challengeMetadata.title} Solutions — Thue++ Challenge` : challengeMetadata ? `${challengeMetadata.title} — Thue++ Challenge` : 'Learn Thue++ — Challenges',
+      description: challengeMetadata?.summary ?? 'Learn Thue++ in small steps and compare your answers with others.',
+      canonical: `https://thuelang.org${challengeCanonicalPath}`,
       robots: 'index,follow',
     })
   } else {
