@@ -1,0 +1,18 @@
+{
+  "challenge": "02_fixed-greet",
+  "cumulative_state_bytes": 35,
+  "eval_check_count": 6,
+  "rank": 1,
+  "rule_count": 3,
+  "solution_id": "2026-05-29-direct-greeting",
+  "solution_metadata": {
+    "author": "Tim Watts",
+    "slug": "direct-greeting",
+    "summary": "Print the greeting with the fewest rules in the pilot set.",
+    "title": "Direct Greeting",
+    "website": "https://readevalprint.com"
+  },
+  "solution_path": "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp",
+  "solution_sha256": "e245633862c622345e825331d2c8c88d074a873e5f1388930841e393da6cac57",
+  "successful_rewrites": 3
+}

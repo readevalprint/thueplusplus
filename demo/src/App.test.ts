@@ -41,8 +41,8 @@ vi.mock('./ReadmeCodeEditor.vue', async () => {
 })
 
 import App from './App.vue'
-import { validateKoanTestManifest } from './koans/data'
-import { runKoanTests } from './koans/runKoanTests'
+import { challenges, validateChallengeTestManifest } from './challenges/data'
+import { runChallengeTests } from './challenges/runChallengeTests'
 
 vi.mock('./wasm', async () => {
   return {
@@ -118,11 +118,19 @@ describe('Go-WASM demo UI', () => {
     const topbar = wrapper.get('[data-test="site-topbar"]')
     expect(topbar.text()).toContain('Docs')
     expect(topbar.text()).toContain('Playground')
-    expect(topbar.text()).toContain('Koans')
+    expect(topbar.text()).toContain('Challenges')
     expect(topbar.text()).toContain('GitLab')
     expect(topbar.text()).toContain('Twitter')
     expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBe('page')
     expect(topbar.get('nav a[href="/playground"]').attributes('aria-current')).toBeUndefined()
+    const challengeMenu = topbar.get('[data-test="site-nav-challenges"]')
+    const challengeTrigger = challengeMenu.get('[data-slot="navigation-menu-trigger"]')
+    expect(challengeTrigger.attributes('data-active')).toBeUndefined()
+    await challengeTrigger.trigger('click')
+    await flush()
+    const challengeMenuLinks = wrapper.findAll('[data-slot="navigation-menu-content"] a')
+    expect(challengeMenuLinks.map(link => link.attributes('href'))).toEqual(['/challenges', ...challenges.map(challenge => challenge.path)])
+    expect(challengeMenuLinks.map(link => link.text())).toEqual(['All Challenges', ...challenges.map(challenge => challenge.title)])
     expect(topbar.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
     expect(topbar.find('a[href="https://x.com/thuelang"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Start with a string and rules that rewrite it')
@@ -144,7 +152,7 @@ describe('Go-WASM demo UI', () => {
     expect(getComputedStyle(wrapper.get('[data-test="readme-index"]').element).paddingBottom).toBeTruthy()
   })
 
-  it('rejects invalid koan manifests in browser data validation', () => {
+  it('rejects invalid challenge manifests in browser data validation', () => {
     const validCase = {
       name: 'valid',
       resources: {
@@ -164,87 +172,101 @@ describe('Go-WASM demo UI', () => {
     ]
 
     invalids.forEach(([manifest, message]) => {
-      expect(() => validateKoanTestManifest(manifest, 'bad.json')).toThrow(message)
+      expect(() => validateChallengeTestManifest(manifest, 'bad.json')).toThrow(message)
     })
   })
 
-  it('serves the koans index route with pilot koan links', async () => {
-    window.history.pushState({}, '', '/koans/')
+  it('serves the challenges index route with pilot challenge links', async () => {
+    window.history.pushState({}, '', '/challenges/')
     const wrapper = await mountApp()
 
     const topbar = wrapper.get('[data-test="site-topbar"]')
-    expect(topbar.get('nav a[href="/koans"]').attributes('aria-current')).toBe('page')
+    const challengeTrigger = topbar.get('[data-test="site-nav-challenges"] [data-slot="navigation-menu-trigger"]')
+    expect(challengeTrigger.attributes('data-active')).toBe('')
+    await challengeTrigger.trigger('click')
+    await flush()
+    expect(wrapper.get('[data-slot="navigation-menu-content"] a[href="/challenges"]').attributes('aria-current')).toBe('page')
     expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBeUndefined()
-    expect(wrapper.get('[data-test="koan-02_fixed-greet"]').attributes('href')).toBe('/koans/02_fixed-greet/')
-    expect(wrapper.get('[data-test="koan-03_binary-not"]').attributes('href')).toBe('/koans/03_binary-not/')
-    expect(wrapper.find('[data-test="koans-workflow"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="challenge-02_fixed-greet"]').attributes('href')).toBe('/challenges/02_fixed-greet/')
+    expect(wrapper.get('[data-test="challenge-03_binary-not"]').attributes('href')).toBe('/challenges/03_binary-not/')
+    expect(wrapper.find('[data-test="challenges-workflow"]').exists()).toBe(false)
   })
 
-  it('serves individual koan and solution detail routes', async () => {
+  it('serves challenge solutions index and solution detail routes', async () => {
     const solutionId = '2026-05-29-direct-greeting'
-    window.history.pushState({}, '', `/koans/02_fixed-greet/${solutionId}`)
-    const wrapper = await mountApp()
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/solutions')
+    const indexWrapper = await mountApp()
 
-    const topbar = wrapper.get('[data-test="site-topbar"]')
-    expect(topbar.get('nav a[href="/koans"]').attributes('aria-current')).toBe('page')
-    expect(wrapper.find(`[data-test="koan-solution-${solutionId}"]`).exists()).toBe(true)
-    expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
-    expect(document.title).toBe('Direct Greeting — Fixed Greeting — Thue++ Koan')
-    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('Write a Thue++ program that prints exactly Hello, koan!\\n and exits with code 0.')
-    expect(wrapper.find('[data-test="koan-solutions-table"]').exists()).toBe(false)
-    expect(wrapper.get('h2#solution-source').text()).toBe('Direct Greeting')
-    expect(wrapper.get('a[href="https://readevalprint.com"]').text()).toBe('Tim Watts')
-    const solutionSource = wrapper.get('[data-test="koan-solution-source"]')
-    expect(solutionSource.text()).toContain('title: Direct Greeting')
-    expect(solutionSource.text()).toContain('author: Tim Watts')
-    expect(solutionSource.text()).toContain('^START$ ::= OUT\\nEXIT')
-    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://thuelang.org/koans/02_fixed-greet/${solutionId}`)
+    const topbar = indexWrapper.get('[data-test="site-topbar"]')
+    const challengeTrigger = topbar.get('[data-test="site-nav-challenges"] [data-slot="navigation-menu-trigger"]')
+    expect(challengeTrigger.attributes('data-active')).toBe('')
+    await challengeTrigger.trigger('click')
+    await flush()
+    expect(topbar.text()).toContain('Challenges')
+    expect(indexWrapper.get('[data-slot="navigation-menu-content"] a[href="/challenges"]').attributes('aria-current')).toBeUndefined()
+    expect(indexWrapper.get('[data-test="site-nav-challenge-02_fixed-greet"]').attributes('aria-current')).toBe('page')
+    expect(indexWrapper.get('[data-test="challenge-solutions-02_fixed-greet"]').text()).toContain('Fixed Greet Solutions')
+    expect(indexWrapper.get('[data-test="challenge-solutions-table"]').text()).toContain('Direct Greeting')
+    expect(indexWrapper.get(`[data-test="solution-${solutionId}"]`).attributes('role')).toBe('link')
+    expect(document.title).toBe('Fixed Greeting Solutions — Thue++ Challenge')
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe('https://thuelang.org/challenges/02_fixed-greet/solutions')
+
+    window.history.pushState({}, '', `/challenges/02_fixed-greet/solutions/${solutionId}`)
+    const detailWrapper = await mountApp()
+
+    expect(detailWrapper.find(`[data-test="challenge-solution-${solutionId}"]`).exists()).toBe(true)
+    expect(detailWrapper.find('[data-test="challenge-breadcrumbs"]').exists()).toBe(false)
+    expect(detailWrapper.get('[data-test="challenge-solution-source"]').text()).toContain('title: Direct Greeting')
+    expect(detailWrapper.get('[data-test="challenge-solution-source"]').text()).toContain('^START$ ::= OUT\\nEXIT')
+    expect(detailWrapper.get('h2#solution-source').text()).toBe('Direct Greeting')
+    expect(document.title).toBe('Direct Greeting — Fixed Greeting — Thue++ Challenge Solution')
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://thuelang.org/challenges/02_fixed-greet/solutions/${solutionId}`)
   })
 
-  it('runs koan tests from the playground rules editor and shows expected output diffs', async () => {
-    window.history.pushState({}, '', '/koans/02_fixed-greet/')
+  it('runs challenge tests from the playground rules editor and shows expected output diffs', async () => {
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
     const wrapper = await mountApp()
 
-    expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="koan-test-default-state"]').text()).toContain('default state')
-    expect(wrapper.find('[data-test="koan-title-nav"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="koan-solutions-panel"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="koan-breadcrumbs"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-playground-panel"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="challenge-test-default-state"]').text()).toContain('default state')
+    expect(wrapper.find('[data-test="challenge-title-nav"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-solutions-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-breadcrumbs"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Goal: print exactly Hello, koan!')
-    expect(wrapper.get('[data-test="koan-readme"]').text()).toContain('Write a Thue++ program')
-    expect(wrapper.find('[data-test="koan-load-hint"]').exists()).toBe(false)
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Goal: print exactly Hello, challenge!')
+    expect(wrapper.get('[data-test="challenge-readme"]').text()).toContain('Write a Thue++ program')
+    expect(wrapper.find('[data-test="challenge-load-hint"]').exists()).toBe(false)
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).not.toContain('title:')
     expect(programState(wrapper)).toBe('START')
-    expect(wrapper.find('[data-test="koan-attempt"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="koan-test-default-state"]').text()).not.toContain('"Hello, koan!\\n"')
-    expect(wrapper.find('[data-test="koan-test-details-default-state"]').exists()).toBe(false)
-    await wrapper.get('[data-test="koan-test-toggle-default-state"]').trigger('click')
+    expect(wrapper.find('[data-test="challenge-attempt"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="challenge-test-default-state"]').text()).not.toContain('"Hello, challenge!\\n"')
+    expect(wrapper.find('[data-test="challenge-test-details-default-state"]').exists()).toBe(false)
+    await wrapper.get('[data-test="challenge-test-toggle-default-state"]').trigger('click')
     await flush()
-    expect(wrapper.get('[data-test="koan-test-details-default-state"]').text()).toContain('fixture')
-    expect(wrapper.get('[data-test="koan-test-resource-fixture-expected-default-state-stdout"]').text()).toContain('Hello, koan!')
+    expect(wrapper.get('[data-test="challenge-test-details-default-state"]').text()).toContain('fixture')
+    expect(wrapper.get('[data-test="challenge-test-resource-fixture-expected-default-state-stdout"]').text()).toContain('Hello, challenge!')
 
     await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT')
-    await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
-    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
+    await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
-      sourcePath: 'koans/02_fixed-greet/attempt.tpp',
+      sourcePath: 'challenges/02_fixed-greet/attempt.tpp',
       sourceText: '^START$ ::= OUT',
       input: '',
       resources: [],
     }))
-    const result = wrapper.get('[data-test="koan-test-default-state"]')
-    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 passing · 1 failing')
+    const result = wrapper.get('[data-test="challenge-test-default-state"]')
+    expect(wrapper.get('[data-test="challenge-results-summary"]').text()).toBe('0 passing · 1 failing')
     expect(result.attributes('data-status')).toBe('fail')
-    expect(wrapper.get('[data-test="koan-test-details-default-state"]').text()).toContain('fixture')
-    expect(wrapper.get('[data-test="koan-test-resource-diff-default-state-stdout"]').text()).toContain('stdout actual vs expected')
-    expect(wrapper.find('[data-test="koan-test-exit-code-diff-default-state"]').exists()).toBe(false)
-    expect(result.text()).toContain('Hello, koan!')
-    expect(wrapper.get('[data-test="koan-run-tests"]').text()).toContain('Run Tests Again')
-    expect(wrapper.get('[data-test="koan-run-tests"]').text()).toContain('⌘↵')
+    expect(wrapper.get('[data-test="challenge-test-details-default-state"]').text()).toContain('fixture')
+    expect(wrapper.get('[data-test="challenge-test-resource-diff-default-state-stdout"]').text()).toContain('stdout actual vs expected')
+    expect(wrapper.find('[data-test="challenge-test-exit-code-diff-default-state"]').exists()).toBe(false)
+    expect(result.text()).toContain('Hello, challenge!')
+    expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Run Tests Again')
+    expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('⌘↵')
 
     mockedRunWithWorker.mockClear()
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }))
@@ -252,58 +274,58 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
   })
 
-  it('shows koan exit-code mismatch diffs separately from output diffs', async () => {
-    window.history.pushState({}, '', '/koans/02_fixed-greet/')
+  it('shows challenge exit-code mismatch diffs separately from output diffs', async () => {
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({
       exitCode: 1,
-      stdout: 'Hello, koan!\n',
+      stdout: 'Hello, challenge!\n',
       stderr: '',
-      resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, koan!\n'], errors: [], outputText: 'Hello, koan!\n' }],
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, challenge!\n'], errors: [], outputText: 'Hello, challenge!\n' }],
     })
     const wrapper = await mountApp()
 
-    await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\n^OUT$ ::> stdout Hello, koan!\\n^OUT$ ::- 1')
-    await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
-    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\n^OUT$ ::> stdout Hello, challenge!\\n^OUT$ ::- 1')
+    await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
+    await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
 
-    const result = wrapper.get('[data-test="koan-test-default-state"]')
-    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 passing · 1 failing')
+    const result = wrapper.get('[data-test="challenge-test-default-state"]')
+    expect(wrapper.get('[data-test="challenge-results-summary"]').text()).toBe('0 passing · 1 failing')
     expect(result.attributes('data-status')).toBe('fail')
-    expect(wrapper.find('[data-test="koan-test-resource-diff-default-state-stdout"]').exists()).toBe(false)
-    const exitDiff = wrapper.get('[data-test="koan-test-exit-code-diff-default-state"]')
+    expect(wrapper.find('[data-test="challenge-test-resource-diff-default-state-stdout"]').exists()).toBe(false)
+    const exitDiff = wrapper.get('[data-test="challenge-test-exit-code-diff-default-state"]')
     expect(exitDiff.text()).toContain('exit code actual vs expected')
     expect(exitDiff.text()).toContain('1')
     expect(exitDiff.text()).toContain('0')
   })
 
-  it('fails koan tests loudly when the worker omits exitCode', async () => {
-    window.history.pushState({}, '', '/koans/02_fixed-greet/')
+  it('fails challenge tests loudly when the worker omits exitCode', async () => {
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({
-      stdout: 'Hello, koan!\n',
+      stdout: 'Hello, challenge!\n',
       stderr: '',
-      resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, koan!\n'], errors: [], outputText: 'Hello, koan!\n' }],
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, challenge!\n'], errors: [], outputText: 'Hello, challenge!\n' }],
     })
     const wrapper = await mountApp()
 
-    await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\n^OUT$ ::> stdout Hello, koan!\\n^OUT$ ::- 0')
-    await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
-    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\n^OUT$ ::> stdout Hello, challenge!\\n^OUT$ ::- 0')
+    await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
+    await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
 
-    const result = wrapper.get('[data-test="koan-test-default-state"]')
-    expect(wrapper.get('[data-test="koan-results-summary"]').text()).toBe('0 passing · 1 failing')
+    const result = wrapper.get('[data-test="challenge-test-default-state"]')
+    expect(wrapper.get('[data-test="challenge-results-summary"]').text()).toBe('0 passing · 1 failing')
     expect(result.attributes('data-status')).toBe('fail')
-    expect(wrapper.get('[data-test="koan-test-error-default-state"]').text()).toContain('worker did not return exitCode')
-    const exitDiff = wrapper.get('[data-test="koan-test-exit-code-diff-default-state"]')
+    expect(wrapper.get('[data-test="challenge-test-error-default-state"]').text()).toContain('worker did not return exitCode')
+    const exitDiff = wrapper.get('[data-test="challenge-test-exit-code-diff-default-state"]')
     expect(exitDiff.text()).toContain('exit code actual vs expected')
     expect(exitDiff.text()).toContain('0')
   })
 
-  it('runs koan tests visibly through playground play controls when auto is off', async () => {
+  it('runs challenge tests visibly through playground play controls when auto is off', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/koans/02_fixed-greet/')
+      window.history.pushState({}, '', '/challenges/02_fixed-greet/')
       mockedRunWithWorker
         .mockResolvedValueOnce({
           exitCode: undefined,
@@ -314,7 +336,7 @@ describe('Go-WASM demo UI', () => {
           trace: [{
             step: 1,
             ruleIndex: 0,
-            sourcePath: 'koans/02_fixed-greet/attempt.tpp',
+            sourcePath: 'challenges/02_fixed-greet/attempt.tpp',
             lineNumber: 1,
             operator: '::=',
             lhs: '^START$',
@@ -328,17 +350,17 @@ describe('Go-WASM demo UI', () => {
         })
         .mockResolvedValueOnce({
           exitCode: 0,
-          stdout: 'Hello, koan!\n',
+          stdout: 'Hello, challenge!\n',
           stderr: '',
           state: '',
-          resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, koan!\n'], errors: [], outputText: 'Hello, koan!\n' }],
+          resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, challenge!\n'], errors: [], outputText: 'Hello, challenge!\n' }],
           trace: [],
         })
 
       const wrapper = await mountApp()
       await wrapper.get('[data-test="playground-speed-1"]').trigger('click')
       await wrapper.get('[data-test="playground-step-limit-1000"]').trigger('click')
-      await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+      await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
       await flush()
 
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
@@ -349,7 +371,7 @@ describe('Go-WASM demo UI', () => {
         trace: true,
       }))
       expect(programState(wrapper)).toBe('MID')
-      expect(wrapper.get('[data-test="koan-run-tests"]').text()).toContain('Running…')
+      expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Running…')
 
       vi.advanceTimersByTime(999)
       await flush()
@@ -359,19 +381,19 @@ describe('Go-WASM demo UI', () => {
       await flush()
       await flush()
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
-      expect(wrapper.find('[data-test="koan-tests-card"]').exists()).toBe(false)
-      expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('All tests are green')
-      expect(wrapper.get('[data-test="koan-pass-card"]').classes()).toContain('koan-pass-card')
-      expect(wrapper.find('[data-test="koan-run-tests"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="challenge-tests-card"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('All tests are green')
+      expect(wrapper.get('[data-test="challenge-pass-card"]').classes()).toContain('challenge-pass-card')
+      expect(wrapper.find('[data-test="challenge-run-tests"]').exists()).toBe(false)
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('auto-runs koan tests on debounced rule changes and restarts an in-flight run', async () => {
+  it('auto-runs challenge tests on debounced rule changes and restarts an in-flight run', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/koans/02_fixed-greet/')
+      window.history.pushState({}, '', '/challenges/02_fixed-greet/')
       const firstRun = deferred<never>()
       const aborts: AbortSignal[] = []
       mockedRunWithWorker
@@ -385,7 +407,7 @@ describe('Go-WASM demo UI', () => {
         .mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' })
 
       const wrapper = await mountApp()
-      await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
+      await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
       await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= FIRST')
       vi.advanceTimersByTime(299)
       await flush()
@@ -396,9 +418,9 @@ describe('Go-WASM demo UI', () => {
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
       expect(mockedRunWithWorker.mock.calls[0][0]).toEqual(expect.objectContaining({
         sourceText: '^START$ ::= FIRST',
-        sourcePath: 'koans/02_fixed-greet/attempt.tpp',
+        sourcePath: 'challenges/02_fixed-greet/attempt.tpp',
       }))
-      expect(wrapper.get('[data-test="koan-run-tests"]').text()).toContain('Running…')
+      expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Running…')
 
       await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= SECOND')
       vi.advanceTimersByTime(300)
@@ -410,64 +432,64 @@ describe('Go-WASM demo UI', () => {
         sourceText: '^START$ ::= SECOND',
       }))
       await flush()
-      expect(wrapper.get('[data-test="koan-run-tests"]').text()).toContain('Run Tests Again')
+      expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Run Tests Again')
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('persists the koan auto-test checkbox preference', async () => {
-    window.history.pushState({}, '', '/koans/02_fixed-greet/')
-    window.localStorage.setItem('thuepp.koanTestsAuto', 'true')
+  it('persists the challenge auto-test checkbox preference', async () => {
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
+    window.localStorage.setItem('thuepp.challengeTestsAuto', 'true')
     const wrapper = await mountApp()
-    const checkbox = wrapper.get('[data-test="koan-auto-tests"]').element as HTMLInputElement
+    const checkbox = wrapper.get('[data-test="challenge-auto-tests"]').element as HTMLInputElement
 
     expect(checkbox.checked).toBe(true)
-    await wrapper.get('[data-test="koan-auto-tests"]').setValue(false)
-    expect(window.localStorage.getItem('thuepp.koanTestsAuto')).toBe('false')
+    await wrapper.get('[data-test="challenge-auto-tests"]').setValue(false)
+    expect(window.localStorage.getItem('thuepp.challengeTestsAuto')).toBe('false')
   })
 
-  it('auto-runs koan tests with the embedded source state as fallback input', async () => {
+  it('auto-runs challenge tests with the embedded source state as fallback input', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/koans/02_fixed-greet/')
+      window.history.pushState({}, '', '/challenges/02_fixed-greet/')
       mockedRunWithWorker.mockImplementation(async request => ({
         exitCode: request.input === 'START' ? 0 : 1,
-        stdout: request.input === 'START' ? 'Hello, koan!\n' : '',
+        stdout: request.input === 'START' ? 'Hello, challenge!\n' : '',
         stderr: '',
-        resourceLogs: [{ name: 'stdout', reads: [], writes: request.input === 'START' ? ['Hello, koan!\n'] : [], errors: [], outputText: request.input === 'START' ? 'Hello, koan!\n' : '' }],
+        resourceLogs: [{ name: 'stdout', reads: [], writes: request.input === 'START' ? ['Hello, challenge!\n'] : [], errors: [], outputText: request.input === 'START' ? 'Hello, challenge!\n' : '' }],
       }))
       const wrapper = await mountApp()
-      await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
-      await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, koan!\\n\n^EXIT$ ::- 0\n::=\nSTART')
+      await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
+      await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, challenge!\\n\n^EXIT$ ::- 0\n::=\nSTART')
       vi.advanceTimersByTime(300)
       await flush()
       await flush()
       expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
-        sourceText: '^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, koan!\\n\n^EXIT$ ::- 0\n',
+        sourceText: '^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, challenge!\\n\n^EXIT$ ::- 0\n',
         input: 'START',
       }))
-      expect(wrapper.find('[data-test="koan-tests-card"]').exists()).toBe(false)
-      expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('All tests are green')
-      expect(wrapper.get('[data-test="koan-pass-card"]').classes()).toContain('koan-pass-card')
+      expect(wrapper.find('[data-test="challenge-tests-card"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('All tests are green')
+      expect(wrapper.get('[data-test="challenge-pass-card"]').classes()).toContain('challenge-pass-card')
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('places the koan panel before rules, resources, and state history in the full playground', async () => {
-    window.history.pushState({}, '', '/koans/02_fixed-greet/')
+  it('places the challenge panel before rules, resources, and state history in the full playground', async () => {
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
     const wrapper = await mountApp()
 
     const surface = wrapper.get('[data-test="playground-full-surface"]')
-    const koanPanel = wrapper.get('[data-test="koan-playground-panel"]')
+    const challengePanel = wrapper.get('[data-test="challenge-playground-panel"]')
     const rulesEditor = wrapper.get('[data-test="playground-rules"]')
     const resources = wrapper.get('[data-test="resource-sections"]')
     const stateHistory = wrapper.get('[data-test="playground-diffs"]')
 
-    expect(surface.element.contains(koanPanel.element)).toBe(true)
+    expect(surface.element.contains(challengePanel.element)).toBe(true)
     expect(surface.element.contains(rulesEditor.element)).toBe(true)
-    expect(koanPanel.element.compareDocumentPosition(rulesEditor.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(challengePanel.element.compareDocumentPosition(rulesEditor.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(rulesEditor.element.compareDocumentPosition(resources.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(resources.element.compareDocumentPosition(stateHistory.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(surface.text()).toContain('Fixed Greeting')
@@ -477,19 +499,19 @@ describe('Go-WASM demo UI', () => {
     expect(surface.text()).toContain('resources')
   })
 
-  it('keeps the generic playground free of the koan panel', async () => {
+  it('keeps the generic playground free of the challenge panel', async () => {
     window.history.pushState({}, '', '/playground')
     const wrapper = await mountApp()
 
-    expect(wrapper.find('[data-test="koan-playground-panel"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="koan-run-tests"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="koan-test-default-state"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-playground-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-run-tests"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-test-default-state"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-full-surface"]').text()).toContain('program rules')
     expect(wrapper.get('[data-test="playground-rules"]').element).toBeInstanceOf(HTMLTextAreaElement)
   })
 
-  it('passes stdin buffers through resource-shaped koan tests', async () => {
-    window.history.pushState({}, '', '/koans/03_binary-not/')
+  it('passes stdin buffers through resource-shaped challenge tests', async () => {
+    window.history.pushState({}, '', '/challenges/03_binary-not/')
     mockedRunWithWorker.mockImplementation(async request => {
       const stdin = request.input
       return {
@@ -504,45 +526,45 @@ describe('Go-WASM demo UI', () => {
     })
     const wrapper = await mountApp()
 
-    expect(wrapper.find('[data-test="koan-title-nav"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').text()).toContain('zero to one')
-    expect(wrapper.get('[data-test="koan-test-one-to-zero"]').text()).toContain('one to zero')
+    expect(wrapper.find('[data-test="challenge-title-nav"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="challenge-test-zero-to-one"]').text()).toContain('zero to one')
+    expect(wrapper.get('[data-test="challenge-test-one-to-zero"]').text()).toContain('one to zero')
 
-    await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
-    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
+    await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('0\n')
     expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('1\n')
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([])
-    expect(wrapper.find('[data-test="koan-tests-card"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('All tests are green')
-    expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('This is the last koan')
-    expect(wrapper.get('[data-test="koan-pass-card"]').classes()).toContain('koan-pass-card')
-    expect(wrapper.find('[data-test="koan-next-cta"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-tests-card"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('All tests are green')
+    expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('This is the last challenge')
+    expect(wrapper.get('[data-test="challenge-pass-card"]').classes()).toContain('challenge-pass-card')
+    expect(wrapper.find('[data-test="challenge-next-cta"]').exists()).toBe(false)
   })
 
-  it('shows resource-shaped koan failures as stacked expected and actual diffs', async () => {
-    window.history.pushState({}, '', '/koans/03_binary-not/')
+  it('shows resource-shaped challenge failures as stacked expected and actual diffs', async () => {
+    window.history.pushState({}, '', '/challenges/03_binary-not/')
     mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: 'wrong\n', stderr: '' })
     const wrapper = await mountApp()
     const rules = wrapper.get('[data-test="playground-rules"]')
     await rules.setValue('0 ::= 1')
 
-    await wrapper.get('[data-test="koan-auto-tests"]').setValue(true)
-    await wrapper.get('[data-test="koan-run-tests"]').trigger('click')
+    await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
+    await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('0 ::= 1')
-    expect(wrapper.find('[data-test="koan-debug-zero-to-one"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="koan-test-zero-to-one"]').attributes('data-status')).toBe('fail')
-    expect(wrapper.get('[data-test="koan-test-resource-input-zero-to-one-stdin"]').text()).toContain('0')
-    const diff = wrapper.get('[data-test="koan-test-resource-diff-zero-to-one-stdout"]')
+    expect(wrapper.find('[data-test="challenge-debug-zero-to-one"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="challenge-test-zero-to-one"]').attributes('data-status')).toBe('fail')
+    expect(wrapper.get('[data-test="challenge-test-resource-input-zero-to-one-stdin"]').text()).toContain('0')
+    const diff = wrapper.get('[data-test="challenge-test-resource-diff-zero-to-one-stdout"]')
     expect(diff.text()).toContain('stdout actual vs expected')
-    const actual = wrapper.get('[data-test="koan-test-resource-actual-zero-to-one-stdout"]')
-    const expected = wrapper.get('[data-test="koan-test-resource-expected-zero-to-one-stdout"]')
+    const actual = wrapper.get('[data-test="challenge-test-resource-actual-zero-to-one-stdout"]')
+    const expected = wrapper.get('[data-test="challenge-test-resource-expected-zero-to-one-stdout"]')
     expect(actual.text()).toContain('wrong')
     expect(actual.classes()).toContain('removed')
     expect(expected.text()).toContain('1')
@@ -551,14 +573,16 @@ describe('Go-WASM demo UI', () => {
     expect(actual.element.compareDocumentPosition(expected.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('trims leading and trailing whitespace before comparing koan resource output', async () => {
+  it('trims leading and trailing whitespace before comparing challenge resource output', async () => {
     mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '  ok\n', stderr: '  [1] user line\n' })
-    const results = await runKoanTests({
+    const results = await runChallengeTests({
       slug: 'stderr-policy',
       title: 'Stderr Policy',
       summary: '',
       readme: '',
-      path: 'koans/stderr-policy/readme.md',
+      solutionsReadme: '',
+      path: 'challenges/stderr-policy/readme.md',
+      solutionsPath: 'challenges/stderr-policy/solutions',
       bestSolutionId: null,
       tests: [{
         name: 'stderr prefix',
@@ -586,21 +610,25 @@ describe('Go-WASM demo UI', () => {
     ])
   })
 
-  it('omits solution tables from solve-first koan playground pages', async () => {
-    window.history.pushState({}, '', '/koans/02_fixed-greet/')
+  it('omits solution tables from solve-first challenge playground pages', async () => {
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
     const wrapper = await mountApp()
 
-    expect(wrapper.find('[data-test="koan-solutions-panel"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="koan-solutions-table"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="koan-title-nav"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-solutions-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-solutions-table"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="challenge-title-nav"]').exists()).toBe(false)
   })
 
-  it('serves unknown koan slugs as koan not found pages', async () => {
-    window.history.pushState({}, '', '/koans/missing-koan/')
+  it('serves unknown challenge slugs as challenge not found pages', async () => {
+    window.history.pushState({}, '', '/challenges/missing-challenge/')
     const wrapper = await mountApp()
 
-    expect(wrapper.get('[data-test="koan-not-found"]').text()).toContain('missing-koan')
-    expect(wrapper.get('[data-test="site-topbar"] nav a[href="/koans"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.get('[data-test="challenge-not-found"]').text()).toContain('missing-challenge')
+    const challengeTrigger = wrapper.get('[data-test="site-topbar"] [data-test="site-nav-challenges"] [data-slot="navigation-menu-trigger"]')
+    expect(challengeTrigger.attributes('data-active')).toBe('')
+    await challengeTrigger.trigger('click')
+    await flush()
+    expect(wrapper.get('[data-slot="navigation-menu-content"] a[href="/challenges"]').attributes('aria-current')).toBeUndefined()
   })
 
   it('serves a resizable playground route with pinned stdio resources and no reset action', async () => {

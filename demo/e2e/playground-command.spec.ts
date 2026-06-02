@@ -52,46 +52,46 @@ async function openExampleMenuGroup(page: Page, label: string): Promise<void> {
   await trigger.click()
 }
 
-test('koan detail route renders a usable full-width solve-first playground', async ({ page }) => {
+test('challenge detail route renders a usable full-width solve-first playground', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
-  await page.goto('/koans/02_fixed-greet/')
+  await page.goto('/challenges/02_fixed-greet/')
 
-  const pageRoot = page.getByTestId('koans-page')
+  const pageRoot = page.getByTestId('challenges-page')
   const topbar = page.getByTestId('site-topbar')
   const topbarInner = page.locator('.site-topbar-inner')
   const surface = page.getByTestId('playground-full-surface')
-  const koanPanel = page.getByTestId('koan-playground-panel')
+  const challengePanel = page.getByTestId('challenge-playground-panel')
   const rules = page.getByTestId('playground-rules')
   const resources = page.getByTestId('resource-sections').first()
 
-  await expect(page.getByTestId('koan-toc')).toHaveCount(0)
-  await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
-  await expect(pageRoot).toHaveClass(/koan-detail-page/)
-  await expect(page.getByTestId('koan-02_fixed-greet')).not.toHaveClass(/readme-document/)
-  await expect(koanPanel).toBeVisible()
-  await expect(page.getByTestId('koan-title-nav')).toHaveCount(0)
-  await expect(page.getByTestId('koan-solutions-panel')).toHaveCount(0)
-  await expect(page.getByTestId('koan-run-tests')).toBeVisible()
-  await expect(page.getByTestId('koan-load-hint')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-toc')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-breadcrumbs')).toHaveCount(0)
+  await expect(pageRoot).toHaveClass(/challenge-detail-page/)
+  await expect(page.getByTestId('challenge-02_fixed-greet')).not.toHaveClass(/readme-document/)
+  await expect(challengePanel).toBeVisible()
+  await expect(page.getByTestId('challenge-title-nav')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-solutions-panel')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-run-tests')).toBeVisible()
+  await expect(page.getByTestId('challenge-load-hint')).toHaveCount(0)
   await expect.poll(async () => rules.evaluate(element => {
     const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
     return editorElement.__thueppGetValue?.() ?? ''
-  })).toContain('Goal: print exactly Hello, koan!')
+  })).toContain('Goal: print exactly Hello, challenge!')
   await expect.poll(async () => rulesValue(page)).toContain('::=\nSTART')
-  await expect(page.getByTestId('koan-test-details-default-state')).toHaveCount(0)
-  await page.getByTestId('koan-test-toggle-default-state').click()
-  await expect(page.getByTestId('koan-test-details-default-state')).toBeVisible()
-  await expect(page.getByTestId('koan-test-resource-fixture-expected-default-state-stdout')).toContainText('Hello, koan!')
+  await expect(page.getByTestId('challenge-test-details-default-state')).toHaveCount(0)
+  await page.getByTestId('challenge-test-toggle-default-state').click()
+  await expect(page.getByTestId('challenge-test-details-default-state')).toBeVisible()
+  await expect(page.getByTestId('challenge-test-resource-fixture-expected-default-state-stdout')).toContainText('Hello, challenge!')
   await expect(rules).toBeVisible()
   await expect(resources).toBeVisible()
-  await expect(koanPanel).not.toHaveAttribute('data-slot', 'card')
+  await expect(challengePanel).not.toHaveAttribute('data-slot', 'card')
 
-  const [pageBox, topbarBox, topbarInnerBox, surfaceBox, koanBox, rulesBox, resourcesBox] = await Promise.all([
+  const [pageBox, topbarBox, topbarInnerBox, surfaceBox, challengeBox, rulesBox, resourcesBox] = await Promise.all([
     pageRoot.boundingBox(),
     topbar.boundingBox(),
     topbarInner.boundingBox(),
     surface.boundingBox(),
-    koanPanel.boundingBox(),
+    challengePanel.boundingBox(),
     rules.boundingBox(),
     resources.boundingBox(),
   ])
@@ -104,58 +104,58 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   expect(surfaceBox?.height ?? 0).toBeGreaterThan(400)
   const pageScroll = await page.evaluate(() => (document.scrollingElement?.scrollHeight ?? 0) - window.innerHeight)
   expect(pageScroll).toBeLessThanOrEqual(1)
-  expect(koanBox?.height ?? 0).toBeGreaterThan(180)
+  expect(challengeBox?.height ?? 0).toBeGreaterThan(180)
   expect(rulesBox?.height ?? 0).toBeGreaterThan(250)
-  expect(koanBox!.x).toBeLessThan(rulesBox!.x)
+  expect(challengeBox!.x).toBeLessThan(rulesBox!.x)
   expect(rulesBox!.x).toBeLessThan(resourcesBox!.x)
 
   expect(runtimeErrors).toEqual([])
 })
 
-test('solve-first koan pages omit in-panel koan navigation', async ({ page }) => {
+test('solve-first challenge pages omit in-panel challenge navigation', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
-  await page.goto('/koans/03_binary-not/')
+  await page.goto('/challenges/03_binary-not/')
 
-  await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
-  await expect(page.getByTestId('koan-title-nav')).toHaveCount(0)
-  await expect(page.getByTestId('koan-title-select')).toHaveCount(0)
-  await expect(page.getByTestId('koan-previous')).toHaveCount(0)
-  await expect(page.getByTestId('koan-next')).toHaveCount(0)
-  await expect(page.getByTestId('koan-solutions-panel')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-breadcrumbs')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-title-nav')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-title-select')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-previous')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-next')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-solutions-panel')).toHaveCount(0)
   expect(runtimeErrors).toEqual([])
 })
 
-test('koan run tests reports passing and failing browser results', async ({ page }) => {
+test('challenge run tests reports passing and failing browser results', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
-  await page.goto('/koans/03_binary-not/')
+  await page.goto('/challenges/03_binary-not/')
 
   await fillRules(page, '@IN@ ::< 1s stdin\n^0$ ::= OUT1\\nEXIT\n^1$ ::= OUT0\\nEXIT\nOUT1 ::> stdout 1\\n\nOUT0 ::> stdout 0\\n\n^EXIT$ ::- 0\n::=\n@IN@')
-  await page.getByTestId('koan-run-tests').click()
+  await page.getByTestId('challenge-run-tests').click()
 
-  await expect(page.getByTestId('koan-pass-card')).toContainText('All tests are green', { timeout: 5000 })
-  await expect(page.getByTestId('koan-run-tests')).toHaveCount(0)
-  await expect(page.getByTestId('koan-debug-zero-to-one')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-pass-card')).toContainText('All tests are green', { timeout: 5000 })
+  await expect(page.getByTestId('challenge-run-tests')).toHaveCount(0)
+  await expect(page.getByTestId('challenge-debug-zero-to-one')).toHaveCount(0)
 
-  await page.goto('/koans/03_binary-not/')
+  await page.goto('/challenges/03_binary-not/')
   await fillRules(page, '0 ::= 1')
-  await page.getByTestId('koan-run-tests').click()
+  await page.getByTestId('challenge-run-tests').click()
 
-  await expect(page.getByTestId('koan-results-summary')).toContainText('0 passing · 1 failing', { timeout: 5000 })
-  await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'fail')
-  await expect(page.getByTestId('koan-test-one-to-zero')).toHaveAttribute('data-status', 'idle')
-  await expect(page.getByTestId('koan-test-details-zero-to-one')).toBeVisible()
-  await expect(page.getByTestId('koan-test-resource-input-zero-to-one-stdin')).toContainText('0')
-  const diff = page.getByTestId('koan-test-resource-diff-zero-to-one-stdout')
-  const actual = page.getByTestId('koan-test-resource-actual-zero-to-one-stdout')
-  const expected = page.getByTestId('koan-test-resource-expected-zero-to-one-stdout')
+  await expect(page.getByTestId('challenge-results-summary')).toContainText('0 passing · 1 failing', { timeout: 5000 })
+  await expect(page.getByTestId('challenge-test-zero-to-one')).toHaveAttribute('data-status', 'fail')
+  await expect(page.getByTestId('challenge-test-one-to-zero')).toHaveAttribute('data-status', 'idle')
+  await expect(page.getByTestId('challenge-test-details-zero-to-one')).toBeVisible()
+  await expect(page.getByTestId('challenge-test-resource-input-zero-to-one-stdin')).toContainText('0')
+  const diff = page.getByTestId('challenge-test-resource-diff-zero-to-one-stdout')
+  const actual = page.getByTestId('challenge-test-resource-actual-zero-to-one-stdout')
+  const expected = page.getByTestId('challenge-test-resource-expected-zero-to-one-stdout')
   await expect(diff).toContainText('stdout actual vs expected')
   await expect(actual).toContainText('')
   await expect(actual).toHaveClass(/removed/)
   await expect(expected).toContainText('1')
   await expect(expected).toHaveClass(/added/)
   await expect(diff.locator('.state-diff-line')).toHaveText(['-', '+1'])
-  await page.getByTestId('koan-test-toggle-zero-to-one').click()
-  await expect(page.getByTestId('koan-test-details-zero-to-one')).toHaveCount(0)
+  await page.getByTestId('challenge-test-toggle-zero-to-one').click()
+  await expect(page.getByTestId('challenge-test-details-zero-to-one')).toHaveCount(0)
   expect(runtimeErrors).toEqual([])
 })
 

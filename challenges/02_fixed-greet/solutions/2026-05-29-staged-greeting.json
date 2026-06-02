@@ -1,0 +1,18 @@
+{
+  "challenge": "02_fixed-greet",
+  "cumulative_state_bytes": 45,
+  "eval_check_count": 10,
+  "rank": 2,
+  "rule_count": 4,
+  "solution_id": "2026-05-29-staged-greeting",
+  "solution_metadata": {
+    "author": "Tim Watts",
+    "slug": "staged-greeting",
+    "summary": "Route through a READY state before printing the greeting.",
+    "title": "Staged Greeting",
+    "website": "https://readevalprint.com"
+  },
+  "solution_path": "challenges/02_fixed-greet/solutions/2026-05-29-staged-greeting.tpp",
+  "solution_sha256": "1a956216bceba9ea36526438313767392c1c78313e3e9714aa96bd5a0378016f",
+  "successful_rewrites": 4
+}
