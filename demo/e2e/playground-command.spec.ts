@@ -54,33 +54,29 @@ async function openExampleMenuGroup(page: Page, label: string): Promise<void> {
 
 test('koan detail route renders a usable full-width solve-first playground', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
-  await page.goto('/koans/fixed-greet/')
+  await page.goto('/koans/02_fixed-greet/')
 
   const pageRoot = page.getByTestId('koans-page')
   const topbar = page.getByTestId('site-topbar')
   const topbarInner = page.locator('.site-topbar-inner')
   const surface = page.getByTestId('playground-full-surface')
   const koanPanel = page.getByTestId('koan-playground-panel')
-  const solutions = page.getByTestId('koan-solutions-panel')
   const rules = page.getByTestId('playground-rules')
   const resources = page.getByTestId('resource-sections').first()
 
   await expect(page.getByTestId('koan-toc')).toHaveCount(0)
   await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
   await expect(pageRoot).toHaveClass(/koan-detail-page/)
-  await expect(page.getByTestId('koan-fixed-greet')).not.toHaveClass(/readme-document/)
+  await expect(page.getByTestId('koan-02_fixed-greet')).not.toHaveClass(/readme-document/)
   await expect(koanPanel).toBeVisible()
-  await expect(page.getByTestId('koan-title-nav')).toBeVisible()
-  await expect(page.getByTestId('koan-title-select')).toContainText('Fixed Greeting')
-  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/core-rewrite-model/')
-  await expect(page.getByTestId('koan-next-disabled')).toBeVisible()
-  await expect(solutions).toBeVisible()
+  await expect(page.getByTestId('koan-title-nav')).toHaveCount(0)
+  await expect(page.getByTestId('koan-solutions-panel')).toHaveCount(0)
   await expect(page.getByTestId('koan-run-tests')).toBeVisible()
   await expect(page.getByTestId('koan-load-hint')).toHaveCount(0)
   await expect.poll(async () => rules.evaluate(element => {
     const editorElement = element as HTMLElement & { __thueppGetValue?: () => string }
     return editorElement.__thueppGetValue?.() ?? ''
-  })).toContain('# Goal: print exactly Hello, koan!')
+  })).toContain('Goal: print exactly Hello, koan!')
   await expect.poll(async () => rulesValue(page)).toContain('::=\nSTART')
   await expect(page.getByTestId('koan-test-details-default-state')).toHaveCount(0)
   await page.getByTestId('koan-test-toggle-default-state').click()
@@ -89,15 +85,13 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   await expect(rules).toBeVisible()
   await expect(resources).toBeVisible()
   await expect(koanPanel).not.toHaveAttribute('data-slot', 'card')
-  await expect(solutions).not.toHaveAttribute('data-slot', 'card')
 
-  const [pageBox, topbarBox, topbarInnerBox, surfaceBox, koanBox, solutionsBox, rulesBox, resourcesBox] = await Promise.all([
+  const [pageBox, topbarBox, topbarInnerBox, surfaceBox, koanBox, rulesBox, resourcesBox] = await Promise.all([
     pageRoot.boundingBox(),
     topbar.boundingBox(),
     topbarInner.boundingBox(),
     surface.boundingBox(),
     koanPanel.boundingBox(),
-    solutions.boundingBox(),
     rules.boundingBox(),
     resources.boundingBox(),
   ])
@@ -111,54 +105,38 @@ test('koan detail route renders a usable full-width solve-first playground', asy
   const pageScroll = await page.evaluate(() => (document.scrollingElement?.scrollHeight ?? 0) - window.innerHeight)
   expect(pageScroll).toBeLessThanOrEqual(1)
   expect(koanBox?.height ?? 0).toBeGreaterThan(180)
-  expect(solutionsBox?.height ?? 0).toBeGreaterThan(80)
   expect(rulesBox?.height ?? 0).toBeGreaterThan(250)
-  expect(Math.abs((solutionsBox?.x ?? 0) - (koanBox?.x ?? 0))).toBeLessThan(8)
-  expect(solutionsBox!.y).toBeGreaterThan(koanBox!.y)
-  expect(solutionsBox!.x).toBeLessThan(rulesBox!.x)
   expect(koanBox!.x).toBeLessThan(rulesBox!.x)
   expect(rulesBox!.x).toBeLessThan(resourcesBox!.x)
 
-  await page.getByTestId('solution-sort-title').click()
-  await expect(page.getByTestId('koan-solutions-table').locator('tbody tr').first()).toContainText('Direct Greeting')
-  await page.getByTestId('solution-sort-title').click()
-  await expect(page.getByTestId('koan-solutions-table').locator('tbody tr').first()).toContainText('Staged Greeting')
-  await page.getByTestId('solution-2026-05-29-direct-greeting').click()
-  await expect(page).toHaveURL(/\/koans\/fixed-greet\/2026-05-29-direct-greeting\/?$/)
   expect(runtimeErrors).toEqual([])
 })
 
-test('koan title dropdown jumps directly to another koan', async ({ page }) => {
+test('solve-first koan pages omit in-panel koan navigation', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
-  await page.goto('/koans/binary-not/')
+  await page.goto('/koans/03_binary-not/')
 
   await expect(page.getByTestId('koan-breadcrumbs')).toHaveCount(0)
-  await expect(page.getByTestId('koan-previous-disabled')).toBeVisible()
-  await expect(page.getByTestId('koan-next')).toHaveAttribute('href', '/koans/core-rewrite-model/')
-  await expect(page.getByTestId('koan-title-select')).toContainText('Binary Not')
-
-  await page.getByTestId('koan-title-select').click()
-  await page.getByTestId('koan-title-option-fixed-greet').click()
-
-  await expect(page).toHaveURL(/\/koans\/fixed-greet\/?$/)
-  await expect(page.getByTestId('koan-title-select')).toContainText('Fixed Greeting')
-  await expect(page.getByTestId('koan-previous')).toHaveAttribute('href', '/koans/core-rewrite-model/')
-  await expect(page.getByTestId('koan-next-disabled')).toBeVisible()
+  await expect(page.getByTestId('koan-title-nav')).toHaveCount(0)
+  await expect(page.getByTestId('koan-title-select')).toHaveCount(0)
+  await expect(page.getByTestId('koan-previous')).toHaveCount(0)
+  await expect(page.getByTestId('koan-next')).toHaveCount(0)
+  await expect(page.getByTestId('koan-solutions-panel')).toHaveCount(0)
   expect(runtimeErrors).toEqual([])
 })
 
 test('koan run tests reports passing and failing browser results', async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page)
-  await page.goto('/koans/binary-not/')
+  await page.goto('/koans/03_binary-not/')
 
   await fillRules(page, '@IN@ ::< 1s stdin\n^0$ ::= OUT1\\nEXIT\n^1$ ::= OUT0\\nEXIT\nOUT1 ::> stdout 1\\n\nOUT0 ::> stdout 0\\n\n^EXIT$ ::- 0\n::=\n@IN@')
   await page.getByTestId('koan-run-tests').click()
 
-  await expect(page.getByTestId('koan-results-summary')).toContainText('2 passing', { timeout: 5000 })
-  await expect(page.getByTestId('koan-test-zero-to-one')).toHaveAttribute('data-status', 'pass')
-  await expect(page.getByTestId('koan-test-one-to-zero')).toHaveAttribute('data-status', 'pass')
+  await expect(page.getByTestId('koan-pass-card')).toContainText('All tests are green', { timeout: 5000 })
+  await expect(page.getByTestId('koan-run-tests')).toHaveCount(0)
   await expect(page.getByTestId('koan-debug-zero-to-one')).toHaveCount(0)
 
+  await page.goto('/koans/03_binary-not/')
   await fillRules(page, '0 ::= 1')
   await page.getByTestId('koan-run-tests').click()
 

@@ -9,7 +9,7 @@
       <Card v-if="allTestsPassed" class="koan-pass-card" data-test="koan-pass-card" aria-label="All tests passed">
         <CardHeader>
           <CardTitle>All tests are green.</CardTitle>
-          <CardDescription>{{ nextKoan ? 'Commit this tiny victory and keep walking.' : 'This is the last koan in the list.' }}</CardDescription>
+          <CardDescription>{{ nextKoan ? 'Good work. Continue your path of wisdom.' : 'This is the last koan in the list.' }}</CardDescription>
         </CardHeader>
         <CardFooter v-if="nextKoan">
           <Button as-child size="lg" class="w-full">

@@ -7,7 +7,7 @@ Koans are small executable rewrite challenges. They are intentionally separate f
 
 ```text
 koans/
-  <koan-slug>/
+  NN_<koan-slug>/
     readme.md
     tests/
       <name>.json
@@ -17,6 +17,8 @@ koans/
       YYYY-MM-DD-<solution-slug>.tpp
       YYYY-MM-DD-<solution-slug>.json
 ```
+
+Koan directory names carry a two-digit order prefix plus the slug, for example `01_core-rewrite-model`.
 
 `readme.md` is the human/cultural artifact: front matter metadata, problem statement, monk wisdom, notes, and rendered `thue` code fences.
 `tests/*.json` are the behavior contract.
@@ -57,7 +59,7 @@ There are no per-case `args` or `timeout` keys; koans should be reproducible thr
 For non-maintainer submissions, an MR may add exactly one file:
 
 ```text
-koans/<koan-slug>/solutions/YYYY-MM-DD-<solution-slug>.tpp
+koans/NN_<koan-slug>/solutions/YYYY-MM-DD-<solution-slug>.tpp
 ```
 
 The filename date records the submission day. The filename slug must match the solution front matter `slug`, and that slug must be the lowercase kebab-case form of the solution title. The MR must touch nothing else.

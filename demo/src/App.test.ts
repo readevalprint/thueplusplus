@@ -175,14 +175,14 @@ describe('Go-WASM demo UI', () => {
     const topbar = wrapper.get('[data-test="site-topbar"]')
     expect(topbar.get('nav a[href="/koans"]').attributes('aria-current')).toBe('page')
     expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBeUndefined()
-    expect(wrapper.get('[data-test="koan-fixed-greet"]').attributes('href')).toBe('/koans/fixed-greet/')
-    expect(wrapper.get('[data-test="koan-binary-not"]').attributes('href')).toBe('/koans/binary-not/')
+    expect(wrapper.get('[data-test="koan-02_fixed-greet"]').attributes('href')).toBe('/koans/02_fixed-greet/')
+    expect(wrapper.get('[data-test="koan-03_binary-not"]').attributes('href')).toBe('/koans/03_binary-not/')
     expect(wrapper.find('[data-test="koans-workflow"]').exists()).toBe(false)
   })
 
   it('serves individual koan and solution detail routes', async () => {
     const solutionId = '2026-05-29-direct-greeting'
-    window.history.pushState({}, '', `/koans/fixed-greet/${solutionId}`)
+    window.history.pushState({}, '', `/koans/02_fixed-greet/${solutionId}`)
     const wrapper = await mountApp()
 
     const topbar = wrapper.get('[data-test="site-topbar"]')
@@ -198,11 +198,11 @@ describe('Go-WASM demo UI', () => {
     expect(solutionSource.text()).toContain('title: Direct Greeting')
     expect(solutionSource.text()).toContain('author: Tim Watts')
     expect(solutionSource.text()).toContain('^START$ ::= OUT\\nEXIT')
-    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://thuelang.org/koans/fixed-greet/${solutionId}`)
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://thuelang.org/koans/02_fixed-greet/${solutionId}`)
   })
 
   it('runs koan tests from the playground rules editor and shows expected output diffs', async () => {
-    window.history.pushState({}, '', '/koans/fixed-greet/')
+    window.history.pushState({}, '', '/koans/02_fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
     const wrapper = await mountApp()
 
@@ -231,7 +231,7 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
-      sourcePath: 'koans/fixed-greet/attempt.tpp',
+      sourcePath: 'koans/02_fixed-greet/attempt.tpp',
       sourceText: '^START$ ::= OUT',
       input: '',
       resources: [],
@@ -253,7 +253,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('shows koan exit-code mismatch diffs separately from output diffs', async () => {
-    window.history.pushState({}, '', '/koans/fixed-greet/')
+    window.history.pushState({}, '', '/koans/02_fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({
       exitCode: 1,
       stdout: 'Hello, koan!\n',
@@ -278,7 +278,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('fails koan tests loudly when the worker omits exitCode', async () => {
-    window.history.pushState({}, '', '/koans/fixed-greet/')
+    window.history.pushState({}, '', '/koans/02_fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({
       stdout: 'Hello, koan!\n',
       stderr: '',
@@ -303,7 +303,7 @@ describe('Go-WASM demo UI', () => {
   it('runs koan tests visibly through playground play controls when auto is off', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/koans/fixed-greet/')
+      window.history.pushState({}, '', '/koans/02_fixed-greet/')
       mockedRunWithWorker
         .mockResolvedValueOnce({
           exitCode: undefined,
@@ -314,7 +314,7 @@ describe('Go-WASM demo UI', () => {
           trace: [{
             step: 1,
             ruleIndex: 0,
-            sourcePath: 'koans/fixed-greet/attempt.tpp',
+            sourcePath: 'koans/02_fixed-greet/attempt.tpp',
             lineNumber: 1,
             operator: '::=',
             lhs: '^START$',
@@ -371,7 +371,7 @@ describe('Go-WASM demo UI', () => {
   it('auto-runs koan tests on debounced rule changes and restarts an in-flight run', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/koans/fixed-greet/')
+      window.history.pushState({}, '', '/koans/02_fixed-greet/')
       const firstRun = deferred<never>()
       const aborts: AbortSignal[] = []
       mockedRunWithWorker
@@ -396,7 +396,7 @@ describe('Go-WASM demo UI', () => {
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
       expect(mockedRunWithWorker.mock.calls[0][0]).toEqual(expect.objectContaining({
         sourceText: '^START$ ::= FIRST',
-        sourcePath: 'koans/fixed-greet/attempt.tpp',
+        sourcePath: 'koans/02_fixed-greet/attempt.tpp',
       }))
       expect(wrapper.get('[data-test="koan-run-tests"]').text()).toContain('Running…')
 
@@ -417,7 +417,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('persists the koan auto-test checkbox preference', async () => {
-    window.history.pushState({}, '', '/koans/fixed-greet/')
+    window.history.pushState({}, '', '/koans/02_fixed-greet/')
     window.localStorage.setItem('thuepp.koanTestsAuto', 'true')
     const wrapper = await mountApp()
     const checkbox = wrapper.get('[data-test="koan-auto-tests"]').element as HTMLInputElement
@@ -430,7 +430,7 @@ describe('Go-WASM demo UI', () => {
   it('auto-runs koan tests with the embedded source state as fallback input', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/koans/fixed-greet/')
+      window.history.pushState({}, '', '/koans/02_fixed-greet/')
       mockedRunWithWorker.mockImplementation(async request => ({
         exitCode: request.input === 'START' ? 0 : 1,
         stdout: request.input === 'START' ? 'Hello, koan!\n' : '',
@@ -456,7 +456,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('places the koan panel before rules, resources, and state history in the full playground', async () => {
-    window.history.pushState({}, '', '/koans/fixed-greet/')
+    window.history.pushState({}, '', '/koans/02_fixed-greet/')
     const wrapper = await mountApp()
 
     const surface = wrapper.get('[data-test="playground-full-surface"]')
@@ -489,7 +489,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('passes stdin buffers through resource-shaped koan tests', async () => {
-    window.history.pushState({}, '', '/koans/binary-not/')
+    window.history.pushState({}, '', '/koans/03_binary-not/')
     mockedRunWithWorker.mockImplementation(async request => {
       const stdin = request.input
       return {
@@ -518,13 +518,13 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([])
     expect(wrapper.find('[data-test="koan-tests-card"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('All tests are green')
+    expect(wrapper.get('[data-test="koan-pass-card"]').text()).toContain('This is the last koan')
     expect(wrapper.get('[data-test="koan-pass-card"]').classes()).toContain('koan-pass-card')
-    expect(wrapper.get('[data-test="koan-next-cta"]').attributes('href')).toBe('/koans/core-rewrite-model/')
-    expect(wrapper.get('[data-test="koan-next-cta"]').text()).toContain('Go To Next Koan')
+    expect(wrapper.find('[data-test="koan-next-cta"]').exists()).toBe(false)
   })
 
   it('shows resource-shaped koan failures as stacked expected and actual diffs', async () => {
-    window.history.pushState({}, '', '/koans/binary-not/')
+    window.history.pushState({}, '', '/koans/03_binary-not/')
     mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: 'wrong\n', stderr: '' })
     const wrapper = await mountApp()
     const rules = wrapper.get('[data-test="playground-rules"]')
@@ -551,8 +551,8 @@ describe('Go-WASM demo UI', () => {
     expect(actual.element.compareDocumentPosition(expected.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('compares koan stderr expectations against raw worker stderr', async () => {
-    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '[1] user line\n' })
+  it('trims leading and trailing whitespace before comparing koan resource output', async () => {
+    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '  ok\n', stderr: '  [1] user line\n' })
     const results = await runKoanTests({
       slug: 'stderr-policy',
       title: 'Stderr Policy',
@@ -562,7 +562,7 @@ describe('Go-WASM demo UI', () => {
       bestSolutionId: null,
       tests: [{
         name: 'stderr prefix',
-        resources: { stderr: { expected_output: '[1] user line\n' } },
+        resources: { stdout: { expected_output: '\nok  ' }, stderr: { expected_output: '[1] user line\n' } },
         exit_code: 0,
       }],
       solutions: [],
@@ -570,16 +570,24 @@ describe('Go-WASM demo UI', () => {
 
     expect(results).toHaveLength(1)
     expect(results[0].passed).toBe(true)
-    expect(results[0].resources[0]).toEqual({
-      name: 'stderr',
-      expected: '[1] user line\n',
-      actual: '[1] user line\n',
-      passed: true,
-    })
+    expect(results[0].resources).toEqual([
+      {
+        name: 'stdout',
+        expected: 'ok',
+        actual: 'ok',
+        passed: true,
+      },
+      {
+        name: 'stderr',
+        expected: '[1] user line',
+        actual: '[1] user line',
+        passed: true,
+      },
+    ])
   })
 
   it('omits solution tables from solve-first koan playground pages', async () => {
-    window.history.pushState({}, '', '/koans/fixed-greet/')
+    window.history.pushState({}, '', '/koans/02_fixed-greet/')
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="koan-solutions-panel"]').exists()).toBe(false)

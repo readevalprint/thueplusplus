@@ -62,12 +62,13 @@ async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCa
       passed: actualExitCode === testCase.exit_code,
     }
     const resources = expectedResources(testCase).map(({ name, expected }) => {
-      const actual = resourceOutput(result.resourceLogs, name, result.stdout ?? '', result.stderr ?? '')
+      const actual = normalizeOutput(resourceOutput(result.resourceLogs, name, result.stdout ?? '', result.stderr ?? ''))
+      const normalizedExpected = normalizeOutput(expected)
       return {
         name,
-        expected,
+        expected: normalizedExpected,
         actual,
-        passed: actual === expected,
+        passed: actual === normalizedExpected,
       }
     })
     return {
@@ -89,7 +90,7 @@ async function runKoanTest(koan: KoanEntry, source: string, testCase: KoanTestCa
       },
       resources: expectedResources(testCase).map(({ name, expected }) => ({
         name,
-        expected,
+        expected: normalizeOutput(expected),
         actual: '',
         passed: false,
       })),
@@ -110,6 +111,10 @@ function resourceOutput(logs: DemoResourceLog[] | undefined, name: string, stdou
   if (name === 'stdout') return stdout
   if (name === 'stderr') return stderr
   return ''
+}
+
+function normalizeOutput(output: string): string {
+  return output.trim()
 }
 
 function abortError(): DOMException {
