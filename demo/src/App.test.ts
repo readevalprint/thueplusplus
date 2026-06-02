@@ -66,12 +66,6 @@ function deferred<T>() {
 }
 
 
-function sourceWithState(source: string, state: string): string {
-  const separator = source.split(/\r?\n/).findIndex(row => row.trim() === '::=')
-  const rules = separator >= 0 ? source.split(/\r?\n/).slice(0, separator).join('\n') : source
-  return `${rules}${rules.endsWith('\n') ? '' : '\n'}::=\n${state}`
-}
-
 function programState(wrapper: ReturnType<typeof mount>): string {
   const rules = wrapper.get('[data-test="playground-rules"]')
   const currentState = rules.attributes('data-current-state')
@@ -83,10 +77,12 @@ function programState(wrapper: ReturnType<typeof mount>): string {
   return rows.slice(separator + 1).join('\n').replace(/\n+$/, '')
 }
 
+function sourceProgramState(wrapper: ReturnType<typeof mount>): string {
+  return (wrapper.get('[data-test="playground-initial-state"]').element as HTMLTextAreaElement).value
+}
+
 async function setProgramState(wrapper: ReturnType<typeof mount>, state: string): Promise<void> {
-  const rules = wrapper.get('[data-test="playground-rules"]')
-  const source = (rules.element as HTMLTextAreaElement).value
-  await rules.setValue(sourceWithState(source, state))
+  await wrapper.get('[data-test="playground-initial-state"]').setValue(state)
   await flush()
 }
 
@@ -251,12 +247,14 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
     await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
+    await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
       sourcePath: 'challenges/02_fixed-greet/attempt.tpp',
       sourceText: '^START$ ::= OUT',
-      input: '',
-      resources: [],
+      input: 'START',
+      stepLimit: 1,
+      trace: true,
     }))
     const result = wrapper.get('[data-test="challenge-test-default-state"]')
     expect(wrapper.get('[data-test="challenge-results-summary"]').text()).toBe('0 passing · 1 failing')
@@ -288,6 +286,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
     await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
+    await flush()
 
     const result = wrapper.get('[data-test="challenge-test-default-state"]')
     expect(wrapper.get('[data-test="challenge-results-summary"]').text()).toBe('0 passing · 1 failing')
@@ -311,6 +310,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\\n^OUT$ ::> stdout Hello, challenge!\\n^OUT$ ::- 0')
     await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
     await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
+    await flush()
     await flush()
 
     const result = wrapper.get('[data-test="challenge-test-default-state"]')
@@ -419,6 +419,9 @@ describe('Go-WASM demo UI', () => {
       expect(mockedRunWithWorker.mock.calls[0][0]).toEqual(expect.objectContaining({
         sourceText: '^START$ ::= FIRST',
         sourcePath: 'challenges/02_fixed-greet/attempt.tpp',
+        input: 'START',
+        stepLimit: 1,
+        trace: true,
       }))
       expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Running…')
 
@@ -430,7 +433,11 @@ describe('Go-WASM demo UI', () => {
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
       expect(mockedRunWithWorker.mock.calls[1][0]).toEqual(expect.objectContaining({
         sourceText: '^START$ ::= SECOND',
+        input: 'START',
+        stepLimit: 1,
+        trace: true,
       }))
+      await flush()
       await flush()
       expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Run Tests Again')
     } finally {
@@ -465,6 +472,7 @@ describe('Go-WASM demo UI', () => {
       vi.advanceTimersByTime(300)
       await flush()
       await flush()
+      await flush()
       expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
         sourceText: '^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, challenge!\\n\n^EXIT$ ::- 0\n',
         input: 'START',
@@ -477,24 +485,56 @@ describe('Go-WASM demo UI', () => {
     }
   })
 
-  it('places the challenge panel before rules, resources, and state history in the full playground', async () => {
+  it('auto-runs challenge tests after editing Program State without changing runnable rules', async () => {
+    vi.useFakeTimers()
+    try {
+      window.history.pushState({}, '', '/challenges/02_fixed-greet/')
+      mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', resourceLogs: [] })
+      const wrapper = await mountApp()
+      await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
+      await wrapper.get('[data-test="playground-rules"]').setValue('^START$ ::= OUT\n::=\nSTART')
+      vi.advanceTimersByTime(300)
+      await flush()
+      expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
+        sourceText: '^START$ ::= OUT\n',
+        input: 'START',
+      }))
+
+      mockedRunWithWorker.mockClear()
+      await wrapper.get('[data-test="playground-initial-state"]').setValue('NEXT')
+      vi.advanceTimersByTime(300)
+      await flush()
+      expect(mockedRunWithWorker).toHaveBeenCalledWith(expect.objectContaining({
+        sourceText: '^START$ ::= OUT\n',
+        input: 'NEXT',
+      }))
+      expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('^START$ ::= OUT\n')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('places the challenge panel before rules, source state, resources, and state history in the full playground', async () => {
     window.history.pushState({}, '', '/challenges/02_fixed-greet/')
     const wrapper = await mountApp()
 
     const surface = wrapper.get('[data-test="playground-full-surface"]')
     const challengePanel = wrapper.get('[data-test="challenge-playground-panel"]')
     const rulesEditor = wrapper.get('[data-test="playground-rules"]')
+    const sourceState = wrapper.get('[data-test="playground-initial-state"]')
     const resources = wrapper.get('[data-test="resource-sections"]')
     const stateHistory = wrapper.get('[data-test="playground-diffs"]')
 
     expect(surface.element.contains(challengePanel.element)).toBe(true)
     expect(surface.element.contains(rulesEditor.element)).toBe(true)
     expect(challengePanel.element.compareDocumentPosition(rulesEditor.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(rulesEditor.element.compareDocumentPosition(resources.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(rulesEditor.element.compareDocumentPosition(sourceState.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(sourceState.element.compareDocumentPosition(resources.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(resources.element.compareDocumentPosition(stateHistory.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(surface.text()).toContain('Fixed Greeting')
     expect(surface.text()).toContain('program rules')
-    expect(surface.text()).not.toContain('program state')
+    expect(surface.text()).toContain('initial state')
+    expect(surface.text()).toContain('current state')
     expect(surface.text()).toContain('state history')
     expect(surface.text()).toContain('resources')
   })
@@ -533,11 +573,12 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
     await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
     await flush()
+    await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('0\n')
     expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('1\n')
-    expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([])
+    expect(mockedRunWithWorker.mock.calls[0][0]).toEqual(expect.objectContaining({ stepLimit: 1, trace: true }))
     expect(wrapper.find('[data-test="challenge-tests-card"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('All tests are green')
     expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('This is the last challenge')
@@ -554,6 +595,7 @@ describe('Go-WASM demo UI', () => {
 
     await wrapper.get('[data-test="challenge-auto-tests"]').setValue(true)
     await wrapper.get('[data-test="challenge-run-tests"]').trigger('click')
+    await flush()
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
@@ -671,8 +713,12 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-step-limit-100000"]').text()).toBe('100000')
     expect(wrapper.get('[data-test="playground-step-limit-10000"]').attributes('data-selected')).toBe('true')
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
-    expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBe(3)
-    expect(wrapper.findAll('[data-slot="resizable-handle"]').length).toBe(2)
+    expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBe(7)
+    expect(wrapper.findAll('[data-slot="resizable-handle"]').length).toBe(4)
+    expect(wrapper.get('[data-test="playground-rules-state-split"]').attributes('data-orientation')).toBe('vertical')
+    expect(wrapper.get('[data-test="playground-rules-state-handle"]').attributes('data-orientation')).toBe('vertical')
+    expect(wrapper.get('[data-test="playground-current-history-split"]').attributes('data-orientation')).toBe('vertical')
+    expect(wrapper.get('[data-test="playground-current-history-handle"]').attributes('data-orientation')).toBe('vertical')
     expect(wrapper.get('[data-test="resource-section-stdin"]').text()).toContain('stdin')
     expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
     expect(wrapper.get('[data-test="resource-section-stderr"]').text()).toContain('stderr')
@@ -681,7 +727,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-output-stderr"]').element.tagName).toBe('TEXTAREA')
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
     expect(loadedSource).toContain('Hello, World')
-    expect(loadedSource).toContain('\n::=\nSTART\n')
+    expect(loadedSource).not.toContain('\n::=\nSTART\n')
+    expect(wrapper.get('[data-test="playground-initial-state-pane"]').text()).toContain('initial state')
+    expect(sourceProgramState(wrapper)).toBe('START')
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
@@ -700,6 +748,7 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].sourceText).not.toContain('\n::=\nSTART\n')
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('START')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello, World!\n')
+    expect(sourceProgramState(wrapper)).toBe('START')
   })
 
   it('uses the visible empty state instead of falling back to embedded source state', async () => {
@@ -716,7 +765,7 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('')
   })
 
-  it('seeds Program State from pasted full source while keeping Program Rules copyable', async () => {
+  it('seeds Initial State from pasted full source while keeping Program Rules rules-only', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp()
     await setProgramState(wrapper, 'stale override')
@@ -725,7 +774,8 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-rules"]').setValue(pastedSource)
     await wrapper.get('[data-test="playground-rules"]').trigger('paste')
 
-    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe(pastedSource)
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('^aaab$ ::= done\n')
+    expect(sourceProgramState(wrapper)).toBe('aaab')
     expect(programState(wrapper)).toBe('aaab')
 
     mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '', state: 'done', resourceLogs: [] })
@@ -743,6 +793,39 @@ describe('Go-WASM demo UI', () => {
     await setProgramState(wrapper, 'custom state')
 
     expect(programState(wrapper)).toBe('custom state')
+    expect(sourceProgramState(wrapper)).toBe('custom state')
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).not.toContain('\n::=\ncustom state')
+  })
+
+  it('keeps Program Rules and Program State in two-way sync around the source separator', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = await mountApp()
+
+    await wrapper.get('[data-test="playground-rules"]').setValue('^A$ ::= B\n::=\nA')
+    await flush()
+    expect(sourceProgramState(wrapper)).toBe('A')
+
+    await wrapper.get('[data-test="playground-rules"]').setValue('^A$ ::= B\n::=\nB')
+    await flush()
+    expect(sourceProgramState(wrapper)).toBe('B')
+
+    await wrapper.get('[data-test="playground-initial-state"]').setValue('C')
+    await flush()
+    const source = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
+    expect(source).toBe('^A$ ::= B\n')
+    expect(programState(wrapper)).toBe('C')
+  })
+
+  it('appends a state separator when editing Program State for source without one', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hash-data/source-hash-rule.tpp')
+    const wrapper = await mountApp()
+    await wrapper.get('[data-test="playground-rules"]').setValue('^A$ ::= B')
+
+    await wrapper.get('[data-test="playground-initial-state"]').setValue('A')
+    await flush()
+
+    expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('^A$ ::= B')
+    expect(programState(wrapper)).toBe('A')
   })
 
   it('loads hash-prefixed source rows exactly and keeps state empty without a separator heuristic', async () => {
@@ -784,14 +867,39 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
     expect(mockedRunWithWorker.mock.calls[0][0].trace).toBe(true)
     expect(programState(wrapper)).toBe('middle')
+    expect(sourceProgramState(wrapper)).toBe('start')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('data-current-match-line')).toBe('1')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('^start$ ::= middle')
-    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('-start')
-    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('+middle')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('start')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('middle')
+    expect(wrapper.find('.state-diff-sign').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('examples/hello/hello.tpp')
     expect(wrapper.find('.state-diff-char-removed').exists()).toBe(true)
     expect(wrapper.find('.state-diff-char-added').exists()).toBe(true)
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
+  })
+
+  it('copies Current State without mutating Initial State', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = await mountApp()
+    await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle')
+    await setProgramState(wrapper, 'start')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      state: 'middle',
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+      resourceLogs: [],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    await wrapper.get('[data-test="copy-current-state"]').trigger('click')
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('middle')
+    expect((wrapper.get('[data-test="playground-current-state"]').element as HTMLTextAreaElement).value).toBe('middle')
+    expect(sourceProgramState(wrapper)).toBe('start')
   })
 
   it('shows failed step exit status and stderr instead of reporting a successful step', async () => {
@@ -979,8 +1087,9 @@ describe('Go-WASM demo UI', () => {
     const entries = wrapper.findAll('.state-diff-row')
     expect(entries).toHaveLength(2)
     expect(entries[1].text()).toContain('end: skipped intermediate steps')
-    expect(entries[1].text()).toContain('-start')
-    expect(entries[1].text()).toContain('+done')
+    expect(entries[1].text()).toContain('start')
+    expect(entries[1].text()).toContain('done')
+    expect(entries[1].find('.state-diff-sign').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('^start$ ::= middle')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('data-current-match-line')).toBeUndefined()
   })
@@ -1059,7 +1168,7 @@ describe('Go-WASM demo UI', () => {
 
     await entries()[0].trigger('click')
     expect(programState(wrapper)).toBe('start')
-    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('Viewing Start')
+    expect(wrapper.get('[data-test="playground-status"]').text()).not.toContain('Viewing')
     expect(entries()[0].attributes('data-selected')).toBe('true')
     expect(entries()[1].attributes('data-future')).toBe('true')
 
@@ -1084,7 +1193,7 @@ describe('Go-WASM demo UI', () => {
 
     await wrapper.get('[data-test="playground-reset"]').trigger('click')
     expect(programState(wrapper)).toBe('start')
-    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('Viewing Start')
+    expect(wrapper.get('[data-test="playground-status"]').text()).not.toContain('Viewing')
     expect(entries()[0].attributes('data-selected')).toBe('true')
   })
 
@@ -1181,7 +1290,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-undo"]').trigger('click')
     await flush()
 
-    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('Viewing Step 1')
+    expect(wrapper.get('[data-test="playground-status"]').text()).not.toContain('Viewing')
     expect(programState(wrapper)).toBe('b')
     expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
     expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(false)

@@ -13,6 +13,15 @@ export function splitProgramSource(source: string): SplitProgramSourceResult {
   return { rules: source.slice(0, separator.start), state, error: '' }
 }
 
+export function setProgramSourceState(source: string, state: string): string {
+  const normalizedState = normalizeNewlines(state)
+  const separator = findStateSeparator(source)
+  if (separator) return `${source.slice(0, separator.end)}${normalizedState}`
+  if (normalizedState === '') return source
+  const separatorPrefix = source === '' || source.endsWith('\n') || source.endsWith('\r') ? '' : '\n'
+  return `${source}${separatorPrefix}::=\n${normalizedState}`
+}
+
 interface SeparatorRange {
   start: number
   end: number

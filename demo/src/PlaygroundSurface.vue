@@ -88,10 +88,13 @@
             <Textarea v-else :model-value="resourceOutputText('stderr')" data-test="resource-output-stderr" readonly spellcheck="false" wrap="off" />
           </template>
           <StateDiffs v-else-if="activeSection === 'trace'" :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+          <template v-else-if="activeSection === 'state'">
+            <Textarea :model-value="stateText" data-test="playground-current-state" readonly spellcheck="false" wrap="off" />
+          </template>
           <div v-else-if="activeSection === 'resources'" class="resource-list compact-resource-list" data-test="resource-sections">
             <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" :input-readonly="resourceInputReadonly(resource.name)" :input-help="resourceInputHelp(resource.name)" :countdown-seconds="countdownForResource(resource.name)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
           </div>
-          <Textarea v-else :model-value="rulesText" data-test="embed-source-text" readonly spellcheck="false" wrap="off" />
+          <Textarea v-else :model-value="fullSourceText" data-test="embed-source-text" readonly spellcheck="false" wrap="off" />
         </div>
       </section>
     </section>
@@ -110,8 +113,10 @@
       </ResizablePanel>
       <ResizableHandle v-if="props.challenge" />
       <ResizablePanel :default-size="props.challenge ? 32 : 42" :min-size="24" class="playground-column playground-rules-column">
-        <section class="playground-rules-pane">
-          <header class="playground-panel-header playground-rules-header">
+        <ResizablePanelGroup direction="vertical" class="playground-rules-state-layout" auto-save-id="playground-rules-state-split" data-test="playground-rules-state-split">
+          <ResizablePanel :default-size="76" :min-size="45" class="playground-rules-stack-panel">
+            <section class="playground-rules-pane">
+              <header class="playground-panel-header playground-rules-header">
             <div class="playground-rules-title-block">
               <div class="playground-panel-title">program rules</div>
               <p v-if="selectedCaseLabel" class="playground-selected-case" data-test="playground-selected-case">
@@ -157,11 +162,31 @@
                 <ButtonGroup aria-label="Step limit"><Button v-for="option in stepLimitOptions" :key="option" type="button" :variant="stepLimit === option ? 'secondary' : 'ghost'" size="sm" :data-selected="stepLimit === option" :data-test="`playground-step-limit-${option}`" :disabled="isBusy" @click="stepLimit = option">{{ option }}</Button></ButtonGroup>
               </div>
             </div>
-          </header>
-          <div class="playground-panel-content">
-            <RulesMonacoEditor :model-value="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" :data-current-state="stateText" data-test="playground-rules" @update:model-value="setRulesText" @paste="seedStateFromSource" />
-          </div>
-        </section>
+              </header>
+              <div class="playground-panel-content">
+                <RulesMonacoEditor :model-value="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" :data-current-state="stateText" data-test="playground-rules" @update:model-value="setRulesText" @paste="seedStateFromSource" />
+              </div>
+            </section>
+          </ResizablePanel>
+          <ResizableHandle data-test="playground-rules-state-handle" />
+          <ResizablePanel :default-size="24" :min-size="16" class="playground-state-stack-panel">
+            <section class="playground-source-state-pane" data-test="playground-initial-state-pane">
+              <header class="playground-panel-header">
+                <div class="playground-panel-title">initial state</div>
+              </header>
+              <div class="playground-panel-content playground-source-state-content">
+                <Textarea
+                  :model-value="initialStateText"
+                  :readonly="!props.editable || isBusy"
+                  data-test="playground-initial-state"
+                  spellcheck="false"
+                  wrap="off"
+                  @update:model-value="setInitialStateText(String($event))"
+                />
+              </div>
+            </section>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </ResizablePanel>
       <ResizableHandle />
       <ResizablePanel :default-size="props.challenge ? 22 : 29" :min-size="20" class="playground-column playground-resources-column">
@@ -176,14 +201,30 @@
       </ResizablePanel>
       <ResizableHandle />
       <ResizablePanel :default-size="props.challenge ? 22 : 29" :min-size="20" class="playground-column playground-state-column">
-        <section class="playground-diffs-pane">
-          <header class="playground-panel-header">
-            <div class="playground-panel-title">state history</div>
-          </header>
-          <div class="playground-panel-content">
-            <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
-          </div>
-        </section>
+        <ResizablePanelGroup direction="vertical" class="playground-current-history-layout" auto-save-id="playground-current-history-split" data-test="playground-current-history-split">
+          <ResizablePanel :default-size="32" :min-size="18" class="playground-current-state-stack-panel">
+            <section class="playground-current-state-pane" data-test="playground-current-state-pane">
+              <header class="playground-panel-header playground-current-state-header">
+                <div class="playground-panel-title">current state</div>
+                <Button type="button" variant="ghost" size="sm" data-test="copy-current-state" title="Copy current state" aria-label="Copy current state" @click="copyCurrentState">copy</Button>
+              </header>
+              <div class="playground-panel-content playground-current-state-content">
+                <Textarea :model-value="stateText" data-test="playground-current-state" readonly spellcheck="false" wrap="off" />
+              </div>
+            </section>
+          </ResizablePanel>
+          <ResizableHandle data-test="playground-current-history-handle" />
+          <ResizablePanel :default-size="68" :min-size="25" class="playground-history-stack-panel">
+            <section class="playground-diffs-pane">
+              <header class="playground-panel-header">
+                <div class="playground-panel-title">state history</div>
+              </header>
+              <div class="playground-panel-content">
+                <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+              </div>
+            </section>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </ResizablePanel>
     </ResizablePanelGroup>
   </main>
@@ -203,9 +244,9 @@ import StateDiffs from './StateDiffs.vue'
 import TestCaseMenu from './TestCaseMenu.vue'
 import ChallengePlaygroundPanel from './challenges/ChallengePlaygroundPanel.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
-import { splitProgramSource } from './thueSource'
+import { setProgramSourceState, splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
-import { runChallengeTests, expectedResources, type ChallengeTestResult } from './challenges/runChallengeTests'
+import { expectedResources, type ChallengeTestResult } from './challenges/runChallengeTests'
 import type { ChallengeEntry, ChallengeTestCase } from './challenges/types'
 
 export type PlaygroundSection = 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
@@ -275,13 +316,14 @@ const openFullHref = computed(() => {
 })
 const sectionTabs: Array<{ id: PlaygroundSection; label: string }> = [
   { id: 'output', label: 'Output' },
+  { id: 'state', label: 'State' },
   { id: 'trace', label: 'Trace' },
   { id: 'resources', label: 'Resources' },
   { id: 'source', label: 'Source' },
 ]
 
 function normalizeSection(value?: string | null): PlaygroundSection {
-  const allowed = new Set(['output', 'trace', 'resources', 'source'])
+  const allowed = new Set(['output', 'state', 'trace', 'resources', 'source'])
   return allowed.has(value ?? '') ? value as PlaygroundSection : 'output'
 }
 
@@ -376,6 +418,7 @@ const stepLimitOptions = [1000, 10000, 100000]
 const fileParam = ref(initialFile)
 const sourcePath = ref(initialFile.replace(/^\.\//, ''))
 const rulesText = ref('')
+const initialStateText = ref('')
 const stateText = ref('')
 const resourceInputs = ref<Record<string, string>>({})
 const resourceSubmittedInputs = ref<Record<string, string>>({})
@@ -410,7 +453,8 @@ let challengeTestRunId = 0
 let challengeTestAbortController: AbortController | undefined
 let challengeTestDebounceTimer: ReturnType<typeof window.setTimeout> | undefined
 
-const runnableRulesText = computed(() => splitProgramSource(rulesText.value).rules)
+const runnableRulesText = computed(() => rulesText.value)
+const fullSourceText = computed(() => setProgramSourceState(rulesText.value, initialStateText.value))
 const ruleCount = computed(() => runnableRulesText.value.split(/\r?\n/).filter(row => /::=|::!|::<|::>|::-/.test(row)).length)
 const evalLimit = computed(() => stepLimit.value * Math.max(1, ruleCount.value))
 const resourceSections = computed(() => mergeResourceSections(extractResources(runnableRulesText.value), []))
@@ -547,7 +591,7 @@ function setResourceInput(name: string, value: string): void {
 
 function initialRuntimeState(): string {
   if (selectedTestCase.value?.hasInput) return selectedTestCase.value.input
-  return splitProgramSource(rulesText.value).state
+  return initialStateText.value
 }
 
 async function submitResource(name: string): Promise<void> {
@@ -612,7 +656,26 @@ function submittedResourceInputText(name: string): string {
 
 function setRulesText(source: string): void {
   const split = splitProgramSource(source)
-  rulesText.value = source
+  rulesText.value = split.rules
+  if (split.rules !== source || split.state !== '') initialStateText.value = split.state
+  stateText.value = initialRuntimeState()
+  loadError.value = split.error
+  clearRun()
+  scheduleChallengeTestRun()
+}
+
+function setInitialStateText(state: string): void {
+  initialStateText.value = state
+  stateText.value = initialRuntimeState()
+  loadError.value = ''
+  clearRun()
+  scheduleChallengeTestRun()
+}
+
+function loadSource(source: string): void {
+  const split = splitProgramSource(source)
+  rulesText.value = split.rules
+  initialStateText.value = split.state
   stateText.value = split.state
   loadError.value = split.error
   clearRun()
@@ -627,14 +690,11 @@ function loadFile(file: string): void {
   if (!source) {
     loadError.value = `No bundled example found for ${normalized}`
     rulesText.value = ''
+    initialStateText.value = ''
     stateText.value = ''
     return
   }
-  const split = splitProgramSource(source)
-  rulesText.value = source
-  stateText.value = split.state
-  loadError.value = split.error
-  clearRun()
+  loadSource(source)
   resourceInputs.value = {}
   if (props.syncUrl) {
     const url = new URL(window.location.href)
@@ -643,15 +703,23 @@ function loadFile(file: string): void {
   }
 }
 
-function seedStateFromSource(source = rulesText.value): void {
+function seedStateFromSource(source = fullSourceText.value): void {
   setRulesText(source)
+}
+
+async function copyCurrentState(): Promise<void> {
+  await navigator.clipboard?.writeText(stateText.value)
 }
 
 function selectTestCase(testCase: TestCaseOption): void {
   const file = `./${testCase.programPath}`
   loadFile(file)
   selectedTestCase.value = testCase
-  if (testCase.hasInput) stateText.value = testCase.input
+  if (testCase.hasInput) {
+    initialStateText.value = testCase.input
+    stateText.value = testCase.input
+    clearRun()
+  }
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
   if (props.syncUrl) {
     const url = new URL(window.location.href)
@@ -662,8 +730,7 @@ function selectTestCase(testCase: TestCaseOption): void {
 }
 
 async function runCurrentChallengeTests(): Promise<void> {
-  if (challengeTestsAuto.value) await startChallengeTestRun()
-  else await startVisibleChallengeTestRun()
+  await startVisibleChallengeTestRun()
 }
 
 function setChallengeTestsAuto(value: boolean): void {
@@ -678,11 +745,11 @@ function scheduleChallengeTestRun(): void {
   cancelPendingChallengeTestDebounce()
   challengeTestDebounceTimer = window.setTimeout(() => {
     challengeTestDebounceTimer = undefined
-    void startChallengeTestRun()
+    void startVisibleChallengeTestRun()
   }, 300)
 }
 
-async function startChallengeTestRun(): Promise<void> {
+async function startVisibleChallengeTestRun(): Promise<void> {
   if (!props.challenge) return
   cancelPendingChallengeTestDebounce()
   abortChallengeTestRun()
@@ -690,11 +757,18 @@ async function startChallengeTestRun(): Promise<void> {
   const controller = new AbortController()
   challengeTestAbortController = controller
   challengeTestsRunning.value = true
-  const source = runnableRulesText.value
-  const fallbackInput = splitProgramSource(rulesText.value).state
+  challengeResults.value = []
+  const results: ChallengeTestResult[] = []
+  const fallbackState = initialStateText.value
   try {
-    const results = await runChallengeTests(props.challenge, source, controller.signal, fallbackInput)
-    if (runId === challengeTestRunId && !controller.signal.aborted) challengeResults.value = results
+    for (const testCase of props.challenge.tests) {
+      if (controller.signal.aborted) throw abortError()
+      const result = await runVisibleChallengeTest(testCase, fallbackState, controller.signal)
+      if (runId !== challengeTestRunId || controller.signal.aborted) throw abortError()
+      results.push(result)
+      challengeResults.value = [...results]
+      if (!result.passed) break
+    }
   } catch (error) {
     if (!isAbortError(error)) throw error
   } finally {
@@ -705,43 +779,24 @@ async function startChallengeTestRun(): Promise<void> {
   }
 }
 
-async function startVisibleChallengeTestRun(): Promise<void> {
-  if (!props.challenge || challengeTestsRunning.value) return
-  cancelPendingChallengeTestDebounce()
-  abortChallengeTestRun()
-  challengeTestRunId += 1
-  challengeTestsRunning.value = true
-  challengeResults.value = []
-  const results: ChallengeTestResult[] = []
-  const fallbackState = splitProgramSource(rulesText.value).state
-  try {
-    for (const testCase of props.challenge.tests) {
-      const result = await runVisibleChallengeTest(testCase, fallbackState)
-      results.push(result)
-      challengeResults.value = [...results]
-      if (!result.passed) break
-    }
-  } finally {
-    challengeTestsRunning.value = false
-  }
-}
-
-async function runVisibleChallengeTest(testCase: ChallengeTestCase, fallbackState: string): Promise<ChallengeTestResult> {
+async function runVisibleChallengeTest(testCase: ChallengeTestCase, fallbackState: string, signal?: AbortSignal): Promise<ChallengeTestResult> {
   clearRun()
   sourcePath.value = `challenges/${props.challenge?.slug ?? 'current'}/attempt.tpp`
-  stateText.value = fallbackState
+  stateText.value = testCase.resources.stdin?.buffer ?? fallbackState
   resourceInputs.value = Object.fromEntries(
     Object.entries(testCase.resources)
       .filter((entry): entry is [string, { buffer: string }] => typeof entry[1].buffer === 'string')
       .map(([name, resource]) => [name, resource.buffer]),
   )
   await nextTick()
-  await continueProgram()
+  await continueProgram({ signal })
+  if (signal?.aborted) throw abortError()
   return visibleChallengeTestResult(testCase)
 }
 
 function visibleChallengeTestResult(testCase: ChallengeTestCase): ChallengeTestResult {
   const actualExitCode = lastRunExitCode.value
+  const missingExitCodeError = actualExitCode === undefined ? 'worker did not return exitCode' : undefined
   const exitCode = {
     expected: testCase.exit_code,
     actual: actualExitCode,
@@ -758,10 +813,10 @@ function visibleChallengeTestResult(testCase: ChallengeTestCase): ChallengeTestR
   })
   return {
     name: testCase.name,
-    passed: exitCode.passed && resources.every(resource => resource.passed) && !lastRunError.value,
+    passed: exitCode.passed && resources.every(resource => resource.passed) && !lastRunError.value && !missingExitCodeError,
     exitCode,
     resources,
-    error: lastRunError.value,
+    error: lastRunError.value ?? missingExitCodeError,
   }
 }
 
@@ -779,11 +834,16 @@ function abortChallengeTestRun(): void {
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
 }
+
+function abortError(): DOMException {
+  return new DOMException('Challenge test run aborted', 'AbortError')
+}
 function initializeChallengeAttempt(): void {
   if (!props.challenge) return
   fileParam.value = `./challenges/${props.challenge.slug}/attempt.tpp`
   sourcePath.value = `challenges/${props.challenge.slug}/attempt.tpp`
   rulesText.value = ''
+  initialStateText.value = ''
   loadError.value = ''
   clearRun()
   loadChallengeHintIfEditorEmpty()
@@ -793,7 +853,8 @@ function loadChallengeHintIfEditorEmpty(): void {
   if (!props.challenge?.hintSource) return
   if (rulesText.value.trim() !== '') return
   const split = splitProgramSource(props.challenge.hintSource)
-  rulesText.value = props.challenge.hintSource
+  rulesText.value = split.rules
+  initialStateText.value = split.state
   stateText.value = split.state
   loadError.value = split.error
   selectedTestCase.value = undefined
@@ -864,7 +925,7 @@ async function stepProgram(): Promise<void> {
   await executeProgram({ stepLimit: 1, status: 'stepping', collectTrace: true })
 }
 
-async function continueProgram(): Promise<void> {
+async function continueProgram(options: { signal?: AbortSignal } = {}): Promise<void> {
   if (!canRun.value) return
   lastRunMode.value = 'continue'
   pauseRequested.value = false
@@ -872,7 +933,8 @@ async function continueProgram(): Promise<void> {
   try {
     let steps = 0
     while (!pauseRequested.value && steps < stepLimit.value) {
-      const status = await executeProgram({ stepLimit: 1, status: 'running', collectTrace: true })
+      if (options.signal?.aborted) throw abortError()
+      const status = await executeProgram({ stepLimit: 1, status: 'running', collectTrace: true, signal: options.signal })
       if (status !== 'stepped') break
       steps += 1
       if (pauseRequested.value) break
@@ -907,7 +969,7 @@ async function restartProgram(): Promise<void> {
 
 type RunStatus = 'stepped' | 'exited' | 'waiting' | 'errored'
 
-async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean; collapsedHistory?: boolean }): Promise<RunStatus | undefined> {
+async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean; collapsedHistory?: boolean; signal?: AbortSignal }): Promise<RunStatus | undefined> {
   if (running.value) return undefined
   if (stateDiffs.value.length === 0) {
     baseState.value = stateText.value
@@ -930,6 +992,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       resources: resourceConfigs(),
       trace: options.collectTrace ?? options.stepLimit !== undefined,
       stepLimit: options.stepLimit,
+      signal: options.signal,
     })
     const stderr = [...new Set([result.stderr, result.error, result.errors].filter(Boolean))].join('\n')
     lastRunExitCode.value = result.exitCode ?? (stderr ? 1 : undefined)
@@ -966,6 +1029,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       return 'exited'
     }
   } catch (error) {
+    if (isAbortError(error)) return undefined
     stopPendingCountdown()
     const stderr = error instanceof Error ? error.message : String(error)
     lastRunExitCode.value = undefined
@@ -1101,7 +1165,6 @@ function selectHistoryEntry(key: string): void {
   stateText.value = entry.stateAfter
   restoreResourceSnapshot(entry.resources)
   matchedRuleLine.value = entry.row > 0 ? entry.row : undefined
-  statusText.value = entry.step === 0 ? 'Viewing Start' : `Viewing Step ${entry.step}`
 }
 
 function resetToFirstState(): void {
