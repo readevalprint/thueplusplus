@@ -118,17 +118,16 @@ function diffCell(entry: StateDiffEntry) {
   if (entry.note) return h('div', { class: 'state-diff-note', 'data-test': 'playground-diff-note' }, entry.note)
   return h('div', { class: 'state-diff-lines' }, [
     h('div', { class: 'state-diff-field' }, [
-      diffLine(entry.before, 'removed', '-'),
+      diffLine(entry.before, 'removed'),
     ]),
     h('div', { class: 'state-diff-field' }, [
-      diffLine(entry.after, 'added', '+'),
+      diffLine(entry.after, 'added'),
     ]),
   ])
 }
 
-function diffLine(parts: DiffPart[], side: 'removed' | 'added', sign: '-' | '+') {
+function diffLine(parts: DiffPart[], side: 'removed' | 'added') {
   return h('div', { class: `state-diff-line ${side}` }, [
-    h('span', { class: 'state-diff-sign' }, sign),
     ...parts.map(part => h('span', { key: part.key, class: partClass(part, side) }, part.text)),
   ])
 }

@@ -855,6 +855,25 @@ code {
   flex-direction: column;
   gap: var(--space-3);
 }
+.playground-rules-state-layout {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+}
+.playground-current-history-layout {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+}
+.playground-rules-stack-panel,
+.playground-state-stack-panel,
+.playground-current-state-stack-panel,
+.playground-history-stack-panel {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
 .challenge-playground-panel {
   display: flex;
   flex: 1 1 auto;
@@ -1100,6 +1119,8 @@ code {
 .playground-rules-pane,
 .playground-diffs-pane,
 .playground-resources-pane,
+.playground-source-state-pane,
+.playground-current-state-pane,
 .playground-section-panel {
   display: flex;
   flex-direction: column;
@@ -1421,6 +1442,48 @@ code {
 }
 .playground-rules-pane {
   flex: 1 1 0;
+  min-height: 18rem;
+}
+.playground-source-state-pane {
+  flex: 0 0 clamp(8rem, 24%, 14rem);
+  min-height: 8rem;
+  min-width: 0;
+  padding: 3px;
+  width: 100%;
+}
+.playground-state-stack-panel > .playground-source-state-pane {
+  flex: 1 1 0;
+  max-width: 100%;
+  width: 100%;
+}
+.playground-source-state-content [data-slot="textarea"] {
+  min-height: 0;
+  min-width: 0;
+  resize: none;
+  white-space: pre;
+}
+.playground-current-state-pane {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  padding: 3px;
+  width: 100%;
+}
+.playground-current-state-header {
+  align-items: center;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.playground-current-state-header .playground-panel-title {
+  width: auto;
+}
+.playground-current-state-content [data-slot="textarea"] {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  resize: none;
+  white-space: pre;
 }
 .test-case-menu-row {
   align-items: center;
