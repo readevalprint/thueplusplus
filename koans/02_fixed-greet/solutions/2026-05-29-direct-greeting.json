@@ -1,7 +1,7 @@
 {
   "cumulative_state_bytes": 35,
   "eval_check_count": 6,
-  "koan": "fixed-greet",
+  "koan": "02_fixed-greet",
   "rank": 1,
   "rule_count": 3,
   "solution_id": "2026-05-29-direct-greeting",
@@ -12,7 +12,7 @@
     "title": "Direct Greeting",
     "website": "https://readevalprint.com"
   },
-  "solution_path": "koans/fixed-greet/solutions/2026-05-29-direct-greeting.tpp",
+  "solution_path": "koans/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp",
   "solution_sha256": "326d1b9d7680b5d1595a734473e2643577d76738c39b540a963200d414d80bab",
   "successful_rewrites": 3
 }

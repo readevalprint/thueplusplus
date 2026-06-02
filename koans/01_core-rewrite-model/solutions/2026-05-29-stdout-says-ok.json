@@ -1,7 +1,7 @@
 {
   "cumulative_state_bytes": 35,
   "eval_check_count": 6,
-  "koan": "core-rewrite-model",
+  "koan": "01_core-rewrite-model",
   "rank": 1,
   "rule_count": 3,
   "solution_id": "2026-05-29-stdout-says-ok",
@@ -12,7 +12,7 @@
     "title": "Stdout Says Ok",
     "website": "https://readevalprint.com"
   },
-  "solution_path": "koans/core-rewrite-model/solutions/2026-05-29-stdout-says-ok.tpp",
-  "solution_sha256": "dd950e8aa9dc1e07f9c993a1989742bde571aef945d1e514de8fe1bea5061790",
+  "solution_path": "koans/01_core-rewrite-model/solutions/2026-05-29-stdout-says-ok.tpp",
+  "solution_sha256": "65969b636ac458fe09a01bf6ecc3a23e3b3a57437085e36a64000dfd6aff4993",
   "successful_rewrites": 3
 }

@@ -4,7 +4,7 @@
       "name": "stdout says ok",
       "resources": {
         "stdout": {
-          "expected_output": "ok\n"
+          "expected_output": "ok"
         }
       },
       "exit_code": 0

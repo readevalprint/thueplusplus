@@ -29,7 +29,7 @@ OUT ::> stdout hi
 
 def test_load_cases_requires_resource_shaped_json() -> None:
     assert kg.KOAN_TEST_SCHEMA["case_keys"] == ["name", "resources", "exit_code"]
-    cases = kg.load_cases(ROOT / "koans/fixed-greet")
+    cases = kg.load_cases(ROOT / "koans/02_fixed-greet")
     assert cases
     assert all("resources" in case for case in cases)
     assert cases[0]["resources"]["stdout"]["expected_output"] == "Hello, koan!\n"
@@ -37,7 +37,7 @@ def test_load_cases_requires_resource_shaped_json() -> None:
 
 
 def test_normalize_case_rejects_browser_only_state_key() -> None:
-    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    manifest = ROOT / "koans/02_fixed-greet/tests/basic.json"
     raw_case = {
         "name": "browser-only state is invalid",
         "state": "START",
@@ -56,7 +56,7 @@ def test_normalize_case_rejects_browser_only_state_key() -> None:
 
 
 def test_normalize_case_requires_exit_code() -> None:
-    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    manifest = ROOT / "koans/02_fixed-greet/tests/basic.json"
     raw_case = {
         "name": "missing exit code is invalid",
         "resources": {
@@ -73,7 +73,7 @@ def test_normalize_case_requires_exit_code() -> None:
 
 
 def test_normalize_case_rejects_args_key() -> None:
-    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    manifest = ROOT / "koans/02_fixed-greet/tests/basic.json"
     raw_case = {
         "name": "args are invalid",
         "args": ["--flag"],
@@ -92,7 +92,7 @@ def test_normalize_case_rejects_args_key() -> None:
 
 
 def test_normalize_case_rejects_timeout_key() -> None:
-    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    manifest = ROOT / "koans/02_fixed-greet/tests/basic.json"
     raw_case = {
         "name": "timeout is invalid",
         "timeout": 1,
@@ -111,7 +111,7 @@ def test_normalize_case_rejects_timeout_key() -> None:
 
 
 def test_normalize_case_rejects_non_stdio_expected_output() -> None:
-    manifest = ROOT / "koans/fixed-greet/tests/basic.json"
+    manifest = ROOT / "koans/02_fixed-greet/tests/basic.json"
     raw_case = {
         "name": "custom output resource is invalid",
         "resources": {
@@ -156,8 +156,8 @@ def test_solution_filenames_use_date_and_front_matter_slug() -> None:
 
 
 def test_qualifying_records_include_pilot_koans() -> None:
-    fixed = kg.qualifying_records(ROOT / "koans/fixed-greet", "10000")
-    binary = kg.qualifying_records(ROOT / "koans/binary-not", "10000")
+    fixed = kg.qualifying_records(ROOT / "koans/02_fixed-greet", "10000")
+    binary = kg.qualifying_records(ROOT / "koans/03_binary-not", "10000")
     assert len(fixed) == 2
     assert len(binary) == 1
     generated_keys = {
@@ -203,7 +203,7 @@ def test_ranking_key_matches_documented_order() -> None:
 
 
 def test_solution_front_matter_is_required() -> None:
-    solution = ROOT / "koans/fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
+    solution = ROOT / "koans/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
     metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))
     assert metadata["title"] == "Direct Greeting"
     assert metadata["slug"] == "direct-greeting"
@@ -212,7 +212,7 @@ def test_solution_front_matter_is_required() -> None:
 
 
 def test_leaderboard_block_mentions_best_in_class() -> None:
-    records = kg.qualifying_records(ROOT / "koans/fixed-greet", "10000")
+    records = kg.qualifying_records(ROOT / "koans/02_fixed-greet", "10000")
     block = kg.leaderboard_block(records)
     assert "Best-In-Class Records" in block
     assert "Fewest Rules" in block
