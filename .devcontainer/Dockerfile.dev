@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-FROM golang:1.24.6-bookworm
+FROM golang:1.25-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -23,8 +23,8 @@ RUN curl -LsSf https://astral.sh/uv/install.sh \
     && mv /root/.local/bin/uv /usr/local/bin/ \
     && mv /root/.local/bin/uvx /usr/local/bin/
 
-RUN go install golang.org/x/tools/gopls@v0.17.1 \
-    && go install golang.org/x/tools/cmd/goimports@v0.28.0
+RUN go install golang.org/x/tools/gopls@v0.22.0 \
+    && go install golang.org/x/tools/cmd/goimports@v0.45.0
 
 RUN useradd -m -s /bin/bash dev \
     && usermod -a -G sudo dev \
@@ -37,6 +37,7 @@ WORKDIR /workspaces
 USER dev
 
 ENV GOPATH=/home/dev/go
+ENV GOTOOLCHAIN=auto
 ENV PATH="/go/bin:${GOPATH}/bin:${PATH}"
 ENV LESSCHARSET=utf-8
 
