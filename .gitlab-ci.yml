@@ -26,7 +26,6 @@ cache:
     - .cache/uv/
     - .cache/go-build/
     - .cache/go-mod/
-    - demo/.npm/
 
 test:
   image: golang:1.24.6-bookworm
