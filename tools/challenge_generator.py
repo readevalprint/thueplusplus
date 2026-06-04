@@ -29,6 +29,22 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+try:
+    from challenge_submission_policy import (
+        CHALLENGE_SOLUTION_PATH_RE,
+        is_solution_submission_path,
+        parse_exact_added_solution,
+        parse_name_status_text,
+    )
+except ModuleNotFoundError:  # pytest imports this file from the repository root.
+    from tools.challenge_submission_policy import (
+        CHALLENGE_SOLUTION_PATH_RE,
+        is_solution_submission_path,
+        parse_exact_added_solution,
+        parse_name_status_text,
+    )
+
+
 ROOT = Path(__file__).resolve().parents[1]
 CHALLENGES_ROOT = ROOT / "challenges"
 LEADERBOARD_START = "<!-- challenges:leaderboard:start -->"
@@ -52,9 +68,6 @@ MAX_SUMMARY_CODEPOINTS = 280
 MAX_SUMMARY_BYTES = 1000
 FRONT_MATTER_REQUIRED = ("title", "slug", "author", "website")
 FRONT_MATTER_ALLOWED = (*FRONT_MATTER_REQUIRED, "summary")
-CHALLENGE_SOLUTION_PATH_RE = re.compile(
-    r"^challenges/(\d{2}_[a-z0-9][a-z0-9-]*)/solutions/(\d{4}-\d{2}-\d{2})-([a-z0-9][a-z0-9-]*)\.tpp$"
-)
 ASCII_SOLUTION_BODY_RE = re.compile(r"^[\x0A\x20-\x7E]*$")
 ASCII_FRONT_MATTER_KEY_RE = re.compile(r"^[a-z]+$")
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -80,7 +93,6 @@ def parse_args() -> argparse.Namespace:
     mode.add_argument("--all", action="store_true", help="regenerate solution JSON and solutions/readme.md leaderboard blocks")
     mode.add_argument("--check-submission", action="store_true", help="validate one added challenge solution from --diff-name-status")
     parser.add_argument("--challenge", help="limit to one challenge slug")
-    parser.add_argument("--changed-files", help="newline-delimited file list for one-file submission policy checks")
     parser.add_argument("--diff-name-status", help="git diff --name-status file for --check-submission")
     parser.add_argument("--eval-limit", default="10000", help="max eval/rule checks passed to both backends")
     return parser.parse_args()
@@ -634,21 +646,8 @@ def replace_leaderboard(challenge: Path, block: str) -> str:
 
 
 def parse_submission_diff(diff_name_status_path: str) -> tuple[str, str]:
-    rows = [line for line in Path(diff_name_status_path).read_text(encoding="utf-8").splitlines() if line.strip()]
-    if len(rows) != 1:
-        raise RuntimeError("challenge submission must change exactly one file")
-    parts = rows[0].split("\t")
-    status = parts[0] if parts else ""
-    if status != "A":
-        raise RuntimeError(f"challenge submission file must be newly added with status A, got {status!r}")
-    if len(parts) != 2:
-        raise RuntimeError("challenge submission diff must contain exactly one name-status path row")
-    _status, path = parts
-    if path.startswith("/") or "//" in path or "/../" in f"/{path}/" or path.startswith("../"):
-        raise RuntimeError(f"invalid challenge submission path: {path}")
-    if not CHALLENGE_SOLUTION_PATH_RE.fullmatch(path):
-        raise RuntimeError(f"invalid challenge submission path: {path}")
-    return status, path
+    rows = parse_name_status_text(Path(diff_name_status_path).read_text(encoding="utf-8"))
+    return parse_exact_added_solution(rows)
 
 
 def validate_submission_path(path: str) -> tuple[Path, Path, str]:
@@ -707,20 +706,6 @@ def best_effort_submission_rank(challenge: Path, submitted: Path, submitted_reco
     if selected is None:
         raise RuntimeError(f"{rel(submitted)} internal solution id missing from rank estimate")
     return selected
-
-
-def check_submission_policy(changed_files_path: str) -> None:
-    # Backwards-compatible path-list policy: treat the single path as an added file.
-    files = [line.strip() for line in Path(changed_files_path).read_text(encoding="utf-8").splitlines() if line.strip()]
-    if len(files) != 1:
-        raise RuntimeError("non-maintainer challenge submission must touch exactly one file")
-    tmp = Path(changed_files_path).with_suffix(".name-status")
-    tmp.write_text(f"A\t{files[0]}\n", encoding="utf-8")
-    try:
-        _challenge, solution, _record = validate_submission(tmp.as_posix(), "10000")
-    finally:
-        tmp.unlink(missing_ok=True)
-    print(f"submission policy OK: {rel(solution)}")
 
 
 def validate_submission(diff_name_status_path: str, eval_limit: str) -> tuple[Path, Path, dict[str, Any]]:
@@ -788,8 +773,6 @@ def cmd_missing(args: argparse.Namespace) -> int:
 
 
 def cmd_check_or_all(args: argparse.Namespace, write: bool) -> int:
-    if args.changed_files:
-        check_submission_policy(args.changed_files)
     failures = 0
     for challenge in discover_challenges(args.challenge):
         print(f"=== {challenge.name} ===")

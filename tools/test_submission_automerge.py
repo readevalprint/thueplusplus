@@ -48,14 +48,18 @@ def renamed_changes(
 
 
 def assert_rejected(reason_part: str, mr=None, changes=None) -> None:
-    decision = submission_automerge.candidate_decision(mr or valid_mr(), changes if changes is not None else valid_changes())
-    assert not decision.accepted
-    assert reason_part in decision.reason
+    change_decision = submission_automerge.changed_solution_path(changes if changes is not None else valid_changes())
+    merge_decision = submission_automerge.mergeability(mr or valid_mr())
+    pipeline_decision = submission_automerge.successful_head_pipeline(mr or valid_mr())
+    reasons = [change_decision.reason, merge_decision.reason, pipeline_decision.reason]
+    assert any(reason_part in reason for reason in reasons)
 
 
 def test_accepts_only_safe_added_solution_file_mr() -> None:
-    decision = submission_automerge.candidate_decision(valid_mr(), valid_changes())
+    decision = submission_automerge.changed_solution_path(valid_changes())
     assert decision.accepted
+    assert submission_automerge.mergeability(valid_mr()).accepted
+    assert submission_automerge.successful_head_pipeline(valid_mr()).accepted
     assert decision.solution_path == "challenges/02_fixed-greet/solutions/2026-06-04-automerge-smoke.tpp"
 
 
@@ -74,9 +78,8 @@ def test_rejects_non_success_or_stale_pipeline() -> None:
 
 
 def test_accepts_gitlab_merged_result_pipeline_ref() -> None:
-    decision = submission_automerge.candidate_decision(
-        valid_mr(head_pipeline={"sha": "merge-result", "status": "success", "ref": "refs/merge-requests/7/merge"}),
-        valid_changes(),
+    decision = submission_automerge.successful_head_pipeline(
+        valid_mr(head_pipeline={"sha": "merge-result", "status": "success", "ref": "refs/merge-requests/7/merge"})
     )
     assert decision.accepted
 
@@ -164,35 +167,52 @@ class FailedSubmissionFakeClient(FakeClient):
         raise AssertionError((method, path, data))
 
     def request_text(self, method: str, path: str, data=None):
-        self.paths.append((method, path))
-        if method == "GET" and path.endswith("/jobs/99/trace"):
-            return "SUBMISSION FAILED: missing website front matter\n"
-        raise AssertionError((method, path, data))
+        raise AssertionError("failed-submission comments must not fetch or embed job traces")
 
 
 class DuplicateFailedSubmissionFakeClient(FailedSubmissionFakeClient):
     def get_all(self, path: str):
         if path.endswith("/merge_requests/7/notes?sort=asc"):
             self.paths.append(("GET_ALL", path))
-            return [{"body": f"{submission_automerge.COMMENT_MARKER}\n<!-- pipeline:42 sha:abc123 -->"}]
+            return [{"body": submission_automerge.comment_marker("abc123", "challenges/02_fixed-greet/solutions/2026-06-04-automerge-smoke.tpp")}]
         return super().get_all(path)
 
 
-def test_failed_submission_comment_body_includes_actionable_context() -> None:
+class OldMarkerDuplicateFailedSubmissionFakeClient(FailedSubmissionFakeClient):
+    def get_all(self, path: str):
+        if path.endswith("/merge_requests/7/notes?sort=asc"):
+            self.paths.append(("GET_ALL", path))
+            return [{"body": f"<!-- thuepp-submission-validation-failure -->\n<!-- pipeline:42 sha:abc123 -->"}]
+        return super().get_all(path)
+
+
+class DifferentShaAlreadyCommentedFakeClient(FailedSubmissionFakeClient):
+    def get_all(self, path: str):
+        if path.endswith("/merge_requests/7/notes?sort=asc"):
+            self.paths.append(("GET_ALL", path))
+            return [{"body": submission_automerge.comment_marker("oldsha", "challenges/02_fixed-greet/solutions/2026-06-04-automerge-smoke.tpp")}]
+        return super().get_all(path)
+
+
+def test_failed_submission_comment_body_links_logs_without_embedding_trace() -> None:
+    hostile_trace = "SUBMISSION FAILED\n```\n## injected trusted-looking heading\n```"
     body = submission_automerge.failed_submission_comment_body(
-        valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}),
+        valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed", "web_url": "https://gitlab.com/pipeline/42"}),
         "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp",
-        {"web_url": "https://gitlab.com/job/99"},
-        "SUBMISSION FAILED: front matter slug duplicates existing solution",
+        "https://gitlab.com/job/99",
     )
 
     assert submission_automerge.COMMENT_MARKER in body
     assert "Challenge submission validation failed" in body
     assert "exactly one newly added solution `.tpp`" in body
-    assert "SUBMISSION FAILED" in body
+    assert "Open the failed CI job log for the exact validator error" in body
+    assert hostile_trace not in body
+    assert "Validator output / CI trace tail" not in body
+    assert "SUBMISSION FAILED" not in body
     assert "Do not commit generated `.json` metrics" in body
     assert "modifying or renaming an existing solution" in body
     assert "https://gitlab.com/job/99" in body
+    assert "https://gitlab.com/pipeline/42" in body
 
 
 def test_run_comments_once_on_failed_exact_submission(monkeypatch, capsys) -> None:
@@ -202,7 +222,9 @@ def test_run_comments_once_on_failed_exact_submission(monkeypatch, capsys) -> No
     assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
 
     assert fake.noted_body is not None
-    assert "SUBMISSION FAILED: missing website" in fake.noted_body
+    assert "SUBMISSION FAILED: missing website" not in fake.noted_body
+    assert "https://gitlab.com/job/99" in fake.noted_body
+    assert "Open the failed CI job log" in fake.noted_body
     assert "commented !7" in capsys.readouterr().out
     assert not fake.approved
     assert not fake.merged
@@ -219,6 +241,27 @@ def test_run_does_not_duplicate_failed_submission_comment(monkeypatch, capsys) -
     assert "failure comment already exists" in output
 
 
+def test_run_still_recognizes_old_pipeline_marker(monkeypatch, capsys) -> None:
+    fake = OldMarkerDuplicateFailedSubmissionFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert fake.noted_body is None
+    assert "failure comment already exists" in capsys.readouterr().out
+
+
+def test_run_allows_new_comment_for_new_failed_sha(monkeypatch, capsys) -> None:
+    fake = DifferentShaAlreadyCommentedFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert fake.noted_body is not None
+    assert "sha:abc123" in fake.noted_body
+    assert "commented !7" in capsys.readouterr().out
+
+
 def test_run_fetches_mr_detail_before_deciding_approves_and_merges(monkeypatch, capsys) -> None:
     fake = FakeClient()
     monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
@@ -231,3 +274,201 @@ def test_run_fetches_mr_detail_before_deciding_approves_and_merges(monkeypatch, 
     output = capsys.readouterr().out
     assert "approved !7" in output
     assert "merged !7" in output
+
+
+class DryRunFailedSubmissionFakeClient(FailedSubmissionFakeClient):
+    pass
+
+
+class NotesFailThenValidFakeClient(FakeClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.noted_attempts = 0
+
+    def get_all(self, path: str):
+        self.paths.append(("GET_ALL", path))
+        if path.startswith("projects/thuelang%2Fthueplusplus/merge_requests?"):
+            return [{"iid": 7}, {"iid": 8}]
+        if path.endswith("/merge_requests/7/notes?sort=asc"):
+            return []
+        if path.endswith("/pipelines/42/jobs"):
+            return [{"id": 99, "name": "test", "status": "failed", "web_url": "https://gitlab.com/job/99"}]
+        raise AssertionError(path)
+
+    def request(self, method: str, path: str, data=None):
+        self.paths.append((method, path))
+        if method == "GET" and path.endswith("/merge_requests/7"):
+            return valid_mr(iid=7, head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
+        if method == "GET" and path.endswith("/merge_requests/7/changes"):
+            return {"changes": valid_changes()}
+        if method == "POST" and path.endswith("/merge_requests/7/notes"):
+            self.noted_attempts += 1
+            raise RuntimeError("note post failed")
+        if method == "GET" and path.endswith("/merge_requests/8"):
+            return valid_mr(iid=8)
+        if method == "GET" and path.endswith("/merge_requests/8/changes"):
+            return {"changes": valid_changes("challenges/02_fixed-greet/solutions/2026-06-04-valid-two.tpp")}
+        if method == "POST" and path.endswith("/merge_requests/8/approve"):
+            self.approved = True
+            return {"approved": True}
+        if method == "PUT" and path.endswith("/merge_requests/8/merge"):
+            assert self.approved
+            self.merged = True
+            return {"web_url": "https://gitlab.com/thuelang/thueplusplus/-/merge_requests/8"}
+        raise AssertionError((method, path, data))
+
+
+class OverflowChangesFakeClient(FakeClient):
+    def request(self, method: str, path: str, data=None):
+        self.paths.append((method, path))
+        if method == "GET" and path.endswith("/merge_requests/7"):
+            return valid_mr()
+        if method == "GET" and path.endswith("/merge_requests/7/changes"):
+            return {"overflow": True, "changes": valid_changes()}
+        if method in {"POST", "PUT"}:
+            raise AssertionError("overflowed changes must not mutate GitLab")
+        raise AssertionError((method, path, data))
+
+
+class JobLookupFailFakeClient(FailedSubmissionFakeClient):
+    def get_all(self, path: str):
+        self.paths.append(("GET_ALL", path))
+        if path.startswith("projects/thuelang%2Fthueplusplus/merge_requests?"):
+            return [{"iid": 7}]
+        if path.endswith("/merge_requests/7/notes?sort=asc"):
+            return []
+        if path.endswith("/pipelines/42/jobs"):
+            raise RuntimeError("job lookup unavailable")
+        raise AssertionError(path)
+
+
+class NonExactFailedFakeClient(FailedSubmissionFakeClient):
+    def request(self, method: str, path: str, data=None):
+        self.paths.append((method, path))
+        if method == "GET" and path.endswith("/merge_requests/7"):
+            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
+        if method == "GET" and path.endswith("/merge_requests/7/changes"):
+            return {"changes": modified_changes()}
+        if method in {"POST", "PUT"}:
+            raise AssertionError("non-exact failed MR must not be commented or mutated")
+        raise AssertionError((method, path, data))
+
+
+class StaleFailedPipelineFakeClient(FailedSubmissionFakeClient):
+    def request(self, method: str, path: str, data=None):
+        self.paths.append((method, path))
+        if method == "GET" and path.endswith("/merge_requests/7"):
+            return valid_mr(head_pipeline={"id": 42, "sha": "old", "status": "failed"}, detailed_merge_status="checking")
+        if method == "GET" and path.endswith("/merge_requests/7/changes"):
+            return {"changes": valid_changes()}
+        if method in {"POST", "PUT"}:
+            raise AssertionError("stale failed pipeline must not be commented or mutated")
+        raise AssertionError((method, path, data))
+
+
+def test_dry_run_does_not_post_failed_submission_comment(monkeypatch, capsys) -> None:
+    fake = DryRunFailedSubmissionFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token", dry_run=True) == 0
+
+    assert fake.noted_body is None
+    assert not fake.approved
+    assert not fake.merged
+    assert "would comment !7" in capsys.readouterr().out
+
+
+def test_dry_run_does_not_approve_or_merge_valid_submission(monkeypatch, capsys) -> None:
+    fake = FakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token", dry_run=True) == 0
+
+    assert not fake.approved
+    assert not fake.merged
+    assert "would approve and merge !7" in capsys.readouterr().out
+
+
+def test_comment_failure_is_best_effort_and_later_mrs_continue(monkeypatch, capsys) -> None:
+    fake = NotesFailThenValidFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    output = capsys.readouterr().out
+    assert "submission failure comment failed for !7" in output
+    assert fake.noted_attempts == 1
+    assert fake.approved
+    assert fake.merged
+
+
+def test_job_lookup_failure_still_posts_safe_fallback_comment(monkeypatch, capsys) -> None:
+    fake = JobLookupFailFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert fake.noted_body is not None
+    assert "https://gitlab.com/job/99" not in fake.noted_body
+    assert "Open the failed CI job log" in fake.noted_body
+    output = capsys.readouterr().out
+    assert "failed job lookup failed" in output
+    assert "commented !7" in output
+
+
+def test_failed_non_exact_or_stale_pipeline_mrs_are_not_comment_eligible(monkeypatch, capsys) -> None:
+    for client_class in (NonExactFailedFakeClient, StaleFailedPipelineFakeClient):
+        fake = client_class()
+        monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token, fake=fake: fake)
+
+        assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+        assert fake.noted_body is None
+        output = capsys.readouterr().out
+        assert "commented !7" not in output
+        assert not fake.approved
+        assert not fake.merged
+
+
+def test_changes_overflow_skips_without_mutation(monkeypatch, capsys) -> None:
+    fake = OverflowChangesFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert not fake.approved
+    assert not fake.merged
+    assert "changes overflow" in capsys.readouterr().out
+
+
+def test_failed_job_lookup_uses_pipeline_project_id_but_notes_target_project(monkeypatch) -> None:
+    fake = FailedSubmissionFakeClient()
+
+    def request(method: str, path: str, data=None):
+        fake.paths.append((method, path))
+        if method == "GET" and path.endswith("/merge_requests/7"):
+            return valid_mr(head_pipeline={"id": 42, "project_id": 12345, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
+        if method == "GET" and path.endswith("/merge_requests/7/changes"):
+            return {"changes": valid_changes()}
+        if method == "POST" and path.endswith("/merge_requests/7/notes"):
+            fake.noted_body = data["body"]
+            return {"id": 123}
+        raise AssertionError((method, path, data))
+
+    fake.request = request  # type: ignore[method-assign]
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert ("GET_ALL", "projects/12345/pipelines/42/jobs") in fake.paths
+    assert any(path == "projects/thuelang%2Fthueplusplus/merge_requests/7/notes" for method, path in fake.paths if method == "POST")
+
+
+def test_main_rejects_project_override(monkeypatch, capsys) -> None:
+    monkeypatch.setenv("THUEPP_AUTOMERGE_ENABLED", "1")
+    monkeypatch.setenv("THUEPP_AUTOMERGE_TOKEN", "token")
+    assert submission_automerge.main(["--project", "attacker/project"]) == 2
+    assert "does not accept project override" in capsys.readouterr().out
+    monkeypatch.setenv("THUEPP_AUTOMERGE_PROJECT", "attacker/project")
+    assert submission_automerge.main([]) == 2
+    assert "attacker/project" in capsys.readouterr().out
