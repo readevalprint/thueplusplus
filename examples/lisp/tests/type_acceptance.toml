@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
 args = ["--eval-limit", "120000"]
+timeout = 30
 
 [[case]]
 name = "type reports number integer"
