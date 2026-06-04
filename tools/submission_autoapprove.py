@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Safely auto-merge valid GitLab.com challenge solution MRs.
+"""Safely auto-approve valid GitLab.com challenge solution MRs.
 
 This script is intended to run from trusted default-branch/scheduled CI only.
-It must never run in untrusted merge-request pipelines with a merge-capable token.
+It must never run in untrusted merge-request pipelines with an approval token.
+It deliberately does not merge MRs; submitters keep control of the final merge.
 """
 from __future__ import annotations
 
@@ -155,19 +156,16 @@ def mr_changes(client: GitLabClient, project_path: str, iid: int) -> list[dict[s
     return list(payload.get("changes") or [])
 
 
-def merge_mr(client: GitLabClient, project_path: str, mr: dict[str, Any]) -> dict[str, Any]:
+def approve_mr(client: GitLabClient, project_path: str, mr: dict[str, Any]) -> dict[str, Any]:
     project = project_api_path(project_path)
     iid = int(mr["iid"])
-    data = {
-        "sha": mr["sha"],
-        "should_remove_source_branch": True,
-    }
-    return client.request("PUT", f"projects/{project}/merge_requests/{iid}/merge", data)
+    data = {"sha": mr["sha"]}
+    return client.request("POST", f"projects/{project}/merge_requests/{iid}/approve", data)
 
 
 def run(project_path: str, token: str, *, dry_run: bool = False, limit: int | None = None) -> int:
     client = GitLabClient(token)
-    merged = 0
+    approved = 0
     checked = 0
     for mr in open_merge_requests(client, project_path):
         checked += 1
@@ -183,26 +181,26 @@ def run(project_path: str, token: str, *, dry_run: bool = False, limit: int | No
         print(f"eligible !{iid}: {decision.solution_path}")
         if dry_run:
             continue
-        merged_payload = merge_mr(client, project_path, mr)
-        print(f"merged !{iid}: {merged_payload.get('web_url')}")
-        merged += 1
-    print(f"submission automerge checked={checked} merged={merged} dry_run={dry_run}")
+        approve_mr(client, project_path, mr)
+        print(f"approved !{iid}: submitter must merge after approval")
+        approved += 1
+    print(f"submission autoapprove checked={checked} approved={approved} dry_run={dry_run}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", default=os.environ.get("THUEPP_AUTOMERGE_PROJECT", PROJECT_PATH))
+    parser.add_argument("--project", default=os.environ.get("THUEPP_AUTOAPPROVE_PROJECT", PROJECT_PATH))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int)
     args = parser.parse_args(argv)
 
-    if os.environ.get("THUEPP_AUTOMERGE_ENABLED") != "1":
-        print("submission automerge disabled: set THUEPP_AUTOMERGE_ENABLED=1 in trusted default-branch CI")
+    if os.environ.get("THUEPP_AUTOAPPROVE_ENABLED") != "1":
+        print("submission autoapprove disabled: set THUEPP_AUTOAPPROVE_ENABLED=1 in trusted default-branch CI")
         return 0
-    token = os.environ.get("THUEPP_AUTOMERGE_TOKEN")
+    token = os.environ.get("THUEPP_AUTOAPPROVE_TOKEN")
     if not token:
-        print("submission automerge disabled: THUEPP_AUTOMERGE_TOKEN is not configured")
+        print("submission autoapprove disabled: THUEPP_AUTOAPPROVE_TOKEN is not configured")
         return 0
     return run(args.project, token, dry_run=args.dry_run, limit=args.limit)
 
