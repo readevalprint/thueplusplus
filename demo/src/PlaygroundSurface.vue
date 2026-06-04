@@ -389,6 +389,12 @@ const repoFiles = Object.fromEntries([
 const testCaseOptions = flattenTestManifests(Object.fromEntries(Object.entries(manifestModules).map(([key, value]) => [toPublicExamplePath(key), value])))
 const initialFile = normalizeFileParam(props.file ?? routeSearchParams.get('file'))
 const CHALLENGE_TESTS_AUTO_STORAGE_KEY = 'thuepp.challengeTestsAuto'
+const CHALLENGE_ATTEMPT_STORAGE_PREFIX = 'thuepp.challengeAttempt.'
+
+interface StoredChallengeAttempt {
+  rules: string
+  initialState: string
+}
 
 function initialChallengeTestsAuto(): boolean {
   try {
@@ -403,6 +409,45 @@ function persistChallengeTestsAuto(value: boolean): void {
     window.localStorage.setItem(CHALLENGE_TESTS_AUTO_STORAGE_KEY, value ? 'true' : 'false')
   } catch {
     // Ignore storage failures; auto mode still works for the current session.
+  }
+}
+
+function challengeAttemptStorageKey(): string | undefined {
+  const slug = props.challenge?.slug
+  return slug ? `${CHALLENGE_ATTEMPT_STORAGE_PREFIX}${slug}` : undefined
+}
+
+function loadStoredChallengeAttempt(): StoredChallengeAttempt | undefined {
+  const key = challengeAttemptStorageKey()
+  if (!key) return undefined
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw) as Partial<StoredChallengeAttempt>
+    if (typeof parsed.rules !== 'string' || parsed.rules.trim() === '') return undefined
+    return {
+      rules: parsed.rules,
+      initialState: typeof parsed.initialState === 'string' ? parsed.initialState : '',
+    }
+  } catch {
+    return undefined
+  }
+}
+
+function persistChallengeAttempt(): void {
+  const key = challengeAttemptStorageKey()
+  if (!key) return
+  try {
+    if (rulesText.value.trim() === '') {
+      window.localStorage.removeItem(key)
+      return
+    }
+    window.localStorage.setItem(key, JSON.stringify({
+      rules: rulesText.value,
+      initialState: initialStateText.value,
+    } satisfies StoredChallengeAttempt))
+  } catch {
+    // Ignore storage failures; challenge editing still works for the current session.
   }
 }
 
@@ -662,6 +707,7 @@ function setRulesText(source: string): void {
   stateText.value = initialRuntimeState()
   loadError.value = split.error
   clearRun()
+  persistChallengeAttempt()
   scheduleChallengeTestRun()
 }
 
@@ -670,6 +716,7 @@ function setInitialStateText(state: string): void {
   stateText.value = initialRuntimeState()
   loadError.value = ''
   clearRun()
+  persistChallengeAttempt()
   scheduleChallengeTestRun()
 }
 
@@ -848,8 +895,16 @@ function initializeChallengeAttempt(): void {
   if (!props.challenge) return
   fileParam.value = `./challenges/${props.challenge.slug}/attempt.tpp`
   sourcePath.value = `challenges/${props.challenge.slug}/attempt.tpp`
-  rulesText.value = ''
-  initialStateText.value = ''
+  const storedAttempt = loadStoredChallengeAttempt()
+  if (storedAttempt) {
+    rulesText.value = storedAttempt.rules
+    initialStateText.value = storedAttempt.initialState
+    stateText.value = storedAttempt.initialState
+  } else {
+    rulesText.value = ''
+    initialStateText.value = ''
+    stateText.value = ''
+  }
   loadError.value = ''
   clearRun()
   loadChallengeHintIfEditorEmpty()
