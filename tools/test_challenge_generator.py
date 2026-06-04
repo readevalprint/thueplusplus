@@ -16,6 +16,12 @@ kg = importlib.util.module_from_spec(SPEC)
 sys.modules["challenge_generator"] = kg
 SPEC.loader.exec_module(kg)
 
+DISPATCH_SPEC = importlib.util.spec_from_file_location("ci_mr_test_dispatch", ROOT / "tools/ci_mr_test_dispatch.py")
+assert DISPATCH_SPEC and DISPATCH_SPEC.loader
+dispatch = importlib.util.module_from_spec(DISPATCH_SPEC)
+sys.modules["ci_mr_test_dispatch"] = dispatch
+DISPATCH_SPEC.loader.exec_module(dispatch)
+
 
 def test_parser_rule_lines_uses_go_parser_metadata(tmp_path: Path) -> None:
     src = r"""^START$ ::= OUT
@@ -360,3 +366,69 @@ def test_solution_file_limits_reject_bom_crlf_nul_and_oversize() -> None:
             "title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\n",
             body="A" * 100001,
         ))
+
+
+def test_dispatcher_classifies_only_exact_added_tpp_submission_diff() -> None:
+    valid = [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",))]
+    assert dispatch.is_exact_submission_diff(valid)
+
+    non_submission_rows = [
+        [("M", ("challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp",))],
+        [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.json",))],
+        [("M", ("challenges/02_fixed-greet/solutions/readme.md",))],
+        [("R100", ("old.tpp", "challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp"))],
+        [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",)), ("M", ("tools/challenge_generator.py",))],
+    ]
+    for rows in non_submission_rows:
+        assert not dispatch.is_exact_submission_diff(rows)
+
+
+def test_parse_name_status_z_handles_rename_and_copy_records() -> None:
+    raw = b"A\0new.tpp\0M\0existing.tpp\0R100\0old.tpp\0renamed.tpp\0C75\0source.tpp\0copy.tpp\0"
+    assert dispatch.parse_name_status_z(raw) == [
+        ("A", ("new.tpp",)),
+        ("M", ("existing.tpp",)),
+        ("R100", ("old.tpp", "renamed.tpp")),
+        ("C75", ("source.tpp", "copy.tpp")),
+    ]
+
+
+def test_dispatcher_fetches_target_into_remote_tracking_ref() -> None:
+    assert dispatch.fetch_target_command("develop") == [
+        "git", "fetch", "origin", "develop:refs/remotes/origin/develop",
+    ]
+
+
+def test_submission_validation_ignores_unrelated_invalid_existing_solution_metadata(tmp_path: Path) -> None:
+    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    rel_path = f"challenges/02_fixed-greet/solutions/{today}-isolated-submission.tpp"
+    submitted = ROOT / rel_path
+    existing = ROOT / "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
+    original_existing = existing.read_text(encoding="utf-8")
+    diff = write_diff(tmp_path / "changed.diff", [f"A\t{rel_path}"])
+    submitted.write_text(solution_source(
+        "title: Isolated Submission\n"
+        "slug: isolated-submission\n"
+        "author: Probe\n"
+        "website: https://example.com\n"
+    ), encoding="utf-8")
+    existing.write_text(original_existing.replace(
+        "website: https://readevalprint.com",
+        "website: http://readevalprint.com",
+    ), encoding="utf-8")
+    try:
+        _challenge, solution, record = kg.validate_submission(diff.as_posix(), "10000")
+        assert solution == submitted
+        assert record["solution_id"] == f"{today}-isolated-submission"
+    finally:
+        existing.write_text(original_existing, encoding="utf-8")
+        submitted.unlink(missing_ok=True)
+
+
+def test_backend_command_passes_max_state_bytes_cap(tmp_path: Path) -> None:
+    command, cwd = kg.backend_command(
+        "go", tmp_path / "solution.tpp", tmp_path / "coverage.json", "10000", {"name": "case", "resources": {}, "exit_code": 0},
+    )
+    assert cwd == ROOT / "go"
+    assert "--max-state-bytes" in command
+    assert command[command.index("--max-state-bytes") + 1] == kg.GENERATOR_MAX_STATE_BYTES

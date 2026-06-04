@@ -40,6 +40,7 @@ RESOURCE_KEYS = set(CHALLENGE_TEST_SCHEMA["resource_keys"])
 RESOURCE_NAME_RE = re.compile(str(CHALLENGE_TEST_SCHEMA["resource_name_pattern"]))
 EXPECTED_OUTPUT_RESOURCES = set(CHALLENGE_TEST_SCHEMA["expected_output_resources"])
 GENERATOR_CASE_TIMEOUT_SECONDS = 10
+GENERATOR_MAX_STATE_BYTES = "1000000"
 MAX_SOLUTION_CHARACTERS = 100_000
 MAX_TITLE_CODEPOINTS = 80
 MAX_TITLE_BYTES = 240
@@ -372,7 +373,12 @@ def solution_identifier(solution: Path, metadata: dict[str, str]) -> str:
 
 
 def backend_command(backend: str, program: Path, coverage_path: Path, eval_limit: str, case: dict[str, Any]) -> tuple[list[str], Path]:
-    args = [str(program), "--eval-limit", eval_limit, "--rule-coverage", str(coverage_path)]
+    args = [
+        str(program),
+        "--eval-limit", eval_limit,
+        "--max-state-bytes", GENERATOR_MAX_STATE_BYTES,
+        "--rule-coverage", str(coverage_path),
+    ]
     if backend == "go":
         return ["go", "run", "./cmd/thuepp", *args], ROOT / "go"
     raise AssertionError(backend)
@@ -670,6 +676,36 @@ def reject_duplicate_solution_slug(challenge: Path, submitted: Path, metadata: d
             raise RuntimeError(f"{rel(submitted)} front matter slug duplicates existing solution {rel(existing)}")
 
 
+def clean_eligible_record(record: dict[str, Any]) -> dict[str, Any]:
+    cleaned = dict(record)
+    cleaned.pop("_eligible", None)
+    cleaned.pop("_coverage_missing", None)
+    return cleaned
+
+
+def best_effort_submission_rank(challenge: Path, submitted: Path, submitted_record: dict[str, Any], eval_limit: str) -> dict[str, Any]:
+    records = [clean_eligible_record(submitted_record)]
+    for existing in solution_paths(challenge):
+        if existing == submitted:
+            continue
+        try:
+            candidate = evaluate_solution(challenge, existing, eval_limit)
+        except Exception as exc:
+            print(f"WARNING: skipping existing solution during rank estimate: {rel(existing)}: {exc}", file=sys.stderr)
+            continue
+        if not candidate.get("_eligible"):
+            continue
+        records.append(clean_eligible_record(candidate))
+    records.sort(key=ranking_key)
+    for index, candidate in enumerate(records, 1):
+        candidate["rank"] = index
+    identifier = submitted_record["solution_id"]
+    selected = next((candidate for candidate in records if candidate["solution_id"] == identifier), None)
+    if selected is None:
+        raise RuntimeError(f"{rel(submitted)} internal solution id missing from rank estimate")
+    return selected
+
+
 def check_submission_policy(changed_files_path: str) -> None:
     # Backwards-compatible path-list policy: treat the single path as an added file.
     files = [line.strip() for line in Path(changed_files_path).read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -697,10 +733,7 @@ def validate_submission(diff_name_status_path: str, eval_limit: str) -> tuple[Pa
     record.pop("_coverage_missing", None)
     if record["solution_id"] != identifier:
         raise RuntimeError(f"{rel(solution)} internal solution id mismatch")
-    records = qualifying_records(challenge, eval_limit)
-    selected = next((candidate for candidate in records if candidate["solution_id"] == identifier), None)
-    if selected is not None:
-        record = selected
+    record = best_effort_submission_rank(challenge, solution, record, eval_limit)
     return challenge, solution, record
 
 
