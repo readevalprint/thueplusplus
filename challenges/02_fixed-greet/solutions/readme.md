@@ -6,7 +6,8 @@
 | 1 | Direct Greeting | 3 | 3 | 6 | 41 bytes |
 | 2 | Autoapprove Smoke 134244 | 3 | 3 | 6 | 41 bytes |
 | 3 | Automerge Smoke 142325 | 3 | 3 | 6 | 41 bytes |
-| 4 | Staged Greeting | 4 | 4 | 10 | 66 bytes |
+| 4 | GLKB Valid Fork Smoke | 3 | 3 | 6 | 41 bytes |
+| 5 | Staged Greeting | 4 | 4 | 10 | 66 bytes |
 
 ### Best-In-Class Records
 

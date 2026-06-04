@@ -1,0 +1,18 @@
+{
+  "challenge": "02_fixed-greet",
+  "cumulative_state_bytes": 41,
+  "eval_check_count": 6,
+  "rank": 4,
+  "rule_count": 3,
+  "solution_id": "2026-06-04-glkb-valid-fork-smoke",
+  "solution_metadata": {
+    "author": "GLKB Smoke",
+    "slug": "glkb-valid-fork-smoke",
+    "summary": "Valid fork-backed automerge smoke solution.",
+    "title": "GLKB Valid Fork Smoke",
+    "website": "https://example.com"
+  },
+  "solution_path": "challenges/02_fixed-greet/solutions/2026-06-04-glkb-valid-fork-smoke.tpp",
+  "solution_sha256": "75bed70ac1c4dd56eb0725114369187ef4a162eb4140ff58bede53115c563196",
+  "successful_rewrites": 3
+}
