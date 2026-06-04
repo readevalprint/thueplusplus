@@ -158,17 +158,22 @@ START
 
 
 def test_solution_filenames_use_date_and_front_matter_slug() -> None:
+    today = dt.datetime.now(dt.timezone.utc).date()
     for solution in (ROOT / "challenges").glob("*/solutions/*.tpp"):
         metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))
-        assert solution.name == f"2026-05-29-{metadata['slug']}.tpp"
+        match = kg.CHALLENGE_SOLUTION_PATH_RE.fullmatch(kg.rel(solution))
+        assert match is not None
+        _challenge_slug, date_text, filename_slug = match.groups()
+        assert dt.date.fromisoformat(date_text) <= today
+        assert filename_slug == metadata["slug"]
         assert metadata["slug"] == kg.slugify_title(metadata["title"])
 
 
 def test_qualifying_records_include_pilot_challenges() -> None:
     fixed = kg.qualifying_records(ROOT / "challenges/02_fixed-greet", "10000")
     binary = kg.qualifying_records(ROOT / "challenges/03_binary-not", "10000")
-    assert len(fixed) == 2
-    assert len(binary) == 1
+    assert len(fixed) >= 2
+    assert len(binary) >= 1
     generated_keys = {
         "challenge",
         "rank",
@@ -264,6 +269,9 @@ def test_submission_diff_accepts_added_solution_file_only(tmp_path: Path) -> Non
 
     assert kg.parse_submission_diff(write_diff(tmp_path / "added.diff", [f"A\t{added}"]).as_posix()) == ("A", added)
     assert dispatch.is_exact_submission_diff([("A", (added,))])
+    assert kg.is_solution_submission_path(added) == dispatch.is_solution_submission_path(added)
+    assert not kg.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md")
+    assert kg.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md") == dispatch.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md")
 
 
 def test_submission_path_accepts_prefixed_challenge_directory(tmp_path: Path) -> None:
@@ -493,3 +501,31 @@ def test_gitlab_ci_runs_test_job_for_all_gitlab_com_merge_request_events() -> No
     assert "uv run python tools/commit_challenge_metrics.py" in ci_text
     assert "needs:\n    - challenge-metrics" in pages_job
     assert "uv run python tools/ci_mr_test_dispatch.py" in test_job
+
+
+def test_gitlab_ci_submission_automerge_is_trusted_default_branch_only() -> None:
+    ci_text = (ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
+    automerge_job = ci_text.split("\nsubmission-automerge:\n", 1)[1].split("\nchallenge-metrics:\n", 1)[0]
+
+    assert '$CI_SERVER_HOST == "gitlab.com"' in automerge_job
+    assert "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" in automerge_job
+    assert '$THUEPP_AUTOMERGE_ENABLED == "1"' in automerge_job
+    assert '$CI_PIPELINE_SOURCE == "schedule"' in automerge_job
+    assert '$CI_PIPELINE_SOURCE == "api"' in automerge_job
+    assert '$CI_PIPELINE_SOURCE == "web"' in automerge_job
+    assert "merge_request_event" not in automerge_job
+
+
+def test_check_submission_rejects_changed_files_compatibility_option(monkeypatch, tmp_path: Path) -> None:
+    changed = tmp_path / "changed.txt"
+    changed.write_text("challenges/02_fixed-greet/solutions/2026-06-04-one.tpp\n", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["challenge_generator.py", "--check-submission", "--changed-files", str(changed)])
+
+    with pytest.raises(SystemExit):
+        kg.parse_args()
+
+
+def test_gitlab_ci_cache_does_not_reference_stale_demo_npm_path() -> None:
+    ci_text = (ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
+    cache_block = ci_text.split("\ncache:\n", 1)[1].split("\ntest:\n", 1)[0]
+    assert "demo/.npm/" not in cache_block

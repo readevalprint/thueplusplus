@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import urllib.error
 import urllib.parse
@@ -19,12 +18,14 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+try:
+    from challenge_submission_policy import is_solution_submission_path
+except ModuleNotFoundError:  # pytest imports this file from the repository root.
+    from tools.challenge_submission_policy import is_solution_submission_path
+
 PROJECT_PATH = "thuelang/thueplusplus"
 TARGET_BRANCH = "develop"
-COMMENT_MARKER = "<!-- thuepp-submission-validation-failure -->"
-SOLUTION_PATH_RE = re.compile(
-    r"^challenges/\d{2}_[a-z0-9][a-z0-9-]*/solutions/\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*\.tpp$"
-)
+COMMENT_MARKER = "thuepp-submission-validation-failure"
 MERGEABLE_STATUSES = {"mergeable", "can_be_merged"}
 
 
@@ -39,8 +40,9 @@ def project_api_path(project_path: str) -> str:
     return urllib.parse.quote(project_path, safe="")
 
 
-def is_solution_submission_path(path: str) -> bool:
-    return SOLUTION_PATH_RE.fullmatch(path) is not None
+
+class UnsafeChangesError(RuntimeError):
+    pass
 
 
 def changed_solution_path(changes: list[dict[str, Any]]) -> Decision:
@@ -94,13 +96,6 @@ def mergeability(mr: dict[str, Any]) -> Decision:
         return Decision(False, f"MR is not mergeable: {detailed}")
     return Decision(True, "MR is mergeable")
 
-
-def candidate_decision(mr: dict[str, Any], changes: list[dict[str, Any]]) -> Decision:
-    for check in (mergeability(mr), successful_head_pipeline(mr), changed_solution_path(changes)):
-        if not check.accepted:
-            return check
-    path = changed_solution_path(changes).solution_path
-    return Decision(True, "safe challenge solution MR", path)
 
 
 class GitLabClient:
@@ -161,6 +156,8 @@ def mr_detail(client: GitLabClient, project_path: str, iid: int) -> dict[str, An
 def mr_changes(client: GitLabClient, project_path: str, iid: int) -> list[dict[str, Any]]:
     project = project_api_path(project_path)
     payload = client.request("GET", f"projects/{project}/merge_requests/{iid}/changes")
+    if payload.get("overflow"):
+        raise UnsafeChangesError("MR changes overflow; cannot safely determine exact diff")
     return list(payload.get("changes") or [])
 
 
@@ -172,11 +169,6 @@ def mr_notes(client: GitLabClient, project_path: str, iid: int) -> list[dict[str
 def pipeline_jobs(client: GitLabClient, project_path: str, pipeline_id: int) -> list[dict[str, Any]]:
     project = project_api_path(project_path)
     return list(client.get_all(f"projects/{project}/pipelines/{pipeline_id}/jobs"))
-
-
-def job_trace(client: GitLabClient, project_path: str, job_id: int) -> str:
-    project = project_api_path(project_path)
-    return client.request_text("GET", f"projects/{project}/jobs/{job_id}/trace")
 
 
 def create_mr_note(client: GitLabClient, project_path: str, iid: int, body: str) -> None:
@@ -194,36 +186,33 @@ def pipeline_matches_mr(mr: dict[str, Any], pipeline: dict[str, Any]) -> bool:
     return iid is not None and ref in {f"refs/merge-requests/{iid}/head", f"refs/merge-requests/{iid}/merge"}
 
 
-def truncate_for_comment(text: str, limit: int = 6000) -> str:
-    if len(text) <= limit:
-        return text
-    omitted = len(text) - limit
-    return f"{text[-limit:]}\n\n... omitted {omitted} earlier characters; see the CI job log for full output ..."
+def comment_marker(sha: str | None, solution_path: str | None) -> str:
+    parts = [COMMENT_MARKER]
+    if sha:
+        parts.append(f"sha:{sha}")
+    if solution_path:
+        parts.append(f"path:{solution_path}")
+    return "<!-- " + " ".join(parts) + " -->"
 
 
-def failed_submission_comment_body(mr: dict[str, Any], solution_path: str, failed_job: dict[str, Any] | None, trace: str) -> str:
+def failed_submission_comment_body(mr: dict[str, Any], solution_path: str, failed_job_url: str | None) -> str:
     pipeline = mr.get("head_pipeline") or mr.get("pipeline") or {}
-    pipeline_id = pipeline.get("id")
-    job_url = failed_job.get("web_url") if failed_job else None
-    trace_tail = truncate_for_comment(trace.strip() or "(no failed job trace available)")
+    pipeline_url = pipeline.get("web_url")
     return (
-        f"{COMMENT_MARKER}\n"
-        f"<!-- pipeline:{pipeline_id} sha:{mr.get('sha')} -->\n\n"
+        f"{comment_marker(str(mr.get('sha') or ''), solution_path)}\n\n"
         "## Challenge submission validation failed\n\n"
         "Thanks for the submission! The CI lightweight challenge validator could not accept this solution yet.\n\n"
         f"Solution file: `{solution_path}`\n\n"
-        + (f"Failed CI job: {job_url}\n\n" if job_url else "")
-        + "Public challenge submissions must contain exactly one newly added solution `.tpp` file under:\n\n"
+        + (f"Failed CI job: {failed_job_url}\n\n" if failed_job_url else "")
+        + (f"Pipeline: {pipeline_url}\n\n" if pipeline_url else "")
+        + "Open the failed CI job log for the exact validator error.\n\n"
+        "Public challenge submissions must contain exactly one newly added solution `.tpp` file under:\n\n"
         "```text\n"
         "challenges/<challenge>/solutions/YYYY-MM-DD-your-solution-slug.tpp\n"
         "```\n\n"
         "The file must include exact front matter (`title`, `slug`, `author`, `website`; optional `summary`), "
         "valid UTF-8/LF text, printable ASCII Thue++ rules in the body, must pass every challenge test, and must cover every executable rule. "
         "Do not commit generated `.json` metrics or `solutions/readme.md`; trusted CI regenerates those after merge.\n\n"
-        "### Validator output / CI trace tail\n\n"
-        "```text\n"
-        f"{trace_tail}\n"
-        "```\n\n"
         "Common fixes:\n"
         "- Make sure the MR adds one new `.tpp` file instead of modifying or renaming an existing solution.\n"
         "- Keep the filename date/slug aligned with the front matter `slug`.\n"
@@ -233,9 +222,30 @@ def failed_submission_comment_body(mr: dict[str, Any], solution_path: str, faile
     )
 
 
-def already_commented_for_pipeline(notes: list[dict[str, Any]], pipeline_id: int | None) -> bool:
-    marker = f"<!-- pipeline:{pipeline_id} " if pipeline_id is not None else COMMENT_MARKER
-    return any(COMMENT_MARKER in str(note.get("body") or "") and marker in str(note.get("body") or "") for note in notes)
+def already_commented_for_failure(notes: list[dict[str, Any]], sha: str | None, solution_path: str, pipeline_id: int | None) -> bool:
+    for note in notes:
+        body = str(note.get("body") or "")
+        if COMMENT_MARKER not in body:
+            continue
+        if sha and f"sha:{sha}" in body and f"path:{solution_path}" in body:
+            return True
+        if pipeline_id is not None and f"pipeline:{pipeline_id} " in body and (not sha or f"sha:{sha}" in body):
+            return True
+    return False
+
+
+def failed_job_url_or_none(client: GitLabClient, project_path: str, pipeline: dict[str, Any]) -> str | None:
+    pipeline_id = int(pipeline["id"])
+    pipeline_project = str(pipeline.get("project_id") or project_path)
+    try:
+        jobs = pipeline_jobs(client, pipeline_project, pipeline_id)
+    except Exception as exc:
+        print(f"warning: failed job lookup failed for pipeline {pipeline_id}: {exc}")
+        return None
+    failed_job = next((job for job in jobs if job.get("status") == "failed" and job.get("name") == "test"), None)
+    if failed_job is None:
+        failed_job = next((job for job in jobs if job.get("status") == "failed"), None)
+    return str(failed_job.get("web_url")) if failed_job and failed_job.get("web_url") else None
 
 
 def comment_failed_submission_if_needed(
@@ -249,15 +259,17 @@ def comment_failed_submission_if_needed(
         return False
     iid = int(mr["iid"])
     pipeline_id = int(pipeline["id"])
-    if already_commented_for_pipeline(mr_notes(client, project_path, iid), pipeline_id):
-        print(f"skip !{iid}: failure comment already exists for pipeline {pipeline_id}")
+    sha = str(mr.get("sha") or pipeline.get("sha") or "")
+    try:
+        notes = mr_notes(client, project_path, iid)
+        if already_commented_for_failure(notes, sha, solution_path, pipeline_id):
+            print(f"skip !{iid}: failure comment already exists for sha {sha or 'unknown'}")
+            return False
+        failed_job_url = failed_job_url_or_none(client, project_path, pipeline)
+        create_mr_note(client, project_path, iid, failed_submission_comment_body(mr, solution_path, failed_job_url))
+    except Exception as exc:
+        print(f"submission failure comment failed for !{iid}: {exc}")
         return False
-    jobs = pipeline_jobs(client, project_path, pipeline_id)
-    failed_job = next((job for job in jobs if job.get("status") == "failed" and job.get("name") == "test"), None)
-    if failed_job is None:
-        failed_job = next((job for job in jobs if job.get("status") == "failed"), None)
-    trace = job_trace(client, project_path, int(failed_job["id"])) if failed_job else ""
-    create_mr_note(client, project_path, iid, failed_submission_comment_body(mr, solution_path, failed_job, trace))
     print(f"commented !{iid}: failed challenge submission pipeline {pipeline_id}")
     return True
 
@@ -292,9 +304,22 @@ def run(project_path: str, token: str, *, dry_run: bool = False, limit: int | No
             break
         iid = int(mr["iid"])
         mr = mr_detail(client, project_path, iid)
-        changes = mr_changes(client, project_path, iid)
+        try:
+            changes = mr_changes(client, project_path, iid)
+        except UnsafeChangesError as exc:
+            print(f"skip !{iid}: {exc}")
+            continue
         change_decision = changed_solution_path(changes)
-        if change_decision.accepted and comment_failed_submission_if_needed(client, project_path, mr, change_decision.solution_path or ""):
+        pipeline = mr.get("head_pipeline") or mr.get("pipeline") or {}
+        failed_comment_candidate = (
+            change_decision.accepted
+            and pipeline.get("status") == "failed"
+            and pipeline_matches_mr(mr, pipeline)
+        )
+        if failed_comment_candidate and dry_run:
+            print(f"would comment !{iid}: failed challenge submission pipeline {pipeline.get('id')}")
+            continue
+        if failed_comment_candidate and comment_failed_submission_if_needed(client, project_path, mr, change_decision.solution_path or ""):
             commented += 1
             continue
         merge_decision = mergeability(mr)
@@ -310,6 +335,7 @@ def run(project_path: str, token: str, *, dry_run: bool = False, limit: int | No
             continue
         print(f"eligible !{iid}: {change_decision.solution_path}")
         if dry_run:
+            print(f"would approve and merge !{iid}")
             continue
         approve_mr(client, project_path, mr)
         print(f"approved !{iid}")
@@ -323,10 +349,16 @@ def run(project_path: str, token: str, *, dry_run: bool = False, limit: int | No
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", default=os.environ.get("THUEPP_AUTOMERGE_PROJECT", PROJECT_PATH))
+    parser.add_argument("--project", default=PROJECT_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int)
     args = parser.parse_args(argv)
+
+    env_project = os.environ.get("THUEPP_AUTOMERGE_PROJECT")
+    if args.project != PROJECT_PATH or (env_project is not None and env_project != PROJECT_PATH):
+        requested = args.project if args.project != PROJECT_PATH else env_project
+        print(f"submission automerge does not accept project override: {requested}")
+        return 2
 
     if os.environ.get("THUEPP_AUTOMERGE_ENABLED") != "1":
         print("submission automerge disabled: set THUEPP_AUTOMERGE_ENABLED=1 in trusted default-branch CI")
