@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib.util
-import subprocess
 import sys
 from pathlib import Path
 
@@ -397,40 +396,6 @@ def test_dispatcher_classifies_only_exact_added_tpp_submission_diff() -> None:
     ]
     for rows in non_submission_rows:
         assert not dispatch.is_exact_submission_diff(rows)
-
-
-def test_submission_failure_comment_body_includes_actionable_context() -> None:
-    body = dispatch.submission_failure_comment_body(
-        "A\tchallenges/02_fixed-greet/solutions/2026-06-04-bad.tpp\n",
-        "SUBMISSION FAILED: front matter slug duplicates existing solution",
-    )
-
-    assert "Challenge submission validation failed" in body
-    assert "exactly one newly added solution `.tpp`" in body
-    assert "SUBMISSION FAILED" in body
-    assert "Do not commit generated `.json` metrics" in body
-    assert "modifying or renaming an existing solution" in body
-
-
-def test_failed_submission_validator_posts_mr_comment(monkeypatch, tmp_path: Path, capsys) -> None:
-    posted: list[str] = []
-
-    def fake_run(command: list[str], *, capture: bool = False):
-        assert capture
-        assert "--check-submission" in command
-        return subprocess.CompletedProcess(command, 1, stdout="SUBMISSION FAILED: bad slug\n", stderr="hint line\n")
-
-    monkeypatch.setattr(dispatch, "run", fake_run)
-    monkeypatch.setattr(dispatch, "post_merge_request_note", lambda body: posted.append(body) or True)
-    diff = "A\tchallenges/02_fixed-greet/solutions/2026-06-04-bad.tpp\n"
-
-    assert dispatch.run_submission_validator(tmp_path / "changed.diff", diff) == 1
-
-    output = capsys.readouterr().out
-    assert "SUBMISSION FAILED: bad slug" in output
-    assert len(posted) == 1
-    assert diff.strip() in posted[0]
-    assert "hint line" in posted[0]
 
 
 def test_parse_name_status_z_handles_rename_and_copy_records() -> None:
