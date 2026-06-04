@@ -75,9 +75,11 @@ Required GitLab.com CI/CD variables:
 - `THUEPP_AUTOMERGE_ENABLED=1`
 - `THUEPP_AUTOMERGE_TOKEN`: masked/protected project or bot token with permission to read MRs, approve MRs, and merge into `develop`
 
-Run the trusted job from a scheduled GitLab.com pipeline, or trigger a trusted default-branch API/web pipeline after an MR pipeline succeeds. The script scans open MRs targeting `develop`, approves each eligible MR, then merges it. Candidates must be open, non-draft, mergeable, have a successful latest head pipeline for the MR SHA, and have a diff that is exactly one newly-added solution file matching the submission path contract. Rename, delete, modify, generated JSON, leaderboard, docs, code, and multi-file MRs are skipped.
+Run the trusted job from the scheduled GitLab.com pipeline, or trigger a trusted default-branch API/web pipeline after an MR pipeline succeeds. The schedule is intentionally retained as the trusted polling bridge for now: untrusted MR pipelines validate only, and the recurring protected default-branch job performs idempotent comments/approvals/merges. The script scans open MRs targeting `develop`, approves each eligible MR, then merges it. Candidates must be open, non-draft, mergeable, have a successful latest head pipeline for the MR SHA, and have a diff that is exactly one newly-added solution file matching the submission path contract. Rename, delete, modify, generated JSON, leaderboard, docs, code, and multi-file MRs are skipped.
 
-The bot merge pushes a new commit to `develop`. That normal default-branch push pipeline runs the `pages` job, regenerates public challenge metrics/leaderboards, and deploys the site. The automation job is intentionally not run on ordinary push pipelines, so a stale or missing merge token cannot block Pages rebuilds after a merge.
+When a one-file submission fails validation, the trusted job may post one de-duplicated comment for the failed SHA/path. That comment links to the failed job and pipeline, but it deliberately does not copy raw CI trace output into the bot-authored note; untrusted job logs stay in GitLab's job log UI. If job lookup fails, the comment falls back to pipeline/static guidance. If comment posting fails, the trusted run logs the best-effort failure and keeps processing later MRs.
+
+The bot merge pushes a new commit to `develop`. That normal default-branch push pipeline runs the `pages` job, regenerates public challenge metrics/leaderboards, and deploys the site. The automation job is intentionally not run on ordinary push pipelines or merge-request pipelines, so a stale or missing merge token cannot block Pages rebuilds after a merge and protected credentials are not exposed to untrusted code.
 
 End-to-end public verification after the bot merges:
 

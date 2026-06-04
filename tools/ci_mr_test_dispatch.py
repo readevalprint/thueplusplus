@@ -4,17 +4,17 @@
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+try:
+    from challenge_submission_policy import NameStatusRows, is_exact_submission_diff, is_solution_submission_path
+except ModuleNotFoundError:  # pytest imports this file from the repository root.
+    from tools.challenge_submission_policy import NameStatusRows, is_exact_submission_diff, is_solution_submission_path
+
 ROOT = Path(__file__).resolve().parents[1]
-CHALLENGE_SUBMISSION_PATH_RE = re.compile(
-    r"^challenges/\d{2}_[a-z0-9][a-z0-9-]*/solutions/\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*\.tpp$"
-)
-NameStatusRows = list[tuple[str, tuple[str, ...]]]
 
 
 def run(command: list[str], *, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -109,21 +109,6 @@ def rows_to_name_status_text(rows: NameStatusRows) -> str:
     for status, paths in rows:
         lines.append("\t".join((status, *paths)))
     return "\n".join(lines) + ("\n" if lines else "")
-
-
-def is_solution_submission_path(path: str) -> bool:
-    return CHALLENGE_SUBMISSION_PATH_RE.fullmatch(path) is not None
-
-
-def is_exact_submission_diff(rows: NameStatusRows) -> bool:
-    if len(rows) != 1:
-        return False
-    status, paths = rows[0]
-    return (
-        status == "A"
-        and len(paths) == 1
-        and is_solution_submission_path(paths[0])
-    )
 
 
 def main() -> int:
