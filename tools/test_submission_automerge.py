@@ -53,18 +53,10 @@ def assert_rejected(reason_part: str, mr=None, changes=None) -> None:
     assert reason_part in decision.reason
 
 
-def test_accepts_only_safe_one_file_solution_mr() -> None:
+def test_accepts_only_safe_added_solution_file_mr() -> None:
     decision = submission_automerge.candidate_decision(valid_mr(), valid_changes())
     assert decision.accepted
     assert decision.solution_path == "challenges/02_fixed-greet/solutions/2026-06-04-automerge-smoke.tpp"
-
-    modified = submission_automerge.candidate_decision(valid_mr(), modified_changes())
-    assert modified.accepted
-    assert modified.solution_path == "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
-
-    renamed = submission_automerge.candidate_decision(valid_mr(), renamed_changes())
-    assert renamed.accepted
-    assert renamed.solution_path == "challenges/03_binary-not/solutions/2026-05-29-truth-table-flip2.tpp"
 
 
 def test_rejects_draft_conflicted_or_wrong_target() -> None:
@@ -92,10 +84,11 @@ def test_accepts_gitlab_merged_result_pipeline_ref() -> None:
 def test_rejects_non_exact_diff_shapes() -> None:
     assert_rejected("exactly one", changes=[])
     assert_rejected("exactly one", changes=valid_changes() + valid_changes("challenges/03_binary-not/solutions/2026-06-04-other.tpp"))
-    assert_rejected("deleted", changes=[{"old_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_file": False, "renamed_file": False, "deleted_file": True}])
+    assert_rejected("newly added", changes=modified_changes())
+    assert_rejected("renamed/deleted", changes=renamed_changes())
+    assert_rejected("renamed/deleted", changes=[{"old_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_file": False, "renamed_file": False, "deleted_file": True}])
     assert_rejected("valid challenge solution path", changes=valid_changes("challenges/02_fixed-greet/solutions/readme.md"))
     assert_rejected("valid challenge solution path", changes=valid_changes("tools/challenge_generator.py"))
-    assert_rejected("valid challenge solution path", changes=renamed_changes("challenges/03_binary-not/solutions/2026-05-29-truth-table-flip.tpp", "tools/challenge_generator.py"))
 
 
 def test_noop_when_disabled_or_token_missing(monkeypatch, capsys) -> None:
