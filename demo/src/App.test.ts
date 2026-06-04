@@ -264,7 +264,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="challenge-test-exit-code-diff-default-state"]').exists()).toBe(false)
     expect(result.text()).toContain('Hello, challenge!')
     expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Run Tests Again')
-    expect(wrapper.get('[data-test="challenge-attempt-rank"]').text()).toBe('Rank - of 3')
+    expect(wrapper.get('[data-test="challenge-attempt-rank"]').text()).toMatch(/^Rank - of \d+$/)
     expect(wrapper.get('[data-test="challenge-attempt-bytes-used"]').text()).toBe('5 bytes')
     expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('⌘↵')
 

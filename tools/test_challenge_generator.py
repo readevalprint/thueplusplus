@@ -193,6 +193,20 @@ def test_qualifying_records_include_pilot_challenges() -> None:
         assert record["solution_metadata"]["title"]
 
 
+def test_stale_solution_json_paths_excludes_active_records(tmp_path: Path) -> None:
+    challenge = tmp_path / "challenges" / "01_demo"
+    solutions = challenge / "solutions"
+    solutions.mkdir(parents=True)
+    active = solutions / "2026-06-04-active.json"
+    stale = solutions / "2026-06-04-stale.json"
+    active.write_text("{}\n", encoding="utf-8")
+    stale.write_text("{}\n", encoding="utf-8")
+
+    records = [{"solution_path": "challenges/01_demo/solutions/2026-06-04-active.tpp"}]
+
+    assert kg.stale_solution_json_paths(challenge, records) == [stale]
+
+
 def test_ranking_key_matches_documented_order() -> None:
     base = {
         "rule_count": 1,
