@@ -26,7 +26,7 @@ def valid_mr(**overrides):
         "has_conflicts": False,
         "detailed_merge_status": "mergeable",
         "sha": "abc123",
-        "head_pipeline": {"sha": "abc123", "status": "success"},
+        "head_pipeline": {"sha": "abc123", "status": "success", "source": "merge_request_event"},
     }
     mr.update(overrides)
     return mr
@@ -157,7 +157,7 @@ class FailedSubmissionFakeClient(FakeClient):
     def request(self, method: str, path: str, data=None):
         self.paths.append((method, path))
         if method == "GET" and path.endswith("/merge_requests/7"):
-            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
+            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed", "source": "merge_request_event"}, detailed_merge_status="checking")
         if method == "GET" and path.endswith("/merge_requests/7/changes"):
             return {"changes": valid_changes()}
         if method == "POST" and path.endswith("/merge_requests/7/notes"):
@@ -178,14 +178,6 @@ class DuplicateFailedSubmissionFakeClient(FailedSubmissionFakeClient):
         return super().get_all(path)
 
 
-class OldMarkerDuplicateFailedSubmissionFakeClient(FailedSubmissionFakeClient):
-    def get_all(self, path: str):
-        if path.endswith("/merge_requests/7/notes?sort=asc"):
-            self.paths.append(("GET_ALL", path))
-            return [{"body": f"<!-- thuepp-submission-validation-failure -->\n<!-- pipeline:42 sha:abc123 -->"}]
-        return super().get_all(path)
-
-
 class DifferentShaAlreadyCommentedFakeClient(FailedSubmissionFakeClient):
     def get_all(self, path: str):
         if path.endswith("/merge_requests/7/notes?sort=asc"):
@@ -197,7 +189,7 @@ class DifferentShaAlreadyCommentedFakeClient(FailedSubmissionFakeClient):
 def test_failed_submission_comment_body_links_logs_without_embedding_trace() -> None:
     hostile_trace = "SUBMISSION FAILED\n```\n## injected trusted-looking heading\n```"
     body = submission_automerge.failed_submission_comment_body(
-        valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed", "web_url": "https://gitlab.com/pipeline/42"}),
+        valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed", "source": "merge_request_event", "web_url": "https://gitlab.com/pipeline/42"}),
         "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp",
         "https://gitlab.com/job/99",
     )
@@ -239,16 +231,6 @@ def test_run_does_not_duplicate_failed_submission_comment(monkeypatch, capsys) -
     assert fake.noted_body is None
     output = capsys.readouterr().out
     assert "failure comment already exists" in output
-
-
-def test_run_still_recognizes_old_pipeline_marker(monkeypatch, capsys) -> None:
-    fake = OldMarkerDuplicateFailedSubmissionFakeClient()
-    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
-
-    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
-
-    assert fake.noted_body is None
-    assert "failure comment already exists" in capsys.readouterr().out
 
 
 def test_run_allows_new_comment_for_new_failed_sha(monkeypatch, capsys) -> None:
@@ -298,7 +280,7 @@ class NotesFailThenValidFakeClient(FakeClient):
     def request(self, method: str, path: str, data=None):
         self.paths.append((method, path))
         if method == "GET" and path.endswith("/merge_requests/7"):
-            return valid_mr(iid=7, head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
+            return valid_mr(iid=7, head_pipeline={"id": 42, "sha": "abc123", "status": "failed", "source": "merge_request_event"}, detailed_merge_status="checking")
         if method == "GET" and path.endswith("/merge_requests/7/changes"):
             return {"changes": valid_changes()}
         if method == "POST" and path.endswith("/merge_requests/7/notes"):
@@ -346,7 +328,7 @@ class NonExactFailedFakeClient(FailedSubmissionFakeClient):
     def request(self, method: str, path: str, data=None):
         self.paths.append((method, path))
         if method == "GET" and path.endswith("/merge_requests/7"):
-            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
+            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed", "source": "merge_request_event"}, detailed_merge_status="checking")
         if method == "GET" and path.endswith("/merge_requests/7/changes"):
             return {"changes": modified_changes()}
         if method in {"POST", "PUT"}:
@@ -358,7 +340,7 @@ class StaleFailedPipelineFakeClient(FailedSubmissionFakeClient):
     def request(self, method: str, path: str, data=None):
         self.paths.append((method, path))
         if method == "GET" and path.endswith("/merge_requests/7"):
-            return valid_mr(head_pipeline={"id": 42, "sha": "old", "status": "failed"}, detailed_merge_status="checking")
+            return valid_mr(head_pipeline={"id": 42, "sha": "old", "status": "failed", "source": "merge_request_event"}, detailed_merge_status="checking")
         if method == "GET" and path.endswith("/merge_requests/7/changes"):
             return {"changes": valid_changes()}
         if method in {"POST", "PUT"}:
@@ -447,7 +429,7 @@ def test_failed_job_lookup_uses_pipeline_project_id_but_notes_target_project(mon
     def request(method: str, path: str, data=None):
         fake.paths.append((method, path))
         if method == "GET" and path.endswith("/merge_requests/7"):
-            return valid_mr(head_pipeline={"id": 42, "project_id": 12345, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
+            return valid_mr(head_pipeline={"id": 42, "project_id": 12345, "sha": "abc123", "status": "failed", "source": "merge_request_event"}, detailed_merge_status="checking")
         if method == "GET" and path.endswith("/merge_requests/7/changes"):
             return {"changes": valid_changes()}
         if method == "POST" and path.endswith("/merge_requests/7/notes"):
@@ -464,11 +446,61 @@ def test_failed_job_lookup_uses_pipeline_project_id_but_notes_target_project(mon
     assert any(path == "projects/thuelang%2Fthueplusplus/merge_requests/7/notes" for method, path in fake.paths if method == "POST")
 
 
-def test_main_rejects_project_override(monkeypatch, capsys) -> None:
+def test_rejects_copied_and_missing_change_records() -> None:
+    copied = valid_changes()[0].copy()
+    copied["copied_file"] = True
+    assert not submission_automerge.changed_solution_path([copied]).accepted
+    missing = valid_changes()[0].copy()
+    del missing["new_file"]
+    decision = submission_automerge.changed_solution_path([missing])
+    assert not decision.accepted
+    assert "missing required" in decision.reason
+
+
+def test_changes_count_overflow_variants_skip_without_mutation(monkeypatch, capsys) -> None:
+    class CountOverflowClient(OverflowChangesFakeClient):
+        def request(self, method: str, path: str, data=None):
+            self.paths.append((method, path))
+            if method == "GET" and path.endswith("/merge_requests/7"):
+                return valid_mr()
+            if method == "GET" and path.endswith("/merge_requests/7/changes"):
+                return {"changes_count": "1000+", "changes": valid_changes()}
+            if method in {"POST", "PUT"}:
+                raise AssertionError("overflowed changes must not mutate GitLab")
+            raise AssertionError((method, path, data))
+
+    fake = CountOverflowClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert not fake.approved
+    assert not fake.merged
+    assert "changes overflow" in capsys.readouterr().out
+
+
+def test_main_has_no_project_override(monkeypatch) -> None:
     monkeypatch.setenv("THUEPP_AUTOMERGE_ENABLED", "1")
     monkeypatch.setenv("THUEPP_AUTOMERGE_TOKEN", "token")
-    assert submission_automerge.main(["--project", "attacker/project"]) == 2
-    assert "does not accept project override" in capsys.readouterr().out
-    monkeypatch.setenv("THUEPP_AUTOMERGE_PROJECT", "attacker/project")
-    assert submission_automerge.main([]) == 2
-    assert "attacker/project" in capsys.readouterr().out
+    try:
+        submission_automerge.main(["--project", "attacker/project"])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("--project must not be accepted")
+
+
+def test_rejects_same_sha_successful_non_mr_pipeline() -> None:
+    decision = submission_automerge.successful_head_pipeline(
+        valid_mr(head_pipeline={"sha": "abc123", "status": "success", "source": "push"})
+    )
+    assert not decision.accepted
+    assert "does not match" in decision.reason
+
+
+def test_rejects_generic_pipeline_fallback_even_when_successful() -> None:
+    decision = submission_automerge.successful_head_pipeline(
+        valid_mr(head_pipeline=None, pipeline={"sha": "abc123", "status": "success", "source": "merge_request_event"})
+    )
+    assert not decision.accepted
+    assert "no head pipeline" in decision.reason
