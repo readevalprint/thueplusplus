@@ -46,13 +46,13 @@ test:
   script:
     - uv run python tools/ci_mr_test_dispatch.py # dispatches ordinary validation to make test
 
-submission-autoapprove:
+submission-automerge:
   image: python:3.13-slim
   stage: automation
   rules:
-    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $THUEPP_AUTOMERGE_ENABLED == "1" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "api" || $CI_PIPELINE_SOURCE == "web")'
   script:
-    - python tools/submission_autoapprove.py
+    - python tools/submission_automerge.py
 
 pages:
   image: node:22-bookworm
