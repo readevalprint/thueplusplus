@@ -274,6 +274,36 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
   })
 
+  it('persists challenge rules and initial state per challenge but falls back to hint when rules are empty', async () => {
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
+    const firstWrapper = await mountApp()
+
+    await firstWrapper.get('[data-test="playground-rules"]').setValue('^CUSTOM$ ::= OUT')
+    await setProgramState(firstWrapper, 'CUSTOM')
+    expect(sourceProgramState(firstWrapper)).toBe('CUSTOM')
+    firstWrapper.unmount()
+
+    const restoredWrapper = await mountApp()
+    expect((restoredWrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toBe('^CUSTOM$ ::= OUT')
+    expect(sourceProgramState(restoredWrapper)).toBe('CUSTOM')
+    restoredWrapper.unmount()
+
+    window.history.pushState({}, '', '/challenges/03_binary-not/')
+    const otherChallengeWrapper = await mountApp()
+    expect((otherChallengeWrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).not.toBe('^CUSTOM$ ::= OUT')
+    otherChallengeWrapper.unmount()
+
+    window.history.pushState({}, '', '/challenges/02_fixed-greet/')
+    const clearWrapper = await mountApp()
+    await clearWrapper.get('[data-test="playground-rules"]').setValue('')
+    await flush()
+    clearWrapper.unmount()
+
+    const hintWrapper = await mountApp()
+    expect((hintWrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('Goal: print exactly Hello, challenge!')
+    expect(sourceProgramState(hintWrapper)).toBe('START')
+  })
+
   it('shows challenge exit-code mismatch diffs separately from output diffs', async () => {
     window.history.pushState({}, '', '/challenges/02_fixed-greet/')
     mockedRunWithWorker.mockResolvedValue({
