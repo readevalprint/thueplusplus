@@ -1,6 +1,6 @@
 ---
-title: Truth Table Flip
-slug: truth-table-flip
+title: Truth Table Flip2
+slug: truth-table-flip2
 author: Tim Watts
 website: https://readevalprint.com
 summary: Handle each binary input as its own rewrite row.
