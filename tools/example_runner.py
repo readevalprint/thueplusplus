@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import math
+import os
 import re
 import shlex
 import subprocess
@@ -21,8 +23,52 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EVAL_LIMIT = 10000
-INTERNAL_JOBS = 8
 DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
+
+
+def _positive_int(value: str) -> int | None:
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return parsed if parsed > 0 else None
+
+
+def cgroup_cpu_quota() -> int | None:
+    cpu_max = Path("/sys/fs/cgroup/cpu.max")
+    if cpu_max.exists():
+        fields = cpu_max.read_text(encoding="utf-8").split()
+        if len(fields) >= 2 and fields[0] != "max":
+            quota = _positive_int(fields[0])
+            period = _positive_int(fields[1])
+            if quota is not None and period is not None:
+                return max(1, math.ceil(quota / period))
+
+    quota_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+    period_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+    if quota_path.exists() and period_path.exists():
+        quota = _positive_int(quota_path.read_text(encoding="utf-8").strip())
+        period = _positive_int(period_path.read_text(encoding="utf-8").strip())
+        if quota is not None and period is not None:
+            return max(1, math.ceil(quota / period))
+
+    return None
+
+
+def affinity_cpu_count() -> int | None:
+    if not hasattr(os, "sched_getaffinity"):
+        return None
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except OSError:
+        return None
+
+
+def default_jobs() -> int:
+    candidates = [count for count in (os.cpu_count(), affinity_cpu_count(), cgroup_cpu_quota()) if count]
+    if not candidates:
+        return 1
+    return max(1, min(candidates))
 
 
 @dataclass(frozen=True)
@@ -405,8 +451,8 @@ def check_rule_coverage(
         raise RuntimeError("rule coverage failed\n" + "\n".join(failures))
 
 
-def run_configs(interpreters: list[Interpreter], configs: list[Path], *, jobs: int = INTERNAL_JOBS) -> int:
-    jobs = max(1, jobs)
+def run_configs(interpreters: list[Interpreter], configs: list[Path], *, jobs: int | None = None) -> int:
+    jobs = default_jobs() if jobs is None else max(1, jobs)
     work: list[tuple[Path, dict]] = []
     has_success_by_program: dict[Path, bool] = {}
     for config_path in configs:
