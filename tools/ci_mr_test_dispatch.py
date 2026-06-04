@@ -111,15 +111,19 @@ def rows_to_name_status_text(rows: NameStatusRows) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
+def is_solution_submission_path(path: str) -> bool:
+    return CHALLENGE_SUBMISSION_PATH_RE.fullmatch(path) is not None
+
+
 def is_exact_submission_diff(rows: NameStatusRows) -> bool:
     if len(rows) != 1:
         return False
     status, paths = rows[0]
-    return (
-        status == "A"
-        and len(paths) == 1
-        and CHALLENGE_SUBMISSION_PATH_RE.fullmatch(paths[0]) is not None
-    )
+    if status in {"A", "M"}:
+        return len(paths) == 1 and is_solution_submission_path(paths[0])
+    if status.startswith("R"):
+        return len(paths) == 2 and is_solution_submission_path(paths[0]) and is_solution_submission_path(paths[1])
+    return False
 
 
 def main() -> int:

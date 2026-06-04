@@ -638,12 +638,24 @@ def parse_submission_diff(diff_name_status_path: str) -> tuple[str, str]:
     if len(rows) != 1:
         raise RuntimeError("challenge submission must change exactly one file")
     parts = rows[0].split("\t")
-    if len(parts) != 2:
-        raise RuntimeError("challenge submission diff must contain exactly one name-status path row")
-    status, path = parts
-    if status != "A":
-        raise RuntimeError(f"challenge submission file must be newly added with status A, got {status!r}")
+    status = parts[0] if parts else ""
+    if status.startswith("R"):
+        if len(parts) != 3:
+            raise RuntimeError("challenge submission rename diff must contain old and new paths")
+        old_path, path = parts[1], parts[2]
+        if not CHALLENGE_SOLUTION_PATH_RE.fullmatch(old_path):
+            raise RuntimeError(f"renamed path must stay under challenge solutions: {old_path}")
+    elif status in {"A", "M"}:
+        if len(parts) != 2:
+            raise RuntimeError("challenge submission diff must contain exactly one name-status path row")
+        path = parts[1]
+    elif status == "D":
+        raise RuntimeError("challenge submission solution file must not be deleted")
+    else:
+        raise RuntimeError(f"challenge submission file must be added, modified, or renamed, got {status!r}")
     if path.startswith("/") or "//" in path or "/../" in f"/{path}/" or path.startswith("../"):
+        raise RuntimeError(f"invalid challenge submission path: {path}")
+    if not CHALLENGE_SOLUTION_PATH_RE.fullmatch(path):
         raise RuntimeError(f"invalid challenge submission path: {path}")
     return status, path
 
