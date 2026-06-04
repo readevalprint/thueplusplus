@@ -154,7 +154,7 @@ class FailedSubmissionFakeClient(FakeClient):
     def request(self, method: str, path: str, data=None):
         self.paths.append((method, path))
         if method == "GET" and path.endswith("/merge_requests/7"):
-            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"})
+            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}, detailed_merge_status="checking")
         if method == "GET" and path.endswith("/merge_requests/7/changes"):
             return {"changes": valid_changes()}
         if method == "POST" and path.endswith("/merge_requests/7/notes"):
