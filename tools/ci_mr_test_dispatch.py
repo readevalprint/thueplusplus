@@ -3,12 +3,15 @@
 """Dispatch CI validation for ordinary MRs vs one-file challenge submissions."""
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 CHALLENGE_SUBMISSION_PATH_RE = re.compile(
@@ -126,6 +129,90 @@ def is_exact_submission_diff(rows: NameStatusRows) -> bool:
     )
 
 
+def truncate_for_comment(text: str, limit: int = 6000) -> str:
+    if len(text) <= limit:
+        return text
+    omitted = len(text) - limit
+    return f"{text[:limit]}\n\n... omitted {omitted} characters; see the CI job log for full output ..."
+
+
+def submission_failure_comment_body(diff_text: str, output: str) -> str:
+    job_url = os.environ.get("CI_JOB_URL")
+    job_line = f"Full CI log: {job_url}\n\n" if job_url else ""
+    return (
+        "## Challenge submission validation failed\n\n"
+        "Thanks for the submission! The CI lightweight challenge validator could not accept this solution yet.\n\n"
+        f"{job_line}"
+        "Public challenge submissions must contain exactly one newly added solution `.tpp` file under:\n\n"
+        "```text\n"
+        "challenges/<challenge>/solutions/YYYY-MM-DD-your-solution-slug.tpp\n"
+        "```\n\n"
+        "The submitted file must include exact front matter (`title`, `slug`, `author`, `website`; optional `summary`), "
+        "valid UTF-8/LF text, a body with printable ASCII Thue++ rules, must pass every challenge test, and must cover every executable rule. "
+        "Do not commit generated `.json` metrics or `solutions/readme.md`; trusted CI regenerates those after merge.\n\n"
+        "### Changed files seen by CI\n\n"
+        "```text\n"
+        f"{truncate_for_comment(diff_text, 2000)}"
+        "```\n\n"
+        "### Validator output\n\n"
+        "```text\n"
+        f"{truncate_for_comment(output.strip() or '(no validator output)')}\n"
+        "```\n\n"
+        "Common fixes:\n"
+        "- Make sure the MR adds one new `.tpp` file instead of modifying or renaming an existing solution.\n"
+        "- Keep the filename date/slug aligned with the front matter `slug`.\n"
+        "- If CI reports stale generated artifacts, remove generated `.json`/`readme.md` changes from the MR.\n"
+        "- If CI reports missing coverage, add rules/cases so every executable rule is exercised by the challenge tests.\n"
+    )
+
+
+def post_merge_request_note(body: str) -> bool:
+    api_url = os.environ.get("CI_API_V4_URL")
+    project_id = os.environ.get("CI_PROJECT_ID")
+    mr_iid = os.environ.get("CI_MERGE_REQUEST_IID")
+    private_token = os.environ.get("THUEPP_MR_COMMENT_TOKEN")
+    job_token = os.environ.get("CI_JOB_TOKEN")
+    if not api_url or not project_id or not mr_iid:
+        print("submission failure comment skipped: missing GitLab MR API environment", file=sys.stderr)
+        return False
+    token = private_token or job_token
+    if not token:
+        print("submission failure comment skipped: no THUEPP_MR_COMMENT_TOKEN or CI_JOB_TOKEN", file=sys.stderr)
+        return False
+    url = f"{api_url}/projects/{quote(project_id, safe='')}/merge_requests/{quote(mr_iid, safe='')}/notes"
+    data = json.dumps({"body": body}).encode("utf-8")
+    request = urllib.request.Request(url, data=data, method="POST")
+    request.add_header("Content-Type", "application/json")
+    if private_token:
+        request.add_header("PRIVATE-TOKEN", private_token)
+    else:
+        request.add_header("JOB-TOKEN", job_token or "")
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            response.read()
+    except urllib.error.HTTPError as exc:
+        details = exc.read().decode("utf-8", "replace")[:400]
+        print(f"submission failure comment failed: HTTP {exc.code}: {details}", file=sys.stderr)
+        return False
+    except Exception as exc:
+        print(f"submission failure comment failed: {exc}", file=sys.stderr)
+        return False
+    print("posted challenge submission validation failure comment")
+    return True
+
+
+def run_submission_validator(diff_path: Path, diff_text: str) -> int:
+    proc = run([
+        "uv", "run", "python", "tools/challenge_generator.py",
+        "--check-submission", "--diff-name-status", str(diff_path),
+    ], capture=True)
+    output = f"{proc.stdout}{proc.stderr}"
+    print(output, end="")
+    if proc.returncode != 0:
+        post_merge_request_note(submission_failure_comment_body(diff_text, output))
+    return proc.returncode
+
+
 def main() -> int:
     pipeline_source = os.environ.get("CI_PIPELINE_SOURCE", "")
     if pipeline_source != "merge_request_event":
@@ -169,10 +256,7 @@ def main() -> int:
     print(diff_text, end="")
 
     if is_exact_submission_diff(rows):
-        run_checked([
-            "uv", "run", "python", "tools/challenge_generator.py",
-            "--check-submission", "--diff-name-status", str(diff_path),
-        ])
+        return run_submission_validator(diff_path, diff_text)
     else:
         run_checked(["make", "test"])
     return 0
