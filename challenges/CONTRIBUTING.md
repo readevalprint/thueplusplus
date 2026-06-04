@@ -64,7 +64,26 @@ challenges/NN_<challenge-slug>/solutions/YYYY-MM-DD-<solution-slug>.tpp
 
 The filename date records the submission day. The filename slug must match the solution front matter `slug`. The MR/PR must touch nothing else. Maintainer-owned files include descriptions, tests, generated JSON, tooling, CI, and site code.
 
-On the development GitLab host, submission CI validates the one added `.tpp` directly and does not require generated artifacts. GitLab.com merge-request pipelines also run this submission precheck for public same-project MRs, while the internal GitLab project remains the development/GLKB source of truth. The public GitLab.com project is also the Pages/mirror host. Generated metrics and leaderboard files are produced by trusted CI/build flow.
+On the development GitLab host, submission CI validates the one added `.tpp` directly and does not require generated artifacts. GitLab.com merge-request pipelines also run this submission precheck for public same-project and fork MRs, while the internal GitLab project remains the development/GLKB source of truth. The public GitLab.com project is also the Pages/mirror host. Generated metrics and leaderboard files are produced by trusted CI/build flow.
+
+### GitLab.com trusted auto-merge
+
+GitLab.com can automatically merge valid public solution MRs through the trusted default-branch `submission-automerge` CI job. The merge bot is deliberately separate from MR pipelines: learner MR code runs validation only, while the merge-capable token is available only to protected/default-branch or scheduled trusted pipelines.
+
+Required GitLab.com CI/CD variables:
+
+- `THUEPP_AUTOMERGE_ENABLED=1`
+- `THUEPP_AUTOMERGE_TOKEN`: masked/protected project or bot token with permission to read MRs and merge into `develop`
+
+Run the trusted job from a scheduled GitLab.com pipeline, or trigger a trusted default-branch pipeline after an MR pipeline succeeds. The script scans open MRs targeting `develop` and merges only candidates that are open, non-draft, mergeable, have a successful latest head pipeline for the MR SHA, and whose diff is exactly one newly-added solution file matching the submission path contract. Rename, delete, modify, generated JSON, leaderboard, docs, code, and multi-file MRs are skipped.
+
+End-to-end public verification after a bot merge:
+
+```bash
+curl -fsSL https://thuelang.org/deploy.json | jq '{commit_sha, branch, pipeline_id, pipeline_url, job_id, job_url, source_host, project_path}'
+```
+
+The deployed `commit_sha` must match the GitLab.com merge commit, and the `pipeline_id`/`job_id` must match the successful Pages pipeline/job that regenerated public solution metrics.
 
 ### Exact solution front matter
 

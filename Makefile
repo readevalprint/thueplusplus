@@ -10,7 +10,7 @@ test:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }
 	uv run python tools/check_contract.py
 	uv run python tools/check_read_timeouts.py
-	uv run --with pytest pytest tools/test_example_runner.py -q --tb=short
+	uv run --with pytest pytest tools/test_example_runner.py tools/test_submission_automerge.py -q --tb=short
 	uv run python tools/example_runner.py
 	uv run python tools/challenge_generator.py --check
 
@@ -46,4 +46,4 @@ challenge-check:
 
 challenge-test: challenge-check
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required" >&2; exit 127; }
-	uv run --with pytest pytest tools/test_challenge_generator.py -q --tb=short
+	uv run --with pytest pytest tools/test_challenge_generator.py tools/test_submission_automerge.py -q --tb=short
