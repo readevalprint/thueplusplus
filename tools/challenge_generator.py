@@ -10,20 +10,24 @@ Modes:
   --missing  report challenges without a qualifying solution
   --check    validate solutions and fail if generated files are stale
   --all      regenerate per-solution JSON and solutions/readme.md leaderboard blocks
+  --check-submission  validate one added solution from a git diff --name-status file
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import hashlib
 import json
 import re
 import subprocess
 import sys
 import tempfile
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 CHALLENGES_ROOT = ROOT / "challenges"
@@ -36,6 +40,23 @@ RESOURCE_KEYS = set(CHALLENGE_TEST_SCHEMA["resource_keys"])
 RESOURCE_NAME_RE = re.compile(str(CHALLENGE_TEST_SCHEMA["resource_name_pattern"]))
 EXPECTED_OUTPUT_RESOURCES = set(CHALLENGE_TEST_SCHEMA["expected_output_resources"])
 GENERATOR_CASE_TIMEOUT_SECONDS = 10
+MAX_SOLUTION_CHARACTERS = 100_000
+MAX_TITLE_CODEPOINTS = 80
+MAX_TITLE_BYTES = 240
+MAX_AUTHOR_CODEPOINTS = 80
+MAX_AUTHOR_BYTES = 240
+MAX_SLUG_LENGTH = 64
+MAX_WEBSITE_LENGTH = 200
+MAX_SUMMARY_CODEPOINTS = 280
+MAX_SUMMARY_BYTES = 1000
+FRONT_MATTER_REQUIRED = ("title", "slug", "author", "website")
+FRONT_MATTER_ALLOWED = (*FRONT_MATTER_REQUIRED, "summary")
+CHALLENGE_SOLUTION_PATH_RE = re.compile(
+    r"^challenges/(\d{2}_[a-z0-9][a-z0-9-]*)/solutions/(\d{4}-\d{2}-\d{2})-([a-z0-9][a-z0-9-]*)\.tpp$"
+)
+ASCII_SOLUTION_BODY_RE = re.compile(r"^[\x0A\x20-\x7E]*$")
+ASCII_FRONT_MATTER_KEY_RE = re.compile(r"^[a-z]+$")
+SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 @dataclass(frozen=True)
 class BackendResult:
@@ -56,8 +77,10 @@ def parse_args() -> argparse.Namespace:
     mode.add_argument("--missing", action="store_true", help="report challenges without qualifying solutions")
     mode.add_argument("--check", action="store_true", help="validate without writing; fail on stale generated files")
     mode.add_argument("--all", action="store_true", help="regenerate solution JSON and solutions/readme.md leaderboard blocks")
+    mode.add_argument("--check-submission", action="store_true", help="validate one added challenge solution from --diff-name-status")
     parser.add_argument("--challenge", help="limit to one challenge slug")
     parser.add_argument("--changed-files", help="newline-delimited file list for one-file submission policy checks")
+    parser.add_argument("--diff-name-status", help="git diff --name-status file for --check-submission")
     parser.add_argument("--eval-limit", default="10000", help="max eval/rule checks passed to both backends")
     return parser.parse_args()
 
@@ -169,37 +192,183 @@ def slugify_title(title: str) -> str:
     return slug
 
 
-def solution_identifier(solution: Path, metadata: dict[str, str]) -> str:
-    expected_slug = metadata["slug"]
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", expected_slug):
-        raise RuntimeError(f"{rel(solution)} front matter slug must be lowercase kebab-case")
-    title_slug = slugify_title(metadata["title"])
-    if expected_slug != title_slug:
-        raise RuntimeError(f"{rel(solution)} front matter slug must be title slug {title_slug!r}")
-    match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})-([a-z0-9][a-z0-9-]*)\.tpp", solution.name)
-    if not match:
-        raise RuntimeError(f"{rel(solution)} filename must be YYYY-MM-DD-<title-slug>.tpp")
-    _date, actual_slug = match.groups()
-    if actual_slug != expected_slug:
-        raise RuntimeError(f"{rel(solution)} title slug must be {expected_slug!r}")
-    return solution.stem
+def contains_non_ascii(text: str) -> bool:
+    return any(ord(char) > 0x7F for char in text)
+
+
+def require_no_forbidden_file_characters(solution: Path, text: str) -> None:
+    if text.startswith("\ufeff"):
+        raise RuntimeError(f"{rel(solution)} must not start with a UTF-8 BOM")
+    if len(text) > MAX_SOLUTION_CHARACTERS:
+        raise RuntimeError(f"{rel(solution)} must be at most {MAX_SOLUTION_CHARACTERS} characters")
+    if "\x00" in text:
+        raise RuntimeError(f"{rel(solution)} must not contain NUL bytes")
+    if "\r" in text:
+        raise RuntimeError(f"{rel(solution)} must use LF line endings, not CR or CRLF")
+
+
+def read_solution_text(solution: Path) -> str:
+    data = solution.read_bytes()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(f"{rel(solution)} must be valid UTF-8") from exc
+    require_no_forbidden_file_characters(solution, text)
+    return text
+
+
+def validate_solution_body(solution: Path, body: str) -> None:
+    if not body.strip():
+        raise RuntimeError(f"{rel(solution)} body after front matter must not be empty")
+    if body.startswith("---\n"):
+        raise RuntimeError(f"{rel(solution)} body must not start with a second front matter block")
+    if not ASCII_SOLUTION_BODY_RE.fullmatch(body):
+        raise RuntimeError(f"{rel(solution)} body must contain only LF and printable ASCII characters")
+
+
+def validate_ascii_plain_value(solution: Path, key: str, value: str, limit: int) -> None:
+    if len(value) > limit:
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be at most {limit} characters")
+    if not value or value.strip() != value:
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be non-empty without surrounding whitespace")
+    if contains_non_ascii(value):
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be ASCII-only")
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in value):
+        raise RuntimeError(f"{rel(solution)} front matter {key} must not contain control characters")
+
+
+def is_allowed_display_char(char: str, *, field: str) -> bool:
+    if char == " ":
+        return True
+    if char in {'<', '>', '`', '"', '[', ']'}:
+        return False
+    if field in {"title", "author"} and char in {"/", "\\"}:
+        return False
+    category = unicodedata.category(char)
+    if category in {"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp", "Zs"}:
+        return False
+    if char.isascii():
+        return char.isalnum() or char in " .,!?:;'-_&+()"
+    name = unicodedata.name(char, "")
+    if category.startswith("L"):
+        return "LATIN" in name
+    if category == "Nd":
+        return True
+    if category == "So":
+        return True
+    return False
+
+
+def validate_unicode_display_value(solution: Path, key: str, value: str, *, max_codepoints: int, max_bytes: int) -> None:
+    if not value or value.strip() != value:
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be non-empty without surrounding whitespace")
+    if len(value) > max_codepoints:
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be at most {max_codepoints} Unicode code points")
+    if len(value.encode("utf-8")) > max_bytes:
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be at most {max_bytes} UTF-8 bytes")
+    if unicodedata.normalize("NFC", value) != value:
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be NFC-normalized UTF-8")
+    if "![" in value or "](" in value:
+        raise RuntimeError(f"{rel(solution)} front matter {key} must be plain text, not Markdown")
+    for char in value:
+        if not is_allowed_display_char(char, field=key):
+            code = f"U+{ord(char):04X}"
+            raise RuntimeError(f"{rel(solution)} front matter {key} contains disallowed character {code}")
+
+
+def validate_website(solution: Path, value: str) -> None:
+    validate_ascii_plain_value(solution, "website", value, MAX_WEBSITE_LENGTH)
+    if any(char in value for char in "<>`\"'[](){}"):
+        raise RuntimeError(f"{rel(solution)} front matter website contains unsafe punctuation")
+    parsed = urlsplit(value)
+    if parsed.scheme != "https":
+        raise RuntimeError(f"{rel(solution)} front matter website must use https://")
+    if not parsed.netloc:
+        raise RuntimeError(f"{rel(solution)} front matter website must include a host")
+    if parsed.username or parsed.password:
+        raise RuntimeError(f"{rel(solution)} front matter website must not contain credentials")
+    try:
+        value.encode("ascii")
+        parsed.netloc.encode("idna").decode("ascii")
+    except UnicodeError as exc:
+        raise RuntimeError(f"{rel(solution)} front matter website must be ASCII or punycode") from exc
+    if any(char.isspace() for char in value):
+        raise RuntimeError(f"{rel(solution)} front matter website must not contain whitespace")
+
+
+def split_front_matter(text: str) -> tuple[dict[str, str], str]:
+    if not text.startswith("---\n"):
+        return {}, text
+    try:
+        raw_front_matter, body = text[4:].split("\n---\n", 1)
+    except ValueError:
+        return {}, text
+    if not raw_front_matter.strip():
+        raise RuntimeError("solution front matter must not be empty")
+    front_matter: dict[str, str] = {}
+    for line_number, line in enumerate(raw_front_matter.split("\n"), 2):
+        if not line:
+            raise RuntimeError(f"solution front matter line {line_number} must not be blank")
+        key, separator, value = line.partition(":")
+        if not separator:
+            raise RuntimeError(f"solution front matter line {line_number} must contain ':'")
+        if key.strip() != key or not key or not ASCII_FRONT_MATTER_KEY_RE.fullmatch(key):
+            raise RuntimeError(f"solution front matter line {line_number} has invalid key {key!r}")
+        if key in front_matter:
+            raise RuntimeError(f"solution front matter key {key!r} must not be duplicated")
+        if value.startswith(" "):
+            value = value[1:]
+        if not value or value.strip() != value:
+            raise RuntimeError(f"solution front matter {key} must be non-empty without surrounding whitespace")
+        if any(ord(char) < 0x20 or ord(char) == 0x7F for char in value):
+            raise RuntimeError(f"solution front matter {key} must not contain control characters")
+        front_matter[key] = value
+    return front_matter, body
 
 
 def require_solution_metadata(solution: Path, source: str) -> dict[str, str]:
-    front_matter, _body = split_front_matter(source)
-    required = ("title", "slug", "author", "website")
-    missing = [key for key in required if not front_matter.get(key, "").strip()]
+    require_no_forbidden_file_characters(solution, source)
+    front_matter, body = split_front_matter(source)
+    missing = [key for key in FRONT_MATTER_REQUIRED if key not in front_matter]
     if missing:
-        raise RuntimeError(f"{rel(solution)} must start with front matter containing {', '.join(required)}")
-    allowed = {"title", "slug", "author", "website", "summary"}
-    unknown = sorted(set(front_matter) - allowed)
+        raise RuntimeError(f"{rel(solution)} must start with front matter containing {', '.join(FRONT_MATTER_REQUIRED)}")
+    unknown = sorted(set(front_matter) - set(FRONT_MATTER_ALLOWED))
     if unknown:
         raise RuntimeError(f"{rel(solution)} has unknown front matter keys: {', '.join(unknown)}")
-    metadata = {key: front_matter[key].strip() for key in required}
-    value = front_matter.get("summary", "").strip()
-    if value:
-        metadata["summary"] = value
+    metadata = {key: front_matter[key] for key in FRONT_MATTER_REQUIRED}
+    validate_unicode_display_value(solution, "title", metadata["title"], max_codepoints=MAX_TITLE_CODEPOINTS, max_bytes=MAX_TITLE_BYTES)
+    validate_unicode_display_value(solution, "author", metadata["author"], max_codepoints=MAX_AUTHOR_CODEPOINTS, max_bytes=MAX_AUTHOR_BYTES)
+    validate_ascii_plain_value(solution, "slug", metadata["slug"], MAX_SLUG_LENGTH)
+    validate_website(solution, metadata["website"])
+    summary = front_matter.get("summary")
+    if summary is not None:
+        validate_unicode_display_value(solution, "summary", summary, max_codepoints=MAX_SUMMARY_CODEPOINTS, max_bytes=MAX_SUMMARY_BYTES)
+        metadata["summary"] = summary
+    validate_solution_body(solution, body)
     return metadata
+
+
+def solution_identifier(solution: Path, metadata: dict[str, str]) -> str:
+    expected_slug = metadata["slug"]
+    if not SLUG_RE.fullmatch(expected_slug):
+        raise RuntimeError(f"{rel(solution)} front matter slug must be lowercase kebab-case")
+    if not contains_non_ascii(metadata["title"]):
+        title_slug = slugify_title(metadata["title"])
+        if expected_slug != title_slug:
+            raise RuntimeError(f"{rel(solution)} front matter slug must be title slug {title_slug!r}")
+    match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})-([a-z0-9][a-z0-9-]*)\.tpp", solution.name)
+    if not match:
+        raise RuntimeError(f"{rel(solution)} filename must be YYYY-MM-DD-<solution-slug>.tpp")
+    date_text, actual_slug = match.groups()
+    try:
+        date_value = dt.date.fromisoformat(date_text)
+    except ValueError as exc:
+        raise RuntimeError(f"{rel(solution)} filename date must be a real YYYY-MM-DD date") from exc
+    if date_value > dt.datetime.now(dt.timezone.utc).date():
+        raise RuntimeError(f"{rel(solution)} filename date must not be in the future")
+    if actual_slug != expected_slug:
+        raise RuntimeError(f"{rel(solution)} filename slug must be {expected_slug!r}")
+    return solution.stem
 
 
 def backend_command(backend: str, program: Path, coverage_path: Path, eval_limit: str, case: dict[str, Any]) -> tuple[list[str], Path]:
@@ -331,8 +500,12 @@ def assert_expect(result: BackendResult, case: dict[str, Any], scope: str) -> No
 
 
 def evaluate_solution(challenge: Path, solution: Path, eval_limit: str) -> dict[str, Any]:
-    source = solution.read_text(encoding="utf-8")
-    digest = sha256_bytes(solution.read_bytes())
+    raw = solution.read_bytes()
+    digest = sha256_bytes(raw)
+    try:
+        source = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(f"{rel(solution)} must be valid UTF-8") from exc
     metadata = require_solution_metadata(solution, source)
     identifier = solution_identifier(solution, metadata)
     rule_lines = parser_rule_lines(solution)
@@ -366,6 +539,7 @@ def evaluate_solution(challenge: Path, solution: Path, eval_limit: str) -> dict[
         "eval_check_count": totals["eval_check_count"],
         "cumulative_state_bytes": totals["cumulative_state_bytes"],
         "_eligible": eligible,
+        "_coverage_missing": missing,
     }
 
 
@@ -373,8 +547,11 @@ def solution_json_path(solution: Path) -> Path:
     return solution.with_suffix(".json")
 
 
-def ranking_key(record: dict[str, Any]) -> tuple[int, str]:
+def ranking_key(record: dict[str, Any]) -> tuple[int, int, int, int, str]:
     return (
+        record["rule_count"],
+        record["successful_rewrites"],
+        record["eval_check_count"],
         record["cumulative_state_bytes"],
         record["solution_id"],
     )
@@ -383,6 +560,8 @@ def ranking_key(record: dict[str, Any]) -> tuple[int, str]:
 def qualifying_records(challenge: Path, eval_limit: str) -> list[dict[str, Any]]:
     records = [evaluate_solution(challenge, solution, eval_limit) for solution in solution_paths(challenge)]
     records = [record for record in records if record.pop("_eligible")]
+    for record in records:
+        record.pop("_coverage_missing", None)
     records.sort(key=ranking_key)
     for index, record in enumerate(records, 1):
         record["rank"] = index
@@ -410,21 +589,6 @@ def best_records(records: list[dict[str, Any]]) -> list[tuple[str, dict[str, Any
     for label, key in metrics:
         winners.append((label, min(records, key=lambda r: (r[key], r["solution_id"]))))
     return winners
-
-
-def split_front_matter(text: str) -> tuple[dict[str, str], str]:
-    if not text.startswith("---\n"):
-        return {}, text
-    try:
-        raw_front_matter, body = text[4:].split("\n---\n", 1)
-    except ValueError:
-        return {}, text
-    front_matter: dict[str, str] = {}
-    for line in raw_front_matter.splitlines():
-        key, separator, value = line.partition(":")
-        if separator and key.strip():
-            front_matter[key.strip()] = value.strip().strip('"\'')
-    return front_matter, body
 
 
 def leaderboard_block(records: list[dict[str, Any]]) -> str:
@@ -463,16 +627,110 @@ def replace_leaderboard(challenge: Path, block: str) -> str:
     return f"{before}{LEADERBOARD_START}\n{block}{LEADERBOARD_END}{after}"
 
 
+def parse_submission_diff(diff_name_status_path: str) -> tuple[str, str]:
+    rows = [line for line in Path(diff_name_status_path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    if len(rows) != 1:
+        raise RuntimeError("challenge submission must change exactly one file")
+    parts = rows[0].split("\t")
+    if len(parts) != 2:
+        raise RuntimeError("challenge submission diff must contain exactly one name-status path row")
+    status, path = parts
+    if status != "A":
+        raise RuntimeError(f"challenge submission file must be newly added with status A, got {status!r}")
+    if path.startswith("/") or "//" in path or "/../" in f"/{path}/" or path.startswith("../"):
+        raise RuntimeError(f"invalid challenge submission path: {path}")
+    return status, path
+
+
+def validate_submission_path(path: str) -> tuple[Path, Path, str]:
+    match = CHALLENGE_SOLUTION_PATH_RE.fullmatch(path)
+    if not match:
+        raise RuntimeError(f"invalid challenge submission path: {path}")
+    challenge_slug, _date_text, _solution_slug = match.groups()
+    challenge = CHALLENGES_ROOT / challenge_slug
+    if not challenge.is_dir() or not (challenge / "tests").is_dir():
+        raise RuntimeError(f"challenge directory does not exist: challenges/{challenge_slug}")
+    solution = ROOT / path
+    if not solution.is_file():
+        raise RuntimeError(f"challenge submission file does not exist in workspace: {path}")
+    return challenge, solution, challenge_slug
+
+
+def reject_duplicate_solution_slug(challenge: Path, submitted: Path, metadata: dict[str, str]) -> None:
+    for existing in solution_paths(challenge):
+        if existing == submitted:
+            continue
+        try:
+            existing_metadata = require_solution_metadata(existing, read_solution_text(existing))
+        except Exception:
+            # Existing checked-in solutions are validated by the normal generator path;
+            # do not hide the submitted solution behind an unrelated stale parse here.
+            continue
+        if existing_metadata.get("slug") == metadata["slug"]:
+            raise RuntimeError(f"{rel(submitted)} front matter slug duplicates existing solution {rel(existing)}")
+
+
 def check_submission_policy(changed_files_path: str) -> None:
+    # Backwards-compatible path-list policy: treat the single path as an added file.
     files = [line.strip() for line in Path(changed_files_path).read_text(encoding="utf-8").splitlines() if line.strip()]
     if len(files) != 1:
         raise RuntimeError("non-maintainer challenge submission must touch exactly one file")
-    only = files[0]
-    if not re.fullmatch(r"challenges/[a-z0-9][a-z0-9-]*/solutions/\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*\.tpp", only):
-        raise RuntimeError(f"invalid challenge submission path: {only}")
-    source = (ROOT / only).read_text(encoding="utf-8")
-    metadata = require_solution_metadata(ROOT / only, source)
-    solution_identifier(ROOT / only, metadata)
+    tmp = Path(changed_files_path).with_suffix(".name-status")
+    tmp.write_text(f"A\t{files[0]}\n", encoding="utf-8")
+    try:
+        _challenge, solution, _record = validate_submission(tmp.as_posix(), "10000")
+    finally:
+        tmp.unlink(missing_ok=True)
+    print(f"submission policy OK: {rel(solution)}")
+
+
+def validate_submission(diff_name_status_path: str, eval_limit: str) -> tuple[Path, Path, dict[str, Any]]:
+    _status, path = parse_submission_diff(diff_name_status_path)
+    challenge, solution, _challenge_slug = validate_submission_path(path)
+    metadata = require_solution_metadata(solution, read_solution_text(solution))
+    identifier = solution_identifier(solution, metadata)
+    reject_duplicate_solution_slug(challenge, solution, metadata)
+    record = evaluate_solution(challenge, solution, eval_limit)
+    if not record.pop("_eligible"):
+        missing = record.pop("_coverage_missing", {})
+        raise RuntimeError(f"{rel(solution)} must cover every executable rule; missing coverage: {missing}")
+    record.pop("_coverage_missing", None)
+    if record["solution_id"] != identifier:
+        raise RuntimeError(f"{rel(solution)} internal solution id mismatch")
+    records = qualifying_records(challenge, eval_limit)
+    selected = next((candidate for candidate in records if candidate["solution_id"] == identifier), None)
+    if selected is not None:
+        record = selected
+    return challenge, solution, record
+
+
+def cmd_check_submission(args: argparse.Namespace) -> int:
+    if not args.diff_name_status:
+        print("ERROR: --check-submission requires --diff-name-status", file=sys.stderr)
+        return 2
+    try:
+        challenge, solution, record = validate_submission(args.diff_name_status, args.eval_limit)
+    except Exception as exc:
+        print(f"SUBMISSION FAILED: {exc}")
+        return 1
+    metadata = record["solution_metadata"]
+    print("CHALLENGE SUBMISSION OK")
+    print(f"challenge: {challenge.name}")
+    print(f"solution_id: {record['solution_id']}")
+    print(f"solution_path: {rel(solution)}")
+    print(f"title: {metadata['title']}")
+    print(f"author: {metadata['author']}")
+    print(f"website: {metadata['website']}")
+    if metadata.get("summary"):
+        print(f"summary: {metadata['summary']}")
+    if "rank" in record:
+        print(f"estimated_rank: {record['rank']}")
+    print(f"rule_count: {record['rule_count']}")
+    print(f"successful_rewrites: {record['successful_rewrites']}")
+    print(f"eval_check_count: {record['eval_check_count']}")
+    print(f"cumulative_state_bytes: {record['cumulative_state_bytes']}")
+    print(f"solution_sha256: {record['solution_sha256']}")
+    return 0
 
 
 def cmd_missing(args: argparse.Namespace) -> int:
@@ -537,8 +795,12 @@ def main() -> int:
         return cmd_check_or_all(args, write=False)
     if args.all:
         return cmd_check_or_all(args, write=True)
+    if args.check_submission:
+        return cmd_check_submission(args)
     raise AssertionError("unreachable")
 
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
