@@ -64,7 +64,7 @@ challenges/NN_<challenge-slug>/solutions/YYYY-MM-DD-<solution-slug>.tpp
 
 The filename date records the submission day. The filename slug must match the solution front matter `slug`. The MR/PR must touch nothing else. Maintainer-owned files include descriptions, tests, generated JSON, tooling, CI, and site code.
 
-On the development GitLab host, submission CI validates the one added `.tpp` directly and does not require generated artifacts. The public GitLab.com project is currently used as the Pages/mirror host; unless a GitLab.com MR validation job is added later, public mirror pipelines should not be treated as the submission-policy source of truth. Generated metrics and leaderboard files are produced by trusted CI/build flow.
+On the development GitLab host, submission CI validates the one added `.tpp` directly and does not require generated artifacts. GitLab.com merge-request pipelines also run this submission precheck for public same-project MRs, while the internal GitLab project remains the development/GLKB source of truth. The public GitLab.com project is also the Pages/mirror host. Generated metrics and leaderboard files are produced by trusted CI/build flow.
 
 ### Exact solution front matter
 
