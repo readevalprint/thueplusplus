@@ -565,6 +565,17 @@ def solution_json_path(solution: Path) -> Path:
     return solution.with_suffix(".json")
 
 
+def stale_solution_json_paths(challenge: Path, active_records: list[dict[str, Any]]) -> list[Path]:
+    active_json_paths = {
+        challenge / "solutions" / Path(record["solution_path"]).with_suffix(".json").name
+        for record in active_records
+    }
+    solutions_dir = challenge / "solutions"
+    if not solutions_dir.exists():
+        return []
+    return sorted(path for path in solutions_dir.glob("*.json") if path not in active_json_paths)
+
+
 def ranking_key(record: dict[str, Any]) -> tuple[int, int, int, int, str]:
     return (
         record["rule_count"],
@@ -786,6 +797,12 @@ def cmd_check_or_all(args: argparse.Namespace, write: bool) -> int:
                     json_path.write_text(expected, encoding="utf-8")
                 elif not json_path.exists() or json_path.read_text(encoding="utf-8") != expected:
                     print(f"STALE {rel(json_path)} (run --all)")
+                    failures += 1
+            for stale_json_path in stale_solution_json_paths(challenge, records):
+                if write:
+                    stale_json_path.unlink()
+                else:
+                    print(f"STALE {rel(stale_json_path)} (run --all)")
                     failures += 1
             block = leaderboard_block(records)
             desc = leaderboard_readme_path(challenge)

@@ -176,18 +176,23 @@ function solutionsReadmeForSlug(slug: string): string {
 function solutionsForSlug(slug: string): ChallengeSolution[] {
   return Object.entries(metricModules)
     .filter(([metricPath]) => challengeSlugFromMetricPath(metricPath) === slug)
-    .map(([_metricPath, rawRecord]) => solutionFromRecord(rawRecord as ChallengeMetricRecord))
+    .flatMap(([_metricPath, rawRecord]) => {
+      const solution = solutionFromRecord(rawRecord as ChallengeMetricRecord)
+      return solution ? [solution] : []
+    })
     .sort((left, right) => left.rank - right.rank || left.id.localeCompare(right.id))
 }
 
-function solutionFromRecord(record: ChallengeMetricRecord): ChallengeSolution {
+function solutionFromRecord(record: ChallengeMetricRecord): ChallengeSolution | null {
+  const source = sourceForRecord(record)
+  if (source === null) return null
   return {
     rank: record.rank,
     id: record.solution_id,
     title: record.solution_metadata.title,
     author: record.solution_metadata.author,
     website: record.solution_metadata.website,
-    source: sourceForRecord(record),
+    source,
     path: `/challenges/${record.challenge}/solutions/${record.solution_id}`,
     ruleCount: record.rule_count,
     stepCount: record.successful_rewrites,
@@ -196,9 +201,12 @@ function solutionFromRecord(record: ChallengeMetricRecord): ChallengeSolution {
   }
 }
 
-function sourceForRecord(record: ChallengeMetricRecord): string {
+function sourceForRecord(record: ChallengeMetricRecord): string | null {
   const match = Object.entries(solutionSourceModules).find(([sourcePath]) => sourcePath.endsWith(`/${record.solution_path}`))
-  if (!match) throw new Error(`Missing challenge solution source: ${record.solution_path}`)
+  if (!match) {
+    console.warn(`Skipping stale challenge solution metric with missing source: ${record.solution_path}`)
+    return null
+  }
   return String(match[1])
 }
 
