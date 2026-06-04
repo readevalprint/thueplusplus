@@ -236,11 +236,7 @@ def solution_source(front_matter: str, body: str | None = None) -> str:
     return "---\n" + front_matter + "---\n" + (body or "^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, challenge!\\n\n^EXIT$ ::- 0\n::=\nSTART\n")
 
 
-def test_submission_diff_requires_exactly_one_added_file(tmp_path: Path) -> None:
-    diff = write_diff(tmp_path / "changed.diff", ["M\tchallenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"])
-    with pytest.raises(RuntimeError, match="newly added"):
-        kg.parse_submission_diff(diff.as_posix())
-
+def test_submission_diff_requires_exactly_one_solution_file(tmp_path: Path) -> None:
     diff = write_diff(tmp_path / "multi.diff", [
         "A\tchallenges/02_fixed-greet/solutions/2026-06-04-one.tpp",
         "A\tchallenges/02_fixed-greet/solutions/2026-06-04-one.json",
@@ -248,11 +244,29 @@ def test_submission_diff_requires_exactly_one_added_file(tmp_path: Path) -> None
     with pytest.raises(RuntimeError, match="exactly one file"):
         kg.parse_submission_diff(diff.as_posix())
 
-    diff = write_diff(tmp_path / "rename.diff", [
+    diff = write_diff(tmp_path / "delete.diff", ["D\tchallenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"])
+    with pytest.raises(RuntimeError, match="must not be deleted"):
+        kg.parse_submission_diff(diff.as_posix())
+
+    diff = write_diff(tmp_path / "bad-rename.diff", [
         "R100\told.tpp\tchallenges/02_fixed-greet/solutions/2026-06-04-one.tpp",
     ])
-    with pytest.raises(RuntimeError, match="exactly one name-status"):
+    with pytest.raises(RuntimeError, match="renamed path must stay under challenge solutions"):
         kg.parse_submission_diff(diff.as_posix())
+
+
+def test_submission_diff_accepts_added_modified_and_renamed_solution_files(tmp_path: Path) -> None:
+    added = "challenges/02_fixed-greet/solutions/2026-06-04-one.tpp"
+    modified = "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
+    renamed_old = "challenges/03_binary-not/solutions/2026-05-29-truth-table-flip.tpp"
+    renamed_new = "challenges/03_binary-not/solutions/2026-05-29-truth-table-flip2.tpp"
+
+    assert kg.parse_submission_diff(write_diff(tmp_path / "added.diff", [f"A\t{added}"]).as_posix()) == ("A", added)
+    assert kg.parse_submission_diff(write_diff(tmp_path / "modified.diff", [f"M\t{modified}"]).as_posix()) == ("M", modified)
+    assert kg.parse_submission_diff(write_diff(tmp_path / "renamed.diff", [f"R082\t{renamed_old}\t{renamed_new}"]).as_posix()) == ("R082", renamed_new)
+    assert dispatch.is_exact_submission_diff([("A", (added,))])
+    assert dispatch.is_exact_submission_diff([("M", (modified,))])
+    assert dispatch.is_exact_submission_diff([("R082", (renamed_old, renamed_new))])
 
 
 def test_submission_path_accepts_prefixed_challenge_directory(tmp_path: Path) -> None:
@@ -368,15 +382,23 @@ def test_solution_file_limits_reject_bom_crlf_nul_and_oversize() -> None:
         ))
 
 
-def test_dispatcher_classifies_only_exact_added_tpp_submission_diff() -> None:
-    valid = [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",))]
-    assert dispatch.is_exact_submission_diff(valid)
+def test_dispatcher_classifies_only_exact_solution_file_submission_diff() -> None:
+    valid_rows = [
+        [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",))],
+        [("M", ("challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp",))],
+        [("R100", (
+            "challenges/03_binary-not/solutions/2026-05-29-truth-table-flip.tpp",
+            "challenges/03_binary-not/solutions/2026-05-29-truth-table-flip2.tpp",
+        ))],
+    ]
+    for rows in valid_rows:
+        assert dispatch.is_exact_submission_diff(rows)
 
     non_submission_rows = [
-        [("M", ("challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp",))],
         [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.json",))],
         [("M", ("challenges/02_fixed-greet/solutions/readme.md",))],
         [("R100", ("old.tpp", "challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp"))],
+        [("D", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",))],
         [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",)), ("M", ("tools/challenge_generator.py",))],
     ]
     for rows in non_submission_rows:
@@ -475,4 +497,6 @@ def test_gitlab_ci_runs_test_job_for_all_gitlab_com_merge_request_events() -> No
         "- if: '$CI_SERVER_HOST == \"gitlab.com\" && "
         "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'"
     ) in pages_job
+    assert "uv run python tools/commit_challenge_metrics.py" in ci_text
+    assert "needs:\n    - challenge-metrics" in pages_job
     assert "uv run python tools/ci_mr_test_dispatch.py" in test_job

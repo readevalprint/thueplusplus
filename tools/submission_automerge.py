@@ -38,20 +38,25 @@ def project_api_path(project_path: str) -> str:
     return urllib.parse.quote(project_path, safe="")
 
 
+def is_solution_submission_path(path: str) -> bool:
+    return SOLUTION_PATH_RE.fullmatch(path) is not None
+
+
 def changed_solution_path(changes: list[dict[str, Any]]) -> Decision:
     if len(changes) != 1:
         return Decision(False, f"expected exactly one changed file, got {len(changes)}")
     change = changes[0]
     path = str(change.get("new_path") or "")
-    if change.get("deleted_file") or change.get("renamed_file"):
-        return Decision(False, "renamed/deleted files are not challenge submissions")
-    if not change.get("new_file"):
-        return Decision(False, "challenge submission file must be newly added")
-    if change.get("old_path") != path:
-        return Decision(False, "old_path/new_path mismatch for added challenge submission")
-    if not SOLUTION_PATH_RE.fullmatch(path):
+    old_path = str(change.get("old_path") or "")
+    if change.get("deleted_file"):
+        return Decision(False, "deleted files are not challenge submissions")
+    if not is_solution_submission_path(path):
         return Decision(False, f"changed file is not a valid challenge solution path: {path}")
-    return Decision(True, "exactly one added challenge solution", path)
+    if change.get("renamed_file") and not is_solution_submission_path(old_path):
+        return Decision(False, f"renamed file did not start from a valid challenge solution path: {old_path}")
+    if not change.get("renamed_file") and old_path != path:
+        return Decision(False, "old_path/new_path mismatch for challenge submission")
+    return Decision(True, "exactly one challenge solution file", path)
 
 
 def successful_head_pipeline(mr: dict[str, Any]) -> Decision:
@@ -169,6 +174,7 @@ def merge_mr(client: GitLabClient, project_path: str, mr: dict[str, Any]) -> dic
     data = {
         "sha": mr["sha"],
         "should_remove_source_branch": True,
+        "squash": True,
     }
     return client.request("PUT", f"projects/{project}/merge_requests/{iid}/merge", data)
 

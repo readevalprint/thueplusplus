@@ -36,6 +36,17 @@ def valid_changes(path="challenges/02_fixed-greet/solutions/2026-06-04-automerge
     return [{"old_path": path, "new_path": path, "new_file": True, "renamed_file": False, "deleted_file": False}]
 
 
+def modified_changes(path="challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"):
+    return [{"old_path": path, "new_path": path, "new_file": False, "renamed_file": False, "deleted_file": False}]
+
+
+def renamed_changes(
+    old_path="challenges/03_binary-not/solutions/2026-05-29-truth-table-flip.tpp",
+    new_path="challenges/03_binary-not/solutions/2026-05-29-truth-table-flip2.tpp",
+):
+    return [{"old_path": old_path, "new_path": new_path, "new_file": False, "renamed_file": True, "deleted_file": False}]
+
+
 def assert_rejected(reason_part: str, mr=None, changes=None) -> None:
     decision = submission_automerge.candidate_decision(mr or valid_mr(), changes if changes is not None else valid_changes())
     assert not decision.accepted
@@ -46,6 +57,14 @@ def test_accepts_only_safe_one_file_solution_mr() -> None:
     decision = submission_automerge.candidate_decision(valid_mr(), valid_changes())
     assert decision.accepted
     assert decision.solution_path == "challenges/02_fixed-greet/solutions/2026-06-04-automerge-smoke.tpp"
+
+    modified = submission_automerge.candidate_decision(valid_mr(), modified_changes())
+    assert modified.accepted
+    assert modified.solution_path == "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
+
+    renamed = submission_automerge.candidate_decision(valid_mr(), renamed_changes())
+    assert renamed.accepted
+    assert renamed.solution_path == "challenges/03_binary-not/solutions/2026-05-29-truth-table-flip2.tpp"
 
 
 def test_rejects_draft_conflicted_or_wrong_target() -> None:
@@ -73,10 +92,10 @@ def test_accepts_gitlab_merged_result_pipeline_ref() -> None:
 def test_rejects_non_exact_diff_shapes() -> None:
     assert_rejected("exactly one", changes=[])
     assert_rejected("exactly one", changes=valid_changes() + valid_changes("challenges/03_binary-not/solutions/2026-06-04-other.tpp"))
-    assert_rejected("newly added", changes=[{"old_path": "x", "new_path": "x", "new_file": False, "renamed_file": False, "deleted_file": False}])
-    assert_rejected("renamed/deleted", changes=[{"old_path": "old", "new_path": "challenges/02_fixed-greet/solutions/2026-06-04-new.tpp", "new_file": False, "renamed_file": True, "deleted_file": False}])
+    assert_rejected("deleted", changes=[{"old_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_file": False, "renamed_file": False, "deleted_file": True}])
     assert_rejected("valid challenge solution path", changes=valid_changes("challenges/02_fixed-greet/solutions/readme.md"))
     assert_rejected("valid challenge solution path", changes=valid_changes("tools/challenge_generator.py"))
+    assert_rejected("valid challenge solution path", changes=renamed_changes("challenges/03_binary-not/solutions/2026-05-29-truth-table-flip.tpp", "tools/challenge_generator.py"))
 
 
 def test_noop_when_disabled_or_token_missing(monkeypatch, capsys) -> None:
@@ -114,6 +133,7 @@ class FakeClient:
             assert data is not None
             assert data["sha"] == "abc123"
             assert data["should_remove_source_branch"] is True
+            assert data["squash"] is True
             assert self.approved
             self.merged = True
             return {"web_url": "https://gitlab.com/thuelang/thueplusplus/-/merge_requests/7"}
