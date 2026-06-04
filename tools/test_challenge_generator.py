@@ -2,9 +2,12 @@
 """Focused tests for the isolated challenge generator."""
 from __future__ import annotations
 
+import datetime as dt
 import importlib.util
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("challenge_generator", ROOT / "tools/challenge_generator.py")
@@ -216,3 +219,144 @@ def test_leaderboard_block_mentions_best_in_class() -> None:
     block = kg.leaderboard_block(records)
     assert "Best-In-Class Records" in block
     assert "Fewest Rules" in block
+
+
+def write_diff(path: Path, rows: list[str]) -> Path:
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return path
+
+
+def solution_source(front_matter: str, body: str | None = None) -> str:
+    return "---\n" + front_matter + "---\n" + (body or "^START$ ::= OUT\\nEXIT\nOUT ::> stdout Hello, challenge!\\n\n^EXIT$ ::- 0\n::=\nSTART\n")
+
+
+def test_submission_diff_requires_exactly_one_added_file(tmp_path: Path) -> None:
+    diff = write_diff(tmp_path / "changed.diff", ["M\tchallenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"])
+    with pytest.raises(RuntimeError, match="newly added"):
+        kg.parse_submission_diff(diff.as_posix())
+
+    diff = write_diff(tmp_path / "multi.diff", [
+        "A\tchallenges/02_fixed-greet/solutions/2026-06-04-one.tpp",
+        "A\tchallenges/02_fixed-greet/solutions/2026-06-04-one.json",
+    ])
+    with pytest.raises(RuntimeError, match="exactly one file"):
+        kg.parse_submission_diff(diff.as_posix())
+
+    diff = write_diff(tmp_path / "rename.diff", [
+        "R100\told.tpp\tchallenges/02_fixed-greet/solutions/2026-06-04-one.tpp",
+    ])
+    with pytest.raises(RuntimeError, match="exactly one name-status"):
+        kg.parse_submission_diff(diff.as_posix())
+
+
+def test_submission_path_accepts_prefixed_challenge_directory(tmp_path: Path) -> None:
+    path = "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
+    diff = write_diff(tmp_path / "changed.diff", [f"A\t{path}"])
+    _status, parsed = kg.parse_submission_diff(diff.as_posix())
+    challenge, solution, slug = kg.validate_submission_path(parsed)
+    assert challenge == ROOT / "challenges/02_fixed-greet"
+    assert solution == ROOT / path
+    assert slug == "02_fixed-greet"
+
+
+def test_submission_mode_accepts_unicode_display_metadata_without_generated_artifacts(tmp_path: Path) -> None:
+    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    rel_path = f"challenges/02_fixed-greet/solutions/{today}-cafe-solver.tpp"
+    solution = ROOT / rel_path
+    diff = write_diff(tmp_path / "changed.diff", [f"A\t{rel_path}"])
+    solution.write_text(solution_source(
+        "title: Café Solver 😀\n"
+        "slug: cafe-solver\n"
+        "author: José\n"
+        "website: https://example.com\n"
+        "summary: Uses a tiny state machine 😀\n"
+    ), encoding="utf-8")
+    try:
+        challenge, submitted, record = kg.validate_submission(diff.as_posix(), "10000")
+        assert challenge.name == "02_fixed-greet"
+        assert submitted == solution
+        assert record["solution_id"] == f"{today}-cafe-solver"
+        assert record["solution_metadata"]["title"] == "Café Solver 😀"
+        assert record["solution_metadata"]["author"] == "José"
+        assert record["solution_metadata"]["summary"].endswith("😀")
+        assert "rank" in record
+    finally:
+        solution.unlink(missing_ok=True)
+
+
+def test_front_matter_is_exact_no_unknown_duplicate_or_blank_keys() -> None:
+    solution = ROOT / "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp"
+    with pytest.raises(RuntimeError, match="unknown front matter keys"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\nextra: nope\n"
+        ))
+    with pytest.raises(RuntimeError, match="duplicated"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\ntitle: Bad Again\nslug: bad\nauthor: A\nwebsite: https://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="invalid key"):
+        kg.require_solution_metadata(solution, solution_source(
+            "Title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\n"
+        ))
+
+
+def test_front_matter_rejects_unsafe_unicode_and_body_unicode() -> None:
+    solution = ROOT / "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp"
+    with pytest.raises(RuntimeError, match="NFC-normalized"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Cafe\u0301 Solver\nslug: cafe-solver\nauthor: A\nwebsite: https://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="disallowed character"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\u200bTitle\nslug: bad-title\nauthor: A\nwebsite: https://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="ASCII-only"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: café\nauthor: A\nwebsite: https://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="body must contain only"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\n",
+            body="^START$ ::= Café\n::=\nSTART\n",
+        ))
+
+
+def test_front_matter_limits_and_website_are_enforced() -> None:
+    solution = ROOT / "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp"
+    with pytest.raises(RuntimeError, match="at most 80 Unicode code points"):
+        kg.require_solution_metadata(solution, solution_source(
+            f"title: {'A' * 81}\nslug: too-long-title\nauthor: A\nwebsite: https://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="at most 64 characters"):
+        kg.require_solution_metadata(solution, solution_source(
+            f"title: Bad\nslug: {'a' * 65}\nauthor: A\nwebsite: https://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="must use https"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: http://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="credentials"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: https://user:pass@example.com\n"
+        ))
+
+
+def test_solution_file_limits_reject_bom_crlf_nul_and_oversize() -> None:
+    solution = ROOT / "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp"
+    with pytest.raises(RuntimeError, match="BOM"):
+        kg.require_solution_metadata(solution, "\ufeff" + solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\n"
+        ))
+    with pytest.raises(RuntimeError, match="LF line endings"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\n"
+        ).replace("\n", "\r\n"))
+    with pytest.raises(RuntimeError, match="NUL"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\n"
+        ) + "\x00")
+    with pytest.raises(RuntimeError, match="at most 100000 characters"):
+        kg.require_solution_metadata(solution, solution_source(
+            "title: Bad\nslug: bad\nauthor: A\nwebsite: https://example.com\n",
+            body="A" * 100001,
+        ))

@@ -42,7 +42,7 @@ test:
     - uv --version
     - go version
   script:
-    - make test
+    - uv run python tools/ci_mr_test_dispatch.py # dispatches ordinary validation to make test
 
 pages:
   image: node:22-bookworm
@@ -51,7 +51,7 @@ pages:
     - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   before_script:
     - apt-get update
-    - apt-get install -y --no-install-recommends ca-certificates curl make
+    - apt-get install -y --no-install-recommends ca-certificates curl make python3
     - |
       case "$(uname -m)" in
         x86_64) GO_ARCH=amd64 ;;
@@ -64,8 +64,16 @@ pages:
       go version
     - node --version
     - npm --version
+    - |
+      if ! command -v uv >/dev/null 2>&1; then
+        curl -LsSf https://astral.sh/uv/install.sh \
+          | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 sh -s -- --no-modify-path
+        export PATH="/tmp/uv-bin:$PATH"
+      fi
+    - uv --version
   script:
-    - export PATH="/usr/local/go/bin:$PATH"
+    - export PATH="/tmp/uv-bin:/usr/local/go/bin:$PATH"
+    - uv run python tools/challenge_generator.py --all
     - make demo-build
     - rm -rf public
     - cp -R demo/dist public
