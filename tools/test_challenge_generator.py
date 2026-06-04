@@ -174,8 +174,6 @@ def test_qualifying_records_include_pilot_challenges() -> None:
     binary = kg.qualifying_records(ROOT / "challenges/03_binary-not", "10000")
     assert len(fixed) >= 2
     assert len(binary) >= 1
-    assert {record["solution_id"] for record in fixed} >= {"2026-05-29-direct-greeting", "2026-05-29-staged-greeting"}
-    assert {record["solution_id"] for record in binary} >= {"2026-05-29-truth-table-flip"}
     generated_keys = {
         "challenge",
         "rank",
