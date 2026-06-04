@@ -7,6 +7,19 @@ const dist = new URL('../dist/', import.meta.url).pathname
 const repoRoot = new URL('../../', import.meta.url).pathname
 const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'deploy.json', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
 const staticRoutes = ['playground', 'embed', 'embed/demo']
+const challengeSlugs = readdirSync(join(repoRoot, 'challenges'))
+  .filter(name => /^\d{2}_[a-z0-9][a-z0-9-]*$/.test(name) && existsSync(join(repoRoot, 'challenges', name, 'readme.md')))
+  .sort()
+const solutionIdsByChallenge = Object.fromEntries(challengeSlugs.map(slug => [slug, solutionIdsForChallenge(slug)]))
+const generatedRoutes = [
+  ...staticRoutes,
+  'challenges',
+  ...challengeSlugs.flatMap(slug => [
+    `challenges/${slug}`,
+    `challenges/${slug}/solutions`,
+    ...solutionIdsByChallenge[slug].map(solutionId => `challenges/${slug}/solutions/${solutionId}`),
+  ]),
+]
 
 for (const asset of requiredAssets) {
   const path = join(dist, asset)
@@ -18,21 +31,22 @@ for (const asset of requiredAssets) {
 
 const index = readFileSync(join(dist, 'index.html'), 'utf8')
 const fallback = readFileSync(join(dist, '404.html'), 'utf8')
-if (fallback !== index) {
-  throw new Error('demo production dist 404.html must match index.html for unknown direct SPA route fallback on GitLab Pages')
+assertRootAssetUrls(index, 'index.html')
+assertNoReadmePrerender(fallback, '404.html')
+assertRootAssetUrls(fallback, '404.html')
+if (!fallback.includes('data-test="app-fallback-shell"')) {
+  throw new Error('demo production dist 404.html must include a neutral app fallback shell')
 }
-for (const route of staticRoutes) {
+for (const route of generatedRoutes) {
   const routePath = join(dist, route, 'index.html')
   if (!existsSync(routePath)) {
     throw new Error(`demo production dist is missing ${route}/index.html for direct route loads on GitLab Pages`)
   }
   const routeIndex = readFileSync(routePath, 'utf8')
-  if (!routeIndex.includes('src="/assets/') || !routeIndex.includes('href="/assets/')) {
-    throw new Error(`demo production dist ${route}/index.html must use origin-root asset URLs so nested static routes load assets from the site root`)
+  assertRootAssetUrls(routeIndex, `${route}/index.html`)
+  if (route.startsWith('challenges')) {
+    assertNoReadmePrerender(routeIndex, `${route}/index.html`)
   }
-}
-if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
-  throw new Error('demo production index must use origin-root asset URLs so nested static routes load assets from the site root')
 }
 if (!index.includes('semi-Thue system') || !index.includes('Hello world') || !index.includes('data-prerendered="true"')) {
   throw new Error('demo production index must include prerendered README content for crawlers')
@@ -50,6 +64,22 @@ if (!playgroundIndex.includes('Thue++ Playground') || !playgroundIndex.includes(
 const embedIndex = readFileSync(join(dist, 'embed', 'index.html'), 'utf8')
 if (!embedIndex.includes('noindex,follow')) {
   throw new Error('embed route index must be noindexed')
+}
+const sitemap = readFileSync(join(dist, 'sitemap.xml'), 'utf8')
+for (const loc of ['https://thuelang.org/', ...generatedRoutes.map(routeCanonicalUrl)]) {
+  if (!sitemap.includes(`<loc>${loc}</loc>`)) {
+    throw new Error(`sitemap.xml is missing canonical route ${loc}`)
+  }
+}
+for (const slug of challengeSlugs) {
+  const challengeIndex = readFileSync(join(dist, 'challenges', slug, 'index.html'), 'utf8')
+  const title = titleFromChallengeReadme(slug)
+  if (!challengeIndex.includes(`<title>${escapeHtml(title)} — Thue++ Challenge</title>`)) {
+    throw new Error(`challenge route ${slug}/index.html must include challenge-specific title metadata`)
+  }
+  if (!challengeIndex.includes(`https://thuelang.org/challenges/${slug}/`)) {
+    throw new Error(`challenge route ${slug}/index.html must include canonical challenge URL`)
+  }
 }
 
 const deploy = JSON.parse(readFileSync(join(dist, 'deploy.json'), 'utf8'))
@@ -98,6 +128,59 @@ for (const fileName of jsFiles) {
 }
 
 console.log('demo production dist smoke ok')
+
+function assertRootAssetUrls(html, label) {
+  if (!html.includes('src="/assets/') || !html.includes('href="/assets/')) {
+    throw new Error(`demo production dist ${label} must use origin-root asset URLs so nested static routes load assets from the site root`)
+  }
+}
+
+function assertNoReadmePrerender(html, label) {
+  for (const forbidden of ['data-prerendered="true"', 'prerendered-readme', 'data-test="readme-index"', 'semi-Thue system', 'Hello world']) {
+    if (html.includes(forbidden)) {
+      throw new Error(`demo production dist ${label} must not include root README prerender marker ${forbidden}`)
+    }
+  }
+}
+
+function titleFromChallengeReadme(slug) {
+  const readme = readFileSync(join(repoRoot, 'challenges', slug, 'readme.md'), 'utf8')
+  const match = readme.match(/^---\n([\s\S]*?)\n---\n/)
+  if (!match) return titleFromSlug(slug)
+  const titleLine = match[1].split('\n').find(line => line.startsWith('title:'))
+  return titleLine ? titleLine.slice('title:'.length).trim() : titleFromSlug(slug)
+}
+
+function solutionIdsForChallenge(slug) {
+  const solutionsDir = join(repoRoot, 'challenges', slug, 'solutions')
+  if (!existsSync(solutionsDir)) return []
+  return readdirSync(solutionsDir)
+    .filter(name => name.endsWith('.json'))
+    .map(name => {
+      const record = JSON.parse(readFileSync(join(solutionsDir, name), 'utf8'))
+      return record.solution_id || name.replace(/\.json$/, '')
+    })
+    .sort()
+}
+
+function routeCanonicalUrl(route) {
+  if (route === 'playground' || route.startsWith('embed')) return `https://thuelang.org/${route}`
+  if (route === 'challenges') return 'https://thuelang.org/challenges/'
+  if (/^challenges\/[^/]+$/.test(route)) return `https://thuelang.org/${route}/`
+  return `https://thuelang.org/${route}`
+}
+
+function titleFromSlug(slug) {
+  return slug.replace(/^\d{2}_/, '').split('-').filter(Boolean).map(word => `${word[0].toUpperCase()}${word.slice(1)}`).join(' ')
+}
+
+function escapeHtml(value) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+}
 
 function env(name) {
   const value = process.env[name]

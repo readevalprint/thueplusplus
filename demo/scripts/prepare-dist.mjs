@@ -1,31 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const dist = new URL('../dist/', import.meta.url).pathname
 const demoRoot = new URL('../', import.meta.url).pathname
 const repoRoot = new URL('../../', import.meta.url).pathname
-const staticRoutes = ['playground', 'embed', 'embed/demo']
+const siteOrigin = 'https://thuelang.org'
 
 copyPublicAssets()
 
 const rootIndexPath = join(dist, 'index.html')
-const rootIndex = injectPrerenderedReadme(readFileSync(rootIndexPath, 'utf8'))
+const appShell = readFileSync(rootIndexPath, 'utf8')
+const challenges = loadChallenges()
+const routes = buildRoutes(challenges)
+
+const rootIndex = injectPrerenderedReadme(updateMetadata(appShell, {
+  title: 'Thue++ — Deterministic String-Rewrite Programming Language',
+  description: 'Thue++ is a rewrite-rule metalanguage for sandboxed DSLs, with ordered regex rewrites, exact arithmetic, explicit resources, and a browser playground.',
+  canonical: `${siteOrigin}/`,
+  robots: 'index,follow',
+}))
 writeFileSync(rootIndexPath, rootIndex)
 
-for (const route of staticRoutes) {
-  const routeDir = join(dist, route)
-  mkdirSync(routeDir, { recursive: true })
-  const html = routeHtml(route, rootIndex)
-  writeFileSync(join(routeDir, 'index.html'), html)
+for (const route of routes) {
+  writeRoute(route.path, routeHtml(route))
 }
 
-// Keep a custom fallback for unknown direct SPA links. The explicit route
-// copies above make known routes return HTTP 200 instead of GitLab Pages'
-// custom-404 status.
-copyFileSync(rootIndexPath, join(dist, '404.html'))
+writeFileSync(join(dist, '404.html'), fallbackHtml())
+writeFileSync(join(dist, 'sitemap.xml'), sitemapXml(routes))
 
-console.log(`demo production dist static routes ok: ${staticRoutes.join(', ')}`)
+console.log(`demo production dist static routes ok: ${routes.map(route => route.path).join(', ')}`)
 
 function copyPublicAssets() {
   const publicDir = join(demoRoot, 'public')
@@ -33,21 +37,231 @@ function copyPublicAssets() {
   cpSync(publicDir, dist, { recursive: true, force: true })
 }
 
-function routeHtml(route, html) {
-  if (route === 'playground') {
-    return updateMetadata(html, {
-      title: 'Thue++ Playground — Run String-Rewrite Programs in the Browser',
-      description: 'Run Thue++ examples in the browser playground, inspect state transitions, and experiment with deterministic regex rewrite rules.',
-      canonical: 'https://thuelang.org/playground',
-      robots: 'index,follow',
-    })
-  }
-  return updateMetadata(html, {
-    title: route === 'embed/demo' ? 'Thue++ Embed Demo' : 'Thue++ Embed',
-    description: 'Embeddable Thue++ playground surface.',
-    canonical: `https://thuelang.org/${route}`,
+function writeRoute(route, html) {
+  const routeDir = join(dist, route)
+  mkdirSync(routeDir, { recursive: true })
+  writeFileSync(join(routeDir, 'index.html'), html)
+}
+
+function routeHtml(route) {
+  return injectAppShell(updateMetadata(appShell, route.metadata), route.shell)
+}
+
+function fallbackHtml() {
+  return injectAppShell(updateMetadata(appShell, {
+    title: 'Thue++ — Loading',
+    description: 'Loading the Thue++ app.',
+    canonical: `${siteOrigin}/`,
     robots: 'noindex,follow',
-  })
+  }), neutralShell('Loading Thue++', 'Preparing the app route…'))
+}
+
+function buildRoutes(challenges) {
+  const routes = [
+    {
+      path: 'playground',
+      metadata: {
+        title: 'Thue++ Playground — Run String-Rewrite Programs in the Browser',
+        description: 'Run Thue++ examples in the browser playground, inspect state transitions, and experiment with deterministic regex rewrite rules.',
+        canonical: `${siteOrigin}/playground`,
+        robots: 'index,follow',
+      },
+      shell: neutralShell('Loading playground', 'Preparing the editor, runtime, and examples…'),
+    },
+    {
+      path: 'embed',
+      metadata: embedMetadata('embed', 'Thue++ Embed'),
+      shell: neutralShell('Loading embed', 'Preparing the embeddable playground…'),
+    },
+    {
+      path: 'embed/demo',
+      metadata: embedMetadata('embed/demo', 'Thue++ Embed Demo'),
+      shell: neutralShell('Loading embed demo', 'Preparing the embeddable playground demo…'),
+    },
+    {
+      path: 'challenges',
+      metadata: {
+        title: 'Learn Thue++ — Challenges',
+        description: 'Learn Thue++ in small executable rewrite challenges and compare your answers with others.',
+        canonical: `${siteOrigin}/challenges/`,
+        robots: 'index,follow',
+      },
+      shell: challengesIndexShell(challenges),
+    },
+  ]
+
+  for (const challenge of challenges) {
+    routes.push({
+      path: `challenges/${challenge.slug}`,
+      metadata: {
+        title: `${challenge.title} — Thue++ Challenge`,
+        description: challenge.description,
+        canonical: `${siteOrigin}/challenges/${challenge.slug}/`,
+        robots: 'index,follow',
+      },
+      shell: challengeShell(challenge),
+    })
+    routes.push({
+      path: `challenges/${challenge.slug}/solutions`,
+      metadata: {
+        title: `${challenge.title} Solutions — Thue++ Challenge`,
+        description: `Ranked public solutions for the ${challenge.title} Thue++ challenge.`,
+        canonical: `${siteOrigin}/challenges/${challenge.slug}/solutions`,
+        robots: 'index,follow',
+      },
+      shell: challengeSolutionsShell(challenge),
+    })
+    for (const solution of challenge.solutions) {
+      routes.push({
+        path: `challenges/${challenge.slug}/solutions/${solution.id}`,
+        metadata: {
+          title: `${solution.title} — ${challenge.title} — Thue++ Challenge Solution`,
+          description: `A public solution by ${solution.author} for the ${challenge.title} Thue++ challenge.`,
+          canonical: `${siteOrigin}/challenges/${challenge.slug}/solutions/${solution.id}`,
+          robots: 'index,follow',
+        },
+        shell: challengeSolutionShell(challenge, solution),
+      })
+    }
+  }
+
+  return routes
+}
+
+function embedMetadata(path, title) {
+  return {
+    title,
+    description: 'Embeddable Thue++ playground surface.',
+    canonical: `${siteOrigin}/${path}`,
+    robots: 'noindex,follow',
+  }
+}
+
+function loadChallenges() {
+  return readdirSync(join(repoRoot, 'challenges'))
+    .filter(slug => /^\d{2}_[a-z0-9][a-z0-9-]*$/.test(slug) && existsSync(join(repoRoot, 'challenges', slug, 'readme.md')))
+    .sort()
+    .map(slug => {
+      const readme = readFileSync(join(repoRoot, 'challenges', slug, 'readme.md'), 'utf8')
+      const { frontMatter, body } = splitFrontMatter(readme)
+      const title = frontMatter.title || titleFromSlug(slug)
+      return {
+        slug,
+        title,
+        description: frontMatter.description || summaryFromBody(body) || `${title} Thue++ challenge.`,
+        body,
+        solutions: loadSolutions(slug),
+      }
+    })
+}
+
+function loadSolutions(slug) {
+  const solutionsDir = join(repoRoot, 'challenges', slug, 'solutions')
+  if (!existsSync(solutionsDir)) return []
+  return readdirSync(solutionsDir)
+    .filter(name => name.endsWith('.json'))
+    .sort()
+    .map(name => {
+      const record = JSON.parse(readFileSync(join(solutionsDir, name), 'utf8'))
+      return {
+        id: record.solution_id || name.replace(/\.json$/, ''),
+        title: record.solution_metadata?.title || titleFromSlug(name.replace(/\.json$/, '')),
+        author: record.solution_metadata?.author || 'anonymous',
+        rank: record.rank,
+      }
+    })
+    .sort((left, right) => left.rank - right.rank || left.id.localeCompare(right.id))
+}
+
+function splitFrontMatter(markdown) {
+  const match = markdown.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/)
+  if (!match) return { frontMatter: {}, body: markdown }
+  const frontMatter = {}
+  for (const line of match[1].split('\n')) {
+    const separator = line.indexOf(':')
+    if (separator < 0) continue
+    frontMatter[line.slice(0, separator).trim()] = line.slice(separator + 1).trim()
+  }
+  return { frontMatter, body: match[2] }
+}
+
+function summaryFromBody(markdown) {
+  return markdown
+    .replace(/```[\s\S]*?```/g, '')
+    .split('\n')
+    .map(line => line.trim())
+    .find(line => line && !line.startsWith('#'))
+    ?.replace(/`([^`]+)`/g, '$1')
+    .slice(0, 180)
+}
+
+function neutralShell(title, description) {
+  return [
+    '      <main class="app-static-shell" data-test="app-fallback-shell">',
+    `        <section class="app-static-card" aria-busy="true">`,
+    `          <p class="app-static-eyebrow">Thue++</p>`,
+    `          <h1>${escapeHtml(title)}</h1>`,
+    `          <p>${escapeHtml(description)}</p>`,
+    '          <div class="app-static-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>',
+    '        </section>',
+    '      </main>',
+  ].join('\n')
+}
+
+function challengesIndexShell(challenges) {
+  return [
+    '      <main class="app-static-shell challenge-static-shell" data-test="challenge-index-static-shell">',
+    '        <section class="app-static-card">',
+    '          <p class="app-static-eyebrow">Thue++ Challenges</p>',
+    '          <h1>Learn Thue++</h1>',
+    '          <p>Loading the interactive challenge list…</p>',
+    '          <ul class="app-static-route-list">',
+    ...challenges.map(challenge => `            <li><a href="/challenges/${escapeAttribute(challenge.slug)}/">${escapeHtml(challenge.title)}</a></li>`),
+    '          </ul>',
+    '        </section>',
+    '      </main>',
+  ].join('\n')
+}
+
+function challengeShell(challenge) {
+  return [
+    `      <main class="app-static-shell challenge-static-shell" data-test="challenge-static-${escapeAttribute(challenge.slug)}">`,
+    '        <section class="app-static-card">',
+    '          <p class="app-static-eyebrow">Thue++ Challenge</p>',
+    `          <h1>${escapeHtml(challenge.title)}</h1>`,
+    `          <p>${escapeHtml(challenge.description)}</p>`,
+    '          <div class="app-static-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>',
+    '        </section>',
+    '      </main>',
+  ].join('\n')
+}
+
+function challengeSolutionsShell(challenge) {
+  return [
+    `      <main class="app-static-shell challenge-static-shell" data-test="challenge-solutions-static-${escapeAttribute(challenge.slug)}">`,
+    '        <section class="app-static-card">',
+    '          <p class="app-static-eyebrow">Thue++ Challenge Solutions</p>',
+    `          <h1>${escapeHtml(challenge.title)} Solutions</h1>`,
+    `          <p>Loading ${escapeHtml(String(challenge.solutions.length))} ranked solution${challenge.solutions.length === 1 ? '' : 's'}…</p>`,
+    '        </section>',
+    '      </main>',
+  ].join('\n')
+}
+
+function challengeSolutionShell(challenge, solution) {
+  return [
+    `      <main class="app-static-shell challenge-static-shell" data-test="challenge-solution-static-${escapeAttribute(solution.id)}">`,
+    '        <section class="app-static-card">',
+    '          <p class="app-static-eyebrow">Thue++ Challenge Solution</p>',
+    `          <h1>${escapeHtml(solution.title)}</h1>`,
+    `          <p>Loading ${escapeHtml(challenge.title)} solution by ${escapeHtml(solution.author)}…</p>`,
+    '        </section>',
+    '      </main>',
+  ].join('\n')
+}
+
+function injectAppShell(html, shell) {
+  return html.replace('<div id="app"></div>', `<div id="app">\n${shell}\n    </div>`)
 }
 
 function updateMetadata(html, metadata) {
@@ -75,6 +289,20 @@ function injectPrerenderedReadme(html) {
   const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8')
   const prerendered = renderMarkdown(readme)
   return html.replace('<div id="app"></div>', `<div id="app">\n${prerendered}\n    </div>`)
+}
+
+function sitemapXml(routes) {
+  const urls = [
+    { loc: `${siteOrigin}/`, priority: '1.0' },
+    ...routes.map(route => ({ loc: route.metadata.canonical, priority: route.path.startsWith('challenges') ? '0.7' : '0.8' })),
+  ]
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...urls.map(url => `  <url>\n    <loc>${escapeHtml(url.loc)}</loc>\n    <priority>${url.priority}</priority>\n  </url>`),
+    '</urlset>',
+    '',
+  ].join('\n')
 }
 
 function renderMarkdown(markdown) {
@@ -165,8 +393,12 @@ function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
+function titleFromSlug(slug) {
+  return slug.replace(/^\d{2}_/, '').split('-').filter(Boolean).map(word => `${word[0].toUpperCase()}${word.slice(1)}`).join(' ')
+}
+
 function escapeHtml(value) {
-  return value
+  return String(value)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')

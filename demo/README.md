@@ -27,6 +27,8 @@ npm run build        # production build
 
 Before serving the demo, run `make demo-build` from the repository root. That target builds both browser-served runtime assets into the ignored `build/` directory (`build/thuepp.wasm` and `build/wasm_exec.js`), runs the Vite production build, writes ignored deployment metadata to `demo/dist/deploy.json`, and verifies that `demo/dist/` contains non-empty runtime assets with origin-root asset URLs. The production demo is configured for the custom-domain GitLab Pages deployment at `https://thuelang.org/`, so nested routes load assets from the site root. `make demo-build` is still an additive browser integration check; it does not execute the full examples manifest suite.
 
+The Pages artifact is generated, not committed. `demo/scripts/prepare-dist.mjs` keeps the prerendered README only in the root `dist/index.html`, writes a neutral `dist/404.html` fallback with no README content, and emits route-specific static HTML for `/playground`, `/embed`, `/challenges/`, each challenge detail route, and public challenge solution routes. `demo/scripts/check-dist.mjs` fails the build if known public routes are missing, if README prerender markup leaks into the fallback or challenge shells, or if `sitemap.xml` drifts from the generated route set. When adding a challenge or public solution, update the committed challenge data/source only; the next build regenerates the route HTML and sitemap.
+
 GitLab.com Pages publishes the generated metadata at `https://thuelang.org/deploy.json`. To verify the public deployment fingerprint after a Pages pipeline, run:
 
 ```bash
