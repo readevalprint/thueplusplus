@@ -13,6 +13,7 @@
         :challenges="challenges"
         :previous-challenge="previousChallenge"
         :next-challenge="nextChallenge"
+        @ready="finishChallengeLoading"
       />
     </section>
   </article>
@@ -28,4 +29,12 @@ defineProps<{
   previousChallenge?: ChallengeEntry
   nextChallenge?: ChallengeEntry
 }>()
+
+const emit = defineEmits<{
+  ready: []
+}>()
+
+function finishChallengeLoading(): void {
+  emit('ready')
+}
 </script>

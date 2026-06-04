@@ -1,5 +1,18 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
+  <div
+    v-if="showRouteLoading"
+    class="app-route-loading-bar"
+    :class="{ 'without-topbar': !showSiteTopbar }"
+    role="progressbar"
+    aria-label="Loading page"
+    :aria-valuenow="routeLoadingProgress"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    data-test="app-loading-bar"
+  >
+    <span :style="{ width: `${routeLoadingProgress}%` }" />
+  </div>
   <template v-if="showSiteTopbar">
     <header class="site-topbar" data-test="site-topbar">
       <div class="site-topbar-inner">
@@ -51,16 +64,16 @@
         </NavigationMenu>
       </div>
     </header>
-    <PlaygroundPage v-if="isPlaygroundRoute" />
-    <ChallengesPage v-else-if="isChallengesRoute" :selected-slug="challengeSlug" :solutions-route="isChallengeSolutionsRoute" :selected-solution-id="challengeSolutionId" />
-    <ReadmePage v-else />
+    <PlaygroundPage v-if="isPlaygroundRoute" @ready="finishRouteLoading" />
+    <ChallengesPage v-else-if="isChallengesRoute" :selected-slug="challengeSlug" :solutions-route="isChallengeSolutionsRoute" :selected-solution-id="challengeSolutionId" @ready="finishRouteLoading" />
+    <ReadmePage v-else @ready="finishRouteLoading" />
   </template>
-  <EmbedDemoPage v-else-if="isEmbedDemoRoute" />
-  <PlaygroundSurface v-else-if="isEmbedRoute" v-bind="embedProps" />
+  <EmbedDemoPage v-else-if="isEmbedDemoRoute" @vue:mounted="finishRouteLoading" />
+  <PlaygroundSurface v-else-if="isEmbedRoute" v-bind="embedProps" @ready="finishRouteLoading" />
 </template>
 
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import EmbedDemoPage from './EmbedDemoPage.vue'
 import ChallengesPage from './ChallengesPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
@@ -94,6 +107,9 @@ interface EmbedRouteProps {
 }
 
 const routePath = computed(() => normalizedPath() || '/')
+const routeLoadingProgress = ref(70)
+const showRouteLoading = ref(true)
+let routeLoadingTimer: ReturnType<typeof window.setTimeout> | undefined
 const challengesRouteMatch = computed(() => routePath.value.match(/(?:^|\/)challenges(?:\/([^/]+)(?:\/([^/]+)(?:\/([^/]+))?)?)?$/))
 const challengeSlug = computed(() => challengesRouteMatch.value?.[1] ? decodeURIComponent(challengesRouteMatch.value[1]) : undefined)
 const challengeSecondSegment = computed(() => challengesRouteMatch.value?.[2] ? decodeURIComponent(challengesRouteMatch.value[2]) : undefined)
@@ -181,6 +197,14 @@ function normalizeEmbedMode(value: string | null): EmbedRouteProps['mode'] {
 
 function normalizeEmbedControls(value: string | null): EmbedRouteProps['controls'] {
   return ['run', 'step', 'debug', 'none'].includes(value ?? '') ? value as EmbedRouteProps['controls'] : 'run'
+}
+
+function finishRouteLoading(): void {
+  routeLoadingProgress.value = 100
+  if (routeLoadingTimer) window.clearTimeout(routeLoadingTimer)
+  routeLoadingTimer = window.setTimeout(() => {
+    showRouteLoading.value = false
+  }, 160)
 }
 
 function setPageMetadata(metadata: { title: string; description: string; canonical: string; robots: string }): void {

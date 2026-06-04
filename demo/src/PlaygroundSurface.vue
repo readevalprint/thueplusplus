@@ -66,7 +66,7 @@
           </div>
         </header>
         <div class="playground-panel-content">
-          <RulesMonacoEditor :model-value="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" :data-current-state="stateText" data-test="playground-rules" @update:model-value="setRulesText" @paste="seedStateFromSource" />
+          <RulesMonacoEditor :model-value="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" :data-current-state="stateText" data-test="playground-rules" @ready="markEditorReady" @update:model-value="setRulesText" @paste="seedStateFromSource" />
         </div>
       </section>
 
@@ -164,7 +164,7 @@
             </div>
               </header>
               <div class="playground-panel-content">
-                <RulesMonacoEditor :model-value="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" :data-current-state="stateText" data-test="playground-rules" @update:model-value="setRulesText" @paste="seedStateFromSource" />
+                <RulesMonacoEditor :model-value="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" :data-current-state="stateText" data-test="playground-rules" @ready="markEditorReady" @update:model-value="setRulesText" @paste="seedStateFromSource" />
               </div>
             </section>
           </ResizablePanel>
@@ -288,6 +288,10 @@ const props = withDefaults(defineProps<{
   title: 'THUE++ Playground',
 })
 
+const emit = defineEmits<{
+  ready: []
+}>()
+
 const routeSearchParams = new URLSearchParams(window.location.search)
 const surfaceRoot = ref<HTMLElement | null>(null)
 const measuredWidth = ref(window.innerWidth)
@@ -347,6 +351,10 @@ function syncSelectionUrl(): void {
   url.searchParams.set('section', activeSection.value)
   url.searchParams.set('tab', activeOutputTab.value)
   window.history.replaceState({}, '', url)
+}
+
+function markEditorReady(): void {
+  emit('ready')
 }
 
 onMounted(() => {

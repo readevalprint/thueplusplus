@@ -18,6 +18,7 @@
       :challenges="challenges"
       :previous-challenge="previousChallenge"
       :next-challenge="nextChallenge"
+      @ready="markReady"
     />
 
     <article v-else-if="selectedSlug" class="readme-document" data-test="challenge-not-found">
@@ -34,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted } from 'vue'
 import ChallengeDetail from './challenges/ChallengeDetail.vue'
 import ChallengeSolutionDetail from './challenges/ChallengeSolutionDetail.vue'
 import ChallengeSolutionsIndex from './challenges/ChallengeSolutionsIndex.vue'
@@ -47,6 +48,10 @@ const props = defineProps<{
   selectedSolutionId?: string
 }>()
 
+const emit = defineEmits<{
+  ready: []
+}>()
+
 const selectedChallenge = computed(() => challenges.find((challenge) => challenge.slug === props.selectedSlug))
 const selectedChallengeIndex = computed(() => selectedChallenge.value ? challenges.findIndex(challenge => challenge.slug === selectedChallenge.value?.slug) : -1)
 const previousChallenge = computed(() => selectedChallengeIndex.value > 0 ? challenges[selectedChallengeIndex.value - 1] : undefined)
@@ -56,4 +61,15 @@ const pageClass = computed(() => {
   if (selectedChallenge.value && !props.solutionsRoute && !selectedSolution.value) return 'challenge-detail-page'
   return selectedChallenge.value ? 'readme-page' : 'readme-page challenges-page'
 })
+const waitsForPlaygroundEditor = computed(() => Boolean(selectedChallenge.value && !props.solutionsRoute && !selectedSolution.value))
+
+onMounted(async () => {
+  if (waitsForPlaygroundEditor.value) return
+  await nextTick()
+  markReady()
+})
+
+function markReady(): void {
+  emit('ready')
+}
 </script>
