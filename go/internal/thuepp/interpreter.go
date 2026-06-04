@@ -83,21 +83,22 @@ type TraceEvent struct {
 }
 
 type Interpreter struct {
-	Rules              []Rule
-	State              string
-	Bindings           map[string]*Binding
-	EvalLimit          *int
-	MaxStateBytes      *int
-	StepLimit          *int
-	EvalCheckCount     int
-	Debug              bool
-	Stdout             io.Writer
-	Stderr             io.Writer
-	RuleCoveragePath   string
-	RuleCoverageCounts map[string]int
-	ProgramPath        string
-	TraceEnabled       bool
-	Trace              []TraceEvent
+	Rules                []Rule
+	State                string
+	Bindings             map[string]*Binding
+	EvalLimit            *int
+	MaxStateBytes        *int
+	StepLimit            *int
+	EvalCheckCount       int
+	CumulativeStateBytes int
+	Debug                bool
+	Stdout               io.Writer
+	Stderr               io.Writer
+	RuleCoveragePath     string
+	RuleCoverageCounts   map[string]int
+	ProgramPath          string
+	TraceEnabled         bool
+	Trace                []TraceEvent
 }
 
 func New() *Interpreter {
@@ -1029,6 +1030,10 @@ func (i *Interpreter) WriteRuleCoverage() error {
 	return os.WriteFile(i.RuleCoveragePath, []byte(i.RuleCoverageTSV()), 0644)
 }
 
+func escapedStateBytes(state string) int {
+	return len([]byte(strings.ReplaceAll(state, "\n", `\n`)))
+}
+
 func formatDebugGroups(groups map[string]string) string {
 	keys := make([]string, 0, len(groups))
 	for key := range groups {
@@ -1068,6 +1073,7 @@ func (i *Interpreter) Run() (int, error) {
 				return 1, fmt.Errorf("Evaluation limit (%d) exceeded", *i.EvalLimit)
 			}
 			i.EvalCheckCount++
+			i.CumulativeStateBytes += escapedStateBytes(i.State)
 
 			match, ok := findMatch(rule, i.State)
 			if !ok {

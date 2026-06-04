@@ -247,7 +247,7 @@ import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { setProgramSourceState, splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
 import { expectedResources, type ChallengeTestResult } from './challenges/runChallengeTests'
-import type { ChallengeEntry, ChallengeTestCase } from './challenges/types'
+import type { ChallengeAttemptMetrics, ChallengeEntry, ChallengeTestCase } from './challenges/types'
 
 export type PlaygroundSection = 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
 export type PlaygroundMode = 'auto' | 'full' | 'compact' | 'mini' | 'debug'
@@ -449,6 +449,7 @@ const selectedTestCase = ref<TestCaseOption | undefined>()
 const challengeResults = ref<ChallengeTestResult[] | null>(null)
 const challengeTestsRunning = ref(false)
 const challengeTestsAuto = ref(initialChallengeTestsAuto())
+const currentChallengeTestMetrics = ref<Omit<ChallengeAttemptMetrics, 'ruleCount'>>({ stepCount: 0, evalCheckCount: 0, cumulativeStateBytes: 0 })
 let challengeTestRunId = 0
 let challengeTestAbortController: AbortController | undefined
 let challengeTestDebounceTimer: ReturnType<typeof window.setTimeout> | undefined
@@ -781,6 +782,7 @@ async function startVisibleChallengeTestRun(): Promise<void> {
 
 async function runVisibleChallengeTest(testCase: ChallengeTestCase, fallbackState: string, signal?: AbortSignal): Promise<ChallengeTestResult> {
   clearRun()
+  currentChallengeTestMetrics.value = { stepCount: 0, evalCheckCount: 0, cumulativeStateBytes: 0 }
   sourcePath.value = `challenges/${props.challenge?.slug ?? 'current'}/attempt.tpp`
   stateText.value = testCase.resources.stdin?.buffer ?? fallbackState
   resourceInputs.value = Object.fromEntries(
@@ -816,6 +818,10 @@ function visibleChallengeTestResult(testCase: ChallengeTestCase): ChallengeTestR
     passed: exitCode.passed && resources.every(resource => resource.passed) && !lastRunError.value && !missingExitCodeError,
     exitCode,
     resources,
+    metrics: {
+      ruleCount: ruleCount.value,
+      ...currentChallengeTestMetrics.value,
+    },
     error: lastRunError.value ?? missingExitCodeError,
   }
 }
@@ -1002,6 +1008,11 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
     const trace = result.trace ?? []
+    currentChallengeTestMetrics.value = {
+      stepCount: currentChallengeTestMetrics.value.stepCount + trace.length,
+      evalCheckCount: currentChallengeTestMetrics.value.evalCheckCount + (result.evalCheckCount ?? 0),
+      cumulativeStateBytes: currentChallengeTestMetrics.value.cumulativeStateBytes + (result.cumulativeStateBytes ?? traceStateBytes(trace)),
+    }
     appendStateDiffs(trace, resourcesAfterRun)
     if (options.collapsedHistory) appendCollapsedEndDiff(runState, nextState ?? runState, resourcesAfterRun)
     const pendingResource = pendingInputResource(result)
@@ -1057,6 +1068,14 @@ function waitForContinueDelay(): Promise<void> {
     }
     tick()
   })
+}
+
+function traceStateBytes(trace: DemoTraceEvent[]): number {
+  return trace.reduce((total, event) => total + escapedUtf8Bytes(event.stateBefore) + escapedUtf8Bytes(event.stateAfter), 0)
+}
+
+function escapedUtf8Bytes(value: string): number {
+  return new TextEncoder().encode(value.replace(/\n/g, '\\n')).length
 }
 
 function appendCollapsedEndDiff(stateBefore: string, stateAfter: string, resources: ResourceSnapshot): void {

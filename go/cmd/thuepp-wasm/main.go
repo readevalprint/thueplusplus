@@ -50,15 +50,16 @@ func (r *jsResource) Cleanup() {
 }
 
 type wasmResult struct {
-	ExitCode       int
-	Stdout         string
-	Stderr         string
-	Error          string
-	Errors         []string
-	CoverageTSV    string
-	Trace          []thuepp.TraceEvent
-	State          string
-	EvalCheckCount int
+	ExitCode             int
+	Stdout               string
+	Stderr               string
+	Error                string
+	Errors               []string
+	CoverageTSV          string
+	Trace                []thuepp.TraceEvent
+	State                string
+	EvalCheckCount       int
+	CumulativeStateBytes int
 }
 
 func main() {
@@ -150,7 +151,7 @@ func run(args []js.Value) wasmResult {
 	}
 	exitCode, runErr := interp.Run()
 	interp.Cleanup()
-	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCheckCount: interp.EvalCheckCount}
+	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCheckCount: interp.EvalCheckCount, CumulativeStateBytes: interp.CumulativeStateBytes}
 	if runErr != nil {
 		res.ExitCode = 1
 		res.Error = runErr.Error()
@@ -166,7 +167,7 @@ func run(args []js.Value) wasmResult {
 }
 
 func resultToJS(r wasmResult) js.Value {
-	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCheckCount": r.EvalCheckCount}
+	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCheckCount": r.EvalCheckCount, "cumulativeStateBytes": r.CumulativeStateBytes}
 	if r.Error != "" {
 		obj["error"] = r.Error
 	}

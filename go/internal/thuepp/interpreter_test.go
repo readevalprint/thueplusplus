@@ -278,6 +278,30 @@ func TestTraceRecordsAppliedRuleStateAndCaptures(t *testing.T) {
 	}
 }
 
+func TestCumulativeStateBytesCountsEveryEvalCheck(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader(""),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	if err := interp.LoadProgramText("metrics.tpp", "^z$ ::= nope\n^a$ ::= b\n^b$ ::- 0\n::=\na"); err != nil {
+		t.Fatalf("LoadProgramText: %v", err)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d", code)
+	}
+	if got, want := interp.EvalCheckCount, 5; got != want {
+		t.Fatalf("EvalCheckCount = %d, want %d", got, want)
+	}
+	if got, want := interp.CumulativeStateBytes, 5; got != want {
+		t.Fatalf("CumulativeStateBytes = %d, want %d", got, want)
+	}
+}
+
 func TestTraceRecordsMatchedRuleError(t *testing.T) {
 	interp := NewWithHostResources(HostResources{
 		Stdin:  strings.NewReader(""),

@@ -13,6 +13,13 @@ export interface ChallengeSolution {
   cumulativeStateBytes: number
 }
 
+export interface ChallengeAttemptMetrics {
+  ruleCount: number
+  stepCount: number
+  evalCheckCount: number
+  cumulativeStateBytes: number
+}
+
 export interface ChallengeTestResource {
   buffer?: string
   expected_output?: string
