@@ -1,0 +1,18 @@
+{
+  "challenge": "03_binary-not",
+  "cumulative_state_bytes": 175,
+  "eval_check_count": 28,
+  "rank": 1,
+  "rule_count": 6,
+  "solution_id": "2026-05-29-truth-table-flip2",
+  "solution_metadata": {
+    "author": "Tim Watts",
+    "slug": "truth-table-flip2",
+    "summary": "Handle each binary input as its own rewrite row.",
+    "title": "Truth Table Flip2",
+    "website": "https://readevalprint.com"
+  },
+  "solution_path": "challenges/03_binary-not/solutions/2026-05-29-truth-table-flip2.tpp",
+  "solution_sha256": "c51feca6612b58387fe12555ac09bbdae5aca6763d5a88fa1a585158c9e6b71e",
+  "successful_rewrites": 8
+}
