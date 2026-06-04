@@ -25,7 +25,15 @@ npm run test:ui      # focused Vitest UI tests only
 npm run build        # production build
 ```
 
-Before serving the demo, run `make demo-build` from the repository root. That target builds both browser-served runtime assets into the ignored `build/` directory (`build/thuepp.wasm` and `build/wasm_exec.js`), runs the Vite production build, and verifies that `demo/dist/` contains non-empty runtime assets with base-relative URLs. Vite serves the generated runtime assets as the demo public asset root, so the worker loads `thuepp.wasm` and `wasm_exec.js` relative to the deployed demo page instead of assuming origin-root hosting. `make demo-build` is still an additive browser integration check; it does not execute the full examples manifest suite.
+Before serving the demo, run `make demo-build` from the repository root. That target builds both browser-served runtime assets into the ignored `build/` directory (`build/thuepp.wasm` and `build/wasm_exec.js`), runs the Vite production build, writes ignored deployment metadata to `demo/dist/deploy.json`, and verifies that `demo/dist/` contains non-empty runtime assets with origin-root asset URLs. The production demo is configured for the custom-domain GitLab Pages deployment at `https://thuelang.org/`, so nested routes load assets from the site root. `make demo-build` is still an additive browser integration check; it does not execute the full examples manifest suite.
+
+GitLab.com Pages publishes the generated metadata at `https://thuelang.org/deploy.json`. To verify the public deployment fingerprint after a Pages pipeline, run:
+
+```bash
+curl -fsSL https://thuelang.org/deploy.json | jq '{commit_sha, branch, pipeline_id, pipeline_url, job_id, job_url, built_at, source_host, project_path}'
+```
+
+The `commit_sha`, `pipeline_url`, and `job_id` values should match the successful GitLab.com Pages pipeline/job that produced the current public site.
 
 ## What the demo tests cover
 

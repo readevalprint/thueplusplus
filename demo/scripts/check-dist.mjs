@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const dist = new URL('../dist/', import.meta.url).pathname
-const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
+const repoRoot = new URL('../../', import.meta.url).pathname
+const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'deploy.json', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
 const staticRoutes = ['playground', 'embed', 'embed/demo']
 
 for (const asset of requiredAssets) {
@@ -50,6 +52,40 @@ if (!embedIndex.includes('noindex,follow')) {
   throw new Error('embed route index must be noindexed')
 }
 
+const deploy = JSON.parse(readFileSync(join(dist, 'deploy.json'), 'utf8'))
+if (!/^[0-9a-f]{40}$/.test(deploy.commit_sha)) {
+  throw new Error('deploy.json must include a 40-character commit_sha')
+}
+const expectedCommitSha = env('CI_COMMIT_SHA') ?? git(['rev-parse', 'HEAD'])
+if (expectedCommitSha && deploy.commit_sha !== expectedCommitSha) {
+  throw new Error(`deploy.json commit_sha ${deploy.commit_sha} does not match current build commit ${expectedCommitSha}`)
+}
+if (typeof deploy.branch !== 'string' || deploy.branch.length === 0) {
+  throw new Error('deploy.json must include a non-empty branch')
+}
+const expectedBranch = env('CI_COMMIT_BRANCH') ?? git(['branch', '--show-current'])
+if (expectedBranch && deploy.branch !== expectedBranch) {
+  throw new Error(`deploy.json branch ${deploy.branch} does not match current build branch ${expectedBranch}`)
+}
+if (Number.isNaN(Date.parse(deploy.built_at))) {
+  throw new Error('deploy.json must include a parseable built_at timestamp')
+}
+if (typeof deploy.source_host !== 'string' || deploy.source_host.length === 0) {
+  throw new Error('deploy.json must include a non-empty source_host')
+}
+if (deploy.source_host === 'gitlab.com') {
+  for (const requiredGitlabField of ['pipeline_id', 'pipeline_url', 'job_id', 'job_url', 'project_path']) {
+    if (typeof deploy[requiredGitlabField] !== 'string' || deploy[requiredGitlabField].length === 0) {
+      throw new Error(`deploy.json must include ${requiredGitlabField} in GitLab.com Pages builds`)
+    }
+  }
+}
+for (const optionalUrlField of ['pipeline_url', 'job_url']) {
+  if (deploy[optionalUrlField] !== null && !/^https?:\/\//.test(deploy[optionalUrlField])) {
+    throw new Error(`deploy.json ${optionalUrlField} must be null or an HTTP(S) URL`)
+  }
+}
+
 const jsFiles = readdirSync(join(dist, 'assets')).filter(name => name.endsWith('.js'))
 for (const fileName of jsFiles) {
   const text = readFileSync(join(dist, 'assets', fileName), 'utf8')
@@ -62,3 +98,17 @@ for (const fileName of jsFiles) {
 }
 
 console.log('demo production dist smoke ok')
+
+function env(name) {
+  const value = process.env[name]
+  return value && value.trim() ? value : null
+}
+
+function git(args) {
+  try {
+    const value = execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim()
+    return value || null
+  } catch {
+    return null
+  }
+}
