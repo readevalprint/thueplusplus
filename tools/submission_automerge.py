@@ -19,9 +19,9 @@ from dataclasses import dataclass
 from typing import Any
 
 try:
-    from challenge_submission_policy import is_solution_submission_path
+    from challenge_submission_policy import SubmissionCandidate, candidate_from_gitlab_changes, gitlab_changes_from_payload
 except ModuleNotFoundError:  # pytest imports this file from the repository root.
-    from tools.challenge_submission_policy import is_solution_submission_path
+    from tools.challenge_submission_policy import SubmissionCandidate, candidate_from_gitlab_changes, gitlab_changes_from_payload
 
 PROJECT_PATH = "thuelang/thueplusplus"
 TARGET_BRANCH = "develop"
@@ -33,7 +33,11 @@ MERGEABLE_STATUSES = {"mergeable", "can_be_merged"}
 class Decision:
     accepted: bool
     reason: str
-    solution_path: str | None = None
+    candidate: SubmissionCandidate | None = None
+
+    @property
+    def solution_path(self) -> str | None:
+        return self.candidate.path if self.candidate else None
 
 
 def project_api_path(project_path: str) -> str:
@@ -46,25 +50,11 @@ class UnsafeChangesError(RuntimeError):
 
 
 def changed_solution_path(changes: list[dict[str, Any]]) -> Decision:
-    if len(changes) != 1:
-        return Decision(False, f"expected exactly one changed file, got {len(changes)}")
-    change = changes[0]
-    required_fields = ("old_path", "new_path", "new_file", "renamed_file", "deleted_file")
-    missing = [field for field in required_fields if field not in change]
-    if missing:
-        return Decision(False, f"GitLab change record missing required field(s): {', '.join(missing)}")
-    path = str(change["new_path"] or "")
-    if change["deleted_file"] or change["renamed_file"]:
-        return Decision(False, "renamed/deleted files are not challenge submissions")
-    if "copied_file" in change and change["copied_file"]:
-        return Decision(False, "copied files are not challenge submissions")
-    if not change["new_file"]:
-        return Decision(False, "challenge submission file must be newly added")
-    if change["old_path"] != path:
-        return Decision(False, "old_path/new_path mismatch for added challenge submission")
-    if not is_solution_submission_path(path):
-        return Decision(False, f"changed file is not a valid challenge solution path: {path}")
-    return Decision(True, "exactly one added challenge solution", path)
+    try:
+        candidate = candidate_from_gitlab_changes(changes)
+    except RuntimeError as exc:
+        return Decision(False, str(exc))
+    return Decision(True, "exactly one added challenge solution", candidate)
 
 
 def head_pipeline(mr: dict[str, Any]) -> dict[str, Any] | None:
@@ -181,30 +171,12 @@ def mr_detail(client: GitLabClient, project_path: str, iid: int) -> dict[str, An
     return dict(client.request("GET", f"projects/{project}/merge_requests/{iid}"))
 
 
-def changes_payload_overflowed(payload: dict[str, Any]) -> bool:
-    if "overflow" in payload and payload["overflow"]:
-        return True
-    if "changes_count" not in payload:
-        return False
-    changes_count = str(payload["changes_count"])
-    if changes_count.endswith("+"):
-        return True
-    try:
-        return int(changes_count) > len(payload["changes"])
-    except (KeyError, ValueError):
-        return True
-
-
 def mr_changes(client: GitLabClient, project_path: str, iid: int) -> list[dict[str, Any]]:
     project = project_api_path(project_path)
-    payload = client.request("GET", f"projects/{project}/merge_requests/{iid}/changes")
-    if not isinstance(payload, dict):
-        raise UnsafeChangesError("MR changes response is not an object")
-    if changes_payload_overflowed(payload):
-        raise UnsafeChangesError("MR changes overflow; cannot safely determine exact diff")
-    if "changes" not in payload or not isinstance(payload["changes"], list):
-        raise UnsafeChangesError("MR changes response is missing changes list")
-    return list(payload["changes"])
+    try:
+        return gitlab_changes_from_payload(client.request("GET", f"projects/{project}/merge_requests/{iid}/changes"))
+    except RuntimeError as exc:
+        raise UnsafeChangesError(str(exc)) from exc
 
 
 def mr_notes(client: GitLabClient, project_path: str, iid: int) -> list[dict[str, Any]]:

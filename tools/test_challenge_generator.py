@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib.util
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+POLICY_SPEC = importlib.util.spec_from_file_location("challenge_submission_policy", ROOT / "tools/challenge_submission_policy.py")
+assert POLICY_SPEC and POLICY_SPEC.loader
+policy = importlib.util.module_from_spec(POLICY_SPEC)
+sys.modules["challenge_submission_policy"] = policy
+POLICY_SPEC.loader.exec_module(policy)
+
 SPEC = importlib.util.spec_from_file_location("challenge_generator", ROOT / "tools/challenge_generator.py")
 assert SPEC and SPEC.loader
 kg = importlib.util.module_from_spec(SPEC)
@@ -22,13 +27,6 @@ assert DISPATCH_SPEC and DISPATCH_SPEC.loader
 dispatch = importlib.util.module_from_spec(DISPATCH_SPEC)
 sys.modules["ci_mr_test_dispatch"] = dispatch
 DISPATCH_SPEC.loader.exec_module(dispatch)
-
-METRICS_SPEC = importlib.util.spec_from_file_location("commit_challenge_metrics", ROOT / "tools/commit_challenge_metrics.py")
-assert METRICS_SPEC and METRICS_SPEC.loader
-metrics = importlib.util.module_from_spec(METRICS_SPEC)
-sys.modules["commit_challenge_metrics"] = metrics
-METRICS_SPEC.loader.exec_module(metrics)
-
 
 def test_parser_rule_lines_uses_go_parser_metadata(tmp_path: Path) -> None:
     src = r"""^START$ ::= OUT
@@ -168,7 +166,7 @@ def test_solution_filenames_use_date_and_front_matter_slug() -> None:
     today = dt.datetime.now(dt.timezone.utc).date()
     for solution in (ROOT / "challenges").glob("*/solutions/*.tpp"):
         metadata = kg.require_solution_metadata(solution, solution.read_text(encoding="utf-8"))
-        match = kg.CHALLENGE_SOLUTION_PATH_RE.fullmatch(kg.rel(solution))
+        match = policy.CHALLENGE_SOLUTION_PATH_RE.fullmatch(kg.rel(solution))
         assert match is not None
         _challenge_slug, date_text, filename_slug = match.groups()
         assert dt.date.fromisoformat(date_text) <= today
@@ -274,11 +272,13 @@ def test_submission_diff_requires_exactly_one_added_solution_file(tmp_path: Path
 def test_submission_diff_accepts_added_solution_file_only(tmp_path: Path) -> None:
     added = "challenges/02_fixed-greet/solutions/2026-06-04-one.tpp"
 
-    assert kg.parse_submission_diff(write_diff(tmp_path / "added.diff", [f"A\t{added}"]).as_posix()) == ("A", added)
-    assert dispatch.is_exact_submission_diff([("A", (added,))])
-    assert kg.is_solution_submission_path(added) == dispatch.is_solution_submission_path(added)
-    assert not kg.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md")
-    assert kg.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md") == dispatch.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md")
+    candidate = kg.parse_submission_diff(write_diff(tmp_path / "added.diff", [f"A\t{added}"]).as_posix())
+    assert candidate.status == "A"
+    assert candidate.path == added
+    assert dispatch.parse_exact_added_solution([("A", (added,))]).path == added
+    assert policy.parse_solution_submission_path(added) == ("02_fixed-greet", "2026-06-04", "one")
+    with pytest.raises(RuntimeError):
+        policy.parse_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md")
 
 
 def test_submission_path_rejects_weird_path_spellings() -> None:
@@ -291,8 +291,8 @@ def test_submission_path_rejects_weird_path_spellings() -> None:
         "../challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp",
     ]
     for path in invalid_paths:
-        assert not kg.is_solution_submission_path(path)
-        assert not dispatch.is_solution_submission_path(path)
+        with pytest.raises(RuntimeError):
+            policy.parse_solution_submission_path(path)
 
 
 def test_submission_validation_rejects_symlink_solution_file(tmp_path: Path) -> None:
@@ -309,7 +309,7 @@ def test_submission_validation_rejects_symlink_solution_file(tmp_path: Path) -> 
     solution.symlink_to(target)
     try:
         with pytest.raises(RuntimeError, match="regular file, not a symlink"):
-            kg.validate_submission_path(kg.parse_submission_diff(diff.as_posix())[1])
+            kg.validate_submission_path(kg.parse_submission_diff(diff.as_posix()).path)
     finally:
         solution.unlink(missing_ok=True)
 
@@ -317,8 +317,8 @@ def test_submission_validation_rejects_symlink_solution_file(tmp_path: Path) -> 
 def test_submission_path_accepts_prefixed_challenge_directory(tmp_path: Path) -> None:
     path = "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
     diff = write_diff(tmp_path / "changed.diff", [f"A\t{path}"])
-    _status, parsed = kg.parse_submission_diff(diff.as_posix())
-    challenge, solution, slug = kg.validate_submission_path(parsed)
+    candidate = kg.parse_submission_diff(diff.as_posix())
+    challenge, solution, slug = kg.validate_submission_path(candidate.path)
     assert challenge == ROOT / "challenges/02_fixed-greet"
     assert solution == ROOT / path
     assert slug == "02_fixed-greet"
@@ -429,7 +429,7 @@ def test_solution_file_limits_reject_bom_crlf_nul_and_oversize() -> None:
 
 def test_dispatcher_classifies_only_exact_added_tpp_submission_diff() -> None:
     valid = [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",))]
-    assert dispatch.is_exact_submission_diff(valid)
+    assert dispatch.parse_exact_added_solution(valid).path == valid[0][1][0]
 
     non_submission_rows = [
         [("M", ("challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp",))],
@@ -443,7 +443,8 @@ def test_dispatcher_classifies_only_exact_added_tpp_submission_diff() -> None:
         [("A", ("challenges/02_fixed-greet/solutions/2026-06-04-new-solver.tpp",)), ("M", ("tools/challenge_generator.py",))],
     ]
     for rows in non_submission_rows:
-        assert not dispatch.is_exact_submission_diff(rows)
+        with pytest.raises(RuntimeError):
+            dispatch.parse_exact_added_solution(rows)
 
 
 def test_parse_name_status_z_handles_rename_and_copy_records() -> None:
@@ -523,29 +524,6 @@ def test_backend_command_passes_max_state_bytes_cap(tmp_path: Path) -> None:
     assert command[command.index("--max-state-bytes") + 1] == kg.GENERATOR_MAX_STATE_BYTES
 
 
-def test_metrics_commit_push_is_non_force_fast_forward_safe(monkeypatch) -> None:
-    commands: list[list[str]] = []
-
-    def fake_run(command: list[str], *, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess[str]:
-        commands.append(command)
-        return subprocess.CompletedProcess(command, 0, "", "")
-
-    monkeypatch.setenv("THUEPP_METRICS_TOKEN", "secret-token")
-    monkeypatch.setattr(metrics, "current_branch", lambda: "develop")
-    monkeypatch.setattr(metrics, "changed_paths", lambda: [" M challenges/02_fixed-greet/solutions/readme.md"])
-    monkeypatch.setattr(metrics, "run", fake_run)
-
-    assert metrics.main() == 0
-
-    push_commands = [command for command in commands if command[:2] == ["git", "push"]]
-    assert len(push_commands) == 1
-    push = push_commands[0]
-    assert "--force" not in push
-    assert "--force-with-lease" not in push
-    assert push[-1] == "HEAD:refs/heads/develop"
-    assert not push[-1].startswith("+")
-
-
 def test_gitlab_ci_runs_test_job_for_all_gitlab_com_merge_request_events() -> None:
     ci_text = (ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
     test_job = ci_text.split("\ntest:\n", 1)[1].split("\npages:\n", 1)[0]
@@ -561,14 +539,17 @@ def test_gitlab_ci_runs_test_job_for_all_gitlab_com_merge_request_events() -> No
         "- if: '$CI_SERVER_HOST == \"gitlab.com\" && "
         "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'"
     ) in pages_job
-    assert "uv run python tools/commit_challenge_metrics.py" in ci_text
-    assert "needs:\n    - challenge-metrics" in pages_job
+    assert "challenge-metrics:" not in ci_text
+    assert "commit_challenge_metrics.py" not in ci_text
+    assert "needs:" not in pages_job
+    assert "uv run python tools/challenge_generator.py --all" in pages_job
+    assert "make demo-build" in pages_job
     assert "uv run python tools/ci_mr_test_dispatch.py" in test_job
 
 
 def test_gitlab_ci_submission_automerge_is_trusted_default_branch_only() -> None:
     ci_text = (ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
-    automerge_job = ci_text.split("\nsubmission-automerge:\n", 1)[1].split("\nchallenge-metrics:\n", 1)[0]
+    automerge_job = ci_text.split("\nsubmission-automerge:\n", 1)[1].split("\npages:\n", 1)[0]
 
     assert '$CI_SERVER_HOST == "gitlab.com"' in automerge_job
     assert "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH" in automerge_job

@@ -53,40 +53,9 @@ submission-automerge:
   script:
     - python tools/submission_automerge.py
 
-challenge-metrics:
-  image: node:22-bookworm
-  stage: automation
-  rules:
-    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-  before_script:
-    - apt-get update
-    - apt-get install -y --no-install-recommends ca-certificates curl git make python3
-    - |
-      case "$(uname -m)" in
-        x86_64) GO_ARCH=amd64 ;;
-        aarch64|arm64) GO_ARCH=arm64 ;;
-        *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
-      esac
-      curl -fsSL "https://go.dev/dl/go1.24.6.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tgz
-      tar -C /usr/local -xzf /tmp/go.tgz
-      export PATH="/usr/local/go/bin:$PATH"
-      go version
-    - |
-      if ! command -v uv >/dev/null 2>&1; then
-        curl -LsSf https://astral.sh/uv/install.sh \
-          | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 sh -s -- --no-modify-path
-        export PATH="/tmp/uv-bin:$PATH"
-      fi
-    - uv --version
-  script:
-    - export PATH="/tmp/uv-bin:/usr/local/go/bin:$PATH"
-    - uv run python tools/commit_challenge_metrics.py
-
 pages:
   image: node:22-bookworm
   stage: pages
-  needs:
-    - challenge-metrics
   rules:
     - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   before_script:

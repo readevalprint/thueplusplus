@@ -10,9 +10,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 try:
-    from challenge_submission_policy import NameStatusRows, is_exact_submission_diff, is_solution_submission_path
+    from challenge_submission_policy import parse_exact_added_solution, parse_name_status_z, rows_to_name_status_text
 except ModuleNotFoundError:  # pytest imports this file from the repository root.
-    from tools.challenge_submission_policy import NameStatusRows, is_exact_submission_diff, is_solution_submission_path
+    from tools.challenge_submission_policy import parse_exact_added_solution, parse_name_status_z, rows_to_name_status_text
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,37 +79,6 @@ def fetch_target_command(
     return ["git", "fetch", fetch_source, f"{target_branch}:refs/remotes/origin/{target_branch}"]
 
 
-def parse_name_status_z(data: bytes) -> NameStatusRows:
-    fields = data.split(b"\0")
-    if fields and fields[-1] == b"":
-        fields.pop()
-    rows: NameStatusRows = []
-    index = 0
-    while index < len(fields):
-        status = fields[index].decode("utf-8", "strict")
-        index += 1
-        if status.startswith(("R", "C")):
-            if index + 1 >= len(fields):
-                raise RuntimeError(f"malformed git name-status record for {status!r}")
-            old_path = fields[index].decode("utf-8", "strict")
-            new_path = fields[index + 1].decode("utf-8", "strict")
-            index += 2
-            rows.append((status, (old_path, new_path)))
-        else:
-            if index >= len(fields):
-                raise RuntimeError(f"malformed git name-status record for {status!r}")
-            path = fields[index].decode("utf-8", "strict")
-            index += 1
-            rows.append((status, (path,)))
-    return rows
-
-
-def rows_to_name_status_text(rows: NameStatusRows) -> str:
-    lines = []
-    for status, paths in rows:
-        lines.append("\t".join((status, *paths)))
-    return "\n".join(lines) + ("\n" if lines else "")
-
 
 def main() -> int:
     pipeline_source = os.environ.get("CI_PIPELINE_SOURCE", "")
@@ -153,13 +122,15 @@ def main() -> int:
     diff_path.write_text(diff_text, encoding="utf-8")
     print(diff_text, end="")
 
-    if is_exact_submission_diff(rows):
+    try:
+        parse_exact_added_solution(rows)
+    except RuntimeError:
+        run_checked(["make", "test"])
+    else:
         run_checked([
             "uv", "run", "python", "tools/challenge_generator.py",
             "--check-submission", "--diff-name-status", str(diff_path),
         ])
-    else:
-        run_checked(["make", "test"])
     return 0
 
 
