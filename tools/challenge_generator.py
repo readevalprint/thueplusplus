@@ -659,8 +659,10 @@ def validate_submission_path(path: str) -> tuple[Path, Path, str]:
     if not challenge.is_dir() or not (challenge / "tests").is_dir():
         raise RuntimeError(f"challenge directory does not exist: challenges/{challenge_slug}")
     solution = ROOT / path
+    if solution.is_symlink():
+        raise RuntimeError(f"challenge submission file must be a regular file, not a symlink: {path}")
     if not solution.is_file():
-        raise RuntimeError(f"challenge submission file does not exist in workspace: {path}")
+        raise RuntimeError(f"challenge submission file must be a regular file in workspace: {path}")
     return challenge, solution, challenge_slug
 
 

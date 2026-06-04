@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -21,6 +22,12 @@ assert DISPATCH_SPEC and DISPATCH_SPEC.loader
 dispatch = importlib.util.module_from_spec(DISPATCH_SPEC)
 sys.modules["ci_mr_test_dispatch"] = dispatch
 DISPATCH_SPEC.loader.exec_module(dispatch)
+
+METRICS_SPEC = importlib.util.spec_from_file_location("commit_challenge_metrics", ROOT / "tools/commit_challenge_metrics.py")
+assert METRICS_SPEC and METRICS_SPEC.loader
+metrics = importlib.util.module_from_spec(METRICS_SPEC)
+sys.modules["commit_challenge_metrics"] = metrics
+METRICS_SPEC.loader.exec_module(metrics)
 
 
 def test_parser_rule_lines_uses_go_parser_metadata(tmp_path: Path) -> None:
@@ -274,6 +281,39 @@ def test_submission_diff_accepts_added_solution_file_only(tmp_path: Path) -> Non
     assert kg.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md") == dispatch.is_solution_submission_path("challenges/02_fixed-greet/solutions/readme.md")
 
 
+def test_submission_path_rejects_weird_path_spellings() -> None:
+    invalid_paths = [
+        "challenges/02_fixed-greet/solutions/2026-06-04-Upper.TPP",
+        "challenges/02_fixed-greet/solutions/2026-06-04-bad slug.tpp",
+        "challenges/02_fixed-greet/solutions/2026-06-04-bad\\slug.tpp",
+        "challenges/02_fixed-greet/solutions/2026-06-04-café.tpp",
+        "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp ",
+        "../challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp",
+    ]
+    for path in invalid_paths:
+        assert not kg.is_solution_submission_path(path)
+        assert not dispatch.is_solution_submission_path(path)
+
+
+def test_submission_validation_rejects_symlink_solution_file(tmp_path: Path) -> None:
+    rel_path = "challenges/02_fixed-greet/solutions/2026-06-04-symlink-submission.tpp"
+    solution = ROOT / rel_path
+    target = tmp_path / "real.tpp"
+    target.write_text(solution_source(
+        "title: Symlink Submission\n"
+        "slug: symlink-submission\n"
+        "author: Probe\n"
+        "website: https://example.com\n"
+    ), encoding="utf-8")
+    diff = write_diff(tmp_path / "changed.diff", [f"A\t{rel_path}"])
+    solution.symlink_to(target)
+    try:
+        with pytest.raises(RuntimeError, match="regular file, not a symlink"):
+            kg.validate_submission_path(kg.parse_submission_diff(diff.as_posix())[1])
+    finally:
+        solution.unlink(missing_ok=True)
+
+
 def test_submission_path_accepts_prefixed_challenge_directory(tmp_path: Path) -> None:
     path = "challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting.tpp"
     diff = write_diff(tmp_path / "changed.diff", [f"A\t{path}"])
@@ -481,6 +521,29 @@ def test_backend_command_passes_max_state_bytes_cap(tmp_path: Path) -> None:
     assert cwd == ROOT / "go"
     assert "--max-state-bytes" in command
     assert command[command.index("--max-state-bytes") + 1] == kg.GENERATOR_MAX_STATE_BYTES
+
+
+def test_metrics_commit_push_is_non_force_fast_forward_safe(monkeypatch) -> None:
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], *, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setenv("THUEPP_METRICS_TOKEN", "secret-token")
+    monkeypatch.setattr(metrics, "current_branch", lambda: "develop")
+    monkeypatch.setattr(metrics, "changed_paths", lambda: [" M challenges/02_fixed-greet/solutions/readme.md"])
+    monkeypatch.setattr(metrics, "run", fake_run)
+
+    assert metrics.main() == 0
+
+    push_commands = [command for command in commands if command[:2] == ["git", "push"]]
+    assert len(push_commands) == 1
+    push = push_commands[0]
+    assert "--force" not in push
+    assert "--force-with-lease" not in push
+    assert push[-1] == "HEAD:refs/heads/develop"
+    assert not push[-1].startswith("+")
 
 
 def test_gitlab_ci_runs_test_job_for_all_gitlab_com_merge_request_events() -> None:
