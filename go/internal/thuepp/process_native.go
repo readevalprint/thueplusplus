@@ -10,18 +10,22 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 )
 
 type processResource struct {
-	name    string
-	command string
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	stdout  io.ReadCloser
-	stderr  bytes.Buffer
-	outCh   chan string
-	exitCh  chan error
+	name     string
+	command  string
+	cmd      *exec.Cmd
+	stdin    io.WriteCloser
+	stdout   io.ReadCloser
+	stderr   bytes.Buffer
+	outCh    chan string
+	exitCh   chan error
+	stopCh   chan struct{}
+	stopOnce sync.Once
 }
 
 func newProcessResource(name, command string) *processResource {
@@ -33,6 +37,7 @@ func (r *processResource) ensureStarted() error {
 		return nil
 	}
 	r.cmd = exec.Command("/bin/sh", "-c", "stdbuf -oL "+r.command)
+	r.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	r.cmd.Stderr = &r.stderr
 	var err error
 	r.stdin, err = r.cmd.StdinPipe()
@@ -45,6 +50,7 @@ func (r *processResource) ensureStarted() error {
 	}
 	r.outCh = make(chan string, 1024)
 	r.exitCh = make(chan error, 1)
+	r.stopCh = make(chan struct{})
 	if err := r.cmd.Start(); err != nil {
 		return err
 	}
@@ -53,15 +59,21 @@ func (r *processResource) ensureStarted() error {
 		for {
 			line, err := reader.ReadString('\n')
 			if line != "" {
-				r.outCh <- line
+				select {
+				case r.outCh <- line:
+				case <-r.stopCh:
+					close(r.outCh)
+					r.exitCh <- r.cmd.Wait()
+					return
+				}
 			}
 			if err != nil {
 				close(r.outCh)
+				r.exitCh <- r.cmd.Wait()
 				return
 			}
 		}
 	}()
-	go func() { r.exitCh <- r.cmd.Wait() }()
 	return nil
 }
 
@@ -132,7 +144,7 @@ func (r *processResource) WriteString(content string) error {
 
 func (r *processResource) Cleanup() {
 	if r.cmd != nil && r.cmd.Process != nil {
-		_ = r.cmd.Process.Kill()
-		_, _ = r.cmd.Process.Wait()
+		r.stopOnce.Do(func() { close(r.stopCh) })
+		_ = syscall.Kill(-r.cmd.Process.Pid, syscall.SIGKILL)
 	}
 }

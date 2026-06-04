@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 CHALLENGE_SUBMISSION_PATH_RE = re.compile(
@@ -44,10 +45,34 @@ def run_checked(command: list[str]) -> None:
         raise SystemExit(proc.returncode)
 
 
-def fetch_target_command(target_branch: str) -> list[str]:
-    if target_branch.startswith("-") or ":" in target_branch or "\0" in target_branch:
+def validate_target_project_url(url: str) -> str:
+    parsed = urlparse(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "gitlab.com"
+        or not parsed.path.startswith("/")
+        or not parsed.path.endswith(".git")
+        or any(ord(ch) < 32 for ch in url)
+    ):
+        raise RuntimeError(f"invalid MR target project URL: {url!r}")
+    return url
+
+
+def fetch_target_command(
+    target_branch: str,
+    *,
+    source_project_id: str | None = None,
+    project_id: str | None = None,
+    target_project_url: str | None = None,
+) -> list[str]:
+    if target_branch.startswith(("-", "+")) or ":" in target_branch or "\0" in target_branch:
         raise RuntimeError(f"invalid MR target branch name: {target_branch!r}")
-    return ["git", "fetch", "origin", f"{target_branch}:refs/remotes/origin/{target_branch}"]
+    fetch_source = "origin"
+    if source_project_id and project_id and source_project_id != project_id:
+        if not target_project_url:
+            raise RuntimeError("CI_MERGE_REQUEST_TARGET_PROJECT_URL is required for fork MR dispatch")
+        fetch_source = validate_target_project_url(target_project_url)
+    return ["git", "fetch", fetch_source, f"{target_branch}:refs/remotes/origin/{target_branch}"]
 
 
 def parse_name_status_z(data: bytes) -> NameStatusRows:
@@ -105,7 +130,12 @@ def main() -> int:
         return 2
 
     try:
-        fetch_command = fetch_target_command(target_branch)
+        fetch_command = fetch_target_command(
+            target_branch,
+            source_project_id=os.environ.get("CI_MERGE_REQUEST_SOURCE_PROJECT_ID"),
+            project_id=os.environ.get("CI_PROJECT_ID"),
+            target_project_url=os.environ.get("CI_MERGE_REQUEST_TARGET_PROJECT_URL"),
+        )
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

@@ -59,6 +59,27 @@ func TestProcessResourceDrainsBufferedOutputAfterFastExit(t *testing.T) {
 	}
 }
 
+func TestProcessResourceCleanupUnblocksFullOutputChannel(t *testing.T) {
+	resource := newProcessResource("worker", "yes alpha")
+	line, err := resource.ReadLine(time.Second)
+	if err != nil {
+		resource.Cleanup()
+		t.Fatalf("ReadLine error: %v", err)
+	}
+	if line != "alpha" {
+		resource.Cleanup()
+		t.Fatalf("ReadLine = %q, want alpha", line)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	resource.Cleanup()
+	select {
+	case <-resource.exitCh:
+	case <-time.After(time.Second):
+		t.Fatal("Cleanup did not unblock stdout reader and reap process")
+	}
+}
+
 func TestProcessResourceReportsProcessErrorWhenNoLineIsAvailable(t *testing.T) {
 	resource := newProcessResource("worker", "sh -c 'echo child-error >&2; exit 7'")
 	_, err := resource.ReadLine(time.Second)
