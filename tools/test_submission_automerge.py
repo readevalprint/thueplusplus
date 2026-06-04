@@ -7,11 +7,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("submission_autoapprove", ROOT / "tools/submission_autoapprove.py")
+SPEC = importlib.util.spec_from_file_location("submission_automerge", ROOT / "tools/submission_automerge.py")
 assert SPEC and SPEC.loader
-submission_autoapprove = importlib.util.module_from_spec(SPEC)
-sys.modules["submission_autoapprove"] = submission_autoapprove
-SPEC.loader.exec_module(submission_autoapprove)
+submission_automerge = importlib.util.module_from_spec(SPEC)
+sys.modules["submission_automerge"] = submission_automerge
+SPEC.loader.exec_module(submission_automerge)
 
 
 def valid_mr(**overrides):
@@ -32,20 +32,20 @@ def valid_mr(**overrides):
     return mr
 
 
-def valid_changes(path="challenges/02_fixed-greet/solutions/2026-06-04-autoapprove-smoke.tpp"):
+def valid_changes(path="challenges/02_fixed-greet/solutions/2026-06-04-automerge-smoke.tpp"):
     return [{"old_path": path, "new_path": path, "new_file": True, "renamed_file": False, "deleted_file": False}]
 
 
 def assert_rejected(reason_part: str, mr=None, changes=None) -> None:
-    decision = submission_autoapprove.candidate_decision(mr or valid_mr(), changes if changes is not None else valid_changes())
+    decision = submission_automerge.candidate_decision(mr or valid_mr(), changes if changes is not None else valid_changes())
     assert not decision.accepted
     assert reason_part in decision.reason
 
 
 def test_accepts_only_safe_one_file_solution_mr() -> None:
-    decision = submission_autoapprove.candidate_decision(valid_mr(), valid_changes())
+    decision = submission_automerge.candidate_decision(valid_mr(), valid_changes())
     assert decision.accepted
-    assert decision.solution_path == "challenges/02_fixed-greet/solutions/2026-06-04-autoapprove-smoke.tpp"
+    assert decision.solution_path == "challenges/02_fixed-greet/solutions/2026-06-04-automerge-smoke.tpp"
 
 
 def test_rejects_draft_conflicted_or_wrong_target() -> None:
@@ -63,7 +63,7 @@ def test_rejects_non_success_or_stale_pipeline() -> None:
 
 
 def test_accepts_gitlab_merged_result_pipeline_ref() -> None:
-    decision = submission_autoapprove.candidate_decision(
+    decision = submission_automerge.candidate_decision(
         valid_mr(head_pipeline={"sha": "merge-result", "status": "success", "ref": "refs/merge-requests/7/merge"}),
         valid_changes(),
     )
@@ -80,18 +80,19 @@ def test_rejects_non_exact_diff_shapes() -> None:
 
 
 def test_noop_when_disabled_or_token_missing(monkeypatch, capsys) -> None:
-    monkeypatch.delenv("THUEPP_AUTOAPPROVE_ENABLED", raising=False)
-    assert submission_autoapprove.main([]) == 0
+    monkeypatch.delenv("THUEPP_AUTOMERGE_ENABLED", raising=False)
+    assert submission_automerge.main([]) == 0
     assert "disabled" in capsys.readouterr().out
-    monkeypatch.setenv("THUEPP_AUTOAPPROVE_ENABLED", "1")
-    monkeypatch.delenv("THUEPP_AUTOAPPROVE_TOKEN", raising=False)
-    assert submission_autoapprove.main([]) == 0
+    monkeypatch.setenv("THUEPP_AUTOMERGE_ENABLED", "1")
+    monkeypatch.delenv("THUEPP_AUTOMERGE_TOKEN", raising=False)
+    assert submission_automerge.main([]) == 0
     assert "TOKEN" in capsys.readouterr().out
 
 
 class FakeClient:
     def __init__(self) -> None:
         self.approved = False
+        self.merged = False
         self.paths: list[tuple[str, str]] = []
 
     def get_all(self, path: str):
@@ -109,17 +110,25 @@ class FakeClient:
             assert data["sha"] == "abc123"
             self.approved = True
             return {"approved": True}
-        if path.endswith("/merge_requests/7/merge"):
-            raise AssertionError("auto-approve must not merge MRs")
+        if method == "PUT" and path.endswith("/merge_requests/7/merge"):
+            assert data is not None
+            assert data["sha"] == "abc123"
+            assert data["should_remove_source_branch"] is True
+            assert self.approved
+            self.merged = True
+            return {"web_url": "https://gitlab.com/thuelang/thueplusplus/-/merge_requests/7"}
         raise AssertionError((method, path, data))
 
 
-def test_run_fetches_mr_detail_before_deciding_and_approves(monkeypatch, capsys) -> None:
+def test_run_fetches_mr_detail_before_deciding_approves_and_merges(monkeypatch, capsys) -> None:
     fake = FakeClient()
-    monkeypatch.setattr(submission_autoapprove, "GitLabClient", lambda _token: fake)
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
 
-    assert submission_autoapprove.run("thuelang/thueplusplus", "token") == 0
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
 
     assert fake.approved
+    assert fake.merged
     assert ("GET", "projects/thuelang%2Fthueplusplus/merge_requests/7") in fake.paths
-    assert "approved !7" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "approved !7" in output
+    assert "merged !7" in output
