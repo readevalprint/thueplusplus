@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import readme from '../../README.md?raw'
 import MarkdownDocument from './MarkdownDocument.vue'
 import { parseMarkdown, type MarkdownBlock } from './markdown'
@@ -29,11 +29,17 @@ const blocks = computed(() => parseMarkdown(readme))
 const headings = computed(() => blocks.value.filter((block): block is Extract<MarkdownBlock, { kind: 'heading' }> => block.kind === 'heading' && block.level <= 3))
 const activeHeadingId = ref(headings.value[0]?.id ?? '')
 
-onMounted(() => {
+const emit = defineEmits<{
+  ready: []
+}>()
+
+onMounted(async () => {
   updateActiveHeading()
   window.addEventListener('scroll', updateActiveHeading, { passive: true })
   window.addEventListener('resize', updateActiveHeading, { passive: true })
   window.addEventListener('hashchange', updateActiveHeading)
+  await nextTick()
+  emit('ready')
 })
 
 onBeforeUnmount(() => {

@@ -1,11 +1,25 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
-  <div ref="container" class="monaco-rules-editor" :data-current-match-line="highlightLine || undefined" />
+  <div class="monaco-rules-editor-frame">
+    <Skeleton
+      v-if="!editorReady"
+      class="monaco-rules-editor-skeleton"
+      data-test="playground-rules-skeleton"
+      aria-label="Loading code editor"
+    />
+    <div
+      ref="container"
+      class="monaco-rules-editor"
+      :class="{ 'monaco-rules-editor-ready': editorReady }"
+      :data-current-match-line="highlightLine || undefined"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import { Skeleton } from '@/components/ui/skeleton'
 import { registerThueppMonacoLanguage } from './thueppMonacoSetup'
 
 const props = withDefaults(defineProps<{
@@ -19,9 +33,11 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   paste: [value: string]
+  ready: []
 }>()
 
 const container = ref<HTMLElement | null>(null)
+const editorReady = ref(false)
 let monaco: typeof Monaco | undefined
 let editor: Monaco.editor.IStandaloneCodeEditor | undefined
 let matchDecorations: Monaco.editor.IEditorDecorationsCollection | undefined
@@ -84,6 +100,8 @@ onMounted(async () => {
   ;(container.value as RulesEditorElement).__thueppGetValue = () => editor?.getValue() ?? ''
   resizeObserver = new ResizeObserver(() => editor?.layout())
   resizeObserver.observe(container.value)
+  editorReady.value = true
+  emit('ready')
 })
 
 watch(() => props.modelValue, value => {

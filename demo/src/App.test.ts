@@ -4,12 +4,13 @@ import { mount } from '@vue/test-utils'
 import { runWithWorker } from './wasm'
 
 vi.mock('./RulesMonacoEditor.vue', async () => {
-  const { defineComponent, h } = await import('vue')
+  const { defineComponent, h, onMounted } = await import('vue')
   return {
     default: defineComponent({
       props: { modelValue: { type: String, default: '' }, highlightLine: { type: Number, default: undefined } },
-      emits: ['update:modelValue', 'paste'],
+      emits: ['update:modelValue', 'paste', 'ready'],
       setup(props, { emit, attrs }) {
+        onMounted(() => emit('ready'))
         return () => h('textarea', {
           ...attrs,
           'data-current-match-line': props.highlightLine || undefined,
