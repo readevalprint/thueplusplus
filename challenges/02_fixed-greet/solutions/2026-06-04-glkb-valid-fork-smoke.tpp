@@ -5,8 +5,8 @@ author: GLKB Smoke
 website: https://example.com
 summary: Valid fork-backed automerge smoke solution.
 ---
-^START$ ::= OUT
+^START$ ::= OUT\nEXIT
 OUT ::> stdout Hello, challenge!\n
-^OUT$ ::- 0
+^EXIT$ ::- 0
 ::=
 START
