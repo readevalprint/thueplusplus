@@ -292,17 +292,17 @@ def run(project_path: str, token: str, *, dry_run: bool = False, limit: int | No
             break
         iid = int(mr["iid"])
         mr = mr_detail(client, project_path, iid)
+        changes = mr_changes(client, project_path, iid)
+        change_decision = changed_solution_path(changes)
+        if change_decision.accepted and comment_failed_submission_if_needed(client, project_path, mr, change_decision.solution_path or ""):
+            commented += 1
+            continue
         merge_decision = mergeability(mr)
         if not merge_decision.accepted:
             print(f"skip !{iid}: {merge_decision.reason}")
             continue
-        changes = mr_changes(client, project_path, iid)
-        change_decision = changed_solution_path(changes)
         if not change_decision.accepted:
             print(f"skip !{iid}: {change_decision.reason}")
-            continue
-        if comment_failed_submission_if_needed(client, project_path, mr, change_decision.solution_path or ""):
-            commented += 1
             continue
         decision = successful_head_pipeline(mr)
         if not decision.accepted:
