@@ -90,8 +90,8 @@ def test_rejects_non_exact_diff_shapes() -> None:
     assert_rejected("newly added", changes=modified_changes())
     assert_rejected("renamed/deleted", changes=renamed_changes())
     assert_rejected("renamed/deleted", changes=[{"old_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_path": "challenges/02_fixed-greet/solutions/2026-06-04-old.tpp", "new_file": False, "renamed_file": False, "deleted_file": True}])
-    assert_rejected("valid challenge solution path", changes=valid_changes("challenges/02_fixed-greet/solutions/readme.md"))
-    assert_rejected("valid challenge solution path", changes=valid_changes("tools/challenge_generator.py"))
+    assert_rejected("invalid challenge submission path", changes=valid_changes("challenges/02_fixed-greet/solutions/readme.md"))
+    assert_rejected("invalid challenge submission path", changes=valid_changes("tools/challenge_generator.py"))
 
 
 def test_noop_when_disabled_or_token_missing(monkeypatch, capsys) -> None:

@@ -79,7 +79,7 @@ Run the trusted job from the scheduled GitLab.com pipeline, or trigger a trusted
 
 When a one-file submission fails validation, the trusted job may post one de-duplicated comment for the failed SHA/path. That comment links to the failed job and pipeline, but it deliberately does not copy raw CI trace output into the bot-authored note; untrusted job logs stay in GitLab's job log UI. If job lookup fails, the comment falls back to pipeline/static guidance. If comment posting fails, the trusted run logs the best-effort failure and keeps processing later MRs.
 
-The bot merge pushes a new commit to `develop`. That normal default-branch push pipeline runs the `pages` job, regenerates public challenge metrics/leaderboards, and deploys the site. The automation job is intentionally not run on ordinary push pipelines or merge-request pipelines, so a stale or missing merge token cannot block Pages rebuilds after a merge and protected credentials are not exposed to untrusted code.
+The bot merge pushes to `develop`. The normal default-branch `pages` job regenerates public challenge metrics/leaderboards directly into the deployed site artifact. No trusted CI job commits generated metrics back to the repository; protected merge credentials are not exposed to untrusted code.
 
 End-to-end public verification after the bot merges:
 
@@ -87,7 +87,7 @@ End-to-end public verification after the bot merges:
 curl -fsSL https://thuelang.org/deploy.json | jq '{commit_sha, branch, pipeline_id, pipeline_url, job_id, job_url, source_host, project_path}'
 ```
 
-The deployed `commit_sha` must match the GitLab.com bot merge commit, and the `pipeline_id`/`job_id` must match the successful Pages pipeline/job that regenerated public solution metrics.
+The deployed `commit_sha` must match the GitLab.com bot merge commit, and the `pipeline_id`/`job_id` must match the successful Pages pipeline/job that regenerated public solution metrics into the site artifact.
 
 ### Exact solution front matter
 

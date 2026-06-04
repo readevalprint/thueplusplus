@@ -31,17 +31,17 @@ from urllib.parse import urlsplit
 
 try:
     from challenge_submission_policy import (
-        CHALLENGE_SOLUTION_PATH_RE,
-        is_solution_submission_path,
+        SubmissionCandidate,
         parse_exact_added_solution,
         parse_name_status_text,
+        parse_solution_submission_path,
     )
 except ModuleNotFoundError:  # pytest imports this file from the repository root.
     from tools.challenge_submission_policy import (
-        CHALLENGE_SOLUTION_PATH_RE,
-        is_solution_submission_path,
+        SubmissionCandidate,
         parse_exact_added_solution,
         parse_name_status_text,
+        parse_solution_submission_path,
     )
 
 
@@ -645,16 +645,13 @@ def replace_leaderboard(challenge: Path, block: str) -> str:
     return f"{before}{LEADERBOARD_START}\n{block}{LEADERBOARD_END}{after}"
 
 
-def parse_submission_diff(diff_name_status_path: str) -> tuple[str, str]:
+def parse_submission_diff(diff_name_status_path: str) -> SubmissionCandidate:
     rows = parse_name_status_text(Path(diff_name_status_path).read_text(encoding="utf-8"))
     return parse_exact_added_solution(rows)
 
 
 def validate_submission_path(path: str) -> tuple[Path, Path, str]:
-    match = CHALLENGE_SOLUTION_PATH_RE.fullmatch(path)
-    if not match:
-        raise RuntimeError(f"invalid challenge submission path: {path}")
-    challenge_slug, _date_text, _solution_slug = match.groups()
+    challenge_slug, _date_text, _solution_slug = parse_solution_submission_path(path)
     challenge = CHALLENGES_ROOT / challenge_slug
     if not challenge.is_dir() or not (challenge / "tests").is_dir():
         raise RuntimeError(f"challenge directory does not exist: challenges/{challenge_slug}")
@@ -711,8 +708,8 @@ def best_effort_submission_rank(challenge: Path, submitted: Path, submitted_reco
 
 
 def validate_submission(diff_name_status_path: str, eval_limit: str) -> tuple[Path, Path, dict[str, Any]]:
-    _status, path = parse_submission_diff(diff_name_status_path)
-    challenge, solution, _challenge_slug = validate_submission_path(path)
+    candidate = parse_submission_diff(diff_name_status_path)
+    challenge, solution, _challenge_slug = validate_submission_path(candidate.path)
     metadata = require_solution_metadata(solution, read_solution_text(solution))
     identifier = solution_identifier(solution, metadata)
     reject_duplicate_solution_slug(challenge, solution, metadata)
