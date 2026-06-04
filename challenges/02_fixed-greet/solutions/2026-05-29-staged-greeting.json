@@ -2,7 +2,7 @@
   "challenge": "02_fixed-greet",
   "cumulative_state_bytes": 66,
   "eval_check_count": 10,
-  "rank": 2,
+  "rank": 4,
   "rule_count": 4,
   "solution_id": "2026-05-29-staged-greeting",
   "solution_metadata": {
