@@ -249,19 +249,9 @@ def parse_coverage(path: Path, program: Path) -> dict[int, int]:
     return coverage
 
 
-def parse_debug_metrics(stderr: str) -> tuple[int, int]:
-    # Debug lines expose probe counts and escaped state at each successful match.
-    eval_check_count = 0
-    state_sizes: list[int] = []
-    for line in stderr.splitlines():
-        m = re.match(r"\[(\d+)\] (?:STATE|RESULT): (.*)$", line)
-        if not m:
-            continue
-        eval_check_count = max(eval_check_count, int(m.group(1)))
-        # The debug stream escapes newlines as two bytes. This is an approximate
-        # state-byte metric, but it is deterministic and shared across runs.
-        state_sizes.append(len(m.group(2).encode("utf-8")))
-    return eval_check_count, sum(state_sizes)
+def parse_metrics_json(path: Path) -> tuple[int, int]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return int(payload["eval_check_count"]), int(payload["cumulative_state_bytes"])
 
 
 def stdin_buffer(case: dict[str, Any]) -> str:
@@ -277,8 +267,8 @@ def stdin_buffer(case: dict[str, Any]) -> str:
 def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str) -> BackendResult:
     with tempfile.NamedTemporaryFile(prefix="challenge-coverage-", delete=False) as tmp:
         coverage_path = Path(tmp.name)
-    with tempfile.NamedTemporaryFile(prefix="challenge-metrics-coverage-", delete=False) as tmp:
-        metrics_coverage_path = Path(tmp.name)
+    with tempfile.NamedTemporaryFile(prefix="challenge-metrics-", suffix=".json", delete=False) as tmp:
+        metrics_path = Path(tmp.name)
     try:
         command, cwd = backend_command(backend, solution.resolve(), coverage_path, eval_limit, case)
         proc = subprocess.run(
@@ -290,8 +280,8 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
             timeout=GENERATOR_CASE_TIMEOUT_SECONDS,
         )
         coverage = parse_coverage(coverage_path, solution)
-        metrics_command, _ = backend_command(backend, solution.resolve(), metrics_coverage_path, eval_limit, case)
-        metrics_command.insert(4, "--debug")
+        metrics_command, _ = backend_command(backend, solution.resolve(), coverage_path, eval_limit, case)
+        metrics_command.extend(["--metrics-json", str(metrics_path)])
         metrics_proc = subprocess.run(
             metrics_command,
             cwd=cwd,
@@ -300,10 +290,13 @@ def run_case(backend: str, solution: Path, case: dict[str, Any], eval_limit: str
             capture_output=True,
             timeout=GENERATOR_CASE_TIMEOUT_SECONDS,
         )
+        if metrics_proc.returncode != proc.returncode:
+            error = metrics_proc.stderr.strip() or metrics_proc.stdout.strip() or f"exit {metrics_proc.returncode}"
+            raise RuntimeError(f"{rel(solution)} metrics run diverged from validation run: {error}")
     finally:
         coverage_path.unlink(missing_ok=True)
-        metrics_coverage_path.unlink(missing_ok=True)
-    eval_check_count, cumulative_state_bytes = parse_debug_metrics(metrics_proc.stderr)
+    eval_check_count, cumulative_state_bytes = parse_metrics_json(metrics_path)
+    metrics_path.unlink(missing_ok=True)
     return BackendResult(
         backend=backend,
         case_name=str(case["name"]),
@@ -380,11 +373,8 @@ def solution_json_path(solution: Path) -> Path:
     return solution.with_suffix(".json")
 
 
-def ranking_key(record: dict[str, Any]) -> tuple[int, int, int, int, str]:
+def ranking_key(record: dict[str, Any]) -> tuple[int, str]:
     return (
-        record["rule_count"],
-        record["successful_rewrites"],
-        record["eval_check_count"],
         record["cumulative_state_bytes"],
         record["solution_id"],
     )
@@ -441,7 +431,7 @@ def leaderboard_block(records: list[dict[str, Any]]) -> str:
     if not records:
         return "_No qualifying solutions yet._\n"
     lines = [
-        "| Rank | Solution | Rules | Steps | Eval Checks | Cumulative State per Step |",
+        "| Rank | Solution | Rules | Steps | Eval Checks | Cumulative State |",
         "|---:|---|---:|---:|---:|---:|",
     ]
     for record in records:

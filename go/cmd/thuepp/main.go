@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -20,6 +21,7 @@ func main() {
 	interp := thuepp.New()
 	var inputOverride *string
 	ruleCoveragePath := ""
+	metricsJSONPath := ""
 	listRules := false
 
 	for idx := 1; idx < len(args); {
@@ -40,6 +42,16 @@ func main() {
 			idx += 2
 		case strings.HasPrefix(arg, "--rule-coverage="):
 			ruleCoveragePath = strings.TrimPrefix(arg, "--rule-coverage=")
+			idx++
+		case arg == "--metrics-json":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --metrics-json requires an argument")
+				os.Exit(1)
+			}
+			metricsJSONPath = args[idx+1]
+			idx += 2
+		case strings.HasPrefix(arg, "--metrics-json="):
+			metricsJSONPath = strings.TrimPrefix(arg, "--metrics-json=")
 			idx++
 		case arg == "--input":
 			if idx+1 >= len(args) {
@@ -131,6 +143,19 @@ func main() {
 	if err := interp.WriteRuleCoverage(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to write rule coverage: %v\n", err)
 		code = 1
+	}
+	if metricsJSONPath != "" {
+		payload, err := json.Marshal(map[string]int{
+			"eval_check_count":       interp.EvalCheckCount,
+			"cumulative_state_bytes": interp.CumulativeStateBytes,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to encode metrics: %v\n", err)
+			code = 1
+		} else if err := os.WriteFile(metricsJSONPath, append(payload, '\n'), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to write metrics: %v\n", err)
+			code = 1
+		}
 	}
 	interp.Cleanup()
 	os.Exit(code)

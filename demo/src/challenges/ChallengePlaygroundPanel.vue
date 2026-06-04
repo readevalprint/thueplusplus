@@ -6,16 +6,44 @@
         <h3 id="challenge-panel-title">{{ challenge.title }}</h3>
       </div>
 
-      <Card v-if="allTestsPassed" class="challenge-pass-card" data-test="challenge-pass-card" aria-label="All tests passed">
-        <CardHeader>
-          <CardTitle>All tests are green.</CardTitle>
-          <CardDescription>{{ nextChallenge ? 'Good work. Continue your path of wisdom.' : 'This is the last challenge in the list.' }}</CardDescription>
+      <Card v-if="allTestsPassed && attemptMetrics" class="challenge-pass-card" data-test="challenge-pass-card" aria-label="All tests passed">
+        <CardHeader class="challenge-success-header">
+          <CardTitle>Success, all tests passed.</CardTitle>
+          <span class="challenge-success-place" data-test="challenge-success-place">{{ attemptPlaceText }}</span>
         </CardHeader>
-        <CardFooter v-if="nextChallenge">
-          <Button as-child size="lg" class="w-full">
-            <a :href="nextChallenge.path" data-test="challenge-next-cta">
-              Go To Next Challenge
-            </a>
+        <CardContent class="challenge-success-card-content">
+          <div class="challenge-leaderboard-label">Leader board</div>
+          <div ref="leaderboardScroller" class="challenge-leaderboard-scroll" data-test="challenge-success-leaderboard">
+            <ItemGroup>
+              <Item
+                v-for="entry in leaderboardEntries"
+                :key="entry.kind === 'attempt' ? 'attempt' : entry.id"
+                :as="entry.path ? 'a' : 'div'"
+                :href="entry.path"
+                :class="entry.kind === 'attempt' ? 'challenge-leaderboard-current' : 'challenge-leaderboard-link'"
+                :data-test="entry.kind === 'attempt' ? 'challenge-leaderboard-current' : `challenge-leaderboard-solution-${entry.id}`"
+                :data-current-solution="entry.kind === 'attempt' ? 'true' : undefined"
+                :aria-label="entry.path ? `View ${entry.title} by ${entry.author}, ${entry.bytes} bytes` : undefined"
+                :variant="entry.kind === 'attempt' ? 'outline' : 'default'"
+                size="sm"
+              >
+                <ItemContent>
+                  <ItemTitle>{{ entry.rank }}. {{ entry.title }}</ItemTitle>
+                  <ItemDescription>{{ entry.byline }}</ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <span class="challenge-leaderboard-bytes">{{ entry.bytes }} bytes</span>
+                </ItemActions>
+              </Item>
+            </ItemGroup>
+          </div>
+        </CardContent>
+        <CardFooter class="challenge-success-actions">
+          <Button as-child>
+            <a :href="publishSolutionUrl" rel="noreferrer" target="_blank" data-test="challenge-publish-cta">Publish your solution</a>
+          </Button>
+          <Button v-if="nextChallenge" as-child variant="outline">
+            <a :href="nextChallenge.path" data-test="challenge-next-cta">Next Challenge</a>
           </Button>
         </CardFooter>
       </Card>
@@ -128,6 +156,29 @@
         </CardContent>
       </Card>
 
+      <Card v-if="attemptMetrics && !allTestsPassed" data-test="challenge-attempt-metrics" aria-label="Current attempt metrics">
+        <CardHeader class="challenge-attempt-card-header">
+          <div class="challenge-attempt-title-block">
+            <CardTitle>Your attempt</CardTitle>
+            <CardDescription>Ranked by bytes used.</CardDescription>
+          </div>
+          <span class="challenge-attempt-rank" data-test="challenge-attempt-rank">{{ attemptRankText }}</span>
+        </CardHeader>
+        <CardContent>
+          <ItemGroup>
+            <Item variant="outline" size="sm">
+              <ItemContent>
+                <ItemTitle>Bytes Used</ItemTitle>
+                <ItemDescription v-if="bytesUsedDescription">{{ bytesUsedDescription }}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span class="challenge-attempt-bytes" data-test="challenge-attempt-bytes-used">{{ attemptMetrics.cumulativeStateBytes }} bytes</span>
+              </ItemActions>
+            </Item>
+          </ItemGroup>
+        </CardContent>
+      </Card>
+
       <section class="challenge-readme-panel" aria-label="Challenge lesson" data-test="challenge-readme">
         <MarkdownDocument :markdown="challenge.readme" />
       </section>
@@ -136,11 +187,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
-import type { ChallengeEntry, ChallengeTestCase, ChallengeTestResource } from './types'
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
+import type { ChallengeAttemptMetrics, ChallengeEntry, ChallengeSolution, ChallengeTestCase, ChallengeTestResource } from './types'
 import type { ChallengeResourceResult, ChallengeTestResult } from './runChallengeTests'
 import MarkdownDocument from '../MarkdownDocument.vue'
 
@@ -158,6 +209,7 @@ const emit = defineEmits<{
 }>()
 
 const expandedOverrides = ref<Record<string, boolean>>({})
+const leaderboardScroller = ref<HTMLElement | null>(null)
 const resultByName = computed(() => new Map((props.results ?? []).map(result => [result.name, result])))
 const passedCount = computed(() => props.results?.filter(result => result.passed).length ?? 0)
 const failedCount = computed(() => props.results?.filter(result => !result.passed).length ?? 0)
@@ -172,6 +224,55 @@ const runTestsLabel = computed(() => {
   if (!props.results) return 'Run Tests'
   return failedCount.value > 0 ? 'Run Tests Again' : 'Run Again'
 })
+const attemptMetrics = computed<ChallengeAttemptMetrics | undefined>(() => aggregateAttemptMetrics(props.results ?? []))
+const bytesUsedDescription = computed(() => compareMetric())
+const attemptRankText = computed(() => {
+  if (!attemptMetrics.value) return ''
+  const total = props.challenge.solutions.length + 1
+  if (!allTestsPassed.value) return `Rank - of ${total}`
+  const rank = attemptRank(attemptMetrics.value, props.challenge.solutions)
+  return `Rank ${rank} of ${total}`
+})
+const attemptPlaceText = computed(() => {
+  const attemptEntry = leaderboardEntries.value.find(entry => entry.kind === 'attempt')
+  return attemptEntry ? ordinalPlace(attemptEntry.rank) : ''
+})
+const publishSolutionUrl = computed(() => 'https://gitlab.com/thuelang/thueplusplus/-/blob/develop/challenges/CONTRIBUTING.md#one-file-gitlab-submission-rule')
+const leaderboardEntries = computed<LeaderboardEntry[]>(() => {
+  if (!attemptMetrics.value) return []
+  return [
+    ...props.challenge.solutions.map(solution => ({
+      id: solution.id,
+      title: solution.title,
+      author: solution.author,
+      byline: `by ${solution.author}`,
+      bytes: solution.cumulativeStateBytes,
+      path: solution.path,
+      kind: 'solution' as const,
+    })),
+    {
+      id: 'attempt',
+      title: 'This solution',
+      author: 'You',
+      byline: 'by You',
+      bytes: attemptMetrics.value.cumulativeStateBytes,
+      kind: 'attempt' as const,
+    },
+  ]
+    .sort((left, right) => left.bytes - right.bytes || (left.kind === 'attempt' ? 1 : 0) - (right.kind === 'attempt' ? 1 : 0) || left.title.localeCompare(right.title))
+    .map((entry, index) => ({ ...entry, rank: index + 1 }))
+})
+
+interface LeaderboardEntry {
+  id: string
+  title: string
+  author: string
+  byline: string
+  bytes: number
+  kind: 'solution' | 'attempt'
+  rank: number
+  path?: string
+}
 
 onMounted(() => {
   window.addEventListener('keydown', handleRunShortcut)
@@ -184,6 +285,11 @@ onUnmounted(() => {
 watch(() => props.results, () => {
   expandedOverrides.value = {}
 })
+
+watch([allTestsPassed, leaderboardEntries], async () => {
+  await nextTick()
+  scrollCurrentSolutionIntoView()
+}, { flush: 'post' })
 
 function handleRunShortcut(event: KeyboardEvent): void {
   if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey) || props.running) return
@@ -234,6 +340,53 @@ function resourceFailure(testName: string, resourceName: string): ChallengeResou
 function hasNonResourceFailure(name: string): boolean {
   const result = resultFor(name)
   return Boolean(result && (!result.exitCode.passed || result.error))
+}
+
+function aggregateAttemptMetrics(results: ChallengeTestResult[]): ChallengeAttemptMetrics | undefined {
+  const metrics = results.map(result => result.metrics).filter((value): value is ChallengeAttemptMetrics => Boolean(value))
+  if (metrics.length === 0) return undefined
+  return {
+    ruleCount: metrics.at(-1)?.ruleCount ?? 0,
+    stepCount: metrics.reduce((total, metric) => total + metric.stepCount, 0),
+    evalCheckCount: metrics.reduce((total, metric) => total + metric.evalCheckCount, 0),
+    cumulativeStateBytes: metrics.reduce((total, metric) => total + metric.cumulativeStateBytes, 0),
+  }
+}
+
+function attemptRank(metrics: ChallengeAttemptMetrics, solutions: ChallengeSolution[]): number {
+  return 1 + solutions.filter(solution => compareSolutionToAttempt(solution, metrics) < 0).length
+}
+
+function compareMetric(): string {
+  if (!attemptMetrics.value) return ''
+  if (!allTestsPassed.value) return ''
+  if (props.challenge.solutions.length === 0) return 'No submissions yet'
+  const better = props.challenge.solutions.filter(solution => solution.cumulativeStateBytes < attemptMetrics.value!.cumulativeStateBytes).length
+  if (better === 0) return 'Best so far'
+  return `${better} submitted ${better === 1 ? 'solution uses' : 'solutions use'} fewer bytes`
+}
+
+function compareSolutionToAttempt(solution: ChallengeSolution, metrics: ChallengeAttemptMetrics): number {
+  return solution.cumulativeStateBytes - metrics.cumulativeStateBytes
+}
+
+function ordinalPlace(rank: number): string {
+  const mod100 = rank % 100
+  if (mod100 >= 11 && mod100 <= 13) return `${rank}th place`
+  switch (rank % 10) {
+    case 1: return `${rank}st place`
+    case 2: return `${rank}nd place`
+    case 3: return `${rank}rd place`
+    default: return `${rank}th place`
+  }
+}
+
+function scrollCurrentSolutionIntoView(): void {
+  if (!allTestsPassed.value) return
+  const list = leaderboardScroller.value
+  const current = list?.querySelector<HTMLElement>('[data-current-solution="true"]')
+  if (!list || !current) return
+  list.scrollTop = current.offsetTop - list.offsetTop - Math.max(0, (list.clientHeight - current.offsetHeight) / 2)
 }
 
 function slugId(value: string): string {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { runWithWorker, type DemoResourceLog } from '../wasm'
-import type { ChallengeEntry, ChallengeTestCase } from './types'
+import type { ChallengeAttemptMetrics, ChallengeEntry, ChallengeTestCase } from './types'
 
 export interface ChallengeResourceResult {
   name: string
@@ -20,6 +20,7 @@ export interface ChallengeTestResult {
   passed: boolean
   exitCode: ChallengeExitCodeResult
   resources: ChallengeResourceResult[]
+  metrics?: ChallengeAttemptMetrics
   error?: string
 }
 

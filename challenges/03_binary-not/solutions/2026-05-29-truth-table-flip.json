@@ -1,6 +1,6 @@
 {
   "challenge": "03_binary-not",
-  "cumulative_state_bytes": 76,
+  "cumulative_state_bytes": 175,
   "eval_check_count": 28,
   "rank": 1,
   "rule_count": 6,

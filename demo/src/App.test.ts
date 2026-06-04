@@ -221,7 +221,7 @@ describe('Go-WASM demo UI', () => {
 
   it('runs challenge tests from the playground rules editor and shows expected output diffs', async () => {
     window.history.pushState({}, '', '/challenges/02_fixed-greet/')
-    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
+    mockedRunWithWorker.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', evalCheckCount: 1, cumulativeStateBytes: 5, trace: [] })
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="challenge-playground-panel"]').exists()).toBe(true)
@@ -264,6 +264,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="challenge-test-exit-code-diff-default-state"]').exists()).toBe(false)
     expect(result.text()).toContain('Hello, challenge!')
     expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('Run Tests Again')
+    expect(wrapper.get('[data-test="challenge-attempt-rank"]').text()).toBe('Rank - of 3')
+    expect(wrapper.get('[data-test="challenge-attempt-bytes-used"]').text()).toBe('5 bytes')
     expect(wrapper.get('[data-test="challenge-run-tests"]').text()).toContain('⌘↵')
 
     mockedRunWithWorker.mockClear()
@@ -332,6 +334,8 @@ describe('Go-WASM demo UI', () => {
           stdout: '',
           stderr: '',
           state: 'MID',
+          evalCheckCount: 2,
+          cumulativeStateBytes: 5,
           resourceLogs: [],
           trace: [{
             step: 1,
@@ -353,6 +357,8 @@ describe('Go-WASM demo UI', () => {
           stdout: 'Hello, challenge!\n',
           stderr: '',
           state: '',
+          evalCheckCount: 5,
+          cumulativeStateBytes: 3,
           resourceLogs: [{ name: 'stdout', reads: [], writes: ['Hello, challenge!\n'], errors: [], outputText: 'Hello, challenge!\n' }],
           trace: [],
         })
@@ -382,8 +388,14 @@ describe('Go-WASM demo UI', () => {
       await flush()
       expect(mockedRunWithWorker).toHaveBeenCalledTimes(2)
       expect(wrapper.find('[data-test="challenge-tests-card"]').exists()).toBe(false)
-      expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('All tests are green')
+      expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('Success, all tests passed.')
       expect(wrapper.get('[data-test="challenge-pass-card"]').classes()).toContain('challenge-pass-card')
+      expect(wrapper.get('[data-test="challenge-success-place"]').text()).toBe('1st place')
+      expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('Leader board')
+      expect(wrapper.get('[data-test="challenge-leaderboard-current"]').text()).toContain('This solution')
+      expect(wrapper.get('[data-test="challenge-leaderboard-current"]').text()).toContain('by You')
+      expect(wrapper.get('[data-test="challenge-leaderboard-current"]').text()).toContain('8 bytes')
+      expect(wrapper.get('[data-test="challenge-leaderboard-solution-2026-05-29-direct-greeting"]').attributes('href')).toBe('/challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting')
       expect(wrapper.find('[data-test="challenge-run-tests"]').exists()).toBe(false)
     } finally {
       vi.useRealTimers()
@@ -478,7 +490,8 @@ describe('Go-WASM demo UI', () => {
         input: 'START',
       }))
       expect(wrapper.find('[data-test="challenge-tests-card"]').exists()).toBe(false)
-      expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('All tests are green')
+      expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('Success, all tests passed.')
+      expect(wrapper.get('[data-test="challenge-success-place"]').text()).toBe('1st place')
       expect(wrapper.get('[data-test="challenge-pass-card"]').classes()).toContain('challenge-pass-card')
     } finally {
       vi.useRealTimers()
@@ -580,8 +593,8 @@ describe('Go-WASM demo UI', () => {
     expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('1\n')
     expect(mockedRunWithWorker.mock.calls[0][0]).toEqual(expect.objectContaining({ stepLimit: 1, trace: true }))
     expect(wrapper.find('[data-test="challenge-tests-card"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('All tests are green')
-    expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('This is the last challenge')
+    expect(wrapper.get('[data-test="challenge-pass-card"]').text()).toContain('Success, all tests passed.')
+    expect(wrapper.get('[data-test="challenge-success-place"]').text()).toBe('1st place')
     expect(wrapper.get('[data-test="challenge-pass-card"]').classes()).toContain('challenge-pass-card')
     expect(wrapper.find('[data-test="challenge-next-cta"]').exists()).toBe(false)
   })

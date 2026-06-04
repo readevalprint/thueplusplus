@@ -1,6 +1,6 @@
 {
   "challenge": "01_core-rewrite-model",
-  "cumulative_state_bytes": 35,
+  "cumulative_state_bytes": 41,
   "eval_check_count": 6,
   "rank": 1,
   "rule_count": 3,
