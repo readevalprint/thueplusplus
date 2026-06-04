@@ -47,16 +47,15 @@ def changed_solution_path(changes: list[dict[str, Any]]) -> Decision:
         return Decision(False, f"expected exactly one changed file, got {len(changes)}")
     change = changes[0]
     path = str(change.get("new_path") or "")
-    old_path = str(change.get("old_path") or "")
-    if change.get("deleted_file"):
-        return Decision(False, "deleted files are not challenge submissions")
+    if change.get("deleted_file") or change.get("renamed_file"):
+        return Decision(False, "renamed/deleted files are not challenge submissions")
+    if not change.get("new_file"):
+        return Decision(False, "challenge submission file must be newly added")
+    if change.get("old_path") != path:
+        return Decision(False, "old_path/new_path mismatch for added challenge submission")
     if not is_solution_submission_path(path):
         return Decision(False, f"changed file is not a valid challenge solution path: {path}")
-    if change.get("renamed_file") and not is_solution_submission_path(old_path):
-        return Decision(False, f"renamed file did not start from a valid challenge solution path: {old_path}")
-    if not change.get("renamed_file") and old_path != path:
-        return Decision(False, "old_path/new_path mismatch for challenge submission")
-    return Decision(True, "exactly one challenge solution file", path)
+    return Decision(True, "exactly one added challenge solution", path)
 
 
 def successful_head_pipeline(mr: dict[str, Any]) -> Decision:

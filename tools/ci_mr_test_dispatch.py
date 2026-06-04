@@ -119,11 +119,11 @@ def is_exact_submission_diff(rows: NameStatusRows) -> bool:
     if len(rows) != 1:
         return False
     status, paths = rows[0]
-    if status in {"A", "M"}:
-        return len(paths) == 1 and is_solution_submission_path(paths[0])
-    if status.startswith("R"):
-        return len(paths) == 2 and is_solution_submission_path(paths[0]) and is_solution_submission_path(paths[1])
-    return False
+    return (
+        status == "A"
+        and len(paths) == 1
+        and is_solution_submission_path(paths[0])
+    )
 
 
 def main() -> int:
