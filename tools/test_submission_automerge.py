@@ -132,6 +132,92 @@ class FakeClient:
             return {"web_url": "https://gitlab.com/thuelang/thueplusplus/-/merge_requests/7"}
         raise AssertionError((method, path, data))
 
+    def request_text(self, method: str, path: str, data=None) -> str:
+        raise AssertionError((method, path, data))
+
+
+class FailedSubmissionFakeClient(FakeClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.noted_body: str | None = None
+
+    def get_all(self, path: str):
+        self.paths.append(("GET_ALL", path))
+        if path.startswith("projects/thuelang%2Fthueplusplus/merge_requests?"):
+            return [{"iid": 7}]
+        if path.endswith("/merge_requests/7/notes?sort=asc"):
+            return []
+        if path.endswith("/pipelines/42/jobs"):
+            return [{"id": 99, "name": "test", "status": "failed", "web_url": "https://gitlab.com/job/99"}]
+        raise AssertionError(path)
+
+    def request(self, method: str, path: str, data=None):
+        self.paths.append((method, path))
+        if method == "GET" and path.endswith("/merge_requests/7"):
+            return valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"})
+        if method == "GET" and path.endswith("/merge_requests/7/changes"):
+            return {"changes": valid_changes()}
+        if method == "POST" and path.endswith("/merge_requests/7/notes"):
+            assert data is not None
+            self.noted_body = data["body"]
+            return {"id": 123}
+        raise AssertionError((method, path, data))
+
+    def request_text(self, method: str, path: str, data=None):
+        self.paths.append((method, path))
+        if method == "GET" and path.endswith("/jobs/99/trace"):
+            return "SUBMISSION FAILED: missing website front matter\n"
+        raise AssertionError((method, path, data))
+
+
+class DuplicateFailedSubmissionFakeClient(FailedSubmissionFakeClient):
+    def get_all(self, path: str):
+        if path.endswith("/merge_requests/7/notes?sort=asc"):
+            self.paths.append(("GET_ALL", path))
+            return [{"body": f"{submission_automerge.COMMENT_MARKER}\n<!-- pipeline:42 sha:abc123 -->"}]
+        return super().get_all(path)
+
+
+def test_failed_submission_comment_body_includes_actionable_context() -> None:
+    body = submission_automerge.failed_submission_comment_body(
+        valid_mr(head_pipeline={"id": 42, "sha": "abc123", "status": "failed"}),
+        "challenges/02_fixed-greet/solutions/2026-06-04-bad.tpp",
+        {"web_url": "https://gitlab.com/job/99"},
+        "SUBMISSION FAILED: front matter slug duplicates existing solution",
+    )
+
+    assert submission_automerge.COMMENT_MARKER in body
+    assert "Challenge submission validation failed" in body
+    assert "exactly one newly added solution `.tpp`" in body
+    assert "SUBMISSION FAILED" in body
+    assert "Do not commit generated `.json` metrics" in body
+    assert "modifying or renaming an existing solution" in body
+    assert "https://gitlab.com/job/99" in body
+
+
+def test_run_comments_once_on_failed_exact_submission(monkeypatch, capsys) -> None:
+    fake = FailedSubmissionFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert fake.noted_body is not None
+    assert "SUBMISSION FAILED: missing website" in fake.noted_body
+    assert "commented !7" in capsys.readouterr().out
+    assert not fake.approved
+    assert not fake.merged
+
+
+def test_run_does_not_duplicate_failed_submission_comment(monkeypatch, capsys) -> None:
+    fake = DuplicateFailedSubmissionFakeClient()
+    monkeypatch.setattr(submission_automerge, "GitLabClient", lambda _token: fake)
+
+    assert submission_automerge.run("thuelang/thueplusplus", "token") == 0
+
+    assert fake.noted_body is None
+    output = capsys.readouterr().out
+    assert "failure comment already exists" in output
+
 
 def test_run_fetches_mr_detail_before_deciding_approves_and_merges(monkeypatch, capsys) -> None:
     fake = FakeClient()
