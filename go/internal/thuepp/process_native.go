@@ -76,6 +76,17 @@ func (r *processResource) exitError(err error) error {
 	return fmt.Errorf("%s", msg)
 }
 
+func (r *processResource) eofOrExitError(timeout time.Duration) error {
+	select {
+	case err := <-r.exitCh:
+		if exitErr := r.exitError(err); exitErr != nil {
+			return exitErr
+		}
+	case <-time.After(timeout):
+	}
+	return fmt.Errorf("EOF before newline")
+}
+
 func (r *processResource) ReadLine(timeout time.Duration) (string, error) {
 	if err := r.ensureStarted(); err != nil {
 		return "", err
@@ -83,7 +94,7 @@ func (r *processResource) ReadLine(timeout time.Duration) (string, error) {
 	select {
 	case line, ok := <-r.outCh:
 		if !ok {
-			return "", fmt.Errorf("EOF before newline")
+			return "", r.eofOrExitError(timeout)
 		}
 		stripped, complete := stripLineTerminator(line)
 		if !complete {

@@ -59,6 +59,18 @@ func TestProcessResourceDrainsBufferedOutputAfterFastExit(t *testing.T) {
 	}
 }
 
+func TestProcessResourceReportsProcessErrorWhenNoLineIsAvailable(t *testing.T) {
+	resource := newProcessResource("worker", "sh -c 'echo child-error >&2; exit 7'")
+	_, err := resource.ReadLine(time.Second)
+	resource.Cleanup()
+	if err == nil {
+		t.Fatal("ReadLine succeeded, want process error")
+	}
+	if got := err.Error(); !strings.Contains(got, "child-error") {
+		t.Fatalf("ReadLine error = %q, want child stderr", got)
+	}
+}
+
 func TestReadTimeoutAcceptsExplicitDurationUnits(t *testing.T) {
 	cases := []string{"1ms", "500ms", "1s", "1m"}
 	for _, timeout := range cases {
