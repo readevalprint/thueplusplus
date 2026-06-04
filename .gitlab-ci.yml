@@ -31,7 +31,7 @@ test:
   image: golang:1.24.6-bookworm
   rules:
     - if: '$CI_SERVER_HOST != "gitlab.com"'
-    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_PROJECT_ID == $CI_PROJECT_ID'
+    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_PIPELINE_SOURCE == "merge_request_event"'
   before_script:
     - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
     - |

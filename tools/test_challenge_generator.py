@@ -399,12 +399,12 @@ def test_dispatcher_fetches_target_into_remote_tracking_ref() -> None:
     ]
 
 
-def test_dispatcher_fetches_fork_mr_target_from_target_project_url() -> None:
+def test_dispatcher_fetches_fork_mr_target_from_merge_request_project_url() -> None:
     assert dispatch.fetch_target_command(
         "develop",
         source_project_id="123",
         project_id="456",
-        target_project_url="https://gitlab.com/thuelang/thueplusplus.git",
+        merge_request_project_url="https://gitlab.com/thuelang/thueplusplus",
     ) == [
         "git", "fetch", "https://gitlab.com/thuelang/thueplusplus.git", "develop:refs/remotes/origin/develop",
     ]
@@ -416,7 +416,7 @@ def test_dispatcher_rejects_unsafe_target_project_url() -> None:
             "develop",
             source_project_id="123",
             project_id="456",
-            target_project_url="-c protocol.ext.allow=always",
+            merge_request_project_url="-c protocol.ext.allow=always",
         )
 
 
@@ -460,7 +460,7 @@ def test_backend_command_passes_max_state_bytes_cap(tmp_path: Path) -> None:
     assert command[command.index("--max-state-bytes") + 1] == kg.GENERATOR_MAX_STATE_BYTES
 
 
-def test_gitlab_ci_runs_test_job_for_gitlab_com_target_project_merge_requests() -> None:
+def test_gitlab_ci_runs_test_job_for_all_gitlab_com_merge_request_events() -> None:
     ci_text = (ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
     test_job = ci_text.split("\ntest:\n", 1)[1].split("\npages:\n", 1)[0]
     pages_job = ci_text.split("\npages:\n", 1)[1]
@@ -468,9 +468,9 @@ def test_gitlab_ci_runs_test_job_for_gitlab_com_target_project_merge_requests() 
     assert "- if: '$CI_SERVER_HOST != \"gitlab.com\"'" in test_job
     assert (
         "- if: '$CI_SERVER_HOST == \"gitlab.com\" && "
-        "$CI_PIPELINE_SOURCE == \"merge_request_event\" && "
-        "$CI_MERGE_REQUEST_TARGET_PROJECT_ID == $CI_PROJECT_ID'"
+        "$CI_PIPELINE_SOURCE == \"merge_request_event\"'"
     ) in test_job
+    assert "$CI_MERGE_REQUEST_TARGET_PROJECT_ID == $CI_PROJECT_ID" not in test_job
     assert (
         "- if: '$CI_SERVER_HOST == \"gitlab.com\" && "
         "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'"
