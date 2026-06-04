@@ -58,20 +58,24 @@ def validate_target_project_url(url: str) -> str:
     return url
 
 
+def normalize_gitlab_project_url(url: str) -> str:
+    return url if url.endswith(".git") else f"{url}.git"
+
+
 def fetch_target_command(
     target_branch: str,
     *,
     source_project_id: str | None = None,
     project_id: str | None = None,
-    target_project_url: str | None = None,
+    merge_request_project_url: str | None = None,
 ) -> list[str]:
     if target_branch.startswith(("-", "+")) or ":" in target_branch or "\0" in target_branch:
         raise RuntimeError(f"invalid MR target branch name: {target_branch!r}")
     fetch_source = "origin"
     if source_project_id and project_id and source_project_id != project_id:
-        if not target_project_url:
-            raise RuntimeError("CI_MERGE_REQUEST_TARGET_PROJECT_URL is required for fork MR dispatch")
-        fetch_source = validate_target_project_url(target_project_url)
+        if not merge_request_project_url:
+            raise RuntimeError("CI_MERGE_REQUEST_PROJECT_URL is required for fork MR dispatch")
+        fetch_source = validate_target_project_url(normalize_gitlab_project_url(merge_request_project_url))
     return ["git", "fetch", fetch_source, f"{target_branch}:refs/remotes/origin/{target_branch}"]
 
 
@@ -134,7 +138,7 @@ def main() -> int:
             target_branch,
             source_project_id=os.environ.get("CI_MERGE_REQUEST_SOURCE_PROJECT_ID"),
             project_id=os.environ.get("CI_PROJECT_ID"),
-            target_project_url=os.environ.get("CI_MERGE_REQUEST_TARGET_PROJECT_URL"),
+            merge_request_project_url=os.environ.get("CI_MERGE_REQUEST_PROJECT_URL"),
         )
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
