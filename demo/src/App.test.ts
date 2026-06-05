@@ -189,7 +189,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="challenges-workflow"]').exists()).toBe(false)
   })
 
-  it('serves challenge solutions index and solution detail routes', async () => {
+  it('serves challenge solutions as one anchored index without detail routes', async () => {
     const solutionId = '2026-05-29-direct-greeting'
     window.history.pushState({}, '', '/challenges/02_fixed-greet/solutions')
     const indexWrapper = await mountApp()
@@ -205,19 +205,20 @@ describe('Go-WASM demo UI', () => {
     expect(indexWrapper.get('[data-test="challenge-solutions-02_fixed-greet"]').text()).toContain('Fixed Greet Solutions')
     expect(indexWrapper.get('[data-test="challenge-solutions-table"]').text()).toContain('Direct Greeting')
     expect(indexWrapper.get(`[data-test="solution-${solutionId}"]`).attributes('role')).toBe('link')
+    expect(indexWrapper.get(`[data-test="challenge-solution-${solutionId}"]`).attributes('id')).toBe(`solution-${solutionId}`)
+    expect(indexWrapper.get(`[data-test="challenge-solution-${solutionId}"] [data-test="challenge-solution-source"]`).text()).toContain('title: Direct Greeting')
+    expect(indexWrapper.get(`[data-test="challenge-solution-${solutionId}"] [data-test="challenge-solution-source"]`).text()).toContain('^START$ ::= OUT\\nEXIT')
+    expect(indexWrapper.get('[data-test="challenge-toc"] a[href="#solution-2026-05-29-direct-greeting"]').text()).toBe('Direct Greeting')
     expect(document.title).toBe('Fixed Greeting Solutions — Thue++ Challenge')
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe('https://thuelang.org/challenges/02_fixed-greet/solutions')
 
     window.history.pushState({}, '', `/challenges/02_fixed-greet/solutions/${solutionId}`)
-    const detailWrapper = await mountApp()
+    const oldDetailWrapper = await mountApp()
 
-    expect(detailWrapper.find(`[data-test="challenge-solution-${solutionId}"]`).exists()).toBe(true)
-    expect(detailWrapper.find('[data-test="challenge-breadcrumbs"]').exists()).toBe(false)
-    expect(detailWrapper.get('[data-test="challenge-solution-source"]').text()).toContain('title: Direct Greeting')
-    expect(detailWrapper.get('[data-test="challenge-solution-source"]').text()).toContain('^START$ ::= OUT\\nEXIT')
-    expect(detailWrapper.get('h2#solution-source').text()).toBe('Direct Greeting')
-    expect(document.title).toBe('Direct Greeting — Fixed Greeting — Thue++ Challenge Solution')
-    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://thuelang.org/challenges/02_fixed-greet/solutions/${solutionId}`)
+    expect(oldDetailWrapper.find(`[data-test="challenge-solution-${solutionId}"]`).exists()).toBe(true)
+    expect(oldDetailWrapper.find('h2#solution-source').exists()).toBe(false)
+    expect(document.title).toBe('Fixed Greeting Solutions — Thue++ Challenge')
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe('https://thuelang.org/challenges/02_fixed-greet/solutions')
   })
 
   it('runs challenge tests from the playground rules editor and shows expected output diffs', async () => {
@@ -426,7 +427,7 @@ describe('Go-WASM demo UI', () => {
       expect(wrapper.get('[data-test="challenge-leaderboard-current"]').text()).toContain('This solution')
       expect(wrapper.get('[data-test="challenge-leaderboard-current"]').text()).toContain('by You')
       expect(wrapper.get('[data-test="challenge-leaderboard-current"]').text()).toContain('8 bytes')
-      expect(wrapper.get('[data-test="challenge-leaderboard-solution-2026-05-29-direct-greeting"]').attributes('href')).toBe('/challenges/02_fixed-greet/solutions/2026-05-29-direct-greeting')
+      expect(wrapper.get('[data-test="challenge-leaderboard-solution-2026-05-29-direct-greeting"]').attributes('href')).toBe('/challenges/02_fixed-greet/solutions/#solution-2026-05-29-direct-greeting')
       expect(wrapper.find('[data-test="challenge-run-tests"]').exists()).toBe(false)
     } finally {
       vi.useRealTimers()

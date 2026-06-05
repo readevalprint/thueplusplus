@@ -17,7 +17,6 @@ const generatedRoutes = [
   ...challengeSlugs.flatMap(slug => [
     `challenges/${slug}`,
     `challenges/${slug}/solutions`,
-    ...solutionIdsByChallenge[slug].map(solutionId => `challenges/${slug}/solutions/${solutionId}`),
   ]),
 ]
 
@@ -44,10 +43,12 @@ for (const route of generatedRoutes) {
   }
   const routeIndex = readFileSync(routePath, 'utf8')
   assertRootAssetUrls(routeIndex, `${route}/index.html`)
+  assertNoOldLoadingShell(routeIndex, `${route}/index.html`)
   if (route.startsWith('challenges')) {
     assertNoReadmePrerender(routeIndex, `${route}/index.html`)
   }
 }
+assertNoPerSolutionRoutes()
 if (!index.includes('semi-Thue system') || !index.includes('Hello world') || !index.includes('data-prerendered="true"')) {
   throw new Error('demo production index must include prerendered README content for crawlers')
 }
@@ -73,12 +74,21 @@ for (const loc of ['https://thuelang.org/', ...generatedRoutes.map(routeCanonica
 }
 for (const slug of challengeSlugs) {
   const challengeIndex = readFileSync(join(dist, 'challenges', slug, 'index.html'), 'utf8')
+  const solutionsIndex = readFileSync(join(dist, 'challenges', slug, 'solutions', 'index.html'), 'utf8')
   const title = titleFromChallengeReadme(slug)
   if (!challengeIndex.includes(`<title>${escapeHtml(title)} — Thue++ Challenge</title>`)) {
     throw new Error(`challenge route ${slug}/index.html must include challenge-specific title metadata`)
   }
   if (!challengeIndex.includes(`https://thuelang.org/challenges/${slug}/`)) {
     throw new Error(`challenge route ${slug}/index.html must include canonical challenge URL`)
+  }
+  for (const solutionId of solutionIdsByChallenge[slug]) {
+    if (!solutionsIndex.includes(`id=\"solution-${escapeHtml(solutionId)}\"`)) {
+      throw new Error(`challenge solutions route ${slug}/solutions/index.html is missing anchor solution-${solutionId}`)
+    }
+    if (!solutionsIndex.includes(`href=\"#solution-${escapeHtml(solutionId)}\"`)) {
+      throw new Error(`challenge solutions route ${slug}/solutions/index.html is missing table link to #solution-${solutionId}`)
+    }
   }
 }
 
@@ -128,6 +138,32 @@ for (const fileName of jsFiles) {
 }
 
 console.log('demo production dist smoke ok')
+
+function assertNoOldLoadingShell(html, label) {
+  for (const forbidden of ['Loading playground', 'Preparing the editor', 'Loading embed', 'Preparing the embeddable playground', 'Loading interactive challenge list', 'Loading the interactive challenge list', 'Loading ', ' solution by ']) {
+    if (html.includes(forbidden)) {
+      throw new Error(`demo production dist ${label} must not include old loading-card copy: ${forbidden}`)
+    }
+  }
+  if (label !== '404.html' && !html.includes('data-test="site-topbar"') && !label.startsWith('embed')) {
+    throw new Error(`demo production dist ${label} must include prerendered site topbar`)
+  }
+}
+
+function assertNoPerSolutionRoutes() {
+  const sitemap = readFileSync(join(dist, 'sitemap.xml'), 'utf8')
+  for (const [slug, solutionIds] of Object.entries(solutionIdsByChallenge)) {
+    for (const solutionId of solutionIds) {
+      const route = `challenges/${slug}/solutions/${solutionId}`
+      if (existsSync(join(dist, route, 'index.html'))) {
+        throw new Error(`demo production dist must not emit per-solution route ${route}/index.html`)
+      }
+      if (sitemap.includes(`https://thuelang.org/${route}`)) {
+        throw new Error(`sitemap.xml must not include per-solution URL https://thuelang.org/${route}`)
+      }
+    }
+  }
+}
 
 function assertRootAssetUrls(html, label) {
   if (!html.includes('src="/assets/') || !html.includes('href="/assets/')) {
