@@ -156,28 +156,6 @@
         </CardContent>
       </Card>
 
-      <Card v-if="attemptMetrics && !allTestsPassed" data-test="challenge-attempt-metrics" aria-label="Current attempt metrics">
-        <CardHeader class="challenge-attempt-card-header">
-          <div class="challenge-attempt-title-block">
-            <CardTitle>Your attempt</CardTitle>
-            <CardDescription>Ranked by bytes used.</CardDescription>
-          </div>
-          <span class="challenge-attempt-rank" data-test="challenge-attempt-rank">{{ attemptRankText }}</span>
-        </CardHeader>
-        <CardContent>
-          <ItemGroup>
-            <Item variant="outline" size="sm">
-              <ItemContent>
-                <ItemTitle>Bytes Used</ItemTitle>
-                <ItemDescription v-if="bytesUsedDescription">{{ bytesUsedDescription }}</ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <span class="challenge-attempt-bytes" data-test="challenge-attempt-bytes-used">{{ attemptMetrics.cumulativeStateBytes }} bytes</span>
-              </ItemActions>
-            </Item>
-          </ItemGroup>
-        </CardContent>
-      </Card>
 
       <section class="challenge-readme-panel" aria-label="Challenge lesson" data-test="challenge-readme">
         <MarkdownDocument :markdown="challenge.readme" />
@@ -198,9 +176,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
-import type { ChallengeAttemptMetrics, ChallengeEntry, ChallengeSolution, ChallengeTestCase, ChallengeTestResource } from './types'
+import type { ChallengeAttemptMetrics, ChallengeEntry, ChallengeTestCase, ChallengeTestResource } from './types'
 import type { ChallengeResourceResult, ChallengeTestResult } from './runChallengeTests'
 import MarkdownDocument from '../MarkdownDocument.vue'
 
@@ -241,14 +219,6 @@ const runTestsLabel = computed(() => {
   return failedCount.value > 0 ? 'Run Tests Again' : 'Run Again'
 })
 const attemptMetrics = computed<ChallengeAttemptMetrics | undefined>(() => aggregateAttemptMetrics(props.results ?? []))
-const bytesUsedDescription = computed(() => compareMetric())
-const attemptRankText = computed(() => {
-  if (!attemptMetrics.value) return ''
-  const total = props.challenge.solutions.length + 1
-  if (!allTestsPassed.value) return `Rank - of ${total}`
-  const rank = attemptRank(attemptMetrics.value, props.challenge.solutions)
-  return `Rank ${rank} of ${total}`
-})
 const attemptPlaceText = computed(() => {
   const attemptEntry = leaderboardEntries.value.find(entry => entry.kind === 'attempt')
   return attemptEntry ? ordinalPlace(attemptEntry.rank) : ''
@@ -366,23 +336,6 @@ function aggregateAttemptMetrics(results: ChallengeTestResult[]): ChallengeAttem
     evalCheckCount: metrics.reduce((total, metric) => total + metric.evalCheckCount, 0),
     cumulativeStateBytes: metrics.reduce((total, metric) => total + metric.cumulativeStateBytes, 0),
   }
-}
-
-function attemptRank(metrics: ChallengeAttemptMetrics, solutions: ChallengeSolution[]): number {
-  return 1 + solutions.filter(solution => compareSolutionToAttempt(solution, metrics) < 0).length
-}
-
-function compareMetric(): string {
-  if (!attemptMetrics.value) return ''
-  if (!allTestsPassed.value) return ''
-  if (props.challenge.solutions.length === 0) return 'No submissions yet'
-  const better = props.challenge.solutions.filter(solution => solution.cumulativeStateBytes < attemptMetrics.value!.cumulativeStateBytes).length
-  if (better === 0) return 'Best so far'
-  return `${better} submitted ${better === 1 ? 'solution uses' : 'solutions use'} fewer bytes`
-}
-
-function compareSolutionToAttempt(solution: ChallengeSolution, metrics: ChallengeAttemptMetrics): number {
-  return solution.cumulativeStateBytes - metrics.cumulativeStateBytes
 }
 
 function ordinalPlace(rank: number): string {
