@@ -6,6 +6,7 @@ const dist = new URL('../dist/', import.meta.url).pathname
 const demoRoot = new URL('../', import.meta.url).pathname
 const repoRoot = new URL('../../', import.meta.url).pathname
 const siteOrigin = 'https://thuelang.org'
+const challengeContributingUrl = 'https://gitlab.com/thuelang/thueplusplus/-/blob/develop/challenges/CONTRIBUTING.md'
 
 copyPublicAssets()
 
@@ -261,6 +262,7 @@ function challengesIndexShell(challenges) {
     '        <article class="readme-document">',
     '          <h1>Learn Thue++</h1>',
     '          <p>Small executable rewrite challenges with ranked public solutions.</p>',
+    '          <p class="challenge-contribute-panel">Contribute: ' + contributionLink('challenges', 'challenges') + ' · ' + contributionLink('test cases', 'test-cases') + ' · ' + contributionLink('solutions', 'solutions') + '</p>',
     '          <ul>',
     ...challenges.map(challenge => `            <li><a href="/challenges/${escapeAttribute(challenge.slug)}/">${escapeHtml(challenge.title)}</a></li>`),
     '          </ul>',
@@ -276,6 +278,7 @@ function challengeShell(challenge) {
     `          <h1>${escapeHtml(challenge.title)}</h1>`,
     `          <p>${escapeHtml(challenge.description)}</p>`,
     `          <p><a href="/challenges/${escapeAttribute(challenge.slug)}/solutions/">View ${escapeHtml(String(challenge.solutions.length))} ranked solution${challenge.solutions.length === 1 ? '' : 's'}</a></p>`,
+    '          <p class="challenge-contribute-panel">Suggest improvements: ' + contributionLink('challenge', 'challenges') + ' · ' + contributionLink('test cases', 'test-cases') + ' · ' + contributionLink('solutions', 'solutions') + '</p>',
     '        </article>',
     '      </main>',
   ])
@@ -311,6 +314,10 @@ function challengeSolutionsShell(challenge) {
 
 function solutionAnchorId(solutionId) {
   return `solution-${solutionId}`
+}
+
+function contributionLink(label, anchor) {
+  return `<a href="${challengeContributingUrl}#${anchor}" rel="noreferrer">${escapeHtml(label)}</a>`
 }
 
 function injectAppShell(html, shell) {
