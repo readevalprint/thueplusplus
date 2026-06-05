@@ -1,14 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <template>
   <main :class="pageClass" data-test="challenges-page">
-    <ChallengeSolutionDetail
-      v-if="selectedChallenge && selectedSolution"
-      :challenge="selectedChallenge"
-      :solution="selectedSolution"
-    />
-
     <ChallengeSolutionsIndex
-      v-else-if="selectedChallenge && props.solutionsRoute"
+      v-if="selectedChallenge && props.solutionsRoute"
       :challenge="selectedChallenge"
     />
 
@@ -37,7 +31,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted } from 'vue'
 import ChallengeDetail from './challenges/ChallengeDetail.vue'
-import ChallengeSolutionDetail from './challenges/ChallengeSolutionDetail.vue'
 import ChallengeSolutionsIndex from './challenges/ChallengeSolutionsIndex.vue'
 import ChallengesList from './challenges/ChallengesList.vue'
 import { challenges } from './challenges/data'
@@ -56,12 +49,11 @@ const selectedChallenge = computed(() => challenges.find((challenge) => challeng
 const selectedChallengeIndex = computed(() => selectedChallenge.value ? challenges.findIndex(challenge => challenge.slug === selectedChallenge.value?.slug) : -1)
 const previousChallenge = computed(() => selectedChallengeIndex.value > 0 ? challenges[selectedChallengeIndex.value - 1] : undefined)
 const nextChallenge = computed(() => selectedChallengeIndex.value >= 0 && selectedChallengeIndex.value < challenges.length - 1 ? challenges[selectedChallengeIndex.value + 1] : undefined)
-const selectedSolution = computed(() => selectedChallenge.value?.solutions.find(solution => solution.id === props.selectedSolutionId?.toLowerCase()))
 const pageClass = computed(() => {
-  if (selectedChallenge.value && !props.solutionsRoute && !selectedSolution.value) return 'challenge-detail-page'
+  if (selectedChallenge.value && !props.solutionsRoute) return 'challenge-detail-page'
   return selectedChallenge.value ? 'readme-page' : 'readme-page challenges-page'
 })
-const waitsForPlaygroundEditor = computed(() => Boolean(selectedChallenge.value && !props.solutionsRoute && !selectedSolution.value))
+const waitsForPlaygroundEditor = computed(() => Boolean(selectedChallenge.value && !props.solutionsRoute))
 
 onMounted(async () => {
   if (waitsForPlaygroundEditor.value) return

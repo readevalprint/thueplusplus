@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { solutionHref } from './solutionLinks'
 import type { ChallengeEntry, ChallengeMetricRecord, ChallengeSolution, ChallengeTestCase, ChallengeTestManifest } from './types'
 
 const schemaModules = import.meta.glob('../../../challenges/test-schema.json', {
@@ -176,11 +177,11 @@ function solutionsReadmeForSlug(slug: string): string {
 function solutionsForSlug(slug: string): ChallengeSolution[] {
   return Object.entries(metricModules)
     .filter(([metricPath]) => challengeSlugFromMetricPath(metricPath) === slug)
-    .map(([_metricPath, rawRecord]) => solutionFromRecord(rawRecord as ChallengeMetricRecord))
+    .map(([_metricPath, rawRecord]) => solutionFromRecord(rawRecord as ChallengeMetricRecord, slug))
     .sort((left, right) => left.rank - right.rank || left.id.localeCompare(right.id))
 }
 
-function solutionFromRecord(record: ChallengeMetricRecord): ChallengeSolution {
+function solutionFromRecord(record: ChallengeMetricRecord, challengeSlug: string): ChallengeSolution {
   return {
     rank: record.rank,
     id: record.solution_id,
@@ -188,7 +189,7 @@ function solutionFromRecord(record: ChallengeMetricRecord): ChallengeSolution {
     author: record.solution_metadata.author,
     website: record.solution_metadata.website,
     source: sourceForRecord(record),
-    path: `/challenges/${record.challenge}/solutions/${record.solution_id}`,
+    path: solutionHref(challengeSlug, record.solution_id),
     ruleCount: record.rule_count,
     stepCount: record.successful_rewrites,
     evalCheckCount: record.eval_check_count,

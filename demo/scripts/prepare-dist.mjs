@@ -66,17 +66,17 @@ function buildRoutes(challenges) {
         canonical: `${siteOrigin}/playground`,
         robots: 'index,follow',
       },
-      shell: neutralShell('Loading playground', 'Preparing the editor, runtime, and examples…'),
+      shell: playgroundShell(),
     },
     {
       path: 'embed',
       metadata: embedMetadata('embed', 'Thue++ Embed'),
-      shell: neutralShell('Loading embed', 'Preparing the embeddable playground…'),
+      shell: embedShell('Thue++ Embed'),
     },
     {
       path: 'embed/demo',
       metadata: embedMetadata('embed/demo', 'Thue++ Embed Demo'),
-      shell: neutralShell('Loading embed demo', 'Preparing the embeddable playground demo…'),
+      shell: embedShell('Thue++ Embed Demo'),
     },
     {
       path: 'challenges',
@@ -111,18 +111,6 @@ function buildRoutes(challenges) {
       },
       shell: challengeSolutionsShell(challenge),
     })
-    for (const solution of challenge.solutions) {
-      routes.push({
-        path: `challenges/${challenge.slug}/solutions/${solution.id}`,
-        metadata: {
-          title: `${solution.title} — ${challenge.title} — Thue++ Challenge Solution`,
-          description: `A public solution by ${solution.author} for the ${challenge.title} Thue++ challenge.`,
-          canonical: `${siteOrigin}/challenges/${challenge.slug}/solutions/${solution.id}`,
-          robots: 'index,follow',
-        },
-        shell: challengeSolutionShell(challenge, solution),
-      })
-    }
   }
 
   return routes
@@ -167,10 +155,22 @@ function loadSolutions(slug) {
         id: record.solution_id || name.replace(/\.json$/, ''),
         title: record.solution_metadata?.title || titleFromSlug(name.replace(/\.json$/, '')),
         author: record.solution_metadata?.author || 'anonymous',
+        website: record.solution_metadata?.website || '#',
+        source: solutionSource(slug, record.solution_path),
         rank: record.rank,
+        ruleCount: record.rule_count,
+        stepCount: record.successful_rewrites,
+        evalCheckCount: record.eval_check_count,
+        cumulativeStateBytes: record.cumulative_state_bytes,
       }
     })
     .sort((left, right) => left.rank - right.rank || left.id.localeCompare(right.id))
+}
+
+function solutionSource(slug, solutionPath) {
+  if (!solutionPath) return ''
+  const sourcePath = join(repoRoot, 'challenges', slug, 'solutions', solutionPath.split('/').pop())
+  return existsSync(sourcePath) ? readFileSync(sourcePath, 'utf8') : ''
 }
 
 function splitFrontMatter(markdown) {
@@ -196,68 +196,121 @@ function summaryFromBody(markdown) {
 }
 
 function neutralShell(title, description) {
-  return [
-    '      <main class="app-static-shell" data-test="app-fallback-shell">',
-    `        <section class="app-static-card" aria-busy="true">`,
-    `          <p class="app-static-eyebrow">Thue++</p>`,
+  return pageShell([
+    '      <main class="readme-page app-static-route" data-test="app-fallback-shell">',
+    '        <article class="readme-document">',
     `          <h1>${escapeHtml(title)}</h1>`,
     `          <p>${escapeHtml(description)}</p>`,
-    '          <div class="app-static-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>',
+    '        </article>',
+    '      </main>',
+  ])
+}
+
+function playgroundShell() {
+  return pageShell([
+    '      <main class="playground-page app-static-route" data-test="playground-static-shell">',
+    '        <section class="playground-surface playground-full-surface">',
+    '          <div class="playground-control-card">',
+    '            <h1>Thue++ Playground</h1>',
+    '            <p>Run rewrite programs, inspect state transitions, and experiment with explicit resources.</p>',
+    '          </div>',
+    '          <div class="playground-grid" aria-hidden="true">',
+    '            <section class="playground-panel"><h2>program rules</h2><pre>^hello (?&lt;name&gt;[A-Za-z]+)$ ::= hi {{name}}</pre></section>',
+    '            <section class="playground-panel"><h2>current state</h2><pre>hello Ada</pre></section>',
+    '          </div>',
     '        </section>',
     '      </main>',
+  ])
+}
+
+function embedShell(title) {
+  return [
+    '      <main class="playground-page app-static-route" data-test="embed-static-shell">',
+    '        <section class="playground-surface playground-embed-surface">',
+    `          <h1>${escapeHtml(title)}</h1>`,
+    '          <p>Embeddable Thue++ playground surface.</p>',
+    '        </section>',
+    '      </main>',
+  ].join('\n')
+}
+
+function pageShell(bodyLines) {
+  return [siteTopbar(), ...bodyLines].join('\n')
+}
+
+function siteTopbar() {
+  return [
+    '      <header class="site-topbar" data-test="site-topbar">',
+    '        <div class="site-topbar-inner">',
+    '          <a class="site-brand" href="/" aria-label="Thue++ home">Thue++</a>',
+    '          <nav class="site-nav" aria-label="Main navigation">',
+    '            <a href="/">Docs</a>',
+    '            <a href="/playground">Playground</a>',
+    '            <a href="/challenges">Challenges</a>',
+    '            <a href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">GitLab</a>',
+    '            <a href="https://x.com/thuelang" rel="noreferrer">Twitter</a>',
+    '          </nav>',
+    '        </div>',
+    '      </header>',
   ].join('\n')
 }
 
 function challengesIndexShell(challenges) {
-  return [
-    '      <main class="app-static-shell challenge-static-shell" data-test="challenge-index-static-shell">',
-    '        <section class="app-static-card">',
-    '          <p class="app-static-eyebrow">Thue++ Challenges</p>',
+  return pageShell([
+    '      <main class="readme-page challenges-page app-static-route" data-test="challenge-index-static-shell">',
+    '        <article class="readme-document">',
     '          <h1>Learn Thue++</h1>',
-    '          <p>Loading the interactive challenge list…</p>',
-    '          <ul class="app-static-route-list">',
+    '          <p>Small executable rewrite challenges with ranked public solutions.</p>',
+    '          <ul>',
     ...challenges.map(challenge => `            <li><a href="/challenges/${escapeAttribute(challenge.slug)}/">${escapeHtml(challenge.title)}</a></li>`),
     '          </ul>',
-    '        </section>',
+    '        </article>',
     '      </main>',
-  ].join('\n')
+  ])
 }
 
 function challengeShell(challenge) {
-  return [
-    `      <main class="app-static-shell challenge-static-shell" data-test="challenge-static-${escapeAttribute(challenge.slug)}">`,
-    '        <section class="app-static-card">',
-    '          <p class="app-static-eyebrow">Thue++ Challenge</p>',
+  return pageShell([
+    `      <main class="challenge-detail-page app-static-route" data-test="challenge-static-${escapeAttribute(challenge.slug)}">`,
+    '        <article class="readme-document">',
     `          <h1>${escapeHtml(challenge.title)}</h1>`,
     `          <p>${escapeHtml(challenge.description)}</p>`,
-    '          <div class="app-static-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>',
-    '        </section>',
+    `          <p><a href="/challenges/${escapeAttribute(challenge.slug)}/solutions/">View ${escapeHtml(String(challenge.solutions.length))} ranked solution${challenge.solutions.length === 1 ? '' : 's'}</a></p>`,
+    '        </article>',
     '      </main>',
-  ].join('\n')
+  ])
 }
 
 function challengeSolutionsShell(challenge) {
-  return [
-    `      <main class="app-static-shell challenge-static-shell" data-test="challenge-solutions-static-${escapeAttribute(challenge.slug)}">`,
-    '        <section class="app-static-card">',
-    '          <p class="app-static-eyebrow">Thue++ Challenge Solutions</p>',
+  return pageShell([
+    `      <main class="readme-page app-static-route" data-test="challenge-solutions-static-${escapeAttribute(challenge.slug)}">`,
+    '        <article class="readme-document">',
     `          <h1>${escapeHtml(challenge.title)} Solutions</h1>`,
-    `          <p>Loading ${escapeHtml(String(challenge.solutions.length))} ranked solution${challenge.solutions.length === 1 ? '' : 's'}…</p>`,
-    '        </section>',
+    `          <p>${escapeHtml(String(challenge.solutions.length))} ranked public solution${challenge.solutions.length === 1 ? '' : 's'}.</p>`,
+    '          <section aria-labelledby="solutions-list">',
+    '            <h2 id="solutions-list">Solutions</h2>',
+    '            <table data-test="challenge-solutions-table">',
+    '              <thead><tr><th>Author</th><th>Title</th><th>Rules</th><th>Steps</th><th>Eval Checks</th><th>Cumulative State</th></tr></thead>',
+    '              <tbody>',
+    ...challenge.solutions.map(solution => `                <tr data-test="solution-${escapeAttribute(solution.id)}"><td>${escapeHtml(solution.author)}</td><td><a href="#${solutionAnchorId(solution.id)}">${escapeHtml(solution.title)}</a></td><td>${escapeHtml(String(solution.ruleCount))}</td><td>${escapeHtml(String(solution.stepCount))}</td><td>${escapeHtml(String(solution.evalCheckCount))}</td><td>${escapeHtml(String(solution.cumulativeStateBytes))} bytes</td></tr>`),
+    challenge.solutions.length ? '' : '                <tr><td colspan="6">No qualifying solutions yet.</td></tr>',
+    '              </tbody>',
+    '            </table>',
+    '          </section>',
+    ...challenge.solutions.flatMap(solution => [
+      `          <section id="${solutionAnchorId(solution.id)}" class="challenge-solution-section" data-test="challenge-solution-${escapeAttribute(solution.id)}">`,
+      `            <h2>${escapeHtml(solution.title)}</h2>`,
+      `            <p>By <a href="${escapeAttribute(solution.website)}" rel="author noopener">${escapeHtml(solution.author)}</a>. ${escapeHtml(String(solution.ruleCount))} rules, ${escapeHtml(String(solution.stepCount))} steps, ${escapeHtml(String(solution.evalCheckCount))} eval checks, ${escapeHtml(String(solution.cumulativeStateBytes))} bytes cumulative state.</p>`,
+      `            <pre class="readme-code" data-test="challenge-solution-source"><code class="language-thuepp">${escapeHtml(solution.source)}</code></pre>`,
+      '          </section>',
+    ]),
+    '        </article>',
     '      </main>',
-  ].join('\n')
+  ])
 }
 
-function challengeSolutionShell(challenge, solution) {
-  return [
-    `      <main class="app-static-shell challenge-static-shell" data-test="challenge-solution-static-${escapeAttribute(solution.id)}">`,
-    '        <section class="app-static-card">',
-    '          <p class="app-static-eyebrow">Thue++ Challenge Solution</p>',
-    `          <h1>${escapeHtml(solution.title)}</h1>`,
-    `          <p>Loading ${escapeHtml(challenge.title)} solution by ${escapeHtml(solution.author)}…</p>`,
-    '        </section>',
-    '      </main>',
-  ].join('\n')
+function solutionAnchorId(solutionId) {
+  return `solution-${solutionId}`
 }
 
 function injectAppShell(html, shell) {

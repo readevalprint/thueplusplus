@@ -65,7 +65,7 @@
       </div>
     </header>
     <PlaygroundPage v-if="isPlaygroundRoute" @ready="finishRouteLoading" />
-    <ChallengesPage v-else-if="isChallengesRoute" :selected-slug="challengeSlug" :solutions-route="isChallengeSolutionsRoute" :selected-solution-id="challengeSolutionId" @ready="finishRouteLoading" />
+    <ChallengesPage v-else-if="isChallengesRoute" :selected-slug="challengeSlug" :solutions-route="isChallengeSolutionsRoute" @ready="finishRouteLoading" />
     <ReadmePage v-else @ready="finishRouteLoading" />
   </template>
   <EmbedDemoPage v-else-if="isEmbedDemoRoute" @vue:mounted="finishRouteLoading" />
@@ -114,13 +114,7 @@ const challengesRouteMatch = computed(() => routePath.value.match(/(?:^|\/)chall
 const challengeSlug = computed(() => challengesRouteMatch.value?.[1] ? decodeURIComponent(challengesRouteMatch.value[1]) : undefined)
 const challengeSecondSegment = computed(() => challengesRouteMatch.value?.[2] ? decodeURIComponent(challengesRouteMatch.value[2]) : undefined)
 const isChallengeSolutionsRoute = computed(() => challengeSecondSegment.value === 'solutions')
-const challengeSolutionId = computed(() => {
-  if (!challengesRouteMatch.value) return undefined
-  if (isChallengeSolutionsRoute.value) return challengesRouteMatch.value[3] ? decodeURIComponent(challengesRouteMatch.value[3]).toLowerCase() : undefined
-  return challengeSecondSegment.value ? challengeSecondSegment.value.toLowerCase() : undefined
-})
 const selectedChallenge = computed(() => challenges.find((challenge) => challenge.slug === challengeSlug.value))
-const selectedSolution = computed(() => selectedChallenge.value?.solutions.find(solution => solution.id === challengeSolutionId.value))
 const isPlaygroundRoute = computed(() => routePath.value.endsWith('/playground'))
 const isChallengesRoute = computed(() => Boolean(challengesRouteMatch.value))
 const isChallengesIndexRoute = computed(() => isChallengesRoute.value && !challengeSlug.value)
@@ -165,10 +159,10 @@ watchEffect(() => {
   } else if (isChallengesRoute.value) {
     const challengeMetadata = selectedChallenge.value
     const challengeCanonicalPath = challengeSlug.value
-      ? `/challenges/${encodeURIComponent(challengeSlug.value)}${isChallengeSolutionsRoute.value ? `/solutions${challengeSolutionId.value ? `/${encodeURIComponent(challengeSolutionId.value)}` : ''}` : challengeSolutionId.value ? `/${encodeURIComponent(challengeSolutionId.value)}` : ''}`
+      ? `/challenges/${encodeURIComponent(challengeSlug.value)}${isChallengeSolutionsRoute.value ? '/solutions' : ''}`
       : '/challenges'
     setPageMetadata({
-      title: selectedSolution.value && challengeMetadata ? `${selectedSolution.value.title} — ${challengeMetadata.title} — Thue++ Challenge Solution` : isChallengeSolutionsRoute.value && challengeMetadata ? `${challengeMetadata.title} Solutions — Thue++ Challenge` : challengeMetadata ? `${challengeMetadata.title} — Thue++ Challenge` : 'Learn Thue++ — Challenges',
+      title: isChallengeSolutionsRoute.value && challengeMetadata ? `${challengeMetadata.title} Solutions — Thue++ Challenge` : challengeMetadata ? `${challengeMetadata.title} — Thue++ Challenge` : 'Learn Thue++ — Challenges',
       description: challengeMetadata?.summary ?? 'Learn Thue++ in small steps and compare your answers with others.',
       canonical: `https://thuelang.org${challengeCanonicalPath}`,
       robots: 'index,follow',
