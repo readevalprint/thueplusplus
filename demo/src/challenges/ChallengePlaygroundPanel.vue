@@ -40,7 +40,7 @@
         </CardContent>
         <CardFooter class="challenge-success-actions">
           <Button as-child>
-            <a :href="publishSolutionUrl" rel="noreferrer" target="_blank" data-test="challenge-publish-cta">Publish your solution</a>
+            <a :href="contributingLinks.solutions" rel="noreferrer" target="_blank" data-test="challenge-publish-cta">Publish your solution</a>
           </Button>
           <Button v-if="nextChallenge" as-child variant="outline">
             <a :href="nextChallenge.path" data-test="challenge-next-cta">Next Challenge</a>
@@ -182,6 +182,15 @@
       <section class="challenge-readme-panel" aria-label="Challenge lesson" data-test="challenge-readme">
         <MarkdownDocument :markdown="challenge.readme" />
       </section>
+
+      <section class="challenge-contribute-panel" aria-label="Challenge contribution links" data-test="challenge-contribute-links">
+        <span>Suggest improvements:</span>
+        <a :href="contributingLinks.challenges" rel="noreferrer" target="_blank">challenge</a>
+        <span aria-hidden="true">·</span>
+        <a :href="contributingLinks.testCases" rel="noreferrer" target="_blank">test cases</a>
+        <span aria-hidden="true">·</span>
+        <a :href="contributingLinks.solutions" rel="noreferrer" target="_blank">solutions</a>
+      </section>
     </section>
   </div>
 </template>
@@ -194,6 +203,13 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle }
 import type { ChallengeAttemptMetrics, ChallengeEntry, ChallengeSolution, ChallengeTestCase, ChallengeTestResource } from './types'
 import type { ChallengeResourceResult, ChallengeTestResult } from './runChallengeTests'
 import MarkdownDocument from '../MarkdownDocument.vue'
+
+const CONTRIBUTING_URL = 'https://gitlab.com/thuelang/thueplusplus/-/blob/develop/challenges/CONTRIBUTING.md'
+const contributingLinks = {
+  challenges: `${CONTRIBUTING_URL}#challenges`,
+  testCases: `${CONTRIBUTING_URL}#test-cases`,
+  solutions: `${CONTRIBUTING_URL}#solutions`,
+} as const
 
 const props = defineProps<{
   challenge: ChallengeEntry
@@ -237,7 +253,6 @@ const attemptPlaceText = computed(() => {
   const attemptEntry = leaderboardEntries.value.find(entry => entry.kind === 'attempt')
   return attemptEntry ? ordinalPlace(attemptEntry.rank) : ''
 })
-const publishSolutionUrl = computed(() => 'https://gitlab.com/thuelang/thueplusplus/-/blob/develop/challenges/CONTRIBUTING.md#one-file-gitlab-submission-rule')
 const leaderboardEntries = computed<LeaderboardEntry[]>(() => {
   if (!attemptMetrics.value) return []
   return [

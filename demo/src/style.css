@@ -915,6 +915,24 @@ code {
 .challenge-readme-panel {
   min-width: 0;
 }
+.challenge-contribute-panel {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  gap: var(--space-2);
+  margin: 0;
+}
+.challenge-contribute-panel a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.challenge-contribute-panel a:hover,
+.challenge-contribute-panel a:focus-visible {
+  color: var(--color-text);
+}
 .challenge-tests-header {
   align-items: center;
   display: flex;

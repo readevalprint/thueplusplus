@@ -5,6 +5,14 @@
     <p>
       Learn Thue++ in small steps and compare your answers with others.
     </p>
+    <p class="challenge-contribute-panel" data-test="challenge-index-contribute-links">
+      <span>Contribute:</span>
+      <a :href="contributingLinks.challenges" rel="noreferrer" target="_blank">challenges</a>
+      <span aria-hidden="true">·</span>
+      <a :href="contributingLinks.testCases" rel="noreferrer" target="_blank">test cases</a>
+      <span aria-hidden="true">·</span>
+      <a :href="contributingLinks.solutions" rel="noreferrer" target="_blank">solutions</a>
+    </p>
   </section>
 
   <section aria-labelledby="open-challenges">
@@ -32,6 +40,13 @@
 <script setup lang="ts">
 import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
 import type { ChallengeEntry } from './types'
+
+const CONTRIBUTING_URL = 'https://gitlab.com/thuelang/thueplusplus/-/blob/develop/challenges/CONTRIBUTING.md'
+const contributingLinks = {
+  challenges: `${CONTRIBUTING_URL}#challenges`,
+  testCases: `${CONTRIBUTING_URL}#test-cases`,
+  solutions: `${CONTRIBUTING_URL}#solutions`,
+} as const
 
 defineProps<{
   challenges: ChallengeEntry[]
