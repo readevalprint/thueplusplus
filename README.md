@@ -88,6 +88,8 @@ These operators are the boundary between pure rewriting and effects:
 
 The default resources are `stdin`, `stdout`, and `stderr`. A runner can bind more names to processes, browser callbacks, or other streams.
 
+Runners can also pass script arguments after `--`. A rule can read a named script argument with `::! arg KEY`; the value enters state PCT-encoded, just like resource input. For example, `thuepp examples/args/args.tpp -- --QUERY_STRING "$QUERY_STRING"` exposes the explicit `QUERY_STRING` argument to rules using `::! arg QUERY_STRING`.
+
 ## Hello world
 
 This program writes one line, then exits:

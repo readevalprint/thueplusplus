@@ -17,8 +17,24 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
+	scriptArgs := []string{}
+	for idx, arg := range args {
+		if arg == "--" {
+			scriptArgs = args[idx+1:]
+			args = args[:idx]
+			break
+		}
+	}
+	if len(args) == 0 {
+		usage()
+		os.Exit(2)
+	}
 	program := args[0]
 	interp := thuepp.New()
+	if err := interp.SetScriptArgs(scriptArgs); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 	var inputOverride *string
 	ruleCoveragePath := ""
 	metricsJSONPath := ""
@@ -162,5 +178,5 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options]")
+	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options] [-- <script args>...]")
 }
