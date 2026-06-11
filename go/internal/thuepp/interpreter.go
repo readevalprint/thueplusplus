@@ -36,6 +36,7 @@ var (
 	invalidAliasTokenPattern = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
 	namedCapturePattern      = regexp.MustCompile(`\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>`)
 	readTimeoutPattern       = regexp.MustCompile(`^([1-9][0-9]*)(ms|s|m)$`)
+	argKeyPattern            = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
 )
 
 const MaxNumericLiteralChars = 4096
@@ -99,6 +100,7 @@ type Interpreter struct {
 	ProgramPath          string
 	TraceEnabled         bool
 	Trace                []TraceEvent
+	ScriptArgs           map[string]string
 }
 
 func New() *Interpreter {
@@ -106,7 +108,7 @@ func New() *Interpreter {
 }
 
 func NewWithHostResources(host HostResources) *Interpreter {
-	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: host.Stdout, Stderr: host.Stderr, RuleCoverageCounts: map[string]int{}}
+	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: host.Stdout, Stderr: host.Stderr, RuleCoverageCounts: map[string]int{}, ScriptArgs: map[string]string{}}
 	i.Bindings["stdin"] = &Binding{Name: "stdin", PathOrCommand: "stdin", Resource: newStdinResource("stdin", host.Stdin)}
 	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout", Resource: &outputResource{writer: &i.Stdout}}
 	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr", Resource: &outputResource{writer: &i.Stderr}}
@@ -115,6 +117,35 @@ func NewWithHostResources(host HostResources) *Interpreter {
 
 func (i *Interpreter) AddProcBinding(name, command string) {
 	i.Bindings[name] = &Binding{Name: name, PathOrCommand: command, Resource: newProcessResource(name, command)}
+}
+
+func (i *Interpreter) SetScriptArgs(args []string) error {
+	i.ScriptArgs = map[string]string{}
+	for idx := 0; idx < len(args); idx++ {
+		arg := args[idx]
+		if strings.HasPrefix(arg, "--") {
+			nameValue := strings.TrimPrefix(arg, "--")
+			name, value, hasValue := strings.Cut(nameValue, "=")
+			if !argKeyPattern.MatchString(name) {
+				return fmt.Errorf("invalid script arg key %q", name)
+			}
+			if !hasValue {
+				value = ""
+				if idx+1 < len(args) {
+					idx++
+					value = args[idx]
+				}
+			}
+			i.ScriptArgs[name] = value
+			continue
+		}
+		name, value, ok := strings.Cut(arg, "=")
+		if !ok || !argKeyPattern.MatchString(name) {
+			return fmt.Errorf("invalid script arg %q", arg)
+		}
+		i.ScriptArgs[name] = value
+	}
+	return nil
 }
 
 func (i *Interpreter) LoadProgram(programPath string) error {
@@ -466,6 +497,12 @@ func parseBuiltinCall(rhs string, lineNumber int, captures map[string]bool) (str
 	if len(args) != arity {
 		return "", nil, fmt.Errorf("Line %d: Builtin '%s' expects %d args, got %d", lineNumber, name, arity, len(args))
 	}
+	if name == "arg" {
+		if !argKeyPattern.MatchString(args[0]) {
+			return "", nil, fmt.Errorf("Line %d: invalid script arg key '%s'", lineNumber, args[0])
+		}
+		return name, args, nil
+	}
 	for _, arg := range args {
 		if !isWord(arg) || arg[0] >= '0' && arg[0] <= '9' {
 			return "", nil, fmt.Errorf("Line %d: ::! arguments must be capture names, got '%s'", lineNumber, arg)
@@ -497,6 +534,7 @@ func builtinArity(name string) (int, bool) {
 		"pctdec":   1,
 		"escape":   1,
 		"unescape": 1,
+		"arg":      1,
 	}
 	arity, ok := arities[name]
 	return arity, ok
@@ -1148,6 +1186,11 @@ func (i *Interpreter) Run() (int, error) {
 					i.recordRuleCoverage(rule)
 				}
 			case Builtin:
+				if rule.BuiltinName == "arg" {
+					repl = pctEncode(i.ScriptArgs[rule.BuiltinArgs[0]])
+					i.recordRuleCoverage(rule)
+					break
+				}
 				values := make([]string, 0, len(rule.BuiltinArgs))
 				for _, arg := range rule.BuiltinArgs {
 					value, ok := groups[arg]

@@ -44,6 +44,7 @@ ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
 ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
 INVALID_ALIAS_TOKEN_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
 NAMED_CAPTURE_RE = py_re.compile(r"\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>")
+ARG_KEY_RE = py_re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
 
 class Operator(Enum):
@@ -109,6 +110,7 @@ class ThueppInterpreter:
         self.program_path = ""
         self._initial_rows: list[str] = []
         self._row_sources: list[tuple[str, int]] = []
+        self.script_args: dict[str, str] = {}
 
         # Predefined bindings
         self.bindings["stdin"] = Binding("stdin", False, "stdin")
@@ -119,6 +121,33 @@ class ThueppInterpreter:
     def add_proc_binding(self, name: str, command: str) -> None:
         """Bind a symbolic name to a process command."""
         self.bindings[name] = Binding(name, True, command)
+
+    def set_script_args(self, args: list[str]) -> None:
+        self.script_args = {}
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if arg.startswith("--"):
+                name_value = arg[2:]
+                if "=" in name_value:
+                    name, value = name_value.split("=", 1)
+                else:
+                    name = name_value
+                    value = ""
+                    if i + 1 < len(args):
+                        i += 1
+                        value = args[i]
+                if not ARG_KEY_RE.fullmatch(name):
+                    raise RuntimeError(f"invalid script arg key {name!r}")
+                self.script_args[name] = value
+            elif "=" in arg:
+                name, value = arg.split("=", 1)
+                if not ARG_KEY_RE.fullmatch(name):
+                    raise RuntimeError(f"invalid script arg key {name!r}")
+                self.script_args[name] = value
+            else:
+                raise RuntimeError(f"invalid script arg {arg!r}")
+            i += 1
 
     def load_program(self, program_path: str) -> None:
         """Load and parse a thue++ program."""
@@ -348,6 +377,10 @@ class ThueppInterpreter:
             raise RuntimeError(
                 f"Line {line_number}: Builtin '{name}' expects {expected} args, got {len(args)}"
             )
+        if name == "arg":
+            if not ARG_KEY_RE.fullmatch(args[0]):
+                raise RuntimeError(f"Line {line_number}: invalid script arg key '{args[0]}'")
+            return name, args
         for arg in args:
             if not py_re.fullmatch(r"[A-Za-z_]\w*", arg):
                 raise RuntimeError(
@@ -379,6 +412,7 @@ class ThueppInterpreter:
             "pctdec": 1,
             "escape": 1,
             "unescape": 1,
+            "arg": 1,
         }.get(name)
 
     def _b64url_encode(self, value: str) -> str:
@@ -524,6 +558,8 @@ class ThueppInterpreter:
             return self._escape(values[0])
         if name == "unescape":
             return self._unescape(values[0])
+        if name == "arg":
+            raise AssertionError("internal error: arg builtin is host-evaluated")
         if name == "num":
             return f"<num>{self._format_rational(self._parse_number(values[0], name))}</num>"
 
@@ -832,15 +868,19 @@ class ThueppInterpreter:
                         self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.BUILTIN:
-                    values = []
-                    for arg in rule.builtin_args:
-                        if arg not in groups:
-                            raise RuntimeError(
-                                f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
-                            )
-                        values.append(groups[arg])
-                    replacement = self._eval_builtin(rule.builtin_name, values)
-                    self._record_rule_coverage(rule)
+                    if rule.builtin_name == "arg":
+                        replacement = self._pct_encode(self.script_args.get(rule.builtin_args[0], ""))
+                        self._record_rule_coverage(rule)
+                    else:
+                        values = []
+                        for arg in rule.builtin_args:
+                            if arg not in groups:
+                                raise RuntimeError(
+                                    f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
+                                )
+                            values.append(groups[arg])
+                        replacement = self._eval_builtin(rule.builtin_name, values)
+                        self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.EXIT:
                     code_str = rule.rhs.strip()
@@ -880,9 +920,15 @@ class ThueppInterpreter:
 
 
 def main():
+    raw_args = sys.argv[1:]
+    script_args: list[str] = []
+    if "--" in raw_args:
+        split_at = raw_args.index("--")
+        script_args = raw_args[split_at + 1:]
+        raw_args = raw_args[:split_at]
     parser = argparse.ArgumentParser(
         description="thue++ interpreter",
-        usage="thuepp.py <program> [--proc:<name> <command>]... [--input <state>] [options]",
+        usage="thuepp.py <program> [--proc:<name> <command>]... [--input <state>] [options] [-- <script args>...]",
     )
     parser.add_argument("program", help="Path to the thue++ program")
     parser.add_argument(
@@ -920,7 +966,7 @@ def main():
     )
 
     # Parse known args first, then handle custom bindings
-    args, remaining = parser.parse_known_args()
+    args, remaining = parser.parse_known_args(raw_args)
 
     interpreter = ThueppInterpreter(
         eval_limit=args.eval_limit,
@@ -928,6 +974,11 @@ def main():
         debug=args.debug,
         rule_coverage_path=args.rule_coverage,
     )
+    try:
+        interpreter.set_script_args(script_args)
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Parse binding arguments
     i = 0

@@ -95,8 +95,8 @@ def load_toml(path: Path) -> dict:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
-TOP_LEVEL_KEYS = {"name", "program", "input", "stdin", "args", "bindings", "expect", "timeout", "case"}
-CASE_KEYS = {"name", "program", "input", "stdin", "args", "bindings", "expect", "timeout"}
+TOP_LEVEL_KEYS = {"name", "program", "input", "stdin", "args", "script_args", "bindings", "expect", "timeout", "case"}
+CASE_KEYS = {"name", "program", "input", "stdin", "args", "script_args", "bindings", "expect", "timeout"}
 EXPECT_KEYS = {
     "exit_code",
     "stdout",
@@ -148,6 +148,8 @@ def validate_manifest(config_path: Path, config: dict) -> None:
     validate_manifest_program(config_path, config)
     if "args" in config and not (isinstance(config["args"], list) and all(isinstance(arg, str) for arg in config["args"])):
         raise RuntimeError(f"{config_path}: args must be a list of strings")
+    if "script_args" in config and not (isinstance(config["script_args"], list) and all(isinstance(arg, str) for arg in config["script_args"])):
+        raise RuntimeError(f"{config_path}: script_args must be a list of strings")
     if "stdin" in config and not isinstance(config["stdin"], str):
         raise RuntimeError(f"{config_path}: stdin must be a string")
     if "bindings" in config:
@@ -169,6 +171,8 @@ def validate_manifest(config_path: Path, config: dict) -> None:
             raise RuntimeError(f"{config_path} {scope}: program is only allowed at manifest top level")
         if "args" in case and not (isinstance(case["args"], list) and all(isinstance(arg, str) for arg in case["args"])):
             raise RuntimeError(f"{config_path} {scope}: args must be a list of strings")
+        if "script_args" in case and not (isinstance(case["script_args"], list) and all(isinstance(arg, str) for arg in case["script_args"])):
+            raise RuntimeError(f"{config_path} {scope}: script_args must be a list of strings")
         if "stdin" in case and not isinstance(case["stdin"], str):
             raise RuntimeError(f"{config_path} {scope}: stdin must be a string")
         if "bindings" in case:
@@ -205,6 +209,10 @@ def validate_case_metadata(config_path: Path, case: dict) -> None:
         isinstance(case["args"], list) and all(isinstance(arg, str) for arg in case["args"])
     ):
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: args must be a list of strings")
+    if "script_args" in case and not (
+        isinstance(case["script_args"], list) and all(isinstance(arg, str) for arg in case["script_args"])
+    ):
+        raise RuntimeError(f"{config_path} {case_name(config_path, case)}: script_args must be a list of strings")
     if "stdin" in case and not isinstance(case["stdin"], str):
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: stdin must be a string")
 
@@ -239,6 +247,9 @@ def build_case_args(
         args.extend([f"--proc:{name}", command])
     if "input" in case:
         args.extend(["--input", case["input"]])
+    if case.get("script_args"):
+        args.append("--")
+        args.extend(case["script_args"])
     return args, bound_files
 
 

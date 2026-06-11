@@ -1,0 +1,22 @@
+name = "script args"
+program = "../args.tpp"
+
+[[case]]
+name = "separate key value"
+script_args = ["--QUERY_STRING", "name=ada&x=1"]
+expect.exit_code = 0
+expect.stdout = "query=name=ada&x=1\n"
+expect.stderr = ""
+
+[[case]]
+name = "equals form"
+script_args = ["--QUERY_STRING=hello world"]
+expect.exit_code = 0
+expect.stdout = "query=hello world\n"
+expect.stderr = ""
+
+[[case]]
+name = "missing arg is empty"
+expect.exit_code = 0
+expect.stdout = "query=\n"
+expect.stderr = ""
