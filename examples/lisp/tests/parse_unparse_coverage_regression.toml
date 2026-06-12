@@ -136,7 +136,7 @@ input = "(let () (write (unparse (parse \"\\\"a\\\\\\\\b\\\"\"))))"
 [case.expect]
 stderr = ""
 exit_code = 0
-stdout_stripped = "\"a\\b\""
+stdout_stripped = "\"a\\\\b\""
 
 [[case]]
 name = "parse source list returns canonical data"

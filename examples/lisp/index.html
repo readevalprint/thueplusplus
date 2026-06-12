@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Thue++ Lisp CGI example</title>
+<h1>Thue++ Lisp CGI example</h1>
+
+<p>
+  This directory can be served with Python's built-in CGI server:
+</p>
+
+<pre><code>cd examples/lisp
+make serve-cgi</code></pre>
+
+<p>
+  The root <code>/</code> page is static. Python's <code>http.server --cgi</code>
+  only executes files below <code>/cgi-bin/</code> or <code>/htbin/</code>, so the
+  Lisp CGI adapter lives in <code>cgi-bin/lisp-example-adapter.cgi</code>.
+</p>
+
+<ul>
+  <li><a href="/cgi-bin/lisp-example-adapter.cgi/health?a=1">Run the Lisp CGI smoke endpoint</a></li>
+  <li><a href="/cgi-bin/">Do not open <code>/cgi-bin/</code> directly; it is not a script file.</a></li>
+</ul>
+
+<p>
+  Expected response body from the smoke endpoint:
+</p>
+
+<pre><code>method=GET
+path=/health
+query=a=1</code></pre>

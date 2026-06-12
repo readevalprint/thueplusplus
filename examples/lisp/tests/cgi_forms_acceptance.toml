@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "../lisp.tpp"
+timeout = 10
+args = ["--eval-limit", "100000", "--max-state-bytes", "1048576"]
+
+[[case]]
+name = "escape-html escapes text and quoted attribute characters"
+input = "(write (escape-html \"<>&\\\"'\"))"
+
+[case.expect]
+exit_code = 0
+stdout = "&lt;&gt;&amp;&quot;&#39;"
+stderr = ""
+
+[[case]]
+name = "escape-html requires string"
+input = "(escape-html 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "write remains raw and escape-html is explicit"
+input = "(write \"<b>raw</b>\") (write \"|\") (write (escape-html \"<b>safe</b>\"))"
+
+[case.expect]
+exit_code = 0
+stdout = "<b>raw</b>|&lt;b&gt;safe&lt;/b&gt;"
+stderr = ""
+
+[[case]]
+name = "param requires string"
+input = "(param 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "missing param returns empty string"
+input = "(write (param \"missing\"))"
+script_args = ["--QUERY_STRING", "q=value"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "param decodes query plus percent utf8"
+input = "(write (param \"q\"))"
+script_args = ["--QUERY_STRING", "q=a+b%26%E2%9C%93"]
+
+[case.expect]
+exit_code = 0
+stdout = "a b&✓"
+stderr = ""
+
+[[case]]
+name = "param uses first duplicate query key"
+input = "(write (param \"q\"))"
+script_args = ["--QUERY_STRING", "q=first&q=second"]
+
+[case.expect]
+exit_code = 0
+stdout = "first"
+stderr = ""
+
+[[case]]
+name = "malformed query percent escape fails loudly"
+input = "(param \"q\")"
+script_args = ["--QUERY_STRING", "q=%ZZ"]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr = "Error: invalid_param_encoding\n"
+
+[[case]]
+name = "post form param takes precedence over query"
+input = "(write (param \"q\"))"
+script_args = ["--REQUEST_METHOD", "POST", "--CONTENT_TYPE", "application/x-www-form-urlencoded", "--FORM_BODY", "q=post", "--QUERY_STRING", "q=get"]
+
+[case.expect]
+exit_code = 0
+stdout = "post"
+stderr = ""
+
+[[case]]
+name = "post form accepts content type parameters"
+input = "(write (param \"q\"))"
+script_args = ["--REQUEST_METHOD", "POST", "--CONTENT_TYPE", "application/x-www-form-urlencoded; charset=utf-8", "--FORM_BODY", "q=body+value"]
+
+[case.expect]
+exit_code = 0
+stdout = "body value"
+stderr = ""
+
+[[case]]
+name = "non form post body is ignored"
+input = "(write (param \"q\"))"
+script_args = ["--REQUEST_METHOD", "POST", "--CONTENT_TYPE", "text/plain", "--FORM_BODY", "q=body", "--QUERY_STRING", "q=query"]
+
+[case.expect]
+exit_code = 0
+stdout = "query"
+stderr = ""
+
+[[case]]
+name = "malformed post body percent escape fails loudly"
+input = "(param \"q\")"
+script_args = ["--REQUEST_METHOD", "POST", "--CONTENT_TYPE", "application/x-www-form-urlencoded", "--FORM_BODY", "q=%"]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr = "Error: invalid_param_encoding\n"

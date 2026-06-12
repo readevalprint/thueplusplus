@@ -28,7 +28,7 @@ input = "(let () (write (unparse (dict (\"x\" 1) (\"line\\nkey\" 2)))))"
 [case.expect]
 stderr = ""
 exit_code = 0
-stdout_stripped = "((\"x\" 1) (\"line\\\\nkey\" 2))"
+stdout_stripped = "((\"x\" 1) (\"line\\nkey\" 2))"
 
 [[case]]
 name = "dict values are evaluated"
