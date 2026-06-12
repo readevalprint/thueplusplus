@@ -224,72 +224,80 @@ Then `app.lisp` can read exactly those values:
 (write (arg "PATH_INFO"))
 ```
 
-### Direct CGI/script smoke
+### Direct web/CGI script smoke
 
-`examples/lisp/cgi-example.lisp` is a minimal script body intended to be run by
-the normal Lisp runtime, not by a copied `lisp-cgi.tpp` runtime:
+`examples/lisp/web-demo.lisp` is a tiny raw web app intended to be run by the
+normal Lisp runtime, not by a copied `lisp-cgi.tpp` runtime. The app reads only
+explicit script args, matches routes with explicit RE2 patterns, writes a single
+CGI response, and escapes reflected HTML values at each call site:
 
 ```sh
 thuepp examples/lisp/lisp.tpp \
-  --input-file examples/lisp/cgi-example.lisp \
-  --eval-limit 100000 \
-  --max-state-bytes 1048576 \
+  --input-file examples/lisp/web-demo.lisp \
+  --eval-limit 400000 \
+  --max-state-bytes 4194304 \
   -- \
   --REQUEST_METHOD "${REQUEST_METHOD:-GET}" \
-  --PATH_INFO "${PATH_INFO:-/health}" \
-  --QUERY_STRING "${QUERY_STRING:-}"
+  --PATH_INFO "${PATH_INFO:-/}" \
+  --QUERY_STRING "${QUERY_STRING:-}" \
+  --CONTENT_TYPE "${CONTENT_TYPE:-}" \
+  --CONTENT_LENGTH "${CONTENT_LENGTH:-}" \
+  --FORM_BODY "${FORM_BODY:-}"
 ```
 
-With `REQUEST_METHOD=GET`, `PATH_INFO=/health`, and `QUERY_STRING=a=1`, stdout
-is exactly the explicit writes from the Lisp app:
+With `REQUEST_METHOD=GET` and `PATH_INFO=/`, stdout is exactly the explicit
+response rendered by the Lisp app:
 
 ```text
-Content-Type: text/plain
+Status: 200 OK
+Content-Type: text/html; charset=utf-8
 
-method=GET
-path=/health
-query=a=1
+<!doctype html><h1>Thue++ Lisp web</h1><p>raw explicit routes</p>
 ```
 
 No final Lisp expression, `()`, `FINAL<...>`, or `@@EXIT0@` marker is appended to
 stdout. Final state/value inspection is available only through explicit CLI
 export, for example `--export-state final.state`.
 
-Safety constraints for this CGI/script shape are deliberate:
+Safety constraints for this web/CGI shape are deliberate:
 
 - use `examples/lisp/lisp.tpp` directly; do not duplicate a separate CGI runtime;
 - pass only explicit whitelisted script args after `--`;
-- do not expose all environment variables, raw argv, or secret-bearing host data;
+- do not expose all environment variables, raw argv, request headers, cookies, or
+  secret-bearing host data;
 - do not load Lisp source from arbitrary URL path components;
 - set bounded `--eval-limit` and `--max-state-bytes` values in the host command;
 - keep `write` raw, and use explicit `escape-html` at HTML call sites;
 - read POST bodies only in the trusted adapter, only from a declared bounded
-  `CONTENT_LENGTH`, and pass the result as explicit `FORM_BODY`.
+  `CONTENT_LENGTH`, and pass the result as explicit `FORM_BODY`;
+- keep Flask-style route sugar, decorators, globals, static files, sessions,
+  JSON, middleware, streaming, async, and templates out of this minimal layer.
 
 ### Testing with Python's simple CGI server
 
 Python's built-in CGI server is enough for local executable docs. The checked-in
 `examples/lisp/cgi-bin/lisp-example-adapter.cgi` file is the trusted adapter: it
-selects one of the checked Lisp source files, owns resource limits and bounded
-POST body reads, and decides which CGI metadata becomes explicit script args.
-When a project `.venv` exists, the adapter uses its Python directly so the CGI
-subprocess does not need to mutate dependency caches after `http.server` drops
-privileges; otherwise it falls back to `uv run python`. The Lisp apps remain
-plain input source.
+invokes one checked Lisp source file (`web-demo.lisp`), owns resource limits and
+bounded POST body reads, and decides which CGI metadata becomes explicit script
+args. It does not route URLs itself; unknown paths reach the Lisp app and return
+the framework 404. When a project `.venv` exists, the adapter uses its Python
+directly so the CGI subprocess does not need to mutate dependency caches after
+`http.server` drops privileges; otherwise it falls back to `uv run python`. The
+Lisp app remains plain input source.
 
 ```sh
 cd examples/lisp
 make serve-cgi
 ```
 
-Then open `http://127.0.0.1:8000/`. The static index links both checked
-examples because Python's stock CGI server executes only under `/cgi-bin/` and
-`/htbin/`:
+Then open `http://127.0.0.1:8000/`. The static index links the checked web app
+routes exposed through `/cgi-bin/lisp-example-adapter.cgi/`:
 
-- plain text smoke: `/cgi-bin/lisp-example-adapter.cgi/health?a=1`, backed by
-  `cgi-example.lisp`;
-- HTML form demo: `/cgi-bin/lisp-example-adapter.cgi/form`, backed by
-  `cgi-forms-example.lisp`.
+- index: `/cgi-bin/lisp-example-adapter.cgi/`, matched by explicit `/` route;
+- route params: `/cgi-bin/lisp-example-adapter.cgi/hello/Ada`, matched by
+  `^/hello/(?<name>[^/]+)$`;
+- HTML form demo: `/cgi-bin/lisp-example-adapter.cgi/form`, using explicit
+  query/form helpers and `escape-html`.
 
 In another terminal, run the checked CGI tests:
 
@@ -298,24 +306,11 @@ cd examples/lisp
 make test-cgi
 ```
 
-Or request the plain text route directly:
+Request the routes directly:
 
 ```sh
-curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/health?a=1'
-```
-
-The response body is exactly:
-
-```text
-method=GET
-path=/health
-query=a=1
-```
-
-The form route keeps output raw by default and escapes only where the Lisp app
-explicitly asks for HTML-safe text:
-
-```sh
+curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/'
+curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/hello/%3CAda%26Byron%3E'
 curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/form?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E'
 ```
 

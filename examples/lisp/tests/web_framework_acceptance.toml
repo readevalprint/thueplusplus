@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "../lisp.tpp"
+timeout = 15
+args = ["--input-file", "examples/lisp/web-demo.lisp", "--eval-limit", "400000", "--max-state-bytes", "4194304"]
+
+[[case]]
+name = "GET root renders framework HTML response"
+script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/", "--QUERY_STRING", "", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
+
+[case.expect]
+exit_code = 0
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><h1>Thue++ Lisp web</h1><p>raw explicit routes</p>"
+stderr = ""
+
+[[case]]
+name = "GET hello route uses named route param and escapes HTML"
+script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/hello/<Ada&Byron>", "--QUERY_STRING", "", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
+
+[case.expect]
+exit_code = 0
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><p>Hello, &lt;Ada&amp;Byron&gt;</p>"
+stderr = ""
+
+[[case]]
+name = "GET form reads first query value"
+script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/form", "--QUERY_STRING", "q=first&q=second", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
+
+[case.expect]
+exit_code = 0
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><form method=post><input name=q value=\"first\"><button>Send</button></form><pre>first</pre>"
+stderr = ""
+
+[[case]]
+name = "POST form prefers URL encoded body over query and escapes"
+script_args = ["--REQUEST_METHOD", "POST", "--PATH_INFO", "/form", "--QUERY_STRING", "q=query", "--CONTENT_TYPE", "application/x-www-form-urlencoded", "--CONTENT_LENGTH", "27", "--FORM_BODY", "q=%3Cscript%3E%26%22%27"]
+
+[case.expect]
+exit_code = 0
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><form method=post><input name=q value=\"&lt;script&gt;&amp;&quot;&#39;\"><button>Send</button></form><pre>&lt;script&gt;&amp;&quot;&#39;</pre>"
+stderr = ""
+
+[[case]]
+name = "unknown path returns framework 404"
+script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/missing", "--QUERY_STRING", "", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
+
+[case.expect]
+exit_code = 0
+stdout = "Status: 404 Not Found\nContent-Type: text/plain; charset=utf-8\n\nnot found"
+stderr = ""
+
+[[case]]
+name = "malformed query percent escape fails loudly"
+script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/form", "--QUERY_STRING", "q=%ZZ", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr = "Error: invalid_param_encoding\n"
