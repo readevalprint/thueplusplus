@@ -16,7 +16,7 @@ func TestRuntimeIOUsesHostResources(t *testing.T) {
 		Stderr: &stderr,
 	})
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@IN@ ::< 1s stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"); err != nil {
+	if err := interp.parseProgram("@IN@ ::< 1s 1 lines stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
@@ -37,7 +37,7 @@ func TestRuntimeIOUsesHostResources(t *testing.T) {
 func TestProcessResourceDrainsBufferedOutputAfterFastExit(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		resource := newProcessResource("worker", "printf 'alpha\\nbeta\\n'")
-		line, err := resource.ReadLine(time.Second)
+		line, err := resource.ReadLines(1, time.Second)
 		if err != nil {
 			resource.Cleanup()
 			t.Fatalf("ReadLine #1 error on iteration %d: %v", i, err)
@@ -46,7 +46,7 @@ func TestProcessResourceDrainsBufferedOutputAfterFastExit(t *testing.T) {
 			resource.Cleanup()
 			t.Fatalf("ReadLine #1 on iteration %d = %q, want alpha", i, line)
 		}
-		line, err = resource.ReadLine(time.Second)
+		line, err = resource.ReadLines(1, time.Second)
 		if err != nil {
 			resource.Cleanup()
 			t.Fatalf("ReadLine #2 error on iteration %d: %v", i, err)
@@ -61,7 +61,7 @@ func TestProcessResourceDrainsBufferedOutputAfterFastExit(t *testing.T) {
 
 func TestProcessResourceCleanupUnblocksFullOutputChannel(t *testing.T) {
 	resource := newProcessResource("worker", "yes alpha")
-	line, err := resource.ReadLine(time.Second)
+	line, err := resource.ReadLines(1, time.Second)
 	if err != nil {
 		resource.Cleanup()
 		t.Fatalf("ReadLine error: %v", err)
@@ -82,13 +82,217 @@ func TestProcessResourceCleanupUnblocksFullOutputChannel(t *testing.T) {
 
 func TestProcessResourceReportsProcessErrorWhenNoLineIsAvailable(t *testing.T) {
 	resource := newProcessResource("worker", "sh -c 'echo child-error >&2; exit 7'")
-	_, err := resource.ReadLine(time.Second)
+	_, err := resource.ReadLines(1, time.Second)
 	resource.Cleanup()
 	if err == nil {
-		t.Fatal("ReadLine succeeded, want process error")
+		t.Fatal("ReadLines succeeded, want process error")
 	}
 	if got := err.Error(); !strings.Contains(got, "child-error") {
-		t.Fatalf("ReadLine error = %q, want child stderr", got)
+		t.Fatalf("ReadLines error = %q, want child stderr", got)
+	}
+}
+
+func TestCountedResourceReadUsesLiteralByteCount(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("abcdef"),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	interp.ProgramPath = "test.tpp"
+	program := "^read$ ::< 1s 4 bytes stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nread"
+	if err := interp.parseProgram(program); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if got, want := stdout.String(), "abcd\n"; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadUsesCapturedLineCount(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("alpha\nbeta\ngamma\n"),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	interp.ProgramPath = "test.tpp"
+	program := "^read:(?<n>[0-9]+)$ ::< 1s n lines stdin\n^(?<x>[A-Za-z0-9_.% -]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nread:2"
+	if err := interp.parseProgram(program); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if got, want := stdout.String(), "alpha\nbeta\n"; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadAllowsZeroBytes(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("abcdef"),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	interp.ProgramPath = "test.tpp"
+	program := "^read$ ::< 1s 0 bytes stdin\n^$ ::- 7\n::=\nread"
+	if err := interp.parseProgram(program); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 7 {
+		t.Fatalf("exit code = %d, want 7", code)
+	}
+	if got, want := stdout.String(), ""; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadRejectsUnknownUnit(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("ok"),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.ProgramPath = "test.tpp"
+	if err := interp.parseProgram("^read$ ::< 1s 1 chars stdin\n::=\nread"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err == nil {
+		t.Fatal("Run succeeded, want unknown unit error")
+	}
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if got, want := err.Error(), "Line 1: ::< unit must be bytes or lines"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadReportsEOFBeforeBytes(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("abc"),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.ProgramPath = "test.tpp"
+	if err := interp.parseProgram("^read$ ::< 1s 4 bytes stdin\n::=\nread"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err == nil {
+		t.Fatal("Run succeeded, want EOF before bytes error")
+	}
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if got, want := err.Error(), "ERR:resource:stdin:EOF before 4 bytes"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadReportsEOFBeforeLines(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("alpha\n"),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.ProgramPath = "test.tpp"
+	if err := interp.parseProgram("^read$ ::< 1s 2 lines stdin\n::=\nread"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err == nil {
+		t.Fatal("Run succeeded, want EOF before lines error")
+	}
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if got, want := err.Error(), "ERR:resource:stdin:EOF before 2 lines"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadRejectsOldImplicitForm(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("ok\n"),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.ProgramPath = "test.tpp"
+	if err := interp.parseProgram("@IN@ ::< 1s stdin\n::=\n@IN@"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err == nil {
+		t.Fatal("Run succeeded, want counted read syntax error")
+	}
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if got, want := err.Error(), "Line 1: ::< requires timeout, count, unit, and literal resource"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadRejectsMissingCaptureCount(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("ok"),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.ProgramPath = "test.tpp"
+	if err := interp.parseProgram("^read$ ::< 1s n bytes stdin\n::=\nread"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err == nil {
+		t.Fatal("Run succeeded, want missing capture error")
+	}
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if got, want := err.Error(), "Line 1: ::< count 'n' was not captured"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadRejectsNonNumericCaptureCount(t *testing.T) {
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("ok"),
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	interp.ProgramPath = "test.tpp"
+	if err := interp.parseProgram("^read:(?<n>[A-Za-z]+)$ ::< 1s n bytes stdin\n::=\nread:abc"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err == nil {
+		t.Fatal("Run succeeded, want invalid capture count error")
+	}
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if got, want := err.Error(), "Line 1: ::< count capture 'n' must be a non-negative integer, got 'abc'"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
 
@@ -103,7 +307,7 @@ func TestReadTimeoutAcceptsExplicitDurationUnits(t *testing.T) {
 				Stderr: &stderr,
 			})
 			interp.ProgramPath = "test.tpp"
-			program := "@IN@ ::< " + timeout + " stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"
+			program := "@IN@ ::< " + timeout + " 1 lines stdin\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\n@IN@"
 			if err := interp.parseProgram(program); err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +335,7 @@ func TestReadTimeoutRejectsImplicitSecondsAndUnsupportedUnits(t *testing.T) {
 				Stderr: &bytes.Buffer{},
 			})
 			interp.ProgramPath = "test.tpp"
-			program := "@IN@ ::< " + timeout + " stdin\n::=\n@IN@"
+			program := "@IN@ ::< " + timeout + " 1 lines stdin\n::=\n@IN@"
 			if err := interp.parseProgram(program); err != nil {
 				t.Fatal(err)
 			}
@@ -157,7 +361,7 @@ func TestBulkResourceReadFailsLoud(t *testing.T) {
 		Stderr: &bytes.Buffer{},
 	})
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@IN@ ::< -1 stdin\n::=\n@IN@"); err != nil {
+	if err := interp.parseProgram("@IN@ ::< -1 1 lines stdin\n::=\n@IN@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
@@ -180,7 +384,7 @@ func TestFastExitProcessOutputIsReadable(t *testing.T) {
 	})
 	interp.AddProcBinding("once", "printf '7\\n'")
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@N@ ::< 1s once\n^(?<n>[0-9]+)$ ::> stdout {{n}}\\n\n::=\n@N@"); err != nil {
+	if err := interp.parseProgram("@N@ ::< 1s 1 lines once\n^(?<n>[0-9]+)$ ::> stdout {{n}}\\n\n::=\n@N@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()

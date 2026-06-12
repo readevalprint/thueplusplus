@@ -69,22 +69,48 @@ function buildResources(options) {
     const log = { name, reads: [], writes: [], errors: [], remainingInputText: buffer.text, outputText: '' };
     logs.push(log);
     resources[name] = {
-      readLine() {
+      readLines(count) {
         if (config.readError) {
           log.errors.push(String(config.readError));
           log.remainingInputText = buffer.text;
           return { error: String(config.readError) };
         }
-        if (!buffer.text) {
+        const n = Number(count);
+        if (!Number.isInteger(n) || n < 0) return { error: `invalid line count ${count}` };
+        const lines = [];
+        for (let idx = 0; idx < n; idx += 1) {
+          if (!buffer.text) {
+            const pending = `WAIT:resource:${name}:pending_input`;
+            log.errors.push(pending);
+            log.remainingInputText = buffer.text;
+            return { error: pending };
+          }
+          lines.push(submittedValueMode ? shiftSubmittedValue(buffer) : shiftLine(buffer));
+        }
+        const value = lines.join('\n');
+        log.reads.push(value);
+        log.remainingInputText = buffer.text;
+        return value;
+      },
+      readBytes(count) {
+        if (config.readError) {
+          log.errors.push(String(config.readError));
+          log.remainingInputText = buffer.text;
+          return { error: String(config.readError) };
+        }
+        const n = Number(count);
+        if (!Number.isInteger(n) || n < 0) return { error: `invalid byte count ${count}` };
+        if (buffer.text.length < n) {
           const pending = `WAIT:resource:${name}:pending_input`;
           log.errors.push(pending);
           log.remainingInputText = buffer.text;
           return { error: pending };
         }
-        const line = submittedValueMode ? shiftSubmittedValue(buffer) : shiftLine(buffer);
-        log.reads.push(line);
+        const value = buffer.text.slice(0, n);
+        buffer.text = buffer.text.slice(n);
+        log.reads.push(value);
         log.remainingInputText = buffer.text;
-        return line;
+        return value;
       },
       write(text) {
         const value = String(text);

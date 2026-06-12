@@ -1,7 +1,7 @@
 GOAL: Read one line from stdin and flip a binary digit.
 
 The input buffer is provided by each challenge test case.
-START ::< 1s stdin
+START ::< 1s 1 lines stdin
 
 This branch is solved: input 0 should print 1.
 ^0$ ::= OUT1

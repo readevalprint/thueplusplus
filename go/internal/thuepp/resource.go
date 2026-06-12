@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
 type runtimeResource interface {
-	ReadLine(timeout time.Duration) (string, error)
+	ReadLines(count int, timeout time.Duration) (string, error)
+	ReadBytes(count int, timeout time.Duration) ([]byte, error)
 	WriteString(content string) error
 	Cleanup()
 }
@@ -35,16 +37,32 @@ func newStdinResource(name string, input io.Reader) *stdinResource {
 	return &stdinResource{name: name, reader: bufio.NewReader(input)}
 }
 
-func (r *stdinResource) ReadLine(timeout time.Duration) (string, error) {
-	line, err := r.reader.ReadString('\n')
+func (r *stdinResource) ReadLines(count int, timeout time.Duration) (string, error) {
+	if count == 0 {
+		return "", nil
+	}
+	lines := make([]string, 0, count)
+	for idx := 0; idx < count; idx++ {
+		line, err := r.reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("EOF before %d lines", count)
+		}
+		stripped, ok := stripLineTerminator(line)
+		if !ok {
+			return "", fmt.Errorf("EOF before %d lines", count)
+		}
+		lines = append(lines, stripped)
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+func (r *stdinResource) ReadBytes(count int, timeout time.Duration) ([]byte, error) {
+	buf := make([]byte, count)
+	_, err := io.ReadFull(r.reader, buf)
 	if err != nil {
-		return "", fmt.Errorf("EOF before newline")
+		return nil, fmt.Errorf("EOF before %d bytes", count)
 	}
-	stripped, ok := stripLineTerminator(line)
-	if !ok {
-		return "", fmt.Errorf("EOF before newline")
-	}
-	return stripped, nil
+	return buf, nil
 }
 
 func (r *stdinResource) WriteString(content string) error {
@@ -57,8 +75,12 @@ type outputResource struct {
 	writer *io.Writer
 }
 
-func (r *outputResource) ReadLine(timeout time.Duration) (string, error) {
+func (r *outputResource) ReadLines(count int, timeout time.Duration) (string, error) {
 	return "", unnamedResourceError("cannot_read_output_stream")
+}
+
+func (r *outputResource) ReadBytes(count int, timeout time.Duration) ([]byte, error) {
+	return nil, unnamedResourceError("cannot_read_output_stream")
 }
 
 func (r *outputResource) WriteString(content string) error {

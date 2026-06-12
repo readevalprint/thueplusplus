@@ -1,0 +1,29 @@
+name = "counted resource reads"
+program = "../resource-counts.tpp"
+
+[[case]]
+name = "literal byte count reads exact prefix"
+input = "fixed-bytes"
+stdin = "abcdef"
+
+[case.expect]
+exit_code = 0
+stdout = "abcd\n"
+
+[[case]]
+name = "capture byte count reads exact prefix"
+input = "captured-bytes 5"
+stdin = "hello world"
+
+[case.expect]
+exit_code = 0
+stdout = "hello\n"
+
+[[case]]
+name = "line count joins stripped lines"
+input = "two-lines"
+stdin = "alpha\nbeta\ngamma\n"
+
+[case.expect]
+exit_code = 0
+stdout = "alpha\nbeta\n"

@@ -384,7 +384,7 @@ Parse reuses the shared reader with KPARSE. Unparse routes runtime data through 
 ^BWRITE<VSTR<(?<msg>$PCT)>\|(?<k>.*)>$ ::= LWRITE<{{msg}}>RET<VLIST<>|{{k}}>
 ^BWRITE<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
 ^LWRITE<(?<msg>$PCT)> ::> stdout {{msg|pctdec}}
-@LISP_READLINE@ ::< 30s stdin
+@LISP_READLINE@ ::< 30s 1 lines stdin
 ^LREADRET<(?<line>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{line}}>|{{k}}>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
 ^APPLY<VPRIM<rest>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KTAIL {{k}}>

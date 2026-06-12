@@ -18,9 +18,14 @@ func newProcessResource(name, command string) *processResource {
 }
 
 func (r *processResource) unsupported() error {
-	return fmt.Errorf("subprocess resources are not supported in GOOS=js/wasm (binding %q, command %q)", r.name, r.command)
+	return fmt.Errorf("subprocess resources are not supported in this build")
 }
 
-func (r *processResource) ReadLine(timeout time.Duration) (string, error) { return "", r.unsupported() }
-func (r *processResource) WriteString(content string) error               { return r.unsupported() }
-func (r *processResource) Cleanup()                                       {}
+func (r *processResource) ReadLines(count int, timeout time.Duration) (string, error) {
+	return "", r.unsupported()
+}
+func (r *processResource) ReadBytes(count int, timeout time.Duration) ([]byte, error) {
+	return nil, r.unsupported()
+}
+func (r *processResource) WriteString(content string) error { return r.unsupported() }
+func (r *processResource) Cleanup()                         {}

@@ -36,22 +36,22 @@ async function runSmoke(cases) {
       evalLimit: 10,
     },
     {
-      sourceText: '^start$ ::< 1s input\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nstart',
+      sourceText: '^start$ ::< 1s 1 lines input\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nstart',
       resources: {
-        input: { readLine: () => 'from-callback' },
+        input: { readLines: () => 'from-callback' },
       },
     },
     {
-      sourceText: '^start$ ::< 5s missing\n::=\nstart',
+      sourceText: '^start$ ::< 5s 1 lines missing\n::=\nstart',
     },
     {
-      sourceText: '^start$ ::< 5s sh\n::=\nstart',
+      sourceText: '^start$ ::< 5s 1 lines sh\n::=\nstart',
       procs: { sh: 'printf nope' },
     },
     {
-      sourceText: '^start$ ::< 1s input\n::=\nstart',
+      sourceText: '^start$ ::< 1s 1 lines input\n::=\nstart',
       resources: {
-        input: { readLine: () => ({ error: 'callback boom' }) },
+        input: { readLines: () => ({ error: 'callback boom' }) },
       },
     },
   ]);

@@ -129,7 +129,7 @@ test('challenge run tests reports passing and failing browser results', async ({
   const runtimeErrors = collectRuntimeErrors(page)
   await page.goto('/challenges/03_binary-not/')
 
-  await fillRules(page, '@IN@ ::< 1s stdin\n^0$ ::= OUT1\\nEXIT\n^1$ ::= OUT0\\nEXIT\nOUT1 ::> stdout 1\\n\nOUT0 ::> stdout 0\\n\n^EXIT$ ::- 0\n::=\n@IN@')
+  await fillRules(page, '@IN@ ::< 1s 1 lines stdin\n^0$ ::= OUT1\\nEXIT\n^1$ ::= OUT0\\nEXIT\nOUT1 ::> stdout 1\\n\nOUT0 ::> stdout 0\\n\n^EXIT$ ::- 0\n::=\n@IN@')
   await page.getByTestId('challenge-run-tests').click()
 
   await expect(page.getByTestId('challenge-pass-card')).toContainText('All tests are green', { timeout: 5000 })
@@ -290,7 +290,7 @@ test('state history click restores state and step prunes future rows', async ({ 
 
 test('prefilled stdin buffer is copied without waiting for submit', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
-  await fillRules(page, '@IN@ ::< 30s stdin')
+  await fillRules(page, '@IN@ ::< 30s 1 lines stdin')
   await fillProgramState(page, '@IN@')
   await page.getByTestId('resource-input-stdin').fill('Ada\nLovelace\n')
 
@@ -305,7 +305,7 @@ test('prefilled stdin buffer is copied without waiting for submit', async ({ pag
 
 test('typing stdin after a pending read resets to the beginning', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
-  await fillRules(page, 'PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30s stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
+  await fillRules(page, 'PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*\n^read$ ::= got:@IN@\n@IN@ ::< 30s 1 lines stdin\n^got:(?<data>$PCT)$ ::> stdout {{data|pctdec}}\\n')
   await fillProgramState(page, 'read')
 
   await expect(page.getByTestId('stdin-send')).toHaveCount(0)
@@ -329,7 +329,7 @@ test('typing stdin after a pending read resets to the beginning', async ({ page 
 
 test('stdin countdown submits an empty line and hides after resuming', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
-  await fillRules(page, '@IN@ ::< 1s stdin')
+  await fillRules(page, '@IN@ ::< 1s 1 lines stdin')
   await fillProgramState(page, '@IN@')
 
   await page.getByTestId('playground-step').click()
@@ -343,7 +343,7 @@ test('stdin countdown submits an empty line and hides after resuming', async ({ 
 
 test('typing during a pending read countdown resets instead of resuming', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
-  await fillRules(page, '@IN@ ::< 1s stdin\n^1$ ::= OUT\\nEXIT\nOUT ::> stdout 1\\n\n^EXIT$ ::- 0\n^$ ::= @IN@')
+  await fillRules(page, '@IN@ ::< 1s 1 lines stdin\n^1$ ::= OUT\\nEXIT\nOUT ::> stdout 1\\n\n^EXIT$ ::- 0\n^$ ::= @IN@')
   await fillProgramState(page, '@IN@')
 
   await page.getByTestId('playground-continue').click()

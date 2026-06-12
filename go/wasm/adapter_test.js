@@ -36,32 +36,32 @@ function request(worker, message) {
   assert.match(hello.coverageTSV || '', /adapter-hello\.tpp:1\t1/);
 
   const stdin = await thuepp.run({
-    sourceText: '^start$ ::< 1s stdin\n^(?<name>[A-Za-z]+)$ ::> stdout hello {{name|pctdec}}!\\n\n::=\nstart',
-    resources: { stdin: { readLine: () => 'Ada' } },
+    sourceText: '^start$ ::< 1s 1 lines stdin\n^(?<name>[A-Za-z]+)$ ::> stdout hello {{name|pctdec}}!\\n\n::=\nstart',
+    resources: { stdin: { readLines: () => 'Ada' } },
   });
   assert.strictEqual(stdin.exitCode, 0, JSON.stringify(stdin));
   assert.strictEqual(stdin.stdout, 'hello Ada!\n');
 
   const queue = [];
   const roundtrip = await thuepp.run({
-    sourceText: '^start$ ::= WRITE\\nread\n^WRITE$ ::> echo ping\\n\n^read$ ::= response:@R@\n@R@ ::< 1s echo\n^response:(?<value>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*)$ ::> stdout {{value|pctdec}}\n\n::=\nstart',
+    sourceText: '^start$ ::= WRITE\\nread\n^WRITE$ ::> echo ping\\n\n^read$ ::= response:@R@\n@R@ ::< 1s 1 lines echo\n^response:(?<value>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*)$ ::> stdout {{value|pctdec}}\n\n::=\nstart',
     resources: {
       echo: {
         write: (text) => queue.push(text.trim()),
-        readLine: () => queue.shift() || { error: 'timeout' },
+        readLines: () => queue.shift() || { error: 'timeout' },
       },
     },
   });
   assert.strictEqual(roundtrip.exitCode, 0, JSON.stringify(roundtrip));
   assert.strictEqual(roundtrip.stdout, 'ping');
 
-  const missing = await thuepp.run({ sourceText: '^start$ ::< 5s missing\n::=\nstart' });
+  const missing = await thuepp.run({ sourceText: '^start$ ::< 5s 1 lines missing\n::=\nstart' });
   assert.strictEqual(missing.exitCode, 1, JSON.stringify(missing));
   assert.match(missing.error || '', /Unknown resource 'missing'/);
 
   const timeout = await thuepp.run({
-    sourceText: '^start$ ::< 1s sleepy\n::=\nstart',
-    resources: { sleepy: { readLine: () => ({ error: 'timeout' }) } },
+    sourceText: '^start$ ::< 1s 1 lines sleepy\n::=\nstart',
+    resources: { sleepy: { readLines: () => ({ error: 'timeout' }) } },
   });
   assert.strictEqual(timeout.exitCode, 1, JSON.stringify(timeout));
   assert.match(timeout.error || '', /ERR:resource:sleepy:timeout/);
