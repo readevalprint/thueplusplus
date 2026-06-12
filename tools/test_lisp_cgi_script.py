@@ -122,7 +122,8 @@ def assert_web_demo_direct(runner) -> None:
     source = WEB_APP.read_text(encoding="utf-8")
     assert not source.startswith("#!")
     assert 'arg "REQUEST_METHOD"' not in source
-    assert 're2full "^/hello/[^/]+$"' in source
+    assert 're2fullgroups "^/hello/(?<name>[^/]+)$"' in source
+    assert '(get hello (quote name) "")' in source
     assert 'escape-html' in source
 
     root = run_web_app(runner, path="/")

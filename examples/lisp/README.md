@@ -29,7 +29,9 @@ Compound forms:
 - association-list helpers: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
 - symbol/name conversion primitives: `symbol` and `name`;
 - runtime type inspection: `type`;
-- composable IO primitive callables: `write` and `readline`.
+- composable IO primitive callables: `write` and `readline`;
+- minimal web helpers: `arg`, `param`, `streq`, `re2full`, `re2fullgroups`,
+  and `escape-html`.
 
 ## Runtime values
 
@@ -224,6 +226,34 @@ Then `app.lisp` can read exactly those values:
 (write (arg "PATH_INFO"))
 ```
 
+Route matching stays ordinary Lisp data. `(re2full pattern text)` returns a
+boolean and requires both operands to be strings. `(re2fullgroups pattern text)`
+also requires string operands, performs the same full-match check, and returns an
+association list:
+
+```lisp
+(re2fullgroups "^/hello/(?<name>[^/]+)$" "/hello/Ada")
+; ((match "/hello/Ada") (name "Ada"))
+
+(re2fullgroups "^/hello/(?<name>[^/]+)$" "/missing")
+; ()
+```
+
+The `match` entry stores the whole matched text, so a regex with no named
+captures still returns a non-empty alist on success. Named captures use symbol
+keys and string values, so callers branch with `is-empty` and read captures with
+ordinary alist helpers:
+
+```lisp
+(let ((groups (re2fullgroups "^/hello/(?<name>[^/]+)$" path)))
+  (if (is-empty groups)
+    (write "miss")
+    (write (get groups (quote name) ""))))
+```
+
+There is no public frame-string decoder. Old `1|name:value|` and `0|` route
+frames are host adapter details, not Lisp values.
+
 ### Direct web/CGI script smoke
 
 `examples/lisp/cgi-bin/web-demo.lisp` is a tiny raw web app intended to be run by the
@@ -279,7 +309,7 @@ Python's built-in CGI server is enough for local executable docs. The checked-in
 web demo Lisp source lives beside a same-named thin adapter under
 `examples/lisp/cgi-bin/`: `web-demo.lisp` has `web-demo.cgi`. The adapter does
 not route URLs, choose apps, validate HTTP, or own framework behavior; it only
-invokes `uv run python python/thuepp.py` with the same-named `.lisp` input,
+invokes the repo-root `build/thuepp` binary with the same-named `.lisp` input,
 fixed resource limits, and a small explicit CGI arg whitelist. Unknown paths
 reach the Lisp app and return the framework 404.
 

@@ -35,7 +35,7 @@ VPRIM <- VPRIM<$NAME>
 PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM0 <- readline
 PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write|write-err|arg|param|escape-html
-PRIM2 <- cons|nth|contains|dissoc|macroexpand|streq|re2full|re2fullgroups|frame-get|$PRIM_NUM2
+PRIM2 <- cons|nth|contains|dissoc|macroexpand|streq|re2full|re2fullgroups|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
 SPECIAL_WRONG_ARITY <- eval|quote|quasiquote|set|fn|if|and|or|let|while
 UNSUPPORTED_FORM <- do|break|continue|map|unquote|splice|define|letrec
@@ -92,7 +92,7 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;param=VPRIM%3Cparam%3E;escape-html=VPRIM%3Cescape-html%3E;streq=VPRIM%3Cstreq%3E;re2full=VPRIM%3Cre2full%3E;re2fullgroups=VPRIM%3Cre2fullgroups%3E;frame-get=VPRIM%3Cframe-get%3E;|{{k}}>
+^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;param=VPRIM%3Cparam%3E;escape-html=VPRIM%3Cescape-html%3E;streq=VPRIM%3Cstreq%3E;re2full=VPRIM%3Cre2full%3E;re2fullgroups=VPRIM%3Cre2fullgroups%3E;|{{k}}>
 ^CBOOTENV<SEQ\|(?<body>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= SEQ<{{body}}|{{env}}|{{k}}>
 ^CBOOTENV<EENV\|(?<expr>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|{{env}}|{{k}}>
 
@@ -421,22 +421,20 @@ STREQ2<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 @LISP_RE2FULL<(?<pattern>[^§]*)§(?<text>[\s\S]*)>@ ::! re2full pattern text
 ^1 (?<k>.*)$ ::= RET<VBOOL<true>|{{k}}>
 ^0 (?<k>.*)$ ::= RET<VBOOL<false>|{{k}}>
+Regex capture frames from the host are converted immediately into ordinary Lisp alists. The converter pct encodes each payload before nesting it inside list items so captured percent characters stay normal string data instead of leaking route frame encoding.
 ^APPLY<VPRIM<re2fullgroups>\|(?<pattern>[^;]*);(?<text>[^;]*);\|(?<k>.*)>$ ::= BRE2FULLGROUPS<{{pattern|pctdec}}|{{text|pctdec}}|{{k}}>
-^BRE2FULLGROUPS<VSTR<(?<pattern>$PCT)>\|VSTR<(?<text>$PCT)>\|(?<k>.*)>$ ::= @LISP_RE2FULLGROUPS<{{pattern|pctdec}}§{{text|pctdec}}>@ {{k}}
+^BRE2FULLGROUPS<VSTR<(?<pattern>$PCT)>\|VSTR<(?<text>$PCT)>\|(?<k>.*)>$ ::= @LISP_RE2FULLGROUPS<{{pattern|pctdec}}§{{text|pctdec}}>@ KREGEXGROUPS<{{text}}|{{k}}>
 ^BRE2FULLGROUPS<(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 @LISP_RE2FULLGROUPS<(?<pattern>[^§]*)§(?<text>[\s\S]*)>@ ::! re2fullgroups pattern text
-^1\|(?<groups>[^ ]*) (?<k>.*)$ ::= RET<VSTR<1%7C{{groups|pctenc}}>|{{k}}>
-^0\| (?<k>.*)$ ::= RET<VSTR<0%7C>|{{k}}>
-^APPLY<VPRIM<frame-get>\|(?<frame>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BFRAMEGET<{{frame|pctdec}}|{{key|pctdec}}|{{k}}>
-^BFRAMEGET<VSTR<0%7C>\|VSTR<(?<key>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<>|{{k}}>
-^BFRAMEGET<VSTR<1%7C(?<pre>$PCT)>\|VSTR<(?<key>$PCT)>\|(?<k>.*)>$ ::= FRAMEGET<{{pre}}|{{key}}|{{k}}>
-^BFRAMEGET<(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
-^FRAMEGET<name%3A(?<value>$PCT_NO_PIPE)%7C(?<rest>$PCT)\|name\|(?<k>.*)>$ ::= @FRAMEVAL<{{value}}>@ {{k}}
-^FRAMEGET<name%3A(?<value>$PCT_NO_PIPE)\|name\|(?<k>.*)>$ ::= @FRAMEVAL<{{value}}>@ {{k}}
-^FRAMEGET<(?<headkey>$PCT_NO_PIPE)%3A(?<headval>$PCT_NO_PIPE)%7C(?<rest>$PCT)\|(?<key>$PCT)\|(?<k>.*)>$ ::= FRAMEGET<{{rest}}|{{key}}|{{k}}>
-^FRAMEGET<(?<lastkey>$PCT_NO_PIPE)%3A(?<lastval>$PCT_NO_PIPE)\|(?<key>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<>|{{k}}>
-@FRAMEVAL<(?<value>$PCT)>@ ::! pctdec value
-^(?<value>$PCT) (?<k>.*)$ ::= RET<VSTR<{{value}}>|{{k}}>
+^0\| KREGEXGROUPS<(?<text>$PCT)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
+^1\|(?<groups>[^ ]*) KREGEXGROUPS<(?<text>$PCT)\|(?<k>.*)>$ ::= @RGPCT<{{text}}>@ RGMATCH<{{groups}}§{{k}}>
+@RGPCT<(?<value>$PCT)>@ ::! pctenc value
+^(?<text2>$PCT) RGMATCH<(?<groups>[^§]*)§(?<k>.*)>$ ::= RGACC<{{groups}}|VLIST%3CVSYM%253Cmatch%253E%3BVSTR%253C{{text2|pctenc}}%253E%3B%3E;|{{k}}>
+^RGACC<\|(?<acc>$ITEMS)\|(?<k>K.*)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
+^RGACC<(?<key>$PCT_NO_PIPE):(?<value>$PCT_NO_PIPE)\|(?<rest>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= @RGPCT<{{key}}>@ RGKEY<{{value}}|{{rest}}|{{acc}}|{{k}}>
+^RGACC<(?<key>$PCT_NO_PIPE):(?<value>$PCT_NO_PIPE)\|(?<acc>$ITEMS)\|(?<k>K.*)>$ ::= @RGPCT<{{key}}>@ RGKEY<{{value}}||{{acc}}|{{k}}>
+^(?<key2>$PCT) RGKEY<(?<value>$PCT_NO_PIPE)\|(?<rest>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= @RGPCT<{{value}}>@ RGVALUE<{{key2}}|{{rest}}|{{acc}}|{{k}}>
+^(?<value2>$PCT) RGVALUE<(?<key2>$PCT)\|(?<rest>[^|]*)\|(?<acc>$ITEMS)\|(?<k>.*)>$ ::= RGACC<{{rest}}|{{acc}}VLIST%3CVSYM%253C{{key2|pctenc}}%253E%3BVSTR%253C{{value2|pctenc}}%253E%3B%3E;|{{k}}>
 @LISP_READLINE@ ::< 30s 1 lines stdin
 ^LREADRET<(?<line>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{line}}>|{{k}}>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
