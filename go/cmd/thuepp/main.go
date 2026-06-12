@@ -39,6 +39,7 @@ func main() {
 	var inputFilePath *string
 	ruleCoveragePath := ""
 	metricsJSONPath := ""
+	exportStatePath := ""
 	listRules := false
 
 	for idx := 1; idx < len(args); {
@@ -69,6 +70,16 @@ func main() {
 			idx += 2
 		case strings.HasPrefix(arg, "--metrics-json="):
 			metricsJSONPath = strings.TrimPrefix(arg, "--metrics-json=")
+			idx++
+		case arg == "--export-state":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --export-state requires an argument")
+				os.Exit(1)
+			}
+			exportStatePath = args[idx+1]
+			idx += 2
+		case strings.HasPrefix(arg, "--export-state="):
+			exportStatePath = strings.TrimPrefix(arg, "--export-state=")
 			idx++
 		case arg == "--input":
 			if idx+1 >= len(args) {
@@ -198,6 +209,17 @@ func main() {
 			code = 1
 		} else if err := os.WriteFile(metricsJSONPath, append(payload, '\n'), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: failed to write metrics: %v\n", err)
+			code = 1
+		}
+	}
+	if exportStatePath != "" {
+		if exportStatePath == "-" {
+			if _, err := fmt.Fprint(os.Stdout, interp.State); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: failed to write export state: %v\n", err)
+				code = 1
+			}
+		} else if err := os.WriteFile(exportStatePath, []byte(interp.State), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to write export state: %v\n", err)
 			code = 1
 		}
 	}
