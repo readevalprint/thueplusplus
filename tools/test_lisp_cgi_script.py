@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import contextlib
+import json
 import os
 import socket
 import stat
@@ -118,6 +119,36 @@ def run_web_app(runner, *, method: str = "GET", path: str = "/", query: str = ""
     )
 
 
+def run_web_app_with_metrics(tmp_path: Path, *, path: str = "/") -> tuple[subprocess.CompletedProcess[str], dict[str, int]]:
+    metrics_path = tmp_path / "web-demo.metrics.json"
+    result = run_python(
+        str(LISP),
+        "--input-file",
+        str(WEB_APP),
+        "--eval-limit",
+        "400000",
+        "--max-state-bytes",
+        "4194304",
+        "--metrics-json",
+        str(metrics_path),
+        "--",
+        "--REQUEST_METHOD",
+        "GET",
+        "--PATH_INFO",
+        path,
+        "--QUERY_STRING",
+        "q=query",
+        "--CONTENT_TYPE",
+        "",
+        "--CONTENT_LENGTH",
+        "",
+        "--FORM_BODY",
+        "",
+    )
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    return result, metrics
+
+
 def assert_web_demo_direct(runner) -> None:
     source = WEB_APP.read_text(encoding="utf-8")
     assert not source.startswith("#!")
@@ -164,6 +195,13 @@ def test_python_lisp_web_demo_direct_runtime() -> None:
 
 def test_go_lisp_web_demo_direct_runtime() -> None:
     assert_web_demo_direct(run_go)
+
+
+def test_python_web_demo_root_route_avoids_capture_overhead(tmp_path: Path) -> None:
+    result, metrics = run_web_app_with_metrics(tmp_path, path="/")
+    assert result.returncode == 0, result.stderr
+    assert "Thue++ Lisp web" in result.stdout
+    assert metrics["eval_check_count"] < 45000
 
 
 def test_python_top_level_body_export_state(tmp_path: Path) -> None:
