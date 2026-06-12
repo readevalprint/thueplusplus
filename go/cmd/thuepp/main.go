@@ -201,6 +201,7 @@ func main() {
 	}
 	if metricsJSONPath != "" {
 		payload, err := json.Marshal(map[string]int{
+			"successful_rewrites":   interp.SuccessfulRewrites,
 			"eval_check_count":       interp.EvalCheckCount,
 			"cumulative_state_bytes": interp.CumulativeStateBytes,
 		})

@@ -48,6 +48,7 @@ const MaxExpandedPatternBytes = 1000000
 type Rule struct {
 	LHS         string
 	Pattern     *regexp.Regexp
+	LinePrefix  string
 	Operator    Operator
 	RHS         string
 	LineNumber  int
@@ -94,6 +95,7 @@ type Interpreter struct {
 	StepLimit            *int
 	EvalCheckCount       int
 	CumulativeStateBytes int
+	SuccessfulRewrites   int
 	Debug                bool
 	Stdout               io.Writer
 	Stderr               io.Writer
@@ -463,7 +465,65 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 			return nil, err
 		}
 	}
-	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath}, nil
+	return &Rule{LHS: lhs, Pattern: re, LinePrefix: anchoredLiteralPrefix(lhs), Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath}, nil
+}
+
+func anchoredLiteralPrefix(pattern string) string {
+	if !strings.HasPrefix(pattern, "^") {
+		return ""
+	}
+	var out strings.Builder
+	for pos := 1; pos < len(pattern); {
+		r, width := utf8.DecodeRuneInString(pattern[pos:])
+		if r == utf8.RuneError && width == 0 {
+			break
+		}
+		if r == '\\' {
+			if pos+width >= len(pattern) {
+				return out.String()
+			}
+			escaped, escapedWidth := utf8.DecodeRuneInString(pattern[pos+width:])
+			if !isEscapedLiteralPrefixRune(escaped) {
+				return out.String()
+			}
+			if literalMayBeOptional(pattern, pos+width+escapedWidth) {
+				return out.String()
+			}
+			out.WriteRune(escaped)
+			pos += width + escapedWidth
+			continue
+		}
+		switch r {
+		case '|':
+			return ""
+		case '(', ')', '[', ']', '{', '}', '.', '*', '+', '?', '$':
+			return out.String()
+		default:
+			if literalMayBeOptional(pattern, pos+width) {
+				return out.String()
+			}
+			out.WriteRune(r)
+			pos += width
+		}
+	}
+	return out.String()
+}
+
+func literalMayBeOptional(pattern string, nextPos int) bool {
+	if nextPos >= len(pattern) {
+		return false
+	}
+	next, _ := utf8.DecodeRuneInString(pattern[nextPos:])
+	return next == '*' || next == '?' || next == '{'
+}
+
+func isEscapedLiteralPrefixRune(r rune) bool {
+	switch r {
+	case '\\', '.', '+', '*', '?', '(', ')', '|', '[', ']', '{', '}', '^', '$':
+		return true
+	default:
+		return false
+	}
 }
 
 func (i *Interpreter) ApplyInputOverride(value string) error {
@@ -1371,23 +1431,10 @@ func formatDebugGroups(groups map[string]string) string {
 	return "map[" + strings.Join(parts, " ") + "]"
 }
 
-type stateRow struct {
-	lineNumber int
-	row        string
-	index      int
-}
-
 func (i *Interpreter) Run() (int, error) {
 	appliedSteps := 0
 	for {
-		var rows []stateRow
-		parts := strings.Split(i.State, "\n")
-		if i.State == "" {
-			parts = []string{}
-		}
-		for idx, row := range parts {
-			rows = append(rows, stateRow{lineNumber: idx + 1, row: strings.TrimSuffix(row, "\r"), index: idx})
-		}
+		stateBytes := escapedStateBytes(i.State)
 
 		applied := false
 		for ruleIndex, rule := range i.Rules {
@@ -1395,7 +1442,7 @@ func (i *Interpreter) Run() (int, error) {
 				return 1, fmt.Errorf("Evaluation limit (%d) exceeded", *i.EvalLimit)
 			}
 			i.EvalCheckCount++
-			i.CumulativeStateBytes += escapedStateBytes(i.State)
+			i.CumulativeStateBytes += stateBytes
 
 			match, ok := findMatch(rule, i.State)
 			if !ok {
@@ -1536,6 +1583,7 @@ func (i *Interpreter) Run() (int, error) {
 			}
 			i.recordTrace(appliedStep, rule, ruleIndex, match, stateBefore, repl, nil)
 			appliedSteps++
+			i.SuccessfulRewrites = appliedSteps
 			if i.StepLimit != nil && appliedSteps >= *i.StepLimit {
 				return 0, nil
 			}
@@ -1558,6 +1606,9 @@ func findMatchFrom(rule Rule, state string, pos int) (matchInfo, bool) {
 	if pos > len(state) {
 		return matchInfo{}, false
 	}
+	if rule.LinePrefix != "" && !hasLinePrefix(state[pos:], rule.LinePrefix) {
+		return matchInfo{}, false
+	}
 	suffix := state[pos:]
 	idx := rule.Pattern.FindStringSubmatchIndex(suffix)
 	if idx == nil {
@@ -1571,6 +1622,13 @@ func findMatchFrom(rule Rule, state string, pos int) (matchInfo, bool) {
 		}
 	}
 	return matchInfo{start: pos + idx[0], end: pos + idx[1], groups: groups}, true
+}
+
+func hasLinePrefix(state, prefix string) bool {
+	if strings.HasPrefix(state, prefix) {
+		return true
+	}
+	return strings.Contains(state, "\n"+prefix)
 }
 
 func splitResource(expanded string) (string, string) {

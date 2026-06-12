@@ -10,6 +10,7 @@ import base64
 import binascii
 import contextlib
 import io
+import json
 import os
 import re as py_re
 import re2 as re
@@ -107,6 +108,8 @@ class ThueppInterpreter:
         self.eval_limit = eval_limit
         self.max_state_bytes = max_state_bytes
         self.eval_check_count = 0
+        self.cumulative_state_bytes = 0
+        self.successful_rewrites = 0
         self.debug = debug
         self.rule_coverage_path = rule_coverage_path
         self.rule_coverage_counts: dict[str, int] = {}
@@ -1000,6 +1003,9 @@ class ThueppInterpreter:
     def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
         return rule.lhs_pattern.search(self.state)
 
+    def _escaped_state_bytes(self) -> int:
+        return len(self.state.replace("\n", "\\n").encode("utf-8"))
+
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""
         while True:
@@ -1022,6 +1028,7 @@ class ThueppInterpreter:
                     state_rows.append((line_number, "", offset, offset, self.program_path, line_number, len(state_rows)))
 
             applied = False
+            state_bytes = self._escaped_state_bytes()
 
             for rule_index, rule in enumerate(self.rules):
                 if self.eval_limit is not None and self.eval_check_count >= self.eval_limit:
@@ -1029,6 +1036,7 @@ class ThueppInterpreter:
                         f"Evaluation limit ({self.eval_limit}) exceeded"
                     )
                 self.eval_check_count += 1
+                self.cumulative_state_bytes += state_bytes
 
                 match = self._match_state(rule, state_rows)
                 if not match:
@@ -1128,6 +1136,7 @@ class ThueppInterpreter:
                     raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
 
                 self._set_state(self.state[:match.start()] + replacement + self.state[match.end():])
+                self.successful_rewrites += 1
 
                 if self.debug:
                     escaped_result = self.state.replace("\n", "\\n")
@@ -1199,6 +1208,11 @@ def main():
         "--rule-coverage",
         type=str,
         help="Write successful rule application counts as TSV to this path",
+    )
+    parser.add_argument(
+        "--metrics-json",
+        type=str,
+        help="Write eval_check_count and cumulative_state_bytes as JSON to this path",
     )
     parser.add_argument(
         "--list-rules",
@@ -1284,6 +1298,17 @@ def main():
                     Path(args.export_state).write_text(interpreter.state, encoding="utf-8")
             except OSError as e:
                 export_error = e
+        metrics_error = None
+        if args.metrics_json is not None:
+            try:
+                payload = {
+                    "successful_rewrites": interpreter.successful_rewrites,
+                    "eval_check_count": interpreter.eval_check_count,
+                    "cumulative_state_bytes": interpreter.cumulative_state_bytes,
+                }
+                Path(args.metrics_json).write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+            except OSError as e:
+                metrics_error = e
         interpreter.cleanup()
 
     if coverage_error is not None:
@@ -1291,6 +1316,9 @@ def main():
         exit_code = 1
     if export_error is not None:
         print(f"Error: failed to write export state: {export_error}", file=sys.stderr)
+        exit_code = 1
+    if metrics_error is not None:
+        print(f"Error: failed to write metrics: {metrics_error}", file=sys.stderr)
         exit_code = 1
 
     sys.exit(exit_code)

@@ -563,6 +563,37 @@ func TestCumulativeStateBytesCountsEveryEvalCheck(t *testing.T) {
 	}
 }
 
+func TestLinePrefixPrefilterPreservesRegexpSemantics(t *testing.T) {
+	cases := []struct {
+		pattern string
+		state   string
+		want    bool
+	}{
+		{`^foo`, "foo", true},
+		{`^foo`, "x\nfoo", true},
+		{`^foo`, "bar", false},
+		{`^\s*foo`, "  foo", true},
+		{`^\d+`, "123", true},
+		{`^\w+`, "abc", true},
+		{`^foo|bar`, "bar", true},
+		{`^fo*bar`, "fbar", true},
+		{`^foo?bar`, "fobar", true},
+		{`^fo{0,1}bar`, "fbar", true},
+		{`^RET<VBOOL<true>\|(?<k>.*)>$`, "RET<VBOOL<true>|KDONE>", true},
+		{`^READ<\((?<rest>.*)>$`, "READ<(x>", true},
+	}
+	for _, tc := range cases {
+		rule, err := parseRule(tc.pattern+" ::= ok", 1, "probe.tpp")
+		if err != nil {
+			t.Fatalf("parseRule(%q): %v", tc.pattern, err)
+		}
+		_, got := findMatch(*rule, tc.state)
+		if got != tc.want {
+			t.Fatalf("pattern %q state %q prefix %q got %v want %v", tc.pattern, tc.state, rule.LinePrefix, got, tc.want)
+		}
+	}
+}
+
 func TestTraceRecordsMatchedRuleError(t *testing.T) {
 	interp := NewWithHostResources(HostResources{
 		Stdin:  strings.NewReader(""),

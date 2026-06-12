@@ -22,6 +22,24 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
+name = "route regex full match returns boolean true"
+input = "(write (unparse (re2full \"^/hello/[^/]+$\" \"/hello/Ada\")))"
+
+[case.expect]
+exit_code = 0
+stdout = "true"
+stderr = ""
+
+[[case]]
+name = "route regex partial match returns boolean false"
+input = "(write (unparse (re2full \"^/hello/[^/]+$\" \"/hello/Ada/extra\")))"
+
+[case.expect]
+exit_code = 0
+stdout = "false"
+stderr = ""
+
+[[case]]
 name = "route capture primitive type errors fail loudly"
 input = "(re2fullgroups \"^x$\" 1)"
 
@@ -31,46 +49,64 @@ stdout = ""
 stderr_stripped = "type_error"
 
 [[case]]
-name = "route capture miss returns empty frame and empty lookup"
-input = "(write (frame-get (re2fullgroups \"^x$\" \"y\") \"name\"))"
+name = "route capture miss returns empty alist"
+input = "(write (unparse (re2fullgroups \"^x$\" \"y\")))"
 
 [case.expect]
 exit_code = 0
-stdout = ""
+stdout = "()"
 stderr = ""
 
 [[case]]
-name = "route frame lookup rejects non strings"
-input = "(frame-get 1 \"name\")"
+name = "route capture match without named captures keeps whole match"
+input = "(write (unparse (re2fullgroups \"^x$\" \"x\")))"
+
+[case.expect]
+exit_code = 0
+stdout = "((match \"x\"))"
+stderr = ""
+
+[[case]]
+name = "route capture named groups are ordinary alist entries"
+input = "(write (get (re2fullgroups \"^/hello/(?<name>[^/]+)$\" \"/hello/Ada\") (quote name) \"\"))"
+
+[case.expect]
+exit_code = 0
+stdout = "Ada"
+stderr = ""
+
+[[case]]
+name = "route capture values round trip percent-like text as strings"
+input = "(write (get (re2fullgroups \"^/hello/(?<name>[^/]+)$\" \"/hello/Ada%25Byron\") (quote name) \"\"))"
+
+[case.expect]
+exit_code = 0
+stdout = "Ada%25Byron"
+stderr = ""
+
+[[case]]
+name = "route capture optional unmatched named groups are omitted"
+input = "(write (unparse (contains (re2fullgroups \"^(?<a>x)(?<b>y)?$\" \"x\") (quote b))))"
+
+[case.expect]
+exit_code = 0
+stdout = "false"
+stderr = ""
+
+[[case]]
+name = "route capture accumulates multiple named groups"
+input = "(write (unparse (re2fullgroups \"^(?<first>[A-Z]+)(?<second>[0-9]+)$\" \"ABC123\")))"
+
+[case.expect]
+exit_code = 0
+stdout = "((match \"ABC123\") (first \"ABC\") (second \"123\"))"
+stderr = ""
+
+[[case]]
+name = "route frame-get old primitive is removed"
+input = "(frame-get \"1|name:Ada\" \"name\")"
 
 [case.expect]
 exit_code = 2
 stdout = ""
-stderr_stripped = "type_error"
-
-[[case]]
-name = "route frame lookup handles first and later entries"
-input = "(write (frame-get \"1|age:42|name:Ada%25Byron\" \"name\"))"
-
-[case.expect]
-exit_code = 0
-stdout = "Ada%Byron"
-stderr = ""
-
-[[case]]
-name = "route frame lookup returns empty for missing key"
-input = "(write (frame-get \"1|name:Ada\" \"missing\"))"
-
-[case.expect]
-exit_code = 0
-stdout = ""
-stderr = ""
-
-[[case]]
-name = "route frame lookup handles first entry before later entries"
-input = "(write (frame-get \"1|name:Ada%25Byron|age:42\" \"name\"))"
-
-[case.expect]
-exit_code = 0
-stdout = "Ada%Byron"
-stderr = ""
+stderr_stripped = "unbound_name"
