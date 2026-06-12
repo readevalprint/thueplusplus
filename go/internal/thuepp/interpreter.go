@@ -456,16 +456,10 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
 	}
-	builtinName := ""
-	var builtinArgs []string
-	if op == Builtin {
-		var err error
-		builtinName, builtinArgs, err = parseBuiltinCall(rhs, lineNumber, captureNames(re))
-		if err != nil {
-			return nil, err
-		}
+	if err := validateTemplateCaptures(rhs, lineNumber, captureNames(re)); err != nil {
+		return nil, err
 	}
-	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
+	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath}, nil
 }
 
 func (i *Interpreter) ApplyInputOverride(value string) error {
@@ -483,8 +477,50 @@ func captureNames(re *regexp.Regexp) map[string]bool {
 	return names
 }
 
-func parseBuiltinCall(rhs string, lineNumber int, captures map[string]bool) (string, []string, error) {
-	tokens := strings.Fields(rhs)
+func validateTemplateCaptures(template string, lineNumber int, captures map[string]bool) error {
+	for pos := 0; pos < len(template); {
+		start := strings.Index(template[pos:], "{{")
+		if start < 0 {
+			return nil
+		}
+		start += pos
+		endRel := strings.Index(template[start+2:], "}}")
+		if endRel < 0 {
+			return nil
+		}
+		inside := template[start+2 : start+2+endRel]
+		name := ""
+		if strings.Contains(inside, "|") {
+			parts := strings.Split(inside, "|")
+			if len(parts) != 2 || !isWord(parts[0]) || parts[0][0] >= '0' && parts[0][0] <= '9' || !isWord(parts[1]) || parts[1][0] >= '0' && parts[1][0] <= '9' {
+				return fmt.Errorf("Line %d: Malformed template filter '{{%s}}'", lineNumber, inside)
+			}
+			name = parts[0]
+		} else if isWord(inside) && (inside[0] < '0' || inside[0] > '9') {
+			name = inside
+		}
+		if name != "" && name != "rule_index" && !captures[name] {
+			return fmt.Errorf("Line %d: Missing template capture '%s'", lineNumber, name)
+		}
+		pos = start + 2 + endRel + 2
+	}
+	return nil
+}
+
+func (i *Interpreter) expandTemplateFields(template string, groups map[string]string, extra map[string]string) ([]string, error) {
+	fields := strings.Fields(template)
+	expanded := make([]string, 0, len(fields))
+	for _, field := range fields {
+		value, err := i.expandTemplate(field, groups, extra)
+		if err != nil {
+			return nil, err
+		}
+		expanded = append(expanded, value)
+	}
+	return expanded, nil
+}
+
+func parseBuiltinCallTokens(tokens []string, lineNumber int) (string, []string, error) {
 	if len(tokens) == 0 {
 		return "", nil, fmt.Errorf("Line %d: ::! requires a builtin name", lineNumber)
 	}
@@ -497,19 +533,8 @@ func parseBuiltinCall(rhs string, lineNumber int, captures map[string]bool) (str
 	if len(args) != arity {
 		return "", nil, fmt.Errorf("Line %d: Builtin '%s' expects %d args, got %d", lineNumber, name, arity, len(args))
 	}
-	if name == "arg" {
-		if !argKeyPattern.MatchString(args[0]) {
-			return "", nil, fmt.Errorf("Line %d: invalid script arg key '%s'", lineNumber, args[0])
-		}
-		return name, args, nil
-	}
-	for _, arg := range args {
-		if !isWord(arg) || arg[0] >= '0' && arg[0] <= '9' {
-			return "", nil, fmt.Errorf("Line %d: ::! arguments must be capture names, got '%s'", lineNumber, arg)
-		}
-		if !captures[arg] {
-			return "", nil, fmt.Errorf("Line %d: ::! argument '%s' is not a named capture", lineNumber, arg)
-		}
+	if name == "arg" && !argKeyPattern.MatchString(args[0]) {
+		return "", nil, fmt.Errorf("Line %d: invalid script arg key '%s'", lineNumber, args[0])
 	}
 	return name, args, nil
 }
@@ -939,37 +964,18 @@ func (i *Interpreter) readResource(b *Binding, timeout time.Duration, count int,
 	}
 }
 
-func parseReadCount(token string, groups map[string]string, lineNumber int) (int, error) {
+func parseReadCount(token string, lineNumber int) (int, error) {
 	if token == "" {
-		return 0, fmt.Errorf("Line %d: ::< count must be a non-negative integer or named capture", lineNumber)
+		return 0, fmt.Errorf("Line %d: ::< count must be a non-negative integer", lineNumber)
 	}
-	if token[0] >= '0' && token[0] <= '9' {
-		for _, ch := range token {
-			if ch < '0' || ch > '9' {
-				return 0, fmt.Errorf("Line %d: ::< count must be a non-negative integer or named capture", lineNumber)
-			}
-		}
-		count, err := strconv.Atoi(token)
-		if err != nil {
-			return 0, fmt.Errorf("Line %d: ::< count '%s' is too large", lineNumber, token)
-		}
-		return count, nil
-	}
-	value, ok := groups[token]
-	if !ok {
-		return 0, fmt.Errorf("Line %d: ::< count '%s' was not captured", lineNumber, token)
-	}
-	if value == "" {
-		return 0, fmt.Errorf("Line %d: ::< count capture '%s' must be a non-negative integer, got '%s'", lineNumber, token, value)
-	}
-	for _, ch := range value {
+	for _, ch := range token {
 		if ch < '0' || ch > '9' {
-			return 0, fmt.Errorf("Line %d: ::< count capture '%s' must be a non-negative integer, got '%s'", lineNumber, token, value)
+			return 0, fmt.Errorf("Line %d: ::< count must be a non-negative integer, got '%s'; use '{{capture}}' for dynamic counts", lineNumber, token)
 		}
 	}
-	count, err := strconv.Atoi(value)
+	count, err := strconv.Atoi(token)
 	if err != nil {
-		return 0, fmt.Errorf("Line %d: ::< count capture '%s' is too large", lineNumber, token)
+		return 0, fmt.Errorf("Line %d: ::< count '%s' is too large", lineNumber, token)
 	}
 	return count, nil
 }
@@ -1188,9 +1194,13 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				i.recordRuleCoverage(rule)
 			case Read:
-				parts := strings.Fields(strings.TrimSpace(rule.RHS))
+				parts, err := i.expandTemplateFields(rule.RHS, groups, magicVars)
+				if err != nil {
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
 				if len(parts) != 4 {
-					err := fmt.Errorf("Line %d: ::< requires timeout, count, unit, and literal resource", rule.LineNumber)
+					err := fmt.Errorf("Line %d: ::< requires timeout, count, unit, and resource", rule.LineNumber)
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
@@ -1206,7 +1216,7 @@ func (i *Interpreter) Run() (int, error) {
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
-				count, err := parseReadCount(countSpec, groups, rule.LineNumber)
+				count, err := parseReadCount(countSpec, rule.LineNumber)
 				if err != nil {
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
@@ -1246,30 +1256,35 @@ func (i *Interpreter) Run() (int, error) {
 					i.recordRuleCoverage(rule)
 				}
 			case Builtin:
-				if rule.BuiltinName == "arg" {
-					repl = pctEncode(i.ScriptArgs[rule.BuiltinArgs[0]])
+				tokens, err := i.expandTemplateFields(rule.RHS, groups, magicVars)
+				if err != nil {
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				builtinName, builtinArgs, err := parseBuiltinCallTokens(tokens, rule.LineNumber)
+				if err != nil {
+					i.recordRuleCoverage(rule)
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				if builtinName == "arg" {
+					repl = pctEncode(i.ScriptArgs[builtinArgs[0]])
 					i.recordRuleCoverage(rule)
 					break
 				}
-				values := make([]string, 0, len(rule.BuiltinArgs))
-				for _, arg := range rule.BuiltinArgs {
-					value, ok := groups[arg]
-					if !ok {
-						err := fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
-						i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-						return 1, err
-					}
-					values = append(values, value)
-				}
-				var err error
-				repl, err = evalBuiltin(rule.BuiltinName, values)
+				repl, err = evalBuiltin(builtinName, builtinArgs)
 				if err != nil {
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
 				i.recordRuleCoverage(rule)
 			case Exit:
-				codeStr := strings.TrimSpace(rule.RHS)
+				codeStr, err := i.expandTemplate(rule.RHS, groups, magicVars)
+				if err != nil {
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				codeStr = strings.TrimSpace(codeStr)
 				if strings.HasPrefix(codeStr, "{") && strings.HasSuffix(codeStr, "}") {
 					codeStr = codeStr[1 : len(codeStr)-1]
 				}

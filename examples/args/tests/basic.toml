@@ -9,6 +9,14 @@ expect.stdout = "query=name=ada&x=1\n"
 expect.stderr = ""
 
 [[case]]
+name = "dynamic arg key from template"
+input = "dynamic:PATH_INFO"
+script_args = ["--PATH_INFO", "/lisp/demo"]
+expect.exit_code = 0
+expect.stdout = "query=/lisp/demo\n"
+expect.stderr = ""
+
+[[case]]
 name = "equals form"
 script_args = ["--QUERY_STRING=hello world"]
 expect.exit_code = 0

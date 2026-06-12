@@ -88,7 +88,7 @@ These operators are the boundary between pure rewriting and effects:
 
 The default resources are `stdin`, `stdout`, and `stderr`. A runner can bind more names to processes, browser callbacks, or other streams.
 
-Runners can also pass script arguments after `--`. A rule can read a named script argument with `::! arg KEY`; the value enters state PCT-encoded, just like resource input. For example, `thuepp examples/args/args.tpp -- --QUERY_STRING "$QUERY_STRING"` exposes the explicit `QUERY_STRING` argument to rules using `::! arg QUERY_STRING`.
+Runners can also pass script arguments after `--`. A rule can read a named script argument with `::! arg KEY`; the value enters state PCT-encoded, just like resource input. For example, `thuepp examples/args/args.tpp -- --QUERY_STRING "$QUERY_STRING"` exposes the explicit `QUERY_STRING` argument to rules using `::! arg QUERY_STRING`. If the key comes from a capture, use the same RHS template syntax as other operators: `::! arg {{key}}`.
 
 ## Hello world
 
@@ -136,7 +136,7 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 START
 ```
 
-`::< 30s 1 lines stdin` reads exactly one newline-terminated line from `stdin` with an explicit 30-second timeout. Read timeouts are positive integer durations with `ms`, `s`, or `m` units; bare numeric seconds are invalid. Resource reads use `TIMEOUT COUNT UNIT RESOURCE`: `UNIT` is plural-only `lines` or `bytes`, and `COUNT` is a non-negative integer literal or a named capture from the left-hand side. `lines` strips terminators and joins multiple lines with `\n`; `bytes` reads exact raw bytes. The payload is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
+`::< 30s 1 lines stdin` reads exactly one newline-terminated line from `stdin` with an explicit 30-second timeout. Every operator RHS is expanded as a `{{capture}}` template before that operator parses it, so captured read operands are explicit: `::< {{timeout}} {{count}} {{unit}} {{resource}}`. Read timeouts are positive integer durations with `ms`, `s`, or `m` units; bare numeric seconds are invalid. Resource reads use `TIMEOUT COUNT UNIT RESOURCE`: after template expansion, `UNIT` is plural-only `lines` or `bytes`, `COUNT` is a non-negative integer, and `RESOURCE` is a bound resource name. `lines` strips terminators and joins multiple lines with `\n`; `bytes` reads exact raw bytes. The payload is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
 
 The same resource interface can connect to a process. The runner binds a resource name, and Thue++ reads or writes through that name.
 
@@ -181,8 +181,8 @@ PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 @TOO_LOW@ ::> stdout Too low.\n
 @TOO_HIGH@ ::> stdout Too high.\n
 
-@EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq guess secret
-@LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt guess secret
+@EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq {{guess}} {{secret}}
+@LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt {{guess}} {{secret}}
 
 ^SECRET<(?<secret>$NUMBER)>$ ::= @PROMPT@GUESS<{{secret}}|@USER_GUESS@>
 

@@ -7,4 +7,4 @@ name = "missing capture rejected"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["::! argument 'b' is not a named capture"]
+stderr_contains = ["Missing template capture 'b'"]

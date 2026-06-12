@@ -124,7 +124,7 @@ func TestCountedResourceReadUsesCapturedLineCount(t *testing.T) {
 		Stderr: &stderr,
 	})
 	interp.ProgramPath = "test.tpp"
-	program := "^read:(?<n>[0-9]+)$ ::< 1s n lines stdin\n^(?<x>[A-Za-z0-9_.% -]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nread:2"
+	program := "^read:(?<n>[0-9]+)$ ::< 1s {{n}} lines stdin\n^(?<x>[A-Za-z0-9_.% -]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nread:2"
 	if err := interp.parseProgram(program); err != nil {
 		t.Fatal(err)
 	}
@@ -136,6 +136,30 @@ func TestCountedResourceReadUsesCapturedLineCount(t *testing.T) {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
 	if got, want := stdout.String(), "alpha\nbeta\n"; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
+}
+
+func TestCountedResourceReadTemplatesAllOperands(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	interp := NewWithHostResources(HostResources{
+		Stdin:  strings.NewReader("abcdef"),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	interp.ProgramPath = "test.tpp"
+	program := "^read:(?<timeout>1s):(?<n>[0-9]+):(?<unit>bytes):(?<resource>stdin)$ ::< {{timeout}} {{n}} {{unit}} {{resource}}\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nread:1s:4:bytes:stdin"
+	if err := interp.parseProgram(program); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if got, want := stdout.String(), "abcd\n"; got != want {
 		t.Fatalf("stdout = %q, want %q", got, want)
 	}
 }
@@ -247,7 +271,7 @@ func TestCountedResourceReadRejectsOldImplicitForm(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	if got, want := err.Error(), "Line 1: ::< requires timeout, count, unit, and literal resource"; got != want {
+	if got, want := err.Error(), "Line 1: ::< requires timeout, count, unit, and resource"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
@@ -269,7 +293,7 @@ func TestCountedResourceReadRejectsMissingCaptureCount(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	if got, want := err.Error(), "Line 1: ::< count 'n' was not captured"; got != want {
+	if got, want := err.Error(), "Line 1: ::< count must be a non-negative integer, got 'n'; use '{{capture}}' for dynamic counts"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
@@ -281,7 +305,7 @@ func TestCountedResourceReadRejectsNonNumericCaptureCount(t *testing.T) {
 		Stderr: &bytes.Buffer{},
 	})
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("^read:(?<n>[A-Za-z]+)$ ::< 1s n bytes stdin\n::=\nread:abc"); err != nil {
+	if err := interp.parseProgram("^read:(?<n>[A-Za-z]+)$ ::< 1s {{n}} bytes stdin\n::=\nread:abc"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
@@ -291,7 +315,7 @@ func TestCountedResourceReadRejectsNonNumericCaptureCount(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	if got, want := err.Error(), "Line 1: ::< count capture 'n' must be a non-negative integer, got 'abc'"; got != want {
+	if got, want := err.Error(), "Line 1: ::< count must be a non-negative integer, got 'abc'; use '{{capture}}' for dynamic counts"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
@@ -546,7 +570,7 @@ func TestTraceRecordsMatchedRuleError(t *testing.T) {
 		Stderr: &bytes.Buffer{},
 	})
 	interp.TraceEnabled = true
-	if err := interp.LoadProgramText("builtin-error.tpp", "^div:(?<a>[0-9]+),(?<b>[0-9]+)$ ::! div a b\n::=\ndiv:1,0"); err != nil {
+	if err := interp.LoadProgramText("builtin-error.tpp", "^div:(?<a>[0-9]+),(?<b>[0-9]+)$ ::! div {{a}} {{b}}\n::=\ndiv:1,0"); err != nil {
 		t.Fatalf("LoadProgramText: %v", err)
 	}
 	code, err := interp.Run()

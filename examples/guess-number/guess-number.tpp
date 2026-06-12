@@ -12,8 +12,8 @@ PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 @TOO_LOW@ ::> stdout Too low.\n
 @TOO_HIGH@ ::> stdout Too high.\n
 
-@EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq guess secret
-@LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt guess secret
+@EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq {{guess}} {{secret}}
+@LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt {{guess}} {{secret}}
 
 ^SECRET<(?<secret>$NUMBER)>$ ::= @PROMPT@GUESS<{{secret}}|@USER_GUESS@>
 
