@@ -9,7 +9,7 @@ script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/", "--QUERY_STRING", 
 
 [case.expect]
 exit_code = 0
-stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><h1>Thue++ Lisp web</h1><p>raw explicit routes</p>"
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><style>body{max-width:42rem;margin:3rem auto;padding:0 1rem;font:16px/1.5 system-ui,sans-serif;background:#f8fafc;color:#111827}main{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem}a{color:#2563eb}</style><main><h1>Thue++ Lisp CGI demo</h1><p>A tiny wrapper-free Lisp CGI app with explicit routes.</p><p><a href=\"/cgi-bin/web-demo.cgi/form\">Try the name form</a></p><p><a href=\"/cgi-bin/web-demo.cgi/hello/Ada\">Hello route example</a></p></main>"
 stderr = ""
 
 [[case]]
@@ -18,25 +18,34 @@ script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/hello/<Ada&Byron>", "
 
 [case.expect]
 exit_code = 0
-stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><p>Hello, &lt;Ada&amp;Byron&gt;</p>"
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><style>body{max-width:42rem;margin:3rem auto;padding:0 1rem;font:16px/1.5 system-ui,sans-serif;background:#f8fafc;color:#111827}main{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem}a{color:#2563eb}</style><main><p>Hello, &lt;Ada&amp;Byron&gt;!</p><p><a href=\"/cgi-bin/web-demo.cgi/form\">Back to form</a></p></main>"
 stderr = ""
 
 [[case]]
-name = "form path reads first query value"
-script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/form", "--QUERY_STRING", "q=first&q=second", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
+name = "form path renders POST-backed name form"
+script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/form", "--QUERY_STRING", "", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
 
 [case.expect]
 exit_code = 0
-stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><form method=post><input name=q value=\"first\"><button>Send</button></form><pre>first</pre>"
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><style>body{max-width:42rem;margin:3rem auto;padding:0 1rem;font:16px/1.5 system-ui,sans-serif;background:#f8fafc;color:#111827}main{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem}input,button{font:inherit;padding:.5rem .7rem;border-radius:8px;border:1px solid #d1d5db}button{background:#111827;color:white;border-color:#111827}</style><main><h1>Thue++ Lisp CGI demo</h1><form method=post><label>What is your name? <input name=name value=\"\"></label> <button>Say hello</button></form></main>"
 stderr = ""
 
 [[case]]
-name = "form path prefers URL encoded body over query and escapes"
-script_args = ["--REQUEST_METHOD", "POST", "--PATH_INFO", "/form", "--QUERY_STRING", "q=query", "--CONTENT_TYPE", "application/x-www-form-urlencoded", "--CONTENT_LENGTH", "27", "--FORM_BODY", "q=%3Cscript%3E%26%22%27"]
+name = "form POST renders inline result and permanent URL for safe name"
+script_args = ["--REQUEST_METHOD", "POST", "--PATH_INFO", "/form", "--QUERY_STRING", "", "--CONTENT_TYPE", "application/x-www-form-urlencoded", "--CONTENT_LENGTH", "8", "--FORM_BODY", "name=Ada"]
 
 [case.expect]
 exit_code = 0
-stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><form method=post><input name=q value=\"&lt;script&gt;&amp;&quot;&#39;\"><button>Send</button></form><pre>&lt;script&gt;&amp;&quot;&#39;</pre>"
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><style>body{max-width:42rem;margin:3rem auto;padding:0 1rem;font:16px/1.5 system-ui,sans-serif;background:#f8fafc;color:#111827}main{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem}input,button{font:inherit;padding:.5rem .7rem;border-radius:8px;border:1px solid #d1d5db}button{background:#111827;color:white;border-color:#111827}a{color:#2563eb}</style><main><h1>Thue++ Lisp CGI demo</h1><p>Hello, Ada!</p><p>Permanent URL: <a href=\"/cgi-bin/web-demo.cgi/hello/Ada\">/hello/Ada</a></p><form method=post><label>What is your name? <input name=name value=\"Ada\"></label> <button>Say hello</button></form></main>"
+stderr = ""
+
+[[case]]
+name = "form POST renders inline validation error for unsafe URL name"
+script_args = ["--REQUEST_METHOD", "POST", "--PATH_INFO", "/form", "--QUERY_STRING", "", "--CONTENT_TYPE", "application/x-www-form-urlencoded", "--CONTENT_LENGTH", "21", "--FORM_BODY", "name=%3Cscript%3E"]
+
+[case.expect]
+exit_code = 0
+stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><style>body{max-width:42rem;margin:3rem auto;padding:0 1rem;font:16px/1.5 system-ui,sans-serif;background:#f8fafc;color:#111827}main{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem}input,button{font:inherit;padding:.5rem .7rem;border-radius:8px;border:1px solid #d1d5db}button{background:#111827;color:white;border-color:#111827}[role=alert]{color:#b91c1c}</style><main><h1>Thue++ Lisp CGI demo</h1><p role=alert>Use only letters, numbers, underscore, dot, or dash.</p><form method=post><label>What is your name? <input name=name value=\"&lt;script&gt;\"></label> <button>Say hello</button></form></main>"
 stderr = ""
 
 [[case]]
@@ -47,12 +56,3 @@ script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/missing", "--QUERY_ST
 exit_code = 0
 stdout = "Status: 404 Not Found\nContent-Type: text/plain; charset=utf-8\n\nnot found"
 stderr = ""
-
-[[case]]
-name = "malformed query percent escape fails loudly"
-script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/form", "--QUERY_STRING", "q=%ZZ", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
-
-[case.expect]
-exit_code = 1
-stdout = ""
-stderr = "Error: invalid_param_encoding\n"
