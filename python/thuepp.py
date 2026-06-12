@@ -8,6 +8,9 @@ A Python implementation of the thue++ esoteric programming language.
 import argparse
 import base64
 import binascii
+import contextlib
+import io
+import os
 import re as py_re
 import re2 as re
 import select
@@ -348,7 +351,8 @@ class ThueppInterpreter:
         except re.error as e:
             raise RuntimeError(f"Line {line_number}: Invalid regex '{lhs}': {e}")
 
-        self._validate_template_captures(rhs, line_number, set(pattern.groupindex.keys()))
+        if op != Operator.BUILTIN:
+            self._validate_template_captures(rhs, line_number, set(pattern.groupindex.keys()))
 
         return Rule(lhs, pattern, op, rhs, line_number, source_path)
 
@@ -387,23 +391,31 @@ class ThueppInterpreter:
         self,
         tokens: list[str],
         line_number: int,
+        groups: dict,
     ) -> tuple[str, tuple[str, ...]]:
-        """Parse and validate expanded ::! builtin call tokens."""
+        """Parse ::! as a primitive call over raw named captures only."""
         if not tokens:
             raise RuntimeError(f"Line {line_number}: ::! requires a builtin name")
 
         name = tokens[0]
-        args = tuple(tokens[1:])
+        arg_names = tuple(tokens[1:])
         expected = self._builtin_arity(name)
         if expected is None:
             raise RuntimeError(f"Line {line_number}: Unknown builtin '{name}'")
-        if len(args) != expected:
+        if len(arg_names) != expected:
             raise RuntimeError(
-                f"Line {line_number}: Builtin '{name}' expects {expected} args, got {len(args)}"
+                f"Line {line_number}: Builtin '{name}' expects {expected} args, got {len(arg_names)}"
             )
-        if name == "arg" and not ARG_KEY_RE.fullmatch(args[0]):
-            raise RuntimeError(f"Line {line_number}: invalid script arg key '{args[0]}'")
-        return name, args
+        values = []
+        for arg_name in arg_names:
+            if not py_re.fullmatch(r"[A-Za-z_]\w*", arg_name):
+                raise RuntimeError(f"Line {line_number}: Builtin arg '{arg_name}' is not a capture name")
+            if arg_name not in groups:
+                raise RuntimeError(f"Line {line_number}: Builtin arg '{arg_name}' missing capture")
+            values.append(groups[arg_name] or "")
+        if name == "arg" and not ARG_KEY_RE.fullmatch(values[0]):
+            raise RuntimeError(f"Line {line_number}: invalid script arg key '{values[0]}'")
+        return name, tuple(values)
 
     def _builtin_arity(self, name: str) -> Optional[int]:
         return {
@@ -428,6 +440,12 @@ class ThueppInterpreter:
             "html-escape": 1,
             "param": 1,
             "arg": 1,
+            "re2match": 2,
+            "re2full": 2,
+            "re2find": 2,
+            "re2findidx": 2,
+            "re2groups": 2,
+            "re2fullgroups": 2,
         }.get(name)
 
     def _b64url_encode(self, value: str) -> str:
@@ -542,6 +560,63 @@ class ThueppInterpreter:
         }
         return self._pct_encode("".join(replacements.get(ch, ch) for ch in text))
 
+    def _reject_duplicate_re2_names(self, builtin: str, pattern: str) -> None:
+        # RE2 accepts duplicate names in Go. Group-returning builtins expose a
+        # map, so reject duplicates before engine-specific behavior can leak.
+        names = set()
+        for match in py_re.finditer(r"\(\?P?<(?P<name>[A-Za-z_]\w*)>", pattern):
+            name = match.group("name")
+            if name in names:
+                raise RuntimeError(f"Builtin '{builtin}' duplicate capture name '{name}'")
+            names.add(name)
+
+    def _compile_re2(self, builtin: str, pattern: str):
+        self._reject_duplicate_re2_names(builtin, pattern)
+        stderr_fd = os.dup(2)
+        try:
+            with open(os.devnull, "w", encoding="utf-8") as devnull:
+                os.dup2(devnull.fileno(), 2)
+                with contextlib.redirect_stderr(io.StringIO()):
+                    return re.compile(pattern)
+        except Exception as exc:
+            raise RuntimeError(f"Builtin '{builtin}' invalid pattern") from exc
+        finally:
+            os.dup2(stderr_fd, 2)
+            os.close(stderr_fd)
+
+    def _re2_search(self, builtin: str, pattern: str, text: str):
+        return self._compile_re2(builtin, pattern).search(text)
+
+    def _re2_full_search(self, builtin: str, pattern: str, text: str):
+        match = self._re2_search(builtin, pattern, text)
+        if match and match.start() == 0 and match.end() == len(text):
+            return match
+        return None
+
+    def _re2_findidx(self, pattern: str, text: str) -> str:
+        match = self._re2_search("re2findidx", pattern, text)
+        if not match:
+            return "0||"
+        start = len(text[:match.start()].encode("utf-8"))
+        end = len(text[:match.end()].encode("utf-8"))
+        return f"1|{start}|{end}"
+
+    def _re2_groups(self, builtin: str, pattern: str, text: str, *, full: bool = False) -> str:
+        compiled = self._compile_re2(builtin, pattern)
+        match = compiled.search(text)
+        if full and (not match or match.start() != 0 or match.end() != len(text)):
+            return "0|"
+        if not full and not match:
+            return "0|"
+        names_by_index = sorted(compiled.groupindex.items(), key=lambda item: item[1])
+        fields = []
+        for name, _index in names_by_index:
+            value = match.group(name)
+            if value is None:
+                continue
+            fields.append(f"{self._pct_encode(name)}:{self._pct_encode(value)}")
+        return "1|" + "|".join(fields)
+
     def _decode_form_component(self, value: str) -> str:
         data = bytearray()
         i = 0
@@ -644,6 +719,19 @@ class ThueppInterpreter:
             return self._param(values[0])
         if name == "arg":
             raise AssertionError("internal error: arg builtin is host-evaluated")
+        if name == "re2match":
+            return "1" if self._re2_search(name, values[0], values[1]) else "0"
+        if name == "re2full":
+            return "1" if self._re2_full_search(name, values[0], values[1]) else "0"
+        if name == "re2find":
+            match = self._re2_search(name, values[0], values[1])
+            return "1|" + self._pct_encode(match.group(0)) if match else "0|"
+        if name == "re2findidx":
+            return self._re2_findidx(values[0], values[1])
+        if name == "re2groups":
+            return self._re2_groups(name, values[0], values[1])
+        if name == "re2fullgroups":
+            return self._re2_groups(name, values[0], values[1], full=True)
         if name == "num":
             return f"<num>{self._format_rational(self._parse_number(values[0], name))}</num>"
 
@@ -1013,9 +1101,9 @@ class ThueppInterpreter:
                         self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.BUILTIN:
-                    tokens = self._expand_template_fields(rule.rhs, groups, magic_vars)
+                    tokens = rule.rhs.split()
                     try:
-                        builtin_name, builtin_args = self._parse_builtin_call(tokens, rule.line_number)
+                        builtin_name, builtin_args = self._parse_builtin_call(tokens, rule.line_number, groups)
                     except RuntimeError:
                         self._record_rule_coverage(rule)
                         raise

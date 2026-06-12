@@ -88,7 +88,7 @@ These operators are the boundary between pure rewriting and effects:
 
 The default resources are `stdin`, `stdout`, and `stderr`. A runner can bind more names to processes, browser callbacks, or other streams.
 
-Runners can also pass script arguments after `--`. A rule can read a named script argument with `::! arg KEY`; the value enters state PCT-encoded, just like resource input. For example, `thuepp examples/args/args.tpp -- --QUERY_STRING "$QUERY_STRING"` exposes the explicit `QUERY_STRING` argument to rules using `::! arg QUERY_STRING`. If the key comes from a capture, use the same RHS template syntax as other operators: `::! arg {{key}}`.
+Runners can also pass script arguments after `--`. A rule can read a named script argument with `::! arg key_capture`; the value enters state PCT-encoded, just like resource input. Builtin arguments are raw named captures from the rule's LHS, not templates or literals. To read a fixed key, stage that key in state and capture it explicitly; for example, `examples/args/args.tpp` rewrites `start` to `ARG<QUERY_STRING>`, then captures `QUERY_STRING` before calling `::! arg key`.
 
 Use `--export-state <path>` to inspect final interpreter state explicitly after execution. This is an opt-in artifact: it does not write to normal program stdout unless the destination is `-`, in which case the export deliberately shares stdout with program output. For example, `thuepp examples/hello/hello.tpp --export-state final.state` writes the final state to `final.state` after the program exits.
 
@@ -183,8 +183,8 @@ PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 @TOO_LOW@ ::> stdout Too low.\n
 @TOO_HIGH@ ::> stdout Too high.\n
 
-@EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq {{guess}} {{secret}}
-@LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt {{guess}} {{secret}}
+@EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq guess secret
+@LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt guess secret
 
 ^SECRET<(?<secret>$NUMBER)>$ ::= @PROMPT@GUESS<{{secret}}|@USER_GUESS@>
 
@@ -549,6 +549,7 @@ uv run python tools/check_contract.py --update-readme
 - execution limits such as `--eval-limit` and `--max-state-bytes`
 - exact rational numeric builtins; decimal-looking input parses to rationals, never floats
 - string escape/unescape builtins over PCT payloads
+- RE2 match/find/group builtins with fixed PCT-framed list/map output
 
 ## Rule coverage counts
 

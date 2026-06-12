@@ -53,4 +53,4 @@ STACK <- (?:T\[(?:[A-Za-z0-9_-]+=(?:[A-Za-z0-9_-]+|!),)*\])*
 ^RUN\|(?<base>$FRAME)\|(?<stack>$STACK)\|\|$ ::- 0
 ^RUN\|(?<base>$FRAME)\|(?<stack>$STACK)\|(?<bad>[^;]+);(?<rest>.*)\|$ ::= OUT[ERR:invalid_command]|RUN|{{base}}|{{stack}}|{{rest}}|
 
-@EQ\[(?<a>[^|\]]+)\|(?<b>[^\]]+)\]@ ::! eq {{a}} {{b}}
+@EQ\[(?<a>[^|\]]+)\|(?<b>[^\]]+)\]@ ::! eq a b

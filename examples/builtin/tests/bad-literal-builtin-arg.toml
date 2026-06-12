@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "fixtures/bad-literal-builtin-arg.tpp"
+timeout = 5
+
+[[case]]
+name = "literal builtin argument is rejected unless captured"
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin arg 'REQUEST_METHOD' missing capture"]

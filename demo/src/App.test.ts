@@ -1005,7 +1005,7 @@ describe('Go-WASM demo UI', () => {
   it('shows parse-time step errors in state history when no trace is available', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp()
-    await wrapper.get('[data-test="playground-rules"]').setValue('^(?<a>\\d+),(?<b>\\d+)$ ::! nope {{a}} {{b}}')
+    await wrapper.get('[data-test="playground-rules"]').setValue('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
     await setProgramState(wrapper, '1,2')
 
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -1023,7 +1023,7 @@ describe('Go-WASM demo UI', () => {
     const diffs = wrapper.get('[data-test="playground-diffs"]')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 1')
     expect(wrapper.get('[data-test="resource-output-stderr"]').element).toHaveProperty('value', "Line 1: Unknown builtin 'nope'")
-    expect(diffs.text()).toContain('^(?<a>\\d+),(?<b>\\d+)$ ::! nope {{a}} {{b}}')
+    expect(diffs.text()).toContain('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
     expect(diffs.text()).toContain("Line 1: Unknown builtin 'nope'")
     expect(diffs.find('.state-diff-error').exists()).toBe(true)
   })
@@ -1831,13 +1831,13 @@ describe('Go-WASM demo UI', () => {
     await lispTrigger!.trigger('click')
     await flush()
 
-    const zeroArgCase = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => ({ text: () => element.textContent ?? '', trigger: (event: string) => (element as HTMLElement).dispatchEvent(new MouseEvent(event, { bubbles: true })) })).find(item => item.text().includes('Closure call'))
+    const zeroArgCase = Array.from(document.querySelectorAll('[data-test="test-case-menu-case"]')).map(element => ({ text: () => element.textContent ?? '', trigger: (event: string) => (element as HTMLElement).dispatchEvent(new MouseEvent(event, { bubbles: true })) })).find(item => item.text().includes('Calls a zero-argument closure and returns the body value.'))
     expect(zeroArgCase).toBeTruthy()
     await zeroArgCase!.trigger('click')
     await flush()
 
     expect((wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value).toContain('VPRIM')
-    expect(programState(wrapper)).toBe('((fn () 7))')
+    expect(programState(wrapper)).toBe('(write (unparse ((fn () 7))))')
     expect(mockedRunWithWorker).not.toHaveBeenCalled()
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('idle')

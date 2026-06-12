@@ -121,7 +121,7 @@ Only one span is replaced per action. The match search is over the whole state s
 
 ## 8. Operators
 
-For every operator, expand `RHS` as a `{{capture}}` template first, then parse and validate the expanded text according to that operator. Bare tokens are literals; dynamic operands must be written explicitly as templates. Template references must name captures from the rule `LHS` (or implementation-provided magic variables such as `rule_index`); malformed or unknown templates are errors. Whitespace-delimited operator operands are expanded per original RHS field, so an empty capture in `::! b64enc {{s}}` is still one empty builtin argument rather than a missing argument.
+Operators other than `::!` expand `RHS` as a `{{capture}}` template first, then parse and validate the expanded text according to that operator. Bare tokens are literals for those operators; dynamic operands must be written explicitly as templates. Template references must name captures from the rule `LHS` (or implementation-provided magic variables such as `rule_index`); malformed or unknown templates are errors.
 
 ### `::=` replace
 
@@ -129,7 +129,7 @@ Expand `RHS` as a normal template and replace the match with the result.
 
 ### `::!` builtin
 
-After template expansion, split `RHS` on whitespace. First token is builtin name; remaining tokens are builtin arguments. Missing/unknown builtin, wrong arity, or invalid expanded argument syntax are errors. The builtin receives exact expanded argument strings and replaces the match with its result. Examples: `::! add {{a}} {{b}}` calls numeric addition with captured operands; `::! arg QUERY_STRING` reads a literal script-argument key; `::! arg {{key}}` reads the key named by a capture.
+Split raw `RHS` on whitespace without template expansion. First token is builtin name; remaining tokens are names of captures from the matched `LHS`. Literal, template, filtered-template, malformed, unknown, and wrong-arity builtin arguments are errors. The builtin receives the exact captured strings and replaces the match with its result. Examples: `::! add a b` calls numeric addition with captures `a` and `b`; fixed script-argument keys must be staged into state and captured before `::! arg key`.
 
 ### `::<` read
 
@@ -155,7 +155,8 @@ Arities:
 
 ```text
 eq 2 add 2 sub 2 mul 2 div 2 mod 2 numeq 2 lt 2 le 2 gt 2 ge 2 num 1
-b64enc 1 b64dec 1 pctenc 1 pctdec 1 escape 1 unescape 1
+b64enc 1 b64dec 1 pctenc 1 pctdec 1 escape 1 unescape 1 html-escape 1
+param 1 arg 1 re2match 2 re2full 2 re2find 2 re2findidx 2 re2groups 2 re2fullgroups 2
 ```
 
 `eq(a,b)` returns `1` iff strings are exactly equal, else `0`.
@@ -173,6 +174,8 @@ PCT: `pctenc` encodes UTF-8 bytes, leaving only `A-Z a-z 0-9 _ . -` unescaped; a
 Base64url: `b64enc` returns unpadded Base64url UTF-8. `b64dec` accepts only canonical unpadded Base64url: alphabet `A-Z a-z 0-9 - _`, no `=`, length mod 4 not 1, valid UTF-8, and re-encoding reproduces input.
 
 Escapes: `escape` and `unescape` take canonical PCT and return canonical PCT. Supported decoded escapes are `\\`, `\"`, `\n`, `\t`, `\r`, `\b`, `\f`. `escape` maps literal chars to escaped spelling then PCT-encodes. `unescape` maps escaped spelling to literal chars then PCT-encodes; unsupported escapes and trailing backslash are errors.
+
+RE2: `re2match(pattern,text)` returns `1` iff `pattern` appears in `text`; `re2full` requires the match to span the whole text. `re2find` returns `1|match` or `0|`, with `match` PCT-encoded. `re2findidx` returns `1|start|end` or `0||`, with byte offsets. `re2groups` and `re2fullgroups` return `1|name:value|...` or `0|`, where names and values are PCT-encoded and unmatched optional groups are omitted. Invalid patterns and duplicate group names are errors.
 
 ## 11. Conformance
 

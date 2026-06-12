@@ -570,7 +570,7 @@ func TestTraceRecordsMatchedRuleError(t *testing.T) {
 		Stderr: &bytes.Buffer{},
 	})
 	interp.TraceEnabled = true
-	if err := interp.LoadProgramText("builtin-error.tpp", "^div:(?<a>[0-9]+),(?<b>[0-9]+)$ ::! div {{a}} {{b}}\n::=\ndiv:1,0"); err != nil {
+	if err := interp.LoadProgramText("builtin-error.tpp", "^div:(?<a>[0-9]+),(?<b>[0-9]+)$ ::! div a b\n::=\ndiv:1,0"); err != nil {
 		t.Fatalf("LoadProgramText: %v", err)
 	}
 	code, err := interp.Run()

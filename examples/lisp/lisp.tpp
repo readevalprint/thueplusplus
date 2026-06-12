@@ -61,7 +61,7 @@ Invalid escapes are rejected before the generic unescape builtin runs. Strings a
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KTOP$ ::= ERR<invalid_string_escape>
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
 ^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre|raw}}VSTR<UNESC<{{str|pctenc}}>>{{post|raw}}> {{k}}
-UNESC<(?<s>$PCT)> ::! unescape {{s}}
+UNESC<(?<s>$PCT)> ::! unescape s
 
 Reader whitespace normalization
 After strings are protected as VSTR payloads, source whitespace is insignificant outside tokens and list delimiters. Normalize readable multiline indentation to the flat token spacing expected by the evaluator core.
@@ -109,7 +109,7 @@ LOOK scans name bindings from left to right. Closures carry parameter source, bo
 ^LOOK<(?<want>$NAME)\|\|(?<k>.*)>$ ::= ERR<unbound_name>
 ^LOOK<(?<want>$NAME)\|(?<got>$NAME)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQTEST<{{want}}|{{got}}|{{val}}|{{rest}}|{{k}}>
 ^LOOKEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQ<STREQ<{{a}},{{b}}>|{{a}}|{{val}}|{{rest}}|{{k}}>
-STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq {{a}} {{b}}
+STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^LOOKEQ<1\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
 ^LOOKEQ<0\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{want}}|{{rest}}|{{k}}>
 
@@ -319,7 +319,7 @@ Macroexpand evaluates its code and macro alist operands, then walks code data. M
 
 Dictionary constructor and loose alist operations
 Dict evaluates each key and value into an ordinary list of two item lists. Alist operations walk ordinary lists, skip unrelated entries, compare encoded runtime values exactly, and preserve tail fields where appropriate.
-VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq {{a}} {{b}}
+VALKEYEQ<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
 ^EENV<dict (?<entries>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= PACKDICTENV<{{entries}}|{{env}}|{{k}}|>
 ^PACKDICTENV<\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
 ^PACKDICTENV<L<(?<entry>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)\|(?<acc>$ITEMS)>$ ::= DICTENTRY<{{entry|pctdec}}|{{rest}}|{{env}}|{{k}}|{{acc}}>
@@ -398,16 +398,16 @@ Parse reuses the shared reader with KPARSE. Unparse routes runtime data through 
 ^BARG<VSTR<(?<key>[A-Z_][A-Z0-9_]*)>\|(?<k>.*)>$ ::= LARGRET<@LISP_ARG<{{key}}>@|{{k}}>
 ^BARG<VSTR<(?<bad>$PCT)>\|(?<k>.*)>$ ::= ERR<invalid_arg_key>
 ^BARG<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
-@LISP_ARG<(?<key>[A-Z_][A-Z0-9_]*)>@ ::! arg {{key}}
+@LISP_ARG<(?<key>[A-Z_][A-Z0-9_]*)>@ ::! arg key
 ^LARGRET<(?<value>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{value}}>|{{k}}>
 ^APPLY<VPRIM<param>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARAM<{{a|pctdec}}|{{k}}>
 ^BPARAM<VSTR<(?<key>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<PARAM<{{key}}>>|{{k}}>
 ^BPARAM<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
-PARAM<(?<key>$PCT)> ::! param {{key}}
+PARAM<(?<key>$PCT)> ::! param key
 ^APPLY<VPRIM<escape-html>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BESCHTML<{{a|pctdec}}|{{k}}>
 ^BESCHTML<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<HTML<{{s}}>>|{{k}}>
 ^BESCHTML<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
-HTML<(?<s>$PCT)> ::! html-escape {{s}}
+HTML<(?<s>$PCT)> ::! html-escape s
 @LISP_READLINE@ ::< 30s 1 lines stdin
 ^LREADRET<(?<line>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{line}}>|{{k}}>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
@@ -485,15 +485,15 @@ Arithmetic and comparisons delegate to generic numeric builtins, then normalize 
 ^LETARGENV<(?<node>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node|pctdec}}|{{env}}|{{k}}>
 ^RET<(?<v>$VAL)\|KLETN<(?<n>$NAME)\|(?<rest>[^|]*)\|(?<body>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
 
-ADD<(?<a>$NUM),(?<b>$NUM)> ::! add {{a}} {{b}}
-SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub {{a}} {{b}}
-MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul {{a}} {{b}}
-DIV<(?<a>$NUM),(?<b>$NUM)> ::! div {{a}} {{b}}
-EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq {{a}} {{b}}
-LT<(?<a>$NUM),(?<b>$NUM)> ::! lt {{a}} {{b}}
-LE<(?<a>$NUM),(?<b>$NUM)> ::! le {{a}} {{b}}
-GT<(?<a>$NUM),(?<b>$NUM)> ::! gt {{a}} {{b}}
-GE<(?<a>$NUM),(?<b>$NUM)> ::! ge {{a}} {{b}}
+ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
+SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
+MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
+DIV<(?<a>$NUM),(?<b>$NUM)> ::! div a b
+EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq a b
+LT<(?<a>$NUM),(?<b>$NUM)> ::! lt a b
+LE<(?<a>$NUM),(?<b>$NUM)> ::! le a b
+GT<(?<a>$NUM),(?<b>$NUM)> ::! gt a b
+GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 ^RET<VBOOL<1>\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<0>\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 
@@ -545,7 +545,7 @@ RENDER converts runtime values into pct encoded output fragments. Strings use th
 ^RENDER<VSYM<(?<name>$PCT)>\|(?<k>.*)>$ ::= RRET<{{name}}|{{k}}>
 ^RENDER<VLIST<(?<items>$ITEMS)>\|(?<k>.*)>$ ::= RLIST<{{items}}||KLISTDONE<{{k}}>>
 
-ESC<(?<s>$PCT)> ::! escape {{s}}
+ESC<(?<s>$PCT)> ::! escape s
 
 ^RLIST<\|\|KLISTDONE<(?<k>.*)>>$ ::= RRET<%28%29|{{k}}>
 ^RLIST<\|(?<acc>$PCT)\|KLISTDONE<(?<k>.*)>>$ ::= RRET<%28{{acc}}%29|{{k}}>
