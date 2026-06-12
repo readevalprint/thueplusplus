@@ -6,7 +6,6 @@ import socket
 import stat
 import subprocess
 import time
-import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -85,13 +84,11 @@ def assert_export_state_for_empty_body(runner, tmp_path: Path) -> None:
     assert export_path.read_text(encoding="utf-8") == "FINAL<VLIST<>>@@EXIT0@"
 
 
-def reflected_regions(body: str) -> tuple[str, str]:
-    prefix = '<input name=q value="'
+def name_input_value(body: str) -> str:
+    prefix = '<input name=name value="'
     attr_start = body.index(prefix) + len(prefix)
     attr_end = body.index('">', attr_start)
-    pre_start = body.index("<pre>") + len("<pre>")
-    pre_end = body.index("</pre>", pre_start)
-    return body[attr_start:attr_end], body[pre_start:pre_end]
+    return body[attr_start:attr_end]
 
 
 def run_web_app(runner, *, method: str = "GET", path: str = "/", query: str = "", form_body: str = "", content_type: str = "") -> subprocess.CompletedProcess[str]:
@@ -152,37 +149,60 @@ def run_web_app_with_metrics(tmp_path: Path, *, path: str = "/") -> tuple[subpro
 def assert_web_demo_direct(runner) -> None:
     source = WEB_APP.read_text(encoding="utf-8")
     assert not source.startswith("#!")
-    assert 'arg "REQUEST_METHOD"' not in source
+    assert 'arg "REQUEST_METHOD"' in source
     assert 're2fullgroups "^/hello/(?<name>[^/]+)$"' in source
     assert '(get hello (quote name) "")' in source
     assert 'escape-html' in source
 
     root = run_web_app(runner, path="/")
     assert root.returncode == 0, root.stderr
-    assert root.stdout == "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html><h1>Thue++ Lisp web</h1><p>raw explicit routes</p>"
+    assert "Thue++ Lisp CGI demo" in root.stdout
+    assert "<style>" in root.stdout
+    assert "<main>" in root.stdout
+    assert "Try the name form" in root.stdout
+    assert "web-demo.cgi/form" in root.stdout
+    assert "web-demo.cgi/hello/Ada" in root.stdout
 
     hello = run_web_app(runner, path="/hello/<Ada&Byron>")
     assert hello.returncode == 0, hello.stderr
-    assert hello.stdout.endswith("<!doctype html><p>Hello, &lt;Ada&amp;Byron&gt;</p>")
+    assert "<style>" in hello.stdout
+    assert hello.stdout.endswith("</main>")
+    assert "Hello, &lt;Ada&amp;Byron&gt;!" in hello.stdout
 
-    form = run_web_app(runner, path="/form", query="q=query")
+    form = run_web_app(runner, path="/form")
     assert form.returncode == 0, form.stderr
-    attr_value, text_value = reflected_regions(form.stdout)
-    assert attr_value == "query"
-    assert text_value == "query"
+    assert "What is your name?" in form.stdout
+    assert "Hello," not in form.stdout
+    assert "<form method=post>" in form.stdout
+    assert name_input_value(form.stdout) == ""
 
     post = run_web_app(
         runner,
         method="POST",
         path="/form",
-        query="q=query",
-        form_body="q=%22%3E%3Cscript%3Ealert%281%29",
+        form_body="name=Ada",
         content_type="application/x-www-form-urlencoded",
     )
     assert post.returncode == 0, post.stderr
-    attr_value, text_value = reflected_regions(post.stdout)
-    assert attr_value == "&quot;&gt;&lt;script&gt;alert(1)"
-    assert text_value == "&quot;&gt;&lt;script&gt;alert(1)"
+    assert post.stdout.startswith("Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html>")
+    assert "<p>Hello, Ada!</p>" in post.stdout
+    assert '<a href="/cgi-bin/web-demo.cgi/hello/Ada">/hello/Ada</a>' in post.stdout
+    assert "<form method=post>" in post.stdout
+    assert name_input_value(post.stdout) == "Ada"
+
+    unsafe_post = run_web_app(
+        runner,
+        method="POST",
+        path="/form",
+        form_body="name=%22%3E%3Cscript%3Ealert%281%29",
+        content_type="application/x-www-form-urlencoded",
+    )
+    assert unsafe_post.returncode == 0, unsafe_post.stderr
+    assert unsafe_post.stdout.startswith("Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype html>")
+    assert "role=alert" in unsafe_post.stdout
+    assert "Use only letters, numbers, underscore, dot, or dash." in unsafe_post.stdout
+    assert "<script>" not in unsafe_post.stdout
+    assert name_input_value(unsafe_post.stdout) == "&quot;&gt;&lt;script&gt;alert(1)"
 
     missing = run_web_app(runner, path="/missing")
     assert missing.returncode == 0, missing.stderr
@@ -200,7 +220,7 @@ def test_go_lisp_web_demo_direct_runtime() -> None:
 def test_python_web_demo_root_route_avoids_capture_overhead(tmp_path: Path) -> None:
     result, metrics = run_web_app_with_metrics(tmp_path, path="/")
     assert result.returncode == 0, result.stderr
-    assert "Thue++ Lisp web" in result.stdout
+    assert "Thue++ Lisp CGI demo" in result.stdout
     assert metrics["eval_check_count"] < 45000
 
 
@@ -264,7 +284,7 @@ def cgi_server():
     # cover CGI behavior, not command discovery.
     prewarm = run_adapter_direct(path_info="/", method="GET")
     assert prewarm.returncode == 0, prewarm.stderr.decode("utf-8", errors="replace")
-    assert b"Thue++ Lisp web" in prewarm.stdout
+    assert b"Thue++ Lisp CGI demo" in prewarm.stdout
     make_tree_readable_for_cgi_drop()
     log_path = ROOT / ".pytest-cgi-server.log"
     with log_path.open("w+", encoding="utf-8") as log:
@@ -281,7 +301,7 @@ def cgi_server():
                 if proc.poll() is not None:
                     break
                 try:
-                    if "Thue++ Lisp web" in http_get(base + "/cgi-bin/web-demo.cgi/"):
+                    if "Thue++ Lisp CGI demo" in http_get(base + "/cgi-bin/web-demo.cgi/"):
                         break
                 except Exception:
                     pass
@@ -310,7 +330,7 @@ def http_get(url: str) -> str:
         return response.read().decode("utf-8")
 
 
-def http_post_form(url: str, body: str, content_type: str = "application/x-www-form-urlencoded") -> str:
+def http_post_form_response(url: str, body: str, content_type: str = "application/x-www-form-urlencoded"):
     data = body.encode("utf-8")
     request = urllib.request.Request(
         url,
@@ -318,23 +338,12 @@ def http_post_form(url: str, body: str, content_type: str = "application/x-www-f
         method="POST",
         headers={"Content-Type": content_type, "Content-Length": str(len(data))},
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    return urllib.request.urlopen(request, timeout=30)
+
+
+def http_post_form(url: str, body: str, content_type: str = "application/x-www-form-urlencoded") -> str:
+    with http_post_form_response(url, body, content_type) as response:
         return response.read().decode("utf-8")
-
-
-def assert_cgi_reflection(body: str, expected: str) -> None:
-    # urllib exposes the HTTP response body after http.server has consumed the
-    # CGI `Content-Type` header, unlike direct-runtime tests that see raw stdout.
-    assert body.startswith("<!doctype html>")
-    attr_value, text_value = reflected_regions(body)
-    assert attr_value == expected
-    assert text_value == expected
-    assert "<script" not in attr_value
-    assert "</script" not in attr_value
-    assert "<img" not in attr_value
-    assert "<script" not in text_value
-    assert "</script" not in text_value
-    assert "<img" not in text_value
 
 
 def test_stock_cgi_server_exposes_index_health_and_form_routes() -> None:
@@ -343,30 +352,35 @@ def test_stock_cgi_server_exposes_index_health_and_form_routes() -> None:
         assert "/cgi-bin/web-demo.cgi/" in index
         assert "/cgi-bin/web-demo.cgi/hello/Ada" in index
         assert "/cgi-bin/web-demo.cgi/form" in index
-        assert "Web framework demo" in index
+        assert "Thue++ Lisp CGI demo" in index
         assert "explicit route table" in index
 
         root = http_get(base + "/cgi-bin/web-demo.cgi/")
-        assert "Thue++ Lisp web" in root
+        assert "Thue++ Lisp CGI demo" in root
+        assert "Try the name form" in root
+        assert "web-demo.cgi/form" in root
 
         hello = http_get(base + "/cgi-bin/web-demo.cgi/hello/%3CAda%26Byron%3E")
-        assert hello == "<!doctype html><p>Hello, &lt;Ada&amp;Byron&gt;</p>"
+        assert "Hello, &lt;Ada&amp;Byron&gt;!" in hello
 
-        encoded = urllib.parse.quote('<script>alert(1)</script>', safe="")
-        form = http_get(base + f"/cgi-bin/web-demo.cgi/form?q={encoded}")
-        assert_cgi_reflection(form, "&lt;script&gt;alert(1)&lt;/script&gt;")
+        form = http_get(base + "/cgi-bin/web-demo.cgi/form")
+        assert form.startswith("<!doctype html>")
+        assert "What is your name?" in form
+        assert "<form method=post>" in form
+        assert "Hello," not in form
 
         missing = http_get(base + "/cgi-bin/web-demo.cgi/missing")
         assert missing == "not found"
 
 
-def test_stock_cgi_server_form_post_uses_bounded_adapter_body() -> None:
+def test_stock_cgi_server_form_post_renders_inline_result_page() -> None:
     with cgi_server() as base:
-        form = http_post_form(
-            base + "/cgi-bin/web-demo.cgi/form?q=query",
-            "q=%22%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E",
-        )
-        assert_cgi_reflection(form, "&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;")
+        body = http_post_form(base + "/cgi-bin/web-demo.cgi/form", "name=Ada")
+        assert body.startswith("<!doctype html>")
+        assert "<p>Hello, Ada!</p>" in body
+        assert '<a href="/cgi-bin/web-demo.cgi/hello/Ada">/hello/Ada</a>' in body
+        assert "<form method=post>" in body
+        assert "Location:" not in body
 
 
 def run_adapter_direct(*, path_info: str, method: str = "GET", content_length: str = "", body: bytes = b"") -> subprocess.CompletedProcess[bytes]:

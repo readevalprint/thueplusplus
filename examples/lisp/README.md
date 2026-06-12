@@ -275,15 +275,10 @@ thuepp examples/lisp/lisp.tpp \
   --FORM_BODY "${FORM_BODY:-}"
 ```
 
-With `REQUEST_METHOD=GET` and `PATH_INFO=/`, stdout is exactly the explicit
-response rendered by the Lisp app:
-
-```text
-Status: 200 OK
-Content-Type: text/html; charset=utf-8
-
-<!doctype html><h1>Thue++ Lisp web</h1><p>raw explicit routes</p>
-```
+With `REQUEST_METHOD=GET` and `PATH_INFO=/`, stdout is the explicit styled
+response rendered by the Lisp app. The root page says `Thue++ Lisp CGI demo` and
+links to the POST-backed name form. No external stylesheet or static asset route is
+used; the small style block is written inline by the Lisp body.
 
 No final Lisp expression, `()`, `FINAL<...>`, or `@@EXIT0@` marker is appended to
 stdout. Final state/value inspection is available only through explicit CLI
@@ -324,8 +319,9 @@ routes exposed through `/cgi-bin/web-demo.cgi/`:
 - index: `/cgi-bin/web-demo.cgi/`, matched by explicit `/` route;
 - route params: `/cgi-bin/web-demo.cgi/hello/Ada`, matched by
   `^/hello/(?<name>[^/]+)$`;
-- HTML form demo: `/cgi-bin/web-demo.cgi/form`, using explicit
-  query/form helpers and `escape-html`.
+- HTML name form demo: `/cgi-bin/web-demo.cgi/form`, rendered by GET with
+  `<form method=post>`; submitting `name=Ada` renders the same page with
+  `Hello, Ada!` and a permanent link to `/cgi-bin/web-demo.cgi/hello/Ada`.
 
 In another terminal, run the checked CGI tests:
 
@@ -339,11 +335,17 @@ Request the routes directly:
 ```sh
 curl 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/'
 curl 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/hello/%3CAda%26Byron%3E'
-curl 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/form?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E'
+curl 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/form'
+curl -i -d 'name=Ada' 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/form'
 ```
 
-The submitted value appears as `&lt;script&gt;alert(1)&lt;/script&gt;` inside both the
-quoted input attribute and the `<pre>` text region. The same-named adapter is deliberately thin: Lisp owns framework behavior; the shell only invokes Thue++ with explicit CGI arguments.
+The `/hello/<name>` route escapes the captured path name before HTML output; for
+example `/hello/%3CAda%26Byron%3E` renders `Hello, &lt;Ada&amp;Byron&gt;!`. The form POST
+uses the same validation for names before generating a `/hello/<name>` URL; names
+that would need URI escaping stay on `/form` with an inline validation message.
+The same-named adapter is deliberately thin:
+Lisp owns framework behavior; the shell only invokes Thue++ with explicit CGI
+arguments.
 
 ## Explicit eval scope
 

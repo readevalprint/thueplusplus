@@ -1,12 +1,12 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Thue++ Lisp web demo</title>
+<title>Thue++ Lisp CGI demo</title>
 <style>
 body { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui, sans-serif; }
 li { margin: .35rem 0; }
 pre { overflow-x: auto; padding: .75rem; background: #f6f8fa; }
 </style>
-<h1>Thue++ Lisp web demo</h1>
+<h1>Thue++ Lisp CGI demo</h1>
 
 <p>
   This directory can be served with Python's built-in CGI server:
@@ -26,7 +26,7 @@ make serve-cgi</code></pre>
 
 <ul>
   <li>
-    Web framework demo
+    Thue++ Lisp CGI demo
     <ul>
       <li>
         <a href="/cgi-bin/web-demo.cgi/">GET /</a>
@@ -37,8 +37,9 @@ make serve-cgi</code></pre>
         &mdash; RE2 route-param capture escaped before HTML output.
       </li>
       <li>
-        <a href="/cgi-bin/web-demo.cgi/form?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E">GET /form</a>
-        &mdash; URL-encoded query value reflected only through <code>escape-html</code>.
+        <a href="/cgi-bin/web-demo.cgi/form">GET /form</a>
+        &mdash; form page posts a name, renders the inline greeting, and links to
+        <code>/hello/{name}</code>.
       </li>
     </ul>
   </li>
