@@ -33,7 +33,7 @@ VCLOS <- VCLOS<[^>]*>
 VPRIM <- VPRIM<$NAME>
 PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM0 <- readline
-PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write|write-err
+PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write|write-err|arg
 PRIM2 <- cons|nth|contains|dissoc|macroexpand|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
 SPECIAL_WRONG_ARITY <- eval|quote|quasiquote|set|fn|if|and|or|let|while
@@ -87,7 +87,7 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;|{{k}}>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;|{{k}}>
 
 
 Literal demand
@@ -388,6 +388,12 @@ Parse reuses the shared reader with KPARSE. Unparse routes runtime data through 
 ^BWRITEERR<VSTR<(?<msg>$PCT)>\|(?<k>.*)>$ ::= LWRITEERR<{{msg}}>RET<VLIST<>|{{k}}>
 ^BWRITEERR<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
 ^LWRITEERR<(?<msg>$PCT)> ::> stderr {{msg|pctdec}}
+^APPLY<VPRIM<arg>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BARG<{{a|pctdec}}|{{k}}>
+^BARG<VSTR<(?<key>[A-Z_][A-Z0-9_]*)>\|(?<k>.*)>$ ::= LARGRET<@LISP_ARG<{{key}}>@|{{k}}>
+^BARG<VSTR<(?<bad>$PCT)>\|(?<k>.*)>$ ::= ERR<invalid_arg_key>
+^BARG<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
+@LISP_ARG<(?<key>[A-Z_][A-Z0-9_]*)>@ ::! arg {{key}}
+^LARGRET<(?<value>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{value}}>|{{k}}>
 @LISP_READLINE@ ::< 30s 1 lines stdin
 ^LREADRET<(?<line>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{line}}>|{{k}}>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>

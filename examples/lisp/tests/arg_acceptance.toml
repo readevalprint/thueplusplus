@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "../lisp.tpp"
+timeout = 10
+args = ["--eval-limit", "60000"]
+
+[[case]]
+name = "arg reads explicit script arg"
+input = '(write (arg "PATH_INFO"))'
+script_args = ["--PATH_INFO", "/health"]
+
+[case.expect]
+exit_code = 0
+stdout = "/health"
+stderr = ""
+
+[[case]]
+name = "arg reads equals-form script arg"
+input = '(write (arg "QUERY_STRING"))'
+script_args = ["--QUERY_STRING=a=1&b=2"]
+
+[case.expect]
+exit_code = 0
+stdout = "a=1&b=2"
+stderr = ""
+
+[[case]]
+name = "missing arg returns empty string"
+input = '(write (arg "MISSING"))'
+script_args = ["--PATH_INFO", "/health"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "arg is a first-class primitive value"
+input = "(write (unparse (type arg)))"
+
+[case.expect]
+exit_code = 0
+stdout = "builtin"
+stderr = ""
+
+[[case]]
+name = "arg key must be string"
+input = "(arg 1)"
+script_args = ["--PATH_INFO", "/health"]
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "arg key rejects lowercase"
+input = '(arg "path_info")'
+script_args = ["--PATH_INFO", "/health"]
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_arg_key\n"
+
+[[case]]
+name = "arg key rejects punctuation"
+input = '(arg "PATH-INFO")'
+script_args = ["--PATH_INFO", "/health"]
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "invalid_arg_key\n"
