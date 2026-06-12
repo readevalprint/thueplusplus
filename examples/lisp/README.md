@@ -143,7 +143,7 @@ There is no `defmacro`, `macrolet`, global macro registry, implicit macro expans
 
 ## IO primitives
 
-`write`, `write-err`, and `readline` are ordinary primitive callables from the initial core environment. They are not special forms: calls use the same lookup, argument evaluation, and primitive-application path as `add`.
+`write`, `write-err`, `readline`, and `arg` are ordinary primitive callables from the initial core environment. They are not special forms: calls use the same lookup, argument evaluation, and primitive-application path as `add`.
 
 `(write "text")` writes the decoded string to `stdout` and returns `()`. The returned value is not printed by top-level evaluation:
 
@@ -192,6 +192,33 @@ To retain the read value for later expressions, bind or set it explicitly:
 ```
 
 There is no dedicated `prompt` or `input` form; those names are ordinary unbound names unless user code binds them. `write` and `write-err` require a string argument and fail with `type_error` for other value types. `readline` takes no arguments; extra arguments fail with `wrong_arity`.
+
+`(arg "KEY")` reads one explicit script argument passed to `thuepp` after
+`--`. It returns the argument value as a Lisp string, or `""` when that key was
+not supplied. Keys are intentionally narrow and must match `[A-Z_][A-Z0-9_]*`;
+invalid key strings fail with `invalid_arg_key` before reaching the host
+resource lookup.
+
+For example, a CGI-safe invocation can whitelist only the metadata the script
+needs:
+
+```sh
+thuepp examples/lisp/lisp.tpp \
+  --input-file ./app.lisp \
+  -- \
+  --REQUEST_METHOD "$REQUEST_METHOD" \
+  --PATH_INFO "$PATH_INFO" \
+  --QUERY_STRING "$QUERY_STRING"
+```
+
+Then `app.lisp` can read exactly those values:
+
+```lisp
+(let ()
+  (write "Content-Type: text/plain\r\n\r\n")
+  (write "path=")
+  (write (arg "PATH_INFO")))
+```
 
 ## Explicit eval scope
 
