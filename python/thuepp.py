@@ -425,6 +425,8 @@ class ThueppInterpreter:
             "pctdec": 1,
             "escape": 1,
             "unescape": 1,
+            "html-escape": 1,
+            "param": 1,
             "arg": 1,
         }.get(name)
 
@@ -529,6 +531,68 @@ class ThueppInterpreter:
             i += 2
         return self._pct_encode("".join(out))
 
+    def _html_escape(self, value: str) -> str:
+        text = self._pct_decode(value)
+        replacements = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+        }
+        return self._pct_encode("".join(replacements.get(ch, ch) for ch in text))
+
+    def _decode_form_component(self, value: str) -> str:
+        data = bytearray()
+        i = 0
+        value = value.replace("+", " ")
+        while i < len(value):
+            ch = value[i]
+            if ch == "%":
+                if i + 2 >= len(value):
+                    raise RuntimeError("invalid_param_encoding")
+                hx = value[i + 1:i + 3]
+                if not py_re.fullmatch(r"[0-9A-Fa-f]{2}", hx):
+                    raise RuntimeError("invalid_param_encoding")
+                data.append(int(hx, 16))
+                i += 3
+            else:
+                data.extend(ch.encode("utf-8"))
+                i += 1
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise RuntimeError("invalid_param_encoding") from exc
+
+    def _parse_form_params(self, data: str) -> dict[str, str]:
+        params: dict[str, str] = {}
+        if data == "":
+            return params
+        for pair in data.split("&"):
+            key_raw, sep, value_raw = pair.partition("=")
+            key = self._decode_form_component(key_raw)
+            value = self._decode_form_component(value_raw if sep else "")
+            if key not in params:
+                params[key] = value
+        return params
+
+    def _is_form_post(self) -> bool:
+        if self.script_args.get("REQUEST_METHOD", "").upper() != "POST":
+            return False
+        content_type = self.script_args.get("CONTENT_TYPE", "")
+        return content_type == "application/x-www-form-urlencoded" or content_type.startswith(
+            "application/x-www-form-urlencoded;"
+        )
+
+    def _param(self, value: str) -> str:
+        key = self._pct_decode(value)
+        if self._is_form_post():
+            body_params = self._parse_form_params(self.script_args.get("FORM_BODY", ""))
+            if key in body_params:
+                return self._pct_encode(body_params[key])
+        query_params = self._parse_form_params(self.script_args.get("QUERY_STRING", ""))
+        return self._pct_encode(query_params.get(key, ""))
+
     def _is_numeric_literal(self, value: str) -> bool:
         return py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value) is not None
 
@@ -574,6 +638,10 @@ class ThueppInterpreter:
             return self._escape(values[0])
         if name == "unescape":
             return self._unescape(values[0])
+        if name == "html-escape":
+            return self._html_escape(values[0])
+        if name == "param":
+            return self._param(values[0])
         if name == "arg":
             raise AssertionError("internal error: arg builtin is host-evaluated")
         if name == "num":
@@ -639,6 +707,8 @@ class ThueppInterpreter:
                     pieces.append(self._pct_encode(value))
                 elif filt == "pctdec":
                     pieces.append(self._pct_decode(value))
+                elif filt == "raw":
+                    pieces.append(value)
                 else:
                     raise RuntimeError(f"Unknown template filter '{filt}'")
             elif py_re.fullmatch(r"\w+", inner):

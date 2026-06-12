@@ -33,7 +33,7 @@ VCLOS <- VCLOS<[^>]*>
 VPRIM <- VPRIM<$NAME>
 PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM0 <- readline
-PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write|write-err|arg
+PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write|write-err|arg|param|escape-html
 PRIM2 <- cons|nth|contains|dissoc|macroexpand|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
 SPECIAL_WRONG_ARITY <- eval|quote|quasiquote|set|fn|if|and|or|let|while
@@ -53,14 +53,14 @@ Strings become VSTR before list freezing. Parenthesized source is reduced inside
 
 \A\([^)]*\z ::= ERR<malformed_list>
 \A[ \t\r\n]*\z ::= READ<> KTOP
-\A[ \t\r\n]*(?<input>(?:"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM)(?:[ \t\r\n]+(?:"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM))*)[ \t\r\n]*\z ::= READ<{{input}}> KTOP
-\A[ \t\r\n]*(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)[ \t\r\n]*\z ::= READ<{{input}}> KTOP
+\A[ \t\r\n]*(?<input>(?:"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM)(?:[ \t\r\n]+(?:"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM))*)[ \t\r\n]*\z ::= READ<{{input|raw}}> KTOP
+\A[ \t\r\n]*(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)[ \t\r\n]*\z ::= READ<{{input|raw}}> KTOP
 
 String escape validation
-Invalid escapes are rejected before the generic unescape builtin runs. The double UNESC layer below first removes rewrite state escaping, then applies Lisp string literal escaping.
-^READ<(?<pre>(?:[\s\S]*[^\\])?)\\\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<invalid_string_escape>
+Invalid escapes are rejected before the generic unescape builtin runs. Strings are percent-framed, then the generic unescape builtin applies Lisp string literal escaping; raw captures preserve source fragments that were already escaped in rewrite state.
+^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KTOP$ ::= ERR<invalid_string_escape>
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<UNESC<{{str|pctenc}}>>>{{post}}> {{k}}
+^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre|raw}}VSTR<UNESC<{{str|pctenc}}>>{{post|raw}}> {{k}}
 UNESC<(?<s>$PCT)> ::! unescape {{s}}
 
 Reader whitespace normalization
@@ -91,7 +91,7 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;|{{k}}>
+^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;param=VPRIM%3Cparam%3E;escape-html=VPRIM%3Cescape-html%3E;|{{k}}>
 ^CBOOTENV<SEQ\|(?<body>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= SEQ<{{body}}|{{env}}|{{k}}>
 ^CBOOTENV<EENV\|(?<expr>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|{{env}}|{{k}}>
 
@@ -400,6 +400,14 @@ Parse reuses the shared reader with KPARSE. Unparse routes runtime data through 
 ^BARG<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
 @LISP_ARG<(?<key>[A-Z_][A-Z0-9_]*)>@ ::! arg {{key}}
 ^LARGRET<(?<value>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{value}}>|{{k}}>
+^APPLY<VPRIM<param>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARAM<{{a|pctdec}}|{{k}}>
+^BPARAM<VSTR<(?<key>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<PARAM<{{key}}>>|{{k}}>
+^BPARAM<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
+PARAM<(?<key>$PCT)> ::! param {{key}}
+^APPLY<VPRIM<escape-html>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BESCHTML<{{a|pctdec}}|{{k}}>
+^BESCHTML<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<HTML<{{s}}>>|{{k}}>
+^BESCHTML<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
+HTML<(?<s>$PCT)> ::! html-escape {{s}}
 @LISP_READLINE@ ::< 30s 1 lines stdin
 ^LREADRET<(?<line>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{line}}>|{{k}}>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>

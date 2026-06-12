@@ -264,6 +264,42 @@ Safety constraints for this first CGI/script shape are deliberate:
 - set bounded `--eval-limit` and `--max-state-bytes` values in the host command;
 - use explicit `write` / `write-err` calls for all response output.
 
+### Testing with Python's simple CGI server
+
+Python's built-in CGI server is enough for a local smoke test. The checked-in
+`examples/lisp/cgi-bin/lisp-example-adapter.cgi` file is the trusted adapter: it chooses
+the ruleset, resource limits, and which CGI environment values become explicit
+script args. The Lisp app remains plain input source.
+
+```sh
+cd examples/lisp
+make serve-cgi
+```
+
+In another terminal, run the checked CGI smoke test:
+
+```sh
+cd examples/lisp
+make test-cgi
+```
+
+Or request the checked-in adapter file directly, not the `cgi-bin/` directory:
+
+```sh
+curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/health?a=1'
+```
+
+The response body is exactly:
+
+```text
+method=GET
+path=/health
+query=a=1
+```
+
+The trusted adapter is the security boundary: untrusted Lisp source cannot choose
+additional environment variables, swap rulesets, or change resource limits.
+
 ## Explicit eval scope
 
 `eval` evaluates code-as-data using an explicit association-list scope:

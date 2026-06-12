@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -541,25 +542,27 @@ func parseBuiltinCallTokens(tokens []string, lineNumber int) (string, []string, 
 
 func builtinArity(name string) (int, bool) {
 	arities := map[string]int{
-		"eq":       2,
-		"add":      2,
-		"sub":      2,
-		"mul":      2,
-		"div":      2,
-		"mod":      2,
-		"numeq":    2,
-		"lt":       2,
-		"le":       2,
-		"gt":       2,
-		"ge":       2,
-		"num":      1,
-		"b64enc":   1,
-		"b64dec":   1,
-		"pctenc":   1,
-		"pctdec":   1,
-		"escape":   1,
-		"unescape": 1,
-		"arg":      1,
+		"eq":          2,
+		"add":         2,
+		"sub":         2,
+		"mul":         2,
+		"div":         2,
+		"mod":         2,
+		"numeq":       2,
+		"lt":          2,
+		"le":          2,
+		"gt":          2,
+		"ge":          2,
+		"num":         1,
+		"b64enc":      1,
+		"b64dec":      1,
+		"pctenc":      1,
+		"pctdec":      1,
+		"escape":      1,
+		"unescape":    1,
+		"html-escape": 1,
+		"param":       1,
+		"arg":         1,
 	}
 	arity, ok := arities[name]
 	return arity, ok
@@ -698,7 +701,7 @@ func unescapePctPayload(value string) (string, error) {
 		case 'n':
 			out.WriteByte('\n')
 		case 't':
-			out.WriteByte('\t')
+			out.WriteByte('	')
 		case 'r':
 			out.WriteByte('\r')
 		case 'b':
@@ -710,6 +713,93 @@ func unescapePctPayload(value string) (string, error) {
 		}
 	}
 	return pctEncode(out.String()), nil
+}
+
+func htmlEscapePctPayload(value string) (string, error) {
+	text, err := pctDecode(value)
+	if err != nil {
+		return "", err
+	}
+	var out strings.Builder
+	for _, r := range text {
+		switch r {
+		case '&':
+			out.WriteString("&amp;")
+		case '<':
+			out.WriteString("&lt;")
+		case '>':
+			out.WriteString("&gt;")
+		case '"':
+			out.WriteString("&quot;")
+		case '\'':
+			out.WriteString("&#39;")
+		default:
+			out.WriteRune(r)
+		}
+	}
+	return pctEncode(out.String()), nil
+}
+
+func decodeFormComponent(value string) (string, error) {
+	decoded, err := url.QueryUnescape(value)
+	if err != nil || !utf8.ValidString(decoded) {
+		return "", fmt.Errorf("invalid_param_encoding")
+	}
+	return decoded, nil
+}
+
+func parseFormParams(data string) (map[string]string, error) {
+	params := map[string]string{}
+	if data == "" {
+		return params, nil
+	}
+	for _, pair := range strings.Split(data, "&") {
+		keyRaw, valueRaw, hasValue := strings.Cut(pair, "=")
+		key, err := decodeFormComponent(keyRaw)
+		if err != nil {
+			return nil, err
+		}
+		if !hasValue {
+			valueRaw = ""
+		}
+		value, err := decodeFormComponent(valueRaw)
+		if err != nil {
+			return nil, err
+		}
+		if _, exists := params[key]; !exists {
+			params[key] = value
+		}
+	}
+	return params, nil
+}
+
+func formPost(scriptArgs map[string]string) bool {
+	if strings.ToUpper(scriptArgs["REQUEST_METHOD"]) != "POST" {
+		return false
+	}
+	contentType := scriptArgs["CONTENT_TYPE"]
+	return contentType == "application/x-www-form-urlencoded" || strings.HasPrefix(contentType, "application/x-www-form-urlencoded;")
+}
+
+func paramBuiltin(value string, scriptArgs map[string]string) (string, error) {
+	key, err := pctDecode(value)
+	if err != nil {
+		return "", err
+	}
+	if formPost(scriptArgs) {
+		bodyParams, err := parseFormParams(scriptArgs["FORM_BODY"])
+		if err != nil {
+			return "", err
+		}
+		if value, ok := bodyParams[key]; ok {
+			return pctEncode(value), nil
+		}
+	}
+	queryParams, err := parseFormParams(scriptArgs["QUERY_STRING"])
+	if err != nil {
+		return "", err
+	}
+	return pctEncode(queryParams[key]), nil
 }
 
 func parseNumber(value, builtin string) (*big.Rat, error) {
@@ -763,6 +853,9 @@ func evalBuiltin(name string, values []string) (string, error) {
 	}
 	if name == "unescape" {
 		return unescapePctPayload(values[0])
+	}
+	if name == "html-escape" {
+		return htmlEscapePctPayload(values[0])
 	}
 	if name == "num" {
 		n, err := parseNumber(values[0], name)
@@ -871,6 +964,8 @@ func (i *Interpreter) expandTemplate(template string, groups map[string]string, 
 							return "", err
 						}
 						out.WriteString(decoded)
+					case "raw":
+						out.WriteString(value)
 					default:
 						return "", fmt.Errorf("Unknown template filter '%s'", parts[1])
 					}
@@ -1269,6 +1364,15 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				if builtinName == "arg" {
 					repl = pctEncode(i.ScriptArgs[builtinArgs[0]])
+					i.recordRuleCoverage(rule)
+					break
+				}
+				if builtinName == "param" {
+					repl, err = paramBuiltin(builtinArgs[0], i.ScriptArgs)
+					if err != nil {
+						i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+						return 1, err
+					}
 					i.recordRuleCoverage(rule)
 					break
 				}
