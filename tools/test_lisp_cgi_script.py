@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
+import contextlib
+import os
+import socket
 import subprocess
+import time
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 
@@ -262,3 +268,187 @@ def test_cgi_form_post_precedes_query_in_direct_runtime() -> None:
     attr_value, text_value = reflected_regions(result.stdout)
     assert attr_value == "post"
     assert text_value == "post"
+
+
+@contextlib.contextmanager
+def cgi_server():
+    # Bind-probe an ephemeral localhost port before launching stock http.server.
+    # The Makefile performs the same real-server check for executable docs; this
+    # helper gives pytest precise HTTP assertions around reflected form regions.
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    # Prewarm the adapter's `uv run` path before it executes under
+    # http.server's CGI subprocess wrapper. CI starts from a cold checkout/cache,
+    # and warming here keeps real-server assertions focused on CGI behavior
+    # rather than first-run environment setup noise.
+    prewarm = run_adapter_direct(path_info="/health", method="GET")
+    assert prewarm.returncode == 0, prewarm.stderr.decode("utf-8", errors="replace")
+    assert b"method=GET\npath=/health\nquery=\n" in prewarm.stdout
+    log_path = ROOT / ".pytest-cgi-server.log"
+    with log_path.open("w+", encoding="utf-8") as log:
+        proc = subprocess.Popen(
+            ["python3", "-m", "http.server", "--cgi", str(port), "--bind", "127.0.0.1"],
+            cwd=ROOT / "examples" / "lisp",
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        base = f"http://127.0.0.1:{port}"
+        try:
+            for _ in range(50):
+                if proc.poll() is not None:
+                    break
+                try:
+                    if http_get(base + "/cgi-bin/lisp-example-adapter.cgi/health?a=1") == "method=GET\npath=/health\nquery=a=1\n":
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.1)
+            else:
+                raise AssertionError("CGI server did not become ready")
+            if proc.poll() is not None:
+                log.seek(0)
+                raise AssertionError(f"CGI server exited early:\n{log.read()}")
+            yield base
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
+            log.seek(0)
+            if proc.returncode not in (0, -15):
+                raise AssertionError(f"CGI server failed with {proc.returncode}:\n{log.read()}")
+            log_path.unlink(missing_ok=True)
+
+
+def http_get(url: str) -> str:
+    with urllib.request.urlopen(url, timeout=30) as response:
+        return response.read().decode("utf-8")
+
+
+def http_post_form(url: str, body: str, content_type: str = "application/x-www-form-urlencoded") -> str:
+    data = body.encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        method="POST",
+        headers={"Content-Type": content_type, "Content-Length": str(len(data))},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return response.read().decode("utf-8")
+
+
+def assert_cgi_reflection(body: str, expected: str) -> None:
+    # urllib exposes the HTTP response body after http.server has consumed the
+    # CGI `Content-Type` header, unlike direct-runtime tests that see raw stdout.
+    assert body.startswith("<!doctype html>")
+    attr_value, text_value = reflected_regions(body)
+    assert attr_value == expected
+    assert text_value == expected
+    assert "<script" not in attr_value
+    assert "</script" not in attr_value
+    assert "<img" not in attr_value
+    assert "<script" not in text_value
+    assert "</script" not in text_value
+    assert "<img" not in text_value
+
+
+def test_stock_cgi_server_exposes_index_health_and_form_routes() -> None:
+    with cgi_server() as base:
+        index = http_get(base + "/")
+        assert "/cgi-bin/lisp-example-adapter.cgi/health?a=1" in index
+        assert "/cgi-bin/lisp-example-adapter.cgi/form" in index
+        assert "Plain text" in index
+        assert "HTML form" in index
+
+        health = http_get(base + "/cgi-bin/lisp-example-adapter.cgi/health?a=1")
+        assert health == "method=GET\npath=/health\nquery=a=1\n"
+
+        encoded = urllib.parse.quote('<script>alert(1)</script>', safe="")
+        form = http_get(base + f"/cgi-bin/lisp-example-adapter.cgi/form?q={encoded}")
+        assert_cgi_reflection(form, "&lt;script&gt;alert(1)&lt;/script&gt;")
+
+
+def test_stock_cgi_server_form_post_uses_bounded_adapter_body() -> None:
+    with cgi_server() as base:
+        form = http_post_form(
+            base + "/cgi-bin/lisp-example-adapter.cgi/form?q=query",
+            "q=%22%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E",
+        )
+        assert_cgi_reflection(form, "&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;")
+
+
+def test_stock_cgi_server_rejects_invalid_post_content_length() -> None:
+    with cgi_server() as base:
+        host, port_text = base.removeprefix("http://").split(":")
+        with socket.create_connection((host, int(port_text)), timeout=30) as sock:
+            sock.sendall(
+                b"POST /cgi-bin/lisp-example-adapter.cgi/form HTTP/1.1\r\n"
+                b"Host: 127.0.0.1\r\n"
+                b"Content-Type: application/x-www-form-urlencoded\r\n"
+                b"Content-Length: not-a-number\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+                b"q=short"
+            )
+            response = sock.makefile("rb").read().decode("utf-8", errors="replace")
+        assert "invalid CONTENT_LENGTH" in response
+
+
+def run_adapter_direct(*, path_info: str, method: str = "GET", content_length: str = "", body: bytes = b"") -> subprocess.CompletedProcess[bytes]:
+    env = os.environ.copy()
+    env.update(
+        {
+            "REQUEST_METHOD": method,
+            "PATH_INFO": path_info,
+            "QUERY_STRING": "",
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "CONTENT_LENGTH": content_length,
+        }
+    )
+    return subprocess.run(
+        [str(ROOT / "examples" / "lisp" / "cgi-bin" / "lisp-example-adapter.cgi")],
+        cwd=ROOT,
+        input=body,
+        env=env,
+        capture_output=True,
+        timeout=30,
+    )
+
+
+def assert_adapter_error(result: subprocess.CompletedProcess[bytes], message: str, status: str = "400 Bad Request") -> None:
+    output = result.stdout.decode("utf-8", errors="replace")
+    assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
+    assert f"Status: {status}\r\n" in output
+    assert "Content-Type: text/plain\r\n\r\n" in output
+    assert message in output
+
+
+def test_adapter_rejects_unknown_route() -> None:
+    assert_adapter_error(
+        run_adapter_direct(path_info="/admin"),
+        "unknown CGI route: /admin",
+        "404 Not Found",
+    )
+
+
+def test_adapter_rejects_missing_invalid_oversized_and_truncated_post_bodies() -> None:
+    assert_adapter_error(
+        run_adapter_direct(path_info="/form", method="POST", content_length=""),
+        "missing CONTENT_LENGTH for POST",
+    )
+    assert_adapter_error(
+        run_adapter_direct(path_info="/form", method="POST", content_length="-1"),
+        "invalid CONTENT_LENGTH for POST",
+    )
+    assert_adapter_error(
+        run_adapter_direct(path_info="/form", method="POST", content_length="8193"),
+        "CONTENT_LENGTH exceeds 8192 byte limit",
+    )
+    assert_adapter_error(
+        run_adapter_direct(path_info="/form", method="POST", content_length="8", body=b"q=short"),
+        "truncated POST body",
+    )
