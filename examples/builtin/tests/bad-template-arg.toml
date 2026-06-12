@@ -3,8 +3,8 @@ program = "fixtures/bad-template-arg.tpp"
 timeout = 5
 
 [[case]]
-name = "malformed template rejected"
+name = "malformed template is rejected as a builtin argument"
 
 [case.expect]
 exit_code = 1
-stderr_contains = ["Malformed template filter '{{b|}}'"]
+stderr_contains = ["Builtin arg '{{b|}}' is not a capture name"]

@@ -1,0 +1,154 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "../re2.tpp"
+timeout = 5
+
+[[case]]
+name = "raw capture builtin args preserve spaces"
+input = "eq-space:hello world|hello world"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "hard-coded arg key works only after capture"
+input = "arg-key"
+script_args = ["--QUERY_STRING", "name=ada"]
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "name%3Dada"
+
+[[case]]
+name = "re2full matches entire text"
+input = "full:^/users/[0-9]+$|/users/123"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "re2full rejects partial match"
+input = "full:/users/[0-9]+|xx/users/123yy"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
+
+[[case]]
+name = "re2match uses search semantics"
+input = "match:/users/[0-9]+|xx/users/123yy"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1"
+
+[[case]]
+name = "re2match no match"
+input = "match:/users/[0-9]+|/users/abc"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0"
+
+[[case]]
+name = "re2find pct frames arbitrary match"
+input = "find:[^/]+$|/a:b|c d"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1|a%3Ab%7Cc%20d"
+
+[[case]]
+name = "re2find distinguishes empty match"
+input = "find:z*|abc"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1|"
+
+[[case]]
+name = "re2find no match"
+input = "find:z+|abc"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0|"
+
+[[case]]
+name = "re2findidx reports utf8 byte offsets"
+input = "findidx:x|éx9"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1|2|3"
+
+[[case]]
+name = "re2findidx empty match at start"
+input = "findidx:z*|abc"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1|0|0"
+
+[[case]]
+name = "re2findidx no match"
+input = "findidx:z+|abc"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0||"
+
+[[case]]
+name = "re2groups pct frames named captures"
+input = "groups:^/users/(?P<id>[0-9]+)/(?P<section>.+)$|/users/123/a:b|c d"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1|id:123|section:a%3Ab%7Cc%20d"
+
+[[case]]
+name = "re2groups omits missing optional groups and keeps matched empty"
+input = "groups:^(?P<prefix>a)?(?P<empty>)(?P<tail>b)$|b"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1|empty:|tail:b"
+
+[[case]]
+name = "re2groups no match"
+input = "groups:^(?P<id>[0-9]+)$|abc"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0|"
+
+[[case]]
+name = "re2fullgroups requires entire text"
+input = "fullgroups:(?P<id>[0-9]+)|abc123def"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "0|"
+
+[[case]]
+name = "re2fullgroups returns named captures for full match"
+input = "fullgroups:(?P<id>[0-9]+)|123"
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "1|id:123"
+
+[[case]]
+name = "invalid regex fails loudly"
+input = "full:(|abc"
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 're2full' invalid pattern"]
+
+[[case]]
+name = "duplicate named groups fail loudly"
+input = "groups:(?P<x>a)(?P<x>b)|ab"
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin 're2groups' duplicate capture name 'x'"]

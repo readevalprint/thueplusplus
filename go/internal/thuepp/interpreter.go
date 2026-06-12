@@ -36,6 +36,7 @@ var (
 	aliasDefPattern          = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
 	invalidAliasTokenPattern = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
 	namedCapturePattern      = regexp.MustCompile(`\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>`)
+	builtinArgPattern        = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	readTimeoutPattern       = regexp.MustCompile(`^([1-9][0-9]*)(ms|s|m)$`)
 	argKeyPattern            = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
 )
@@ -457,8 +458,10 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
 	}
-	if err := validateTemplateCaptures(rhs, lineNumber, captureNames(re)); err != nil {
-		return nil, err
+	if op != Builtin {
+		if err := validateTemplateCaptures(rhs, lineNumber, captureNames(re)); err != nil {
+			return nil, err
+		}
 	}
 	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath}, nil
 }
@@ -521,7 +524,7 @@ func (i *Interpreter) expandTemplateFields(template string, groups map[string]st
 	return expanded, nil
 }
 
-func parseBuiltinCallTokens(tokens []string, lineNumber int) (string, []string, error) {
+func parseBuiltinCallTokens(tokens []string, lineNumber int, groups map[string]string) (string, []string, error) {
 	if len(tokens) == 0 {
 		return "", nil, fmt.Errorf("Line %d: ::! requires a builtin name", lineNumber)
 	}
@@ -530,39 +533,56 @@ func parseBuiltinCallTokens(tokens []string, lineNumber int) (string, []string, 
 	if !ok {
 		return "", nil, fmt.Errorf("Line %d: Unknown builtin '%s'", lineNumber, name)
 	}
-	args := tokens[1:]
-	if len(args) != arity {
-		return "", nil, fmt.Errorf("Line %d: Builtin '%s' expects %d args, got %d", lineNumber, name, arity, len(args))
+	argNames := tokens[1:]
+	if len(argNames) != arity {
+		return "", nil, fmt.Errorf("Line %d: Builtin '%s' expects %d args, got %d", lineNumber, name, arity, len(argNames))
 	}
-	if name == "arg" && !argKeyPattern.MatchString(args[0]) {
-		return "", nil, fmt.Errorf("Line %d: invalid script arg key '%s'", lineNumber, args[0])
+	values := make([]string, 0, len(argNames))
+	for _, argName := range argNames {
+		if !builtinArgPattern.MatchString(argName) {
+			return "", nil, fmt.Errorf("Line %d: Builtin arg '%s' is not a capture name", lineNumber, argName)
+		}
+		value, ok := groups[argName]
+		if !ok {
+			return "", nil, fmt.Errorf("Line %d: Builtin arg '%s' missing capture", lineNumber, argName)
+		}
+		values = append(values, value)
 	}
-	return name, args, nil
+	if name == "arg" && !argKeyPattern.MatchString(values[0]) {
+		return "", nil, fmt.Errorf("Line %d: invalid script arg key '%s'", lineNumber, values[0])
+	}
+	return name, values, nil
 }
 
 func builtinArity(name string) (int, bool) {
 	arities := map[string]int{
-		"eq":          2,
-		"add":         2,
-		"sub":         2,
-		"mul":         2,
-		"div":         2,
-		"mod":         2,
-		"numeq":       2,
-		"lt":          2,
-		"le":          2,
-		"gt":          2,
-		"ge":          2,
-		"num":         1,
-		"b64enc":      1,
-		"b64dec":      1,
-		"pctenc":      1,
-		"pctdec":      1,
-		"escape":      1,
-		"unescape":    1,
-		"html-escape": 1,
-		"param":       1,
-		"arg":         1,
+		"eq":            2,
+		"add":           2,
+		"sub":           2,
+		"mul":           2,
+		"div":           2,
+		"mod":           2,
+		"numeq":         2,
+		"lt":            2,
+		"le":            2,
+		"gt":            2,
+		"ge":            2,
+		"num":           1,
+		"b64enc":        1,
+		"b64dec":        1,
+		"pctenc":        1,
+		"pctdec":        1,
+		"escape":        1,
+		"unescape":      1,
+		"html-escape":   1,
+		"param":         1,
+		"arg":           1,
+		"re2match":      2,
+		"re2full":       2,
+		"re2find":       2,
+		"re2findidx":    2,
+		"re2groups":     2,
+		"re2fullgroups": 2,
 	}
 	arity, ok := arities[name]
 	return arity, ok
@@ -802,6 +822,73 @@ func paramBuiltin(value string, scriptArgs map[string]string) (string, error) {
 	return pctEncode(queryParams[key]), nil
 }
 
+func rejectDuplicateRE2Names(builtin, pattern string) error {
+	seen := map[string]bool{}
+	for _, match := range namedCapturePattern.FindAllStringSubmatch(pattern, -1) {
+		name := match[1]
+		if seen[name] {
+			return fmt.Errorf("Builtin '%s' duplicate capture name '%s'", builtin, name)
+		}
+		seen[name] = true
+	}
+	return nil
+}
+
+func compileRE2(builtin, pattern string) (*regexp.Regexp, error) {
+	if err := rejectDuplicateRE2Names(builtin, pattern); err != nil {
+		return nil, err
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("Builtin '%s' invalid pattern", builtin)
+	}
+	return re, nil
+}
+
+func re2Search(builtin, pattern, text string) ([]int, *regexp.Regexp, error) {
+	re, err := compileRE2(builtin, pattern)
+	if err != nil {
+		return nil, nil, err
+	}
+	return re.FindStringIndex(text), re, nil
+}
+
+func re2FullSearch(builtin, pattern, text string) ([]int, *regexp.Regexp, error) {
+	idx, re, err := re2Search(builtin, pattern, text)
+	if err != nil || idx == nil {
+		return nil, re, err
+	}
+	if idx[0] == 0 && idx[1] == len([]byte(text)) {
+		return idx, re, nil
+	}
+	return nil, re, nil
+}
+
+func re2Groups(builtin, pattern, text string, full bool) (string, error) {
+	re, err := compileRE2(builtin, pattern)
+	if err != nil {
+		return "", err
+	}
+	matches := re.FindStringSubmatchIndex(text)
+	if matches == nil {
+		return "0|", nil
+	}
+	if full && (matches[0] != 0 || matches[1] != len([]byte(text))) {
+		return "0|", nil
+	}
+	names := re.SubexpNames()
+	fields := []string{}
+	for i := 1; i < len(names) && 2*i+1 < len(matches); i++ {
+		name := names[i]
+		if name == "" || matches[2*i] < 0 {
+			continue
+		}
+		value := text[matches[2*i]:matches[2*i+1]]
+		fields = append(fields, pctEncode(name)+":"+pctEncode(value))
+	}
+	return "1|" + strings.Join(fields, "|"), nil
+}
+
 func parseNumber(value, builtin string) (*big.Rat, error) {
 	if !numericLiteralPattern.MatchString(value) {
 		return nil, fmt.Errorf("Builtin '%s' expected numeric input, got '%s'", builtin, value)
@@ -856,6 +943,52 @@ func evalBuiltin(name string, values []string) (string, error) {
 	}
 	if name == "html-escape" {
 		return htmlEscapePctPayload(values[0])
+	}
+	if name == "re2match" {
+		idx, _, err := re2Search(name, values[0], values[1])
+		if err != nil {
+			return "", err
+		}
+		if idx == nil {
+			return "0", nil
+		}
+		return "1", nil
+	}
+	if name == "re2full" {
+		idx, _, err := re2FullSearch(name, values[0], values[1])
+		if err != nil {
+			return "", err
+		}
+		if idx == nil {
+			return "0", nil
+		}
+		return "1", nil
+	}
+	if name == "re2find" {
+		idx, _, err := re2Search(name, values[0], values[1])
+		if err != nil {
+			return "", err
+		}
+		if idx == nil {
+			return "0|", nil
+		}
+		return "1|" + pctEncode(values[1][idx[0]:idx[1]]), nil
+	}
+	if name == "re2findidx" {
+		idx, _, err := re2Search(name, values[0], values[1])
+		if err != nil {
+			return "", err
+		}
+		if idx == nil {
+			return "0||", nil
+		}
+		return fmt.Sprintf("1|%d|%d", idx[0], idx[1]), nil
+	}
+	if name == "re2groups" {
+		return re2Groups(name, values[0], values[1], false)
+	}
+	if name == "re2fullgroups" {
+		return re2Groups(name, values[0], values[1], true)
 	}
 	if name == "num" {
 		n, err := parseNumber(values[0], name)
@@ -1351,12 +1484,8 @@ func (i *Interpreter) Run() (int, error) {
 					i.recordRuleCoverage(rule)
 				}
 			case Builtin:
-				tokens, err := i.expandTemplateFields(rule.RHS, groups, magicVars)
-				if err != nil {
-					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
-				}
-				builtinName, builtinArgs, err := parseBuiltinCallTokens(tokens, rule.LineNumber)
+				tokens := strings.Fields(rule.RHS)
+				builtinName, builtinArgs, err := parseBuiltinCallTokens(tokens, rule.LineNumber, groups)
 				if err != nil {
 					i.recordRuleCoverage(rule)
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())

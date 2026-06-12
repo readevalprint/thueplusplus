@@ -1,4 +1,4 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-^(?<a>\d+),(?<b>\d+)$ ::! nope a b
+^REQ$ ::! arg REQUEST_METHOD
 ::=
-1,2
+REQ

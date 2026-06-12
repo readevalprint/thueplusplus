@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-program = "fixtures/bad-missing-capture.tpp"
+program = "fixtures/bad-missing-builtin-capture.tpp"
 timeout = 5
 
 [[case]]
-name = "missing capture rejected"
-
+name = "missing builtin capture is rejected"
 [case.expect]
 exit_code = 1
 stderr_contains = ["Builtin arg 'b' missing capture"]

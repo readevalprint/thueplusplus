@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "fixtures/bad-template-builtin-arg.tpp"
+timeout = 5
+
+[[case]]
+name = "template syntax is rejected in builtin arguments"
+[case.expect]
+exit_code = 1
+stderr_contains = ["Builtin arg '{{a}}' is not a capture name"]
