@@ -1023,6 +1023,11 @@ def main():
         help="Override initial state with this value",
     )
     parser.add_argument(
+        "--input-file",
+        type=str,
+        help="Override initial state with the contents of this file",
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug logging of rule evaluation",
@@ -1083,7 +1088,15 @@ def main():
                 print(f"{display}:{rule.line_number}\t{rule.lhs}")
             exit_code = 0
         else:
-            if args.input is not None:
+            if args.input is not None and args.input_file is not None:
+                raise RuntimeError("--input and --input-file are mutually exclusive")
+            if args.input_file is not None:
+                try:
+                    input_override = Path(args.input_file).read_text(encoding="utf-8")
+                except OSError as e:
+                    raise RuntimeError(f"failed to read --input-file {args.input_file!r}: {e}") from e
+                interpreter.apply_input_override(input_override)
+            elif args.input is not None:
                 interpreter.apply_input_override(args.input)
 
             exit_code = interpreter.run()

@@ -542,6 +542,7 @@ uv run python tools/check_contract.py --update-readme
 - optional initial state after a final separator row `::=`
 - no comment syntax: `#` is ordinary text unless the row also contains a valid operator
 - `--input` replaces the source-provided initial state for CLI runners
+- `--input-file <path>` / `--input-file=<path>` replaces the source-provided initial state with the exact contents of a file. Use it for multiline app/source state; it is mutually exclusive with `--input`.
 - resource reads consume exact counted `bytes` or `lines` and PCT-encode the payload
 - execution limits such as `--eval-limit` and `--max-state-bytes`
 - exact rational numeric builtins; decimal-looking input parses to rationals, never floats

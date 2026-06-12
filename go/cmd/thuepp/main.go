@@ -36,6 +36,7 @@ func main() {
 		os.Exit(1)
 	}
 	var inputOverride *string
+	var inputFilePath *string
 	ruleCoveragePath := ""
 	metricsJSONPath := ""
 	listRules := false
@@ -80,6 +81,18 @@ func main() {
 		case strings.HasPrefix(arg, "--input="):
 			value := strings.TrimPrefix(arg, "--input=")
 			inputOverride = &value
+			idx++
+		case arg == "--input-file":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --input-file requires an argument")
+				os.Exit(1)
+			}
+			value := args[idx+1]
+			inputFilePath = &value
+			idx += 2
+		case strings.HasPrefix(arg, "--input-file="):
+			value := strings.TrimPrefix(arg, "--input-file=")
+			inputFilePath = &value
 			idx++
 		case arg == "--eval-limit":
 			if idx+1 >= len(args) {
@@ -145,7 +158,22 @@ func main() {
 		interp.Cleanup()
 		return
 	}
-	if inputOverride != nil { // Keep rules and replace file-provided state.
+	if inputOverride != nil && inputFilePath != nil {
+		fmt.Fprintln(os.Stderr, "Error: --input and --input-file are mutually exclusive")
+		os.Exit(1)
+	}
+	if inputFilePath != nil { // Keep rules and replace file-provided state.
+		contents, err := os.ReadFile(*inputFilePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to read --input-file %q: %v\n", *inputFilePath, err)
+			os.Exit(1)
+		}
+		input := string(contents)
+		if err := interp.ApplyInputOverride(input); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	} else if inputOverride != nil { // Keep rules and replace file-provided state.
 		if err := interp.ApplyInputOverride(*inputOverride); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
