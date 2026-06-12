@@ -1,6 +1,11 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Thue++ Lisp web demo</title>
+<style>
+body { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui, sans-serif; }
+li { margin: .35rem 0; }
+pre { overflow-x: auto; padding: .75rem; background: #f6f8fa; }
+</style>
 <h1>Thue++ Lisp web demo</h1>
 
 <p>
@@ -12,24 +17,30 @@ make serve-cgi</code></pre>
 
 <p>
   Python's <code>http.server --cgi</code> only executes files below
-  <code>/cgi-bin/</code> or <code>/htbin/</code>. The checked adapter invokes one
-  checked Lisp web app, <code>web-demo.lisp</code>. The adapter owns CGI mechanics
-  and bounded body transfer; the Lisp app owns the explicit route table,
-  response rendering, query/form helpers, escaping, and framework 404s.
+  <code>/cgi-bin/</code> or <code>/htbin/</code>. This demo uses a tiny, app-specific
+  adapter, <code>web-demo.cgi</code>, beside its Lisp source,
+  <code>web-demo.lisp</code>. The adapter only invokes Thue++; the Lisp app owns the
+  explicit route table, response rendering, query/form helpers, escaping, and
+  framework 404s.
 </p>
 
 <ul>
   <li>
-    <a href="/cgi-bin/lisp-example-adapter.cgi/">GET /</a>
-    &mdash; HTML index from an explicit route table.
-  </li>
-  <li>
-    <a href="/cgi-bin/lisp-example-adapter.cgi/hello/Ada">GET /hello/Ada</a>
-    &mdash; RE2 route-param capture escaped before HTML output.
-  </li>
-  <li>
-    <a href="/cgi-bin/lisp-example-adapter.cgi/form?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E">GET /form</a>
-    &mdash; URL-encoded query value reflected only through <code>escape-html</code>.
+    Web framework demo
+    <ul>
+      <li>
+        <a href="/cgi-bin/web-demo.cgi/">GET /</a>
+        &mdash; HTML index from an explicit route table.
+      </li>
+      <li>
+        <a href="/cgi-bin/web-demo.cgi/hello/Ada">GET /hello/Ada</a>
+        &mdash; RE2 route-param capture escaped before HTML output.
+      </li>
+      <li>
+        <a href="/cgi-bin/web-demo.cgi/form?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E">GET /form</a>
+        &mdash; URL-encoded query value reflected only through <code>escape-html</code>.
+      </li>
+    </ul>
   </li>
 </ul>
 

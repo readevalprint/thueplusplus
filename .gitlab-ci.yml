@@ -19,6 +19,7 @@ variables:
   GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
   GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
   SECRET_DETECTION_ENABLED: "true"
+  THUEPP_EXAMPLE_JOBS: "8"
 
 cache:
   key: "$CI_COMMIT_REF_SLUG"
