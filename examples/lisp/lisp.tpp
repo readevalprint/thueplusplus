@@ -52,6 +52,8 @@ Top level input and the parse primitive both enter READ with different continuat
 Strings become VSTR before list freezing. Parenthesized source is reduced inside out into L pct payloads. Reader shorthand expands quote, quasiquote, unquote, and splice into ordinary source forms.
 
 \A\([^)]*\z ::= ERR<malformed_list>
+\A[ \t\r\n]*\z ::= READ<> KTOP
+\A[ \t\r\n]*(?<input>(?:"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM)(?:[ \t\r\n]+(?:"(?:[^"\\]|\\.)*"|$NUM|true|false|$SYM))*)[ \t\r\n]*\z ::= READ<{{input}}> KTOP
 \A[ \t\r\n]*(?<input>\([\s\S]*\)|"(?:[^"\\]|\\.)*"|(?:'|`|,@|,)[\s\S]+|$NUM|true|false|$SYM)[ \t\r\n]*\z ::= READ<{{input}}> KTOP
 
 String escape validation
@@ -80,14 +82,18 @@ List freezing and parse continuations
 KTOP starts evaluation with the core environment. KPARSE returns code as data by quoting frozen nodes instead of evaluating them.
 ^READ<(?<pre>[\s\S]*)\((?<inner>[^()]*)\)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}L<{{inner|pctenc}}>{{post}}> {{k}}
 ^READ<\([^)]*> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<malformed_list>
-^READ<L<(?<payload>$PCT)>> KTOP$ ::= CBOOT<{{payload|pctdec}}|KDONE>
+^READ<> KTOP$ ::= RET<VLIST<>|KDONE>
+^READ<(?<body>$EXPR $EXPR(?: $EXPR)*)> KTOP$ ::= CBOOT<SEQ|{{body}}|KDONE>
+^READ<L<(?<payload>$PCT)>> KTOP$ ::= CBOOT<EENV|{{payload|pctdec}}|KDONE>
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KTOP$ ::= ARG<{{atom}}|KDONE>
-^READ<(?<name>$NAME)> KTOP$ ::= CBOOT<{{name}}|KDONE>
+^READ<(?<name>$NAME)> KTOP$ ::= CBOOT<EENV|{{name}}|KDONE>
 ^READ<L<(?<payload>$PCT)>> KPARSE<(?<k>.*)>$ ::= QUOTE<L<{{payload}}>|{{k}}>
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;|{{k}}>
+^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;|{{k}}>
+^CBOOTENV<SEQ\|(?<body>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= SEQ<{{body}}|{{env}}|{{k}}>
+^CBOOTENV<EENV\|(?<expr>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|{{env}}|{{k}}>
 
 
 Literal demand
@@ -131,7 +137,7 @@ Zero operand special forms need explicit ownership before generic call lookup wo
 ^EENV<\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^EENV<L<fn%20L%3C%3E%20(?<body>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<fn L<> {{body|pctdec}}|{{env}}|KCALLNOARGS {{k}}>
 ^RET<(?<fn>$VAL)\|KCALLNOARGS (?<k>.*)>$ ::= APPLY<{{fn}}||{{k}}>
-^EENV<L<fn%20L%3C(?<params>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})+)%3E(?<payload>$PCT)>\|(?<env>[^|]*)\|KDONE>$ ::= ERR<wrong_arity>
+^EENV<L<fn%20L%3C(?<params>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})+)%3E(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
 ^EENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^EENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node}}|{{env}}|{{k}}>

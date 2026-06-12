@@ -44,13 +44,15 @@ The evaluator uses internal typed values while reducing:
 - closures;
 - opaque primitive callables from the initial core environment.
 
-Top-level evaluation is quiet: evaluating an expression does not implicitly write
-the final value to stdout. Program output is produced only by explicit IO
-operations such as `write` and `write-err`. The CLI can still inspect the
-internal final value/state explicitly with `--export-state <path>`; for example,
-`(add 1 2)` writes no stdout by default, but exporting state records the final
-value as `FINAL<VNUM<3>>@@EXIT0@`. Use `unparse` plus `write` when a
-program wants to print a value as reader syntax:
+Top-level evaluation is quiet: evaluating a source file does not implicitly write
+the final value to stdout. A source file is a script body of zero or more forms;
+forms are evaluated left to right, and an empty body exits successfully with the
+unit value `()`. Program output is produced only by explicit IO operations such
+as `write` and `write-err`. The CLI can still inspect the internal final
+value/state explicitly with `--export-state <path>`; for example, `(add 1 2)`
+writes no stdout by default, but exporting state records the final value as
+`FINAL<VNUM<3>>@@EXIT0@`. An empty body exports `FINAL<VLIST<>>@@EXIT0@`. Use
+`unparse` plus `write` when a program wants to print a value as reader syntax:
 
 - numbers as normalized numeric text;
 - booleans as `true` or `false`;
@@ -71,7 +73,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), macro expansion (`macroexpand`), and IO helpers (`write`, `write-err`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. A top-level source file is a script body of zero or more forms evaluated left to right in that shared environment. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), macro expansion (`macroexpand`), and IO helpers (`write`, `write-err`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use top-level body sequencing or `(let () ...)` blocks instead.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -217,10 +219,9 @@ thuepp examples/lisp/lisp.tpp \
 Then `app.lisp` can read exactly those values:
 
 ```lisp
-(let ()
-  (write "Content-Type: text/plain\r\n\r\n")
-  (write "path=")
-  (write (arg "PATH_INFO")))
+(write "Content-Type: text/plain\r\n\r\n")
+(write "path=")
+(write (arg "PATH_INFO"))
 ```
 
 ### Direct CGI/script smoke

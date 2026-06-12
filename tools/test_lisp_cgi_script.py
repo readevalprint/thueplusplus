@@ -36,6 +36,8 @@ def run_go(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def assert_cgi_smoke(runner) -> None:
+    assert not APP.read_text(encoding="utf-8").lstrip().startswith("(let ()")
+
     result = runner(
         str(LISP),
         "--input-file",
@@ -60,9 +62,67 @@ def assert_cgi_smoke(runner) -> None:
     assert "@@EXIT0@" not in result.stdout
 
 
+def assert_export_state_for_top_level_body(runner, tmp_path: Path) -> None:
+    app = tmp_path / "top-level-body.lisp"
+    app.write_text('(write "a")\n(add 1 2)\n', encoding="utf-8")
+    export_path = tmp_path / f"{runner.__name__}.state"
+
+    result = runner(
+        str(LISP),
+        "--input-file",
+        str(app),
+        "--export-state",
+        str(export_path),
+        "--eval-limit",
+        "100000",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "a"
+    assert result.stderr == ""
+    assert export_path.read_text(encoding="utf-8") == "FINAL<VNUM<3>>@@EXIT0@"
+
+
+def assert_export_state_for_empty_body(runner, tmp_path: Path) -> None:
+    app = tmp_path / "empty-body.lisp"
+    app.write_text("  \n\t\n", encoding="utf-8")
+    export_path = tmp_path / f"{runner.__name__}-empty.state"
+
+    result = runner(
+        str(LISP),
+        "--input-file",
+        str(app),
+        "--export-state",
+        str(export_path),
+        "--eval-limit",
+        "100000",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ""
+    assert result.stderr == ""
+    assert export_path.read_text(encoding="utf-8") == "FINAL<VLIST<>>@@EXIT0@"
+
+
 def test_python_lisp_cgi_example_uses_direct_runtime() -> None:
     assert_cgi_smoke(run_python)
 
 
 def test_go_lisp_cgi_example_uses_direct_runtime() -> None:
     assert_cgi_smoke(run_go)
+
+
+def test_python_top_level_body_export_state(tmp_path: Path) -> None:
+    assert_export_state_for_top_level_body(run_python, tmp_path)
+
+
+def test_go_top_level_body_export_state(tmp_path: Path) -> None:
+    assert_export_state_for_top_level_body(run_go, tmp_path)
+
+
+def test_python_empty_top_level_body_export_state(tmp_path: Path) -> None:
+    assert_export_state_for_empty_body(run_python, tmp_path)
+
+
+def test_go_empty_top_level_body_export_state(tmp_path: Path) -> None:
+    assert_export_state_for_empty_body(run_go, tmp_path)
