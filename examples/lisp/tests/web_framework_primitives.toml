@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "../lisp.tpp"
+timeout = 15
+args = ["--eval-limit", "120000", "--max-state-bytes", "2097152"]
+
+[[case]]
+name = "route primitive type errors fail loudly"
+input = "(streq 1 \"x\")"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "route regex primitive type errors fail loudly"
+input = "(re2full 1 \"x\")"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "route capture primitive type errors fail loudly"
+input = "(re2fullgroups \"^x$\" 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "route capture miss returns empty frame and empty lookup"
+input = "(write (frame-get (re2fullgroups \"^x$\" \"y\") \"name\"))"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "route frame lookup rejects non strings"
+input = "(frame-get 1 \"name\")"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr_stripped = "type_error"
+
+[[case]]
+name = "route frame lookup handles first and later entries"
+input = "(write (frame-get \"1|age:42|name:Ada%25Byron\" \"name\"))"
+
+[case.expect]
+exit_code = 0
+stdout = "Ada%Byron"
+stderr = ""
+
+[[case]]
+name = "route frame lookup returns empty for missing key"
+input = "(write (frame-get \"1|name:Ada\" \"missing\"))"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "route frame lookup handles first entry before later entries"
+input = "(write (frame-get \"1|name:Ada%25Byron|age:42\" \"name\"))"
+
+[case.expect]
+exit_code = 0
+stdout = "Ada%Byron"
+stderr = ""

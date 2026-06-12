@@ -14,6 +14,7 @@ PCT framed text carries arbitrary source or runtime data through rewrite states 
 PCTCHAR <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})
 PCT <- $PCTCHAR*
 PCT_NO_SPACE <- (?:[A-Za-z0-9_.-]|%[0-1][0-9A-F]|%2[1-9A-F]|%[3-9A-F][0-9A-F])*
+PCT_NO_PIPE <- (?:[A-Za-z0-9_.-]|%[0-6][0-9A-F]|%7[0-9A-BD-F]|%[89A-F][0-9A-F])*
 LET_VALUE_PCT <- (?:[A-Za-z0-9_.-]|%[0-4A-F][0-9A-F]|%5[0-9A-CE-F]|%[6-9A-F][0-9A-F])*
 NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
 NAT <- [0-9]+
@@ -34,7 +35,7 @@ VPRIM <- VPRIM<$NAME>
 PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
 PRIM0 <- readline
 PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write|write-err|arg|param|escape-html
-PRIM2 <- cons|nth|contains|dissoc|macroexpand|$PRIM_NUM2
+PRIM2 <- cons|nth|contains|dissoc|macroexpand|streq|re2full|re2fullgroups|frame-get|$PRIM_NUM2
 PRIM3 <- assoc|get|set-nth
 SPECIAL_WRONG_ARITY <- eval|quote|quasiquote|set|fn|if|and|or|let|while
 UNSUPPORTED_FORM <- do|break|continue|map|unquote|splice|define|letrec
@@ -91,7 +92,7 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;param=VPRIM%3Cparam%3E;escape-html=VPRIM%3Cescape-html%3E;|{{k}}>
+^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;param=VPRIM%3Cparam%3E;escape-html=VPRIM%3Cescape-html%3E;streq=VPRIM%3Cstreq%3E;re2full=VPRIM%3Cre2full%3E;re2fullgroups=VPRIM%3Cre2fullgroups%3E;frame-get=VPRIM%3Cframe-get%3E;|{{k}}>
 ^CBOOTENV<SEQ\|(?<body>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= SEQ<{{body}}|{{env}}|{{k}}>
 ^CBOOTENV<EENV\|(?<expr>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|{{env}}|{{k}}>
 
@@ -408,6 +409,34 @@ PARAM<(?<key>$PCT)> ::! param key
 ^BESCHTML<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<HTML<{{s}}>>|{{k}}>
 ^BESCHTML<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
 HTML<(?<s>$PCT)> ::! html-escape s
+^APPLY<VPRIM<streq>\|(?<a>[^;]*);(?<b>[^;]*);\|(?<k>.*)>$ ::= BSTREQ<{{a|pctdec}}|{{b|pctdec}}|{{k}}>
+^BSTREQ<VSTR<(?<a>$PCT)>\|VSTR<(?<b>$PCT)>\|(?<k>.*)>$ ::= LSTREQ<STREQ2<{{a}},{{b}}>|{{k}}>
+^BSTREQ<(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+STREQ2<(?<a>$PCT),(?<b>$PCT)> ::! eq a b
+^LSTREQ<1\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
+^LSTREQ<0\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+^APPLY<VPRIM<re2full>\|(?<pattern>[^;]*);(?<text>[^;]*);\|(?<k>.*)>$ ::= BRE2FULL<{{pattern|pctdec}}|{{text|pctdec}}|{{k}}>
+^BRE2FULL<VSTR<(?<pattern>$PCT)>\|VSTR<(?<text>$PCT)>\|(?<k>.*)>$ ::= @LISP_RE2FULL<{{pattern|pctdec}}§{{text|pctdec}}>@ {{k}}
+^BRE2FULL<(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+@LISP_RE2FULL<(?<pattern>[^§]*)§(?<text>[\s\S]*)>@ ::! re2full pattern text
+^1 (?<k>.*)$ ::= RET<VBOOL<true>|{{k}}>
+^0 (?<k>.*)$ ::= RET<VBOOL<false>|{{k}}>
+^APPLY<VPRIM<re2fullgroups>\|(?<pattern>[^;]*);(?<text>[^;]*);\|(?<k>.*)>$ ::= BRE2FULLGROUPS<{{pattern|pctdec}}|{{text|pctdec}}|{{k}}>
+^BRE2FULLGROUPS<VSTR<(?<pattern>$PCT)>\|VSTR<(?<text>$PCT)>\|(?<k>.*)>$ ::= @LISP_RE2FULLGROUPS<{{pattern|pctdec}}§{{text|pctdec}}>@ {{k}}
+^BRE2FULLGROUPS<(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+@LISP_RE2FULLGROUPS<(?<pattern>[^§]*)§(?<text>[\s\S]*)>@ ::! re2fullgroups pattern text
+^1\|(?<groups>[^ ]*) (?<k>.*)$ ::= RET<VSTR<1%7C{{groups|pctenc}}>|{{k}}>
+^0\| (?<k>.*)$ ::= RET<VSTR<0%7C>|{{k}}>
+^APPLY<VPRIM<frame-get>\|(?<frame>[^;]*);(?<key>[^;]*);\|(?<k>.*)>$ ::= BFRAMEGET<{{frame|pctdec}}|{{key|pctdec}}|{{k}}>
+^BFRAMEGET<VSTR<0%7C>\|VSTR<(?<key>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<>|{{k}}>
+^BFRAMEGET<VSTR<1%7C(?<pre>$PCT)>\|VSTR<(?<key>$PCT)>\|(?<k>.*)>$ ::= FRAMEGET<{{pre}}|{{key}}|{{k}}>
+^BFRAMEGET<(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^FRAMEGET<name%3A(?<value>$PCT_NO_PIPE)%7C(?<rest>$PCT)\|name\|(?<k>.*)>$ ::= @FRAMEVAL<{{value}}>@ {{k}}
+^FRAMEGET<name%3A(?<value>$PCT_NO_PIPE)\|name\|(?<k>.*)>$ ::= @FRAMEVAL<{{value}}>@ {{k}}
+^FRAMEGET<(?<headkey>$PCT_NO_PIPE)%3A(?<headval>$PCT_NO_PIPE)%7C(?<rest>$PCT)\|(?<key>$PCT)\|(?<k>.*)>$ ::= FRAMEGET<{{rest}}|{{key}}|{{k}}>
+^FRAMEGET<(?<lastkey>$PCT_NO_PIPE)%3A(?<lastval>$PCT_NO_PIPE)\|(?<key>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<>|{{k}}>
+@FRAMEVAL<(?<value>$PCT)>@ ::! pctdec value
+^(?<value>$PCT) (?<k>.*)$ ::= RET<VSTR<{{value}}>|{{k}}>
 @LISP_READLINE@ ::< 30s 1 lines stdin
 ^LREADRET<(?<line>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{line}}>|{{k}}>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
