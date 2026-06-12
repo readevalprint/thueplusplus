@@ -255,35 +255,50 @@ No final Lisp expression, `()`, `FINAL<...>`, or `@@EXIT0@` marker is appended t
 stdout. Final state/value inspection is available only through explicit CLI
 export, for example `--export-state final.state`.
 
-Safety constraints for this first CGI/script shape are deliberate:
+Safety constraints for this CGI/script shape are deliberate:
 
 - use `examples/lisp/lisp.tpp` directly; do not duplicate a separate CGI runtime;
 - pass only explicit whitelisted script args after `--`;
 - do not expose all environment variables, raw argv, or secret-bearing host data;
-- do not load Lisp source from URL path components;
+- do not load Lisp source from arbitrary URL path components;
 - set bounded `--eval-limit` and `--max-state-bytes` values in the host command;
-- use explicit `write` / `write-err` calls for all response output.
+- keep `write` raw, and use explicit `escape-html` at HTML call sites;
+- read POST bodies only in the trusted adapter, only from a declared bounded
+  `CONTENT_LENGTH`, and pass the result as explicit `FORM_BODY`.
 
 ### Testing with Python's simple CGI server
 
-Python's built-in CGI server is enough for a local smoke test. The checked-in
-`examples/lisp/cgi-bin/lisp-example-adapter.cgi` file is the trusted adapter: it chooses
-the ruleset, resource limits, and which CGI environment values become explicit
-script args. The Lisp app remains plain input source.
+Python's built-in CGI server is enough for local executable docs. The checked-in
+`examples/lisp/cgi-bin/lisp-example-adapter.cgi` file is the trusted adapter: it
+selects one of the checked Lisp source files, owns resource limits and bounded
+POST body reads, and decides which CGI metadata becomes explicit script args.
+When a project `.venv` exists, the adapter uses its Python directly so the CGI
+subprocess does not need to mutate dependency caches after `http.server` drops
+privileges; otherwise it falls back to `uv run python`. The Lisp apps remain
+plain input source.
 
 ```sh
 cd examples/lisp
 make serve-cgi
 ```
 
-In another terminal, run the checked CGI smoke test:
+Then open `http://127.0.0.1:8000/`. The static index links both checked
+examples because Python's stock CGI server executes only under `/cgi-bin/` and
+`/htbin/`:
+
+- plain text smoke: `/cgi-bin/lisp-example-adapter.cgi/health?a=1`, backed by
+  `cgi-example.lisp`;
+- HTML form demo: `/cgi-bin/lisp-example-adapter.cgi/form`, backed by
+  `cgi-forms-example.lisp`.
+
+In another terminal, run the checked CGI tests:
 
 ```sh
 cd examples/lisp
 make test-cgi
 ```
 
-Or request the checked-in adapter file directly, not the `cgi-bin/` directory:
+Or request the plain text route directly:
 
 ```sh
 curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/health?a=1'
@@ -297,8 +312,18 @@ path=/health
 query=a=1
 ```
 
-The trusted adapter is the security boundary: untrusted Lisp source cannot choose
-additional environment variables, swap rulesets, or change resource limits.
+The form route keeps output raw by default and escapes only where the Lisp app
+explicitly asks for HTML-safe text:
+
+```sh
+curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/form?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E'
+```
+
+The submitted value appears as `&lt;script&gt;alert(1)&lt;/script&gt;` inside both the
+quoted input attribute and the `<pre>` text region. The trusted adapter is the
+security boundary: untrusted Lisp source cannot choose additional environment
+variables, swap rulesets, change resource limits, or perform unbounded POST body
+reads.
 
 ## Explicit eval scope
 
