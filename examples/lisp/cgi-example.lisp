@@ -1,8 +1,0 @@
-(write "Content-Type: text/plain\r\n\r\n")
-(write "method=")
-(write (arg "REQUEST_METHOD"))
-(write "\npath=")
-(write (arg "PATH_INFO"))
-(write "\nquery=")
-(write (arg "QUERY_STRING"))
-(write "\n")

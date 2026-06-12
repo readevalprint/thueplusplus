@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
 timeout = 15
-args = ["--input-file", "examples/lisp/web-demo.lisp", "--eval-limit", "400000", "--max-state-bytes", "4194304"]
+args = ["--input-file", "examples/lisp/cgi-bin/web-demo.lisp", "--eval-limit", "400000", "--max-state-bytes", "4194304"]
 
 [[case]]
-name = "GET root renders framework HTML response"
+name = "root path renders framework HTML response"
 script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/", "--QUERY_STRING", "", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
 
 [case.expect]
@@ -13,7 +13,7 @@ stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype ht
 stderr = ""
 
 [[case]]
-name = "GET hello route uses named route param and escapes HTML"
+name = "hello path uses named route param and escapes HTML"
 script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/hello/<Ada&Byron>", "--QUERY_STRING", "", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
 
 [case.expect]
@@ -22,7 +22,7 @@ stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype ht
 stderr = ""
 
 [[case]]
-name = "GET form reads first query value"
+name = "form path reads first query value"
 script_args = ["--REQUEST_METHOD", "GET", "--PATH_INFO", "/form", "--QUERY_STRING", "q=first&q=second", "--CONTENT_TYPE", "", "--CONTENT_LENGTH", "", "--FORM_BODY", ""]
 
 [case.expect]
@@ -31,7 +31,7 @@ stdout = "Status: 200 OK\nContent-Type: text/html; charset=utf-8\n\n<!doctype ht
 stderr = ""
 
 [[case]]
-name = "POST form prefers URL encoded body over query and escapes"
+name = "form path prefers URL encoded body over query and escapes"
 script_args = ["--REQUEST_METHOD", "POST", "--PATH_INFO", "/form", "--QUERY_STRING", "q=query", "--CONTENT_TYPE", "application/x-www-form-urlencoded", "--CONTENT_LENGTH", "27", "--FORM_BODY", "q=%3Cscript%3E%26%22%27"]
 
 [case.expect]

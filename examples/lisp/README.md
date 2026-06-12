@@ -226,14 +226,14 @@ Then `app.lisp` can read exactly those values:
 
 ### Direct web/CGI script smoke
 
-`examples/lisp/web-demo.lisp` is a tiny raw web app intended to be run by the
+`examples/lisp/cgi-bin/web-demo.lisp` is a tiny raw web app intended to be run by the
 normal Lisp runtime, not by a copied `lisp-cgi.tpp` runtime. The app reads only
 explicit script args, matches routes with explicit RE2 patterns, writes a single
 CGI response, and escapes reflected HTML values at each call site:
 
 ```sh
 thuepp examples/lisp/lisp.tpp \
-  --input-file examples/lisp/web-demo.lisp \
+  --input-file examples/lisp/cgi-bin/web-demo.lisp \
   --eval-limit 400000 \
   --max-state-bytes 4194304 \
   -- \
@@ -276,14 +276,12 @@ Safety constraints for this web/CGI shape are deliberate:
 ### Testing with Python's simple CGI server
 
 Python's built-in CGI server is enough for local executable docs. The checked-in
-`examples/lisp/cgi-bin/lisp-example-adapter.cgi` file is the trusted adapter: it
-invokes one checked Lisp source file (`web-demo.lisp`), owns resource limits and
-bounded POST body reads, and decides which CGI metadata becomes explicit script
-args. It does not route URLs itself; unknown paths reach the Lisp app and return
-the framework 404. When a project `.venv` exists, the adapter uses its Python
-directly so the CGI subprocess does not need to mutate dependency caches after
-`http.server` drops privileges; otherwise it falls back to `uv run python`. The
-Lisp app remains plain input source.
+web demo Lisp source lives beside a same-named thin adapter under
+`examples/lisp/cgi-bin/`: `web-demo.lisp` has `web-demo.cgi`. The adapter does
+not route URLs, choose apps, validate HTTP, or own framework behavior; it only
+invokes `uv run python python/thuepp.py` with the same-named `.lisp` input,
+fixed resource limits, and a small explicit CGI arg whitelist. Unknown paths
+reach the Lisp app and return the framework 404.
 
 ```sh
 cd examples/lisp
@@ -291,12 +289,12 @@ make serve-cgi
 ```
 
 Then open `http://127.0.0.1:8000/`. The static index links the checked web app
-routes exposed through `/cgi-bin/lisp-example-adapter.cgi/`:
+routes exposed through `/cgi-bin/web-demo.cgi/`:
 
-- index: `/cgi-bin/lisp-example-adapter.cgi/`, matched by explicit `/` route;
-- route params: `/cgi-bin/lisp-example-adapter.cgi/hello/Ada`, matched by
+- index: `/cgi-bin/web-demo.cgi/`, matched by explicit `/` route;
+- route params: `/cgi-bin/web-demo.cgi/hello/Ada`, matched by
   `^/hello/(?<name>[^/]+)$`;
-- HTML form demo: `/cgi-bin/lisp-example-adapter.cgi/form`, using explicit
+- HTML form demo: `/cgi-bin/web-demo.cgi/form`, using explicit
   query/form helpers and `escape-html`.
 
 In another terminal, run the checked CGI tests:
@@ -309,16 +307,13 @@ make test-cgi
 Request the routes directly:
 
 ```sh
-curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/'
-curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/hello/%3CAda%26Byron%3E'
-curl 'http://127.0.0.1:8000/cgi-bin/lisp-example-adapter.cgi/form?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E'
+curl 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/'
+curl 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/hello/%3CAda%26Byron%3E'
+curl 'http://127.0.0.1:8000/cgi-bin/web-demo.cgi/form?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E'
 ```
 
 The submitted value appears as `&lt;script&gt;alert(1)&lt;/script&gt;` inside both the
-quoted input attribute and the `<pre>` text region. The trusted adapter is the
-security boundary: untrusted Lisp source cannot choose additional environment
-variables, swap rulesets, change resource limits, or perform unbounded POST body
-reads.
+quoted input attribute and the `<pre>` text region. The same-named adapter is deliberately thin: Lisp owns framework behavior; the shell only invokes Thue++ with explicit CGI arguments.
 
 ## Explicit eval scope
 

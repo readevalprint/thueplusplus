@@ -22,6 +22,7 @@ class FakePath:
 
 
 def test_default_jobs_uses_cgroup_cpu_quota_when_lower_than_host_cpu(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("THUEPP_EXAMPLE_JOBS", raising=False)
     monkeypatch.setattr(os, "cpu_count", lambda: 64)
     monkeypatch.setattr(os, "sched_getaffinity", lambda _pid: set(range(64)), raising=False)
     monkeypatch.setattr(
@@ -34,6 +35,7 @@ def test_default_jobs_uses_cgroup_cpu_quota_when_lower_than_host_cpu(monkeypatch
 
 
 def test_default_jobs_uses_affinity_when_lower_than_host_cpu(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("THUEPP_EXAMPLE_JOBS", raising=False)
     monkeypatch.setattr(os, "cpu_count", lambda: 64)
     monkeypatch.setattr(os, "sched_getaffinity", lambda _pid: {0, 1, 2}, raising=False)
     monkeypatch.setattr(example_runner, "Path", lambda value: FakePath("max 100000") if value == "/sys/fs/cgroup/cpu.max" else Path(value))
@@ -42,8 +44,23 @@ def test_default_jobs_uses_affinity_when_lower_than_host_cpu(monkeypatch: pytest
 
 
 def test_default_jobs_never_returns_less_than_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("THUEPP_EXAMPLE_JOBS", raising=False)
     monkeypatch.setattr(os, "cpu_count", lambda: None)
     monkeypatch.delattr(os, "sched_getaffinity", raising=False)
     monkeypatch.setattr(example_runner, "Path", lambda value: FakePath("50000 100000") if value == "/sys/fs/cgroup/cpu.max" else Path(value))
 
     assert example_runner.default_jobs() == 1
+
+
+def test_default_jobs_uses_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("THUEPP_EXAMPLE_JOBS", "8")
+    monkeypatch.setattr(os, "cpu_count", lambda: 64)
+
+    assert example_runner.default_jobs() == 8
+
+
+def test_default_jobs_rejects_invalid_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("THUEPP_EXAMPLE_JOBS", "0")
+
+    with pytest.raises(RuntimeError, match="THUEPP_EXAMPLE_JOBS"):
+        example_runner.default_jobs()

@@ -65,6 +65,12 @@ def affinity_cpu_count() -> int | None:
 
 
 def default_jobs() -> int:
+    override = os.environ.get("THUEPP_EXAMPLE_JOBS")
+    if override is not None:
+        parsed = _positive_int(override)
+        if parsed is None:
+            raise RuntimeError(f"THUEPP_EXAMPLE_JOBS must be a positive integer, got {override!r}")
+        return parsed
     candidates = [count for count in (os.cpu_count(), affinity_cpu_count(), cgroup_cpu_quota()) if count]
     if not candidates:
         return 1
@@ -486,8 +492,13 @@ def run_configs(interpreters: list[Interpreter], configs: list[Path], *, jobs: i
                     executor.submit(run_manifest_case_set, interpreters, config_path, case, root_tmp)
                     for config_path, case in work
                 ]
-                for future in futures:
-                    program, counts = future.result()
+                for completed, future in enumerate(concurrent.futures.as_completed(futures), 1):
+                    try:
+                        program, counts = future.result()
+                    except Exception as exc:
+                        raise RuntimeError(f"example runner failed after {completed - 1}/{len(work)} completed case(s)") from exc
+                    if completed % 25 == 0 or completed == len(work):
+                        print(f"progress: {completed}/{len(work)} cases completed", file=sys.stderr)
                     coverage_by_program[program].update(counts)
 
     names = ", ".join(interpreter.name for interpreter in interpreters)
@@ -498,19 +509,23 @@ def run_configs(interpreters: list[Interpreter], configs: list[Path], *, jobs: i
 
 
 def build_interpreters(build_root: Path) -> list[Interpreter]:
-    build_root.mkdir(parents=True, exist_ok=True)
-    go_artifact = build_root / "go-thuepp"
-    completed = subprocess.run(
-        ["go", "build", "-o", str(go_artifact), "./cmd/thuepp"],
-        cwd=ROOT / "go",
-        capture_output=True,
-        text=True,
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(
-            "go implementation build failed with exit "
-            f"{completed.returncode}\nstdout={completed.stdout!r}\nstderr={completed.stderr!r}"
+    built_go = ROOT / "build" / "thuepp"
+    if built_go.exists():
+        go_artifact = built_go
+    else:
+        build_root.mkdir(parents=True, exist_ok=True)
+        go_artifact = build_root / "go-thuepp"
+        completed = subprocess.run(
+            ["go", "build", "-o", str(go_artifact), "./cmd/thuepp"],
+            cwd=ROOT / "go",
+            capture_output=True,
+            text=True,
         )
+        if completed.returncode != 0:
+            raise RuntimeError(
+                "go implementation build failed with exit "
+                f"{completed.returncode}\nstdout={completed.stdout!r}\nstderr={completed.stderr!r}"
+            )
     return [
         Interpreter("python", ("uv", "run", "python", "python/thuepp.py")),
         Interpreter("go", (str(go_artifact),)),
