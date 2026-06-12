@@ -90,6 +90,8 @@ The default resources are `stdin`, `stdout`, and `stderr`. A runner can bind mor
 
 Runners can also pass script arguments after `--`. A rule can read a named script argument with `::! arg KEY`; the value enters state PCT-encoded, just like resource input. For example, `thuepp examples/args/args.tpp -- --QUERY_STRING "$QUERY_STRING"` exposes the explicit `QUERY_STRING` argument to rules using `::! arg QUERY_STRING`. If the key comes from a capture, use the same RHS template syntax as other operators: `::! arg {{key}}`.
 
+Use `--export-state <path>` to inspect final interpreter state explicitly after execution. This is an opt-in artifact: it does not write to normal program stdout unless the destination is `-`, in which case the export deliberately shares stdout with program output. For example, `thuepp examples/hello/hello.tpp --export-state final.state` writes the final state to `final.state` after the program exits.
+
 ## Hello world
 
 This program writes one line, then exits:

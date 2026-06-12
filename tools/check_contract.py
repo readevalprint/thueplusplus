@@ -346,9 +346,9 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     for snippet in forbidden_array_fragments:
         if snippet in text:
             failures.append(Failure(path, f"Lisp arrays/rest were deleted; stale implementation fragment remains: {snippet}"))
-    generic_final_quiet = "^RET<(?<v>$VAL)\\|KDONE>$ ::= @EXIT0@"
+    generic_final_quiet = "^RET<(?<v>$VAL)\\|KDONE>$ ::= FINAL<{{v}}>@@EXIT0@"
     if generic_final_quiet not in text:
-        failures.append(Failure(path, "Lisp final KDONE handling must exit quietly through one generic $VAL rule"))
+        failures.append(Failure(path, "Lisp final KDONE handling must exit quietly through one generic $VAL rule while preserving value for export"))
     stale_final_render = re.compile(r"^\^RET(?:ENV)?<.*\\\|KDONE>\$ ::= RENDER<", re.MULTILINE)
     if stale_final_render.search(text) or "|KOUT>" in text:
         failures.append(Failure(path, "Lisp final KDONE handling must not implicitly render values to stdout"))

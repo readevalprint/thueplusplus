@@ -517,9 +517,9 @@ Continuation tags after RET implement type, first, rest, is empty, count, nth, a
 
 
 Final rendering and process exits
-KDONE exits successfully without rendering the last evaluated value. Program output is explicit through write and write-err only. The renderer remains available through the unparse primitive.
-^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KDONE>$ ::= @EXIT0@
-^RET<(?<v>$VAL)\|KDONE>$ ::= @EXIT0@
+KDONE exits successfully without rendering the last evaluated value. The final value remains in state for explicit export tooling. Program output is explicit through write and write-err only. The renderer remains available through the unparse primitive.
+^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KDONE>$ ::= FINAL<{{v}}>@@EXIT0@
+^RET<(?<v>$VAL)\|KDONE>$ ::= FINAL<{{v}}>@@EXIT0@
 
 Renderer
 RENDER converts runtime values into pct encoded output fragments. Strings use the generic escape builtin and lists render recursively with spaces between rendered items.
@@ -540,7 +540,7 @@ ESC<(?<s>$PCT)> ::! escape {{s}}
 ^RRET<(?<frag>$PCT)\|KLISTFIRST<(?<rest>[^|]*)\|(?<k>.*)>>$ ::= RLIST<{{rest}}|{{frag}}|{{k}}>
 ^RRET<(?<frag>$PCT)\|KLISTNEXT<(?<rest>[^|]*)\|(?<acc>$PCT)\|(?<k>.*)>>$ ::= RLIST<{{rest}}|{{acc}}%20{{frag}}|{{k}}>
 
-^@EXIT0@$ ::- 0
+^FINAL<(?<v>$VAL)>@@EXIT0@$ ::- 0
 ^ERR<(?<e>[A-Za-z0-9_]+)>$ ::= @ERR<{{e}}>@@EXIT2@
 ^@ERR<(?<v>[A-Za-z0-9_]+)>@ ::> stderr {{v}}\n
 ^@EXIT2@$ ::- 2

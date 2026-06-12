@@ -46,7 +46,10 @@ The evaluator uses internal typed values while reducing:
 
 Top-level evaluation is quiet: evaluating an expression does not implicitly write
 the final value to stdout. Program output is produced only by explicit IO
-operations such as `write` and `write-err`. Use `unparse` plus `write` when a
+operations such as `write` and `write-err`. The CLI can still inspect the
+internal final value/state explicitly with `--export-state <path>`; for example,
+`(add 1 2)` writes no stdout by default, but exporting state records the final
+value as `FINAL<VNUM<3>>@@EXIT0@`. Use `unparse` plus `write` when a
 program wants to print a value as reader syntax:
 
 - numbers as normalized numeric text;

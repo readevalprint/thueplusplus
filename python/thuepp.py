@@ -1028,6 +1028,11 @@ def main():
         help="Override initial state with the contents of this file",
     )
     parser.add_argument(
+        "--export-state",
+        type=str,
+        help="Write the final interpreter state to this path after execution ('-' writes to stdout)",
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug logging of rule evaluation",
@@ -1112,10 +1117,22 @@ def main():
             interpreter.write_rule_coverage()
         except OSError as e:
             coverage_error = e
+        export_error = None
+        if args.export_state is not None:
+            try:
+                if args.export_state == "-":
+                    sys.stdout.write(interpreter.state)
+                else:
+                    Path(args.export_state).write_text(interpreter.state, encoding="utf-8")
+            except OSError as e:
+                export_error = e
         interpreter.cleanup()
 
     if coverage_error is not None:
         print(f"Error: failed to write rule coverage: {coverage_error}", file=sys.stderr)
+        exit_code = 1
+    if export_error is not None:
+        print(f"Error: failed to write export state: {export_error}", file=sys.stderr)
         exit_code = 1
 
     sys.exit(exit_code)
