@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "../lisp.tpp"
+timeout = 10
+args = ["--eval-limit", "100000"]
+
+[[case]]
+name = "empty top-level body is quiet unit"
+input = ""
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "whitespace top-level body is quiet unit"
+input = "   \n\t\n"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "multiple atomic top-level forms return final value quietly"
+input = "1 2"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "multiple top-level writes run in order"
+input = '''
+(write "a")
+(write "b")
+'''
+
+[case.expect]
+exit_code = 0
+stdout = "ab"
+stderr = ""
+
+[[case]]
+name = "final non-io value remains quiet after earlier write"
+input = '''
+(write "a")
+(add 1 2)
+'''
+
+[case.expect]
+exit_code = 0
+stdout = "a"
+stderr = ""
+
+[[case]]
+name = "top-level error stops later forms"
+input = '''
+(write "before")
+(write 1)
+(write "after")
+'''
+
+[case.expect]
+exit_code = 2
+stdout = "before"
+stderr = "type_error\n"
+
+[[case]]
+name = "parse remains datum-oriented not script body"
+input = '''
+(parse "(write \"a\") (write \"b\")")
+'''
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_form\n"
