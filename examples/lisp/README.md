@@ -223,6 +223,46 @@ Then `app.lisp` can read exactly those values:
   (write (arg "PATH_INFO")))
 ```
 
+### Direct CGI/script smoke
+
+`examples/lisp/cgi-example.lisp` is a minimal script body intended to be run by
+the normal Lisp runtime, not by a copied `lisp-cgi.tpp` runtime:
+
+```sh
+thuepp examples/lisp/lisp.tpp \
+  --input-file examples/lisp/cgi-example.lisp \
+  --eval-limit 100000 \
+  --max-state-bytes 1048576 \
+  -- \
+  --REQUEST_METHOD "${REQUEST_METHOD:-GET}" \
+  --PATH_INFO "${PATH_INFO:-/health}" \
+  --QUERY_STRING "${QUERY_STRING:-}"
+```
+
+With `REQUEST_METHOD=GET`, `PATH_INFO=/health`, and `QUERY_STRING=a=1`, stdout
+is exactly the explicit writes from the Lisp app:
+
+```text
+Content-Type: text/plain
+
+method=GET
+path=/health
+query=a=1
+```
+
+No final Lisp expression, `()`, `FINAL<...>`, or `@@EXIT0@` marker is appended to
+stdout. Final state/value inspection is available only through explicit CLI
+export, for example `--export-state final.state`.
+
+Safety constraints for this first CGI/script shape are deliberate:
+
+- use `examples/lisp/lisp.tpp` directly; do not duplicate a separate CGI runtime;
+- pass only explicit whitelisted script args after `--`;
+- do not expose all environment variables, raw argv, or secret-bearing host data;
+- do not load Lisp source from URL path components;
+- set bounded `--eval-limit` and `--max-state-bytes` values in the host command;
+- use explicit `write` / `write-err` calls for all response output.
+
 ## Explicit eval scope
 
 `eval` evaluates code-as-data using an explicit association-list scope:
