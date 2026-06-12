@@ -597,7 +597,7 @@ function extractResources(rules: string): ResourceUsage[] {
   for (const rawLine of rules.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')) {
     const line = rawLine.trim()
     if (!line) continue
-    const read = rawLine.match(/::\s*<\s+\S+\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
+    const read = rawLine.match(/::\s*<\s+\S+\s+\S+\s+(?:bytes|lines)\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
     if (read) markResource(byName, read[1], 'read')
     const write = rawLine.match(/::\s*>\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
     if (write) markResource(byName, write[1], 'write')
@@ -1394,7 +1394,7 @@ function pendingInputTimeoutSeconds(trace: DemoTraceEvent[], resourceName: strin
   if (!event) return undefined
   const rule = ruleTextForEvent(event)
   const escapedName = resourceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = rule.match(new RegExp(`::<\\s+([1-9][0-9]*(?:ms|s|m))\\s+${escapedName}\\b`))
+  const match = rule.match(new RegExp(`::<\\s+([1-9][0-9]*(?:ms|s|m))\\s+\\S+\\s+(?:bytes|lines)\\s+${escapedName}\\b`))
   if (!match) return undefined
   return durationSeconds(match[1])
 }

@@ -16,7 +16,7 @@ The smallest truth table is still a truth table. Let the tests say every row out
 Read one line from stdin. The input buffer is provided by each challenge test case.
 
 ```thue
-START ::< 1s stdin
+START ::< 1s 1 lines stdin
 ```
 
 This branch is solved: input `0` should print `1`.

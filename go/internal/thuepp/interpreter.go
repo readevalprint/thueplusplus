@@ -571,8 +571,12 @@ func b64urlDecode(value string) (string, error) {
 }
 
 func pctEncode(value string) string {
+	return pctEncodeBytes([]byte(value))
+}
+
+func pctEncodeBytes(value []byte) string {
 	var out strings.Builder
-	for _, b := range []byte(value) {
+	for _, b := range value {
 		if b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '_' || b == '.' || b == '-' {
 			out.WriteByte(b)
 		} else {
@@ -913,15 +917,61 @@ func stripLineTerminator(line string) (string, bool) {
 	return line, true
 }
 
-func (i *Interpreter) readLine(b *Binding, timeout time.Duration) (string, string) {
+func (i *Interpreter) readResource(b *Binding, timeout time.Duration, count int, unit string) (string, string) {
 	if b.Resource == nil {
 		return "", fmt.Sprintf("ERR:resource:%s:missing host resource", b.Name)
 	}
-	content, err := b.Resource.ReadLine(timeout)
-	if err != nil {
-		return "", formatResourceError(b.Name, err)
+	switch unit {
+	case "lines":
+		content, err := b.Resource.ReadLines(count, timeout)
+		if err != nil {
+			return "", formatResourceError(b.Name, err)
+		}
+		return pctEncode(content), ""
+	case "bytes":
+		content, err := b.Resource.ReadBytes(count, timeout)
+		if err != nil {
+			return "", formatResourceError(b.Name, err)
+		}
+		return pctEncodeBytes(content), ""
+	default:
+		return "", fmt.Sprintf("Line ?: invalid read unit '%s'", unit)
 	}
-	return content, ""
+}
+
+func parseReadCount(token string, groups map[string]string, lineNumber int) (int, error) {
+	if token == "" {
+		return 0, fmt.Errorf("Line %d: ::< count must be a non-negative integer or named capture", lineNumber)
+	}
+	if token[0] >= '0' && token[0] <= '9' {
+		for _, ch := range token {
+			if ch < '0' || ch > '9' {
+				return 0, fmt.Errorf("Line %d: ::< count must be a non-negative integer or named capture", lineNumber)
+			}
+		}
+		count, err := strconv.Atoi(token)
+		if err != nil {
+			return 0, fmt.Errorf("Line %d: ::< count '%s' is too large", lineNumber, token)
+		}
+		return count, nil
+	}
+	value, ok := groups[token]
+	if !ok {
+		return 0, fmt.Errorf("Line %d: ::< count '%s' was not captured", lineNumber, token)
+	}
+	if value == "" {
+		return 0, fmt.Errorf("Line %d: ::< count capture '%s' must be a non-negative integer, got '%s'", lineNumber, token, value)
+	}
+	for _, ch := range value {
+		if ch < '0' || ch > '9' {
+			return 0, fmt.Errorf("Line %d: ::< count capture '%s' must be a non-negative integer, got '%s'", lineNumber, token, value)
+		}
+	}
+	count, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("Line %d: ::< count capture '%s' is too large", lineNumber, token)
+	}
+	return count, nil
 }
 
 func parseReadTimeout(spec string) (time.Duration, bool) {
@@ -1139,15 +1189,25 @@ func (i *Interpreter) Run() (int, error) {
 				i.recordRuleCoverage(rule)
 			case Read:
 				parts := strings.Fields(strings.TrimSpace(rule.RHS))
-				if len(parts) != 2 {
-					err := fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
+				if len(parts) != 4 {
+					err := fmt.Errorf("Line %d: ::< requires timeout, count, unit, and literal resource", rule.LineNumber)
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
-				readSpec, resource := parts[0], parts[1]
+				readSpec, countSpec, unit, resource := parts[0], parts[1], parts[2], parts[3]
 				readTimeout, ok := parseReadTimeout(readSpec)
 				if !ok {
 					err := fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				if unit != "bytes" && unit != "lines" {
+					err := fmt.Errorf("Line %d: ::< unit must be bytes or lines", rule.LineNumber)
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				count, err := parseReadCount(countSpec, groups, rule.LineNumber)
+				if err != nil {
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
@@ -1162,12 +1222,12 @@ func (i *Interpreter) Run() (int, error) {
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
-				content, er := i.readLine(b, readTimeout)
+				encoded, er := i.readResource(b, readTimeout, count, unit)
 				if er != "" {
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, er)
 					return 1, errors.New(er)
 				}
-				repl = pctEncode(content)
+				repl = encoded
 				i.recordRuleCoverage(rule)
 			case Write:
 				expanded, err := i.expandTemplate(rule.RHS, groups, magicVars)

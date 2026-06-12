@@ -2,7 +2,7 @@
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 ^read$ ::= output:@IN@
-@IN@ ::< 5s worker
+@IN@ ::< 5s 1 lines worker
 ^output:(?<value>$PCT)$ ::> stdout {{value|pctdec}}
 
 ::=

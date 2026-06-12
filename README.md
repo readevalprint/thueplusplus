@@ -129,14 +129,14 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 ^START$ ::= @PROMPT@NAME<@READ@>
 @PROMPT@ ::> stdout What is your name?\n
-@READ@ ::< 30s stdin
+@READ@ ::< 30s 1 lines stdin
 ^NAME<(?<name>$PCT)>$ ::> stdout hello {{name|pctdec}}!\n
 
 ::=
 START
 ```
 
-`::< 30s stdin` reads one line from `stdin` with an explicit 30-second timeout. Read timeouts are positive integer durations with `ms`, `s`, or `m` units; bare numeric seconds are invalid. The line is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
+`::< 30s 1 lines stdin` reads exactly one newline-terminated line from `stdin` with an explicit 30-second timeout. Read timeouts are positive integer durations with `ms`, `s`, or `m` units; bare numeric seconds are invalid. Resource reads use `TIMEOUT COUNT UNIT RESOURCE`: `UNIT` is plural-only `lines` or `bytes`, and `COUNT` is a non-negative integer literal or a named capture from the left-hand side. `lines` strips terminators and joins multiple lines with `\n`; `bytes` reads exact raw bytes. The payload is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
 
 The same resource interface can connect to a process. The runner binds a resource name, and Thue++ reads or writes through that name.
 
@@ -172,10 +172,10 @@ NUMBER <- [0-9]+
 
 PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
-@RANDOM_NUMBER@ ::< 5s random
+@RANDOM_NUMBER@ ::< 5s 1 lines random
 
 @PROMPT@ ::> stdout Guess:\n
-@USER_GUESS@ ::< 30s stdin
+@USER_GUESS@ ::< 30s 1 lines stdin
 
 @INVALID_NUMBER@ ::> stdout Please enter digits only.\n
 @TOO_LOW@ ::> stdout Too low.\n
@@ -490,7 +490,7 @@ The stable Python entry point is `python/thuepp.py`. Direct `./python/thuepp.py 
 
 JavaScript support is Go-WASM based. Files under [`demo/wasm/`](demo/wasm/) load the WASM artifact and adapt runner resources for Node, browser, and worker environments. They are adapters, not a separate JavaScript implementation.
 
-Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
+Browser resources are callbacks: `readLines`, `readBytes`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
 ## Verification
 
@@ -542,7 +542,7 @@ uv run python tools/check_contract.py --update-readme
 - optional initial state after a final separator row `::=`
 - no comment syntax: `#` is ordinary text unless the row also contains a valid operator
 - `--input` replaces the source-provided initial state for CLI runners
-- resource reads consume one newline-delimited message and PCT-encode the payload
+- resource reads consume exact counted `bytes` or `lines` and PCT-encode the payload
 - execution limits such as `--eval-limit` and `--max-state-bytes`
 - exact rational numeric builtins; decimal-looking input parses to rationals, never floats
 - string escape/unescape builtins over PCT payloads

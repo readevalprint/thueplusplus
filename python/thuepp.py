@@ -440,9 +440,12 @@ class ThueppInterpreter:
 
 
     def _pct_encode(self, value: str) -> str:
+        return self._pct_encode_bytes(value.encode("utf-8"))
+
+    def _pct_encode_bytes(self, value: bytes) -> str:
         safe = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"
         out = []
-        for byte in value.encode("utf-8"):
+        for byte in value:
             if byte in safe:
                 out.append(chr(byte))
             else:
@@ -656,24 +659,67 @@ class ThueppInterpreter:
                 bufsize=0,  # Unbuffered
             )
 
-    def _read_line(self, binding: Binding, timeout: float) -> tuple[str, Optional[str]]:
-        """Read one newline-delimited message, stripping one line terminator."""
-        if binding.name == "stdout" or binding.name == "stderr":
-            return "", "ERR:resource:cannot_read_output_stream"
+    def _read_lines(self, binding: Binding, count: int, timeout: float) -> tuple[str, Optional[str]]:
+        """Read exactly count newline-delimited messages, stripping line terminators and joining with \n."""
+        if count == 0:
+            return "", None
+        lines: list[str] = []
+        for _ in range(count):
+            if binding.name == "stdin":
+                ready, _, _ = select.select([sys.stdin], [], [], timeout)
+                if not ready:
+                    return "", "ERR:resource:stdin:timeout"
+                line = sys.stdin.readline()
+                resource_name = "stdin"
+            elif binding.is_process:
+                self._ensure_process(binding)
+                try:
+                    ready, _, _ = select.select([binding.process.stdout], [], [], timeout)
+                    if not ready:
+                        if binding.process.poll() not in (None, 0):
+                            stderr = binding.process.stderr.read()
+                            if isinstance(stderr, bytes):
+                                stderr = stderr.decode("utf-8", errors="replace")
+                            stderr = stderr.strip() or f"process exited {binding.process.returncode}"
+                            return "", f"ERR:resource:{binding.name}:{stderr}"
+                        return "", f"ERR:resource:{binding.name}:timeout"
+                    line = binding.process.stdout.readline()
+                    if isinstance(line, bytes):
+                        line = line.decode("utf-8", errors="replace")
+                    resource_name = binding.name
+                except OSError as e:
+                    return "", f"ERR:resource:{binding.name}:{e}"
+            elif binding.name in ("stdout", "stderr"):
+                return "", "ERR:resource:cannot_read_output_stream"
+            else:
+                return "", f"ERR:resource:{binding.name}:line read requires process or stdin binding"
 
-        if binding.name == "stdin":
-            ready, _, _ = select.select([sys.stdin], [], [], timeout)
-            if not ready:
-                return "", "ERR:resource:stdin:timeout"
-            line = sys.stdin.readline()
             if line == "":
-                return "", "ERR:resource:stdin:EOF before newline"
+                return "", f"ERR:resource:{resource_name}:EOF before {count} lines"
             if line.endswith("\n"):
                 line = line[:-1]
                 if line.endswith("\r"):
                     line = line[:-1]
-                return line, None
-            return "", "ERR:resource:stdin:EOF before newline"
+                lines.append(line)
+                continue
+            return "", f"ERR:resource:{resource_name}:EOF before {count} lines"
+        return "\n".join(lines), None
+
+    def _read_bytes(self, binding: Binding, count: int, timeout: float) -> tuple[bytes, Optional[str]]:
+        """Read exactly count bytes."""
+        if count == 0:
+            return b"", None
+        if binding.name == "stdout" or binding.name == "stderr":
+            return b"", "ERR:resource:cannot_read_output_stream"
+
+        if binding.name == "stdin":
+            ready, _, _ = select.select([sys.stdin], [], [], timeout)
+            if not ready:
+                return b"", "ERR:resource:stdin:timeout"
+            data = sys.stdin.buffer.read(count)
+            if len(data) != count:
+                return b"", f"ERR:resource:stdin:EOF before {count} bytes"
+            return data, None
 
         if binding.is_process:
             self._ensure_process(binding)
@@ -685,23 +731,39 @@ class ThueppInterpreter:
                         if isinstance(stderr, bytes):
                             stderr = stderr.decode("utf-8", errors="replace")
                         stderr = stderr.strip() or f"process exited {binding.process.returncode}"
-                        return "", f"ERR:resource:{binding.name}:{stderr}"
-                    return "", f"ERR:resource:{binding.name}:timeout"
-                line = binding.process.stdout.readline()
-                if isinstance(line, bytes):
-                    line = line.decode("utf-8", errors="replace")
-                if line == "":
-                    return "", f"ERR:resource:{binding.name}:EOF before newline"
-                if line.endswith("\n"):
-                    line = line[:-1]
-                    if line.endswith("\r"):
-                        line = line[:-1]
-                    return line, None
-                return "", f"ERR:resource:{binding.name}:EOF before newline"
+                        return b"", f"ERR:resource:{binding.name}:{stderr}"
+                    return b"", f"ERR:resource:{binding.name}:timeout"
+                data = binding.process.stdout.read(count)
+                if len(data) != count:
+                    return b"", f"ERR:resource:{binding.name}:EOF before {count} bytes"
+                return data, None
             except OSError as e:
-                return "", f"ERR:resource:{binding.name}:{e}"
+                return b"", f"ERR:resource:{binding.name}:{e}"
 
-        return "", f"ERR:resource:{binding.name}:line read requires process or stdin binding"
+        return b"", f"ERR:resource:{binding.name}:byte read requires process or stdin binding"
+
+    def _read_resource(self, binding: Binding, count: int, unit: str, timeout: float) -> tuple[str, Optional[str]]:
+        if unit == "lines":
+            content, error = self._read_lines(binding, count, timeout)
+            if error:
+                return "", error
+            return self._pct_encode(content), None
+        if unit == "bytes":
+            content, error = self._read_bytes(binding, count, timeout)
+            if error:
+                return "", error
+            return self._pct_encode_bytes(content), None
+        return "", f"invalid read unit {unit!r}"
+
+    def _parse_read_count(self, token: str, groups: dict[str, str], line_number: int) -> int:
+        if token.isdigit():
+            return int(token)
+        if token not in groups:
+            raise RuntimeError(f"Line {line_number}: ::< count {token!r} was not captured")
+        value = groups[token]
+        if not value.isdigit():
+            raise RuntimeError(f"Line {line_number}: ::< count capture {token!r} must be a non-negative integer, got {value!r}")
+        return int(value)
 
     def _write_string(self, binding: Binding, content: str) -> Optional[str]:
         """Write a string to a binding. Returns error or None."""
@@ -825,22 +887,24 @@ class ThueppInterpreter:
 
                 elif rule.operator == Operator.READ:
                     parts = rule.rhs.strip().split()
-                    if len(parts) != 2:
-                        raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
-                    read_spec, resource = parts
+                    if len(parts) != 4:
+                        raise RuntimeError(f"Line {rule.line_number}: ::< requires timeout, count, unit, and literal resource")
+                    read_spec, count_spec, unit, resource = parts
                     try:
                         read_timeout = parse_read_timeout(read_spec)
                     except ValueError as exc:
                         raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
+                    if unit not in {"bytes", "lines"}:
+                        raise RuntimeError(f"Line {rule.line_number}: ::< unit must be bytes or lines")
+                    count = self._parse_read_count(count_spec, groups, rule.line_number)
                     if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
                         raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
                     binding = self.bindings.get(resource)
                     if not binding:
                         raise RuntimeError(f"Unknown resource '{resource}'")
-                    content, error = self._read_line(binding, read_timeout)
+                    replacement, error = self._read_resource(binding, count, unit, read_timeout)
                     if error:
                         raise RuntimeError(error)
-                    replacement = self._pct_encode(content)
                     self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.WRITE:

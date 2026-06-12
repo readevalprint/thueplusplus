@@ -39,7 +39,7 @@ The `commit_sha`, `pipeline_url`, and `job_id` values should match the successfu
 
 ## What the demo tests cover
 
-The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `demo/wasm/browser_adapter_unit_test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker.
+The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLines logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `demo/wasm/browser_adapter_unit_test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker.
 
 `DESIGN.md` records the demo's project-owned visual direction: a dark formal interpreter workbench with tokenized colors, code-first panels, visible Go-WASM/Worker status, and explicit guardrails against implying a JavaScript rule evaluator or subprocess emulation.
 

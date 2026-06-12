@@ -31,8 +31,15 @@ func (r *jsResource) callString(method string, args ...any) (string, error) {
 	return jsValueToString(v)
 }
 
-func (r *jsResource) ReadLine(timeout time.Duration) (string, error) {
-	return r.callString("readLine", timeout.Seconds())
+func (r *jsResource) ReadLines(count int, timeout time.Duration) (string, error) {
+	return r.callString("readLines", count, timeout.Seconds())
+}
+func (r *jsResource) ReadBytes(count int, timeout time.Duration) ([]byte, error) {
+	content, err := r.callString("readBytes", count, timeout.Seconds())
+	if err != nil {
+		return nil, err
+	}
+	return []byte(content), nil
 }
 func (r *jsResource) WriteString(content string) error {
 	fn := r.obj.Get("write")

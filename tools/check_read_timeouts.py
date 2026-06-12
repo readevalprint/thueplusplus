@@ -18,7 +18,7 @@ INVALID_TIMEOUTS = ["1", "30", "0.5", "1h", "1us", "1ns", "1sec", "0s", "0ms", "
 def program(timeout: str) -> str:
     return "\n".join(
         [
-            "@IN@ ::< " + timeout + " stdin",
+            "@IN@ ::< " + timeout + " 1 lines stdin",
             "^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}",
             "^$ ::- 0",
             "",

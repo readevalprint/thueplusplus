@@ -896,7 +896,7 @@ describe('Go-WASM demo UI', () => {
   it('discovers resources from hash-prefixed rule rows', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp()
-    await wrapper.get('[data-test="playground-rules"]').setValue('#read ::< @VALUE custom\n#done ::> custom done\n')
+    await wrapper.get('[data-test="playground-rules"]').setValue('#read ::< 1s 1 lines custom\n#done ::> custom done\n')
 
     expect(wrapper.get('[data-test="resource-section-custom"]').text()).toContain('custom')
   })
@@ -1388,7 +1388,7 @@ describe('Go-WASM demo UI', () => {
   it('keeps visible resource input stable while history carries copied read cursors', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
-    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s stdin\n^Ada$ ::= done')
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s 1 lines stdin\n^Ada$ ::= done')
     await setProgramState(wrapper, '@IN@')
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada\nLovelace\n')
 
@@ -1429,7 +1429,7 @@ describe('Go-WASM demo UI', () => {
   it('clears history and resets to the initial state when resource input changes', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
-    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s stdin\n^Ada$ ::= done')
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s 1 lines stdin\n^Ada$ ::= done')
     await setProgramState(wrapper, '@IN@')
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada\nLovelace\n')
 
@@ -1487,7 +1487,7 @@ describe('Go-WASM demo UI', () => {
   it('clears a waiting checkpoint when resource input changes', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
-    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s stdin\n^start$ ::= other')
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s 1 lines stdin\n^start$ ::= other')
     await setProgramState(wrapper, '@IN@')
 
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -1593,7 +1593,7 @@ describe('Go-WASM demo UI', () => {
   it('uses visible resource buffers on the next run without requiring submit', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
-    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s stdin')
+    await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 30s 1 lines stdin')
     await setProgramState(wrapper, '@IN@')
     await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada\nLovelace\n')
 
@@ -1650,7 +1650,7 @@ describe('Go-WASM demo UI', () => {
     try {
       window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
       const wrapper = await mountApp({ attachTo: document.body })
-      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 500ms stdin')
+      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 500ms 1 lines stdin')
       await setProgramState(wrapper, '@IN@')
 
       mockedRunWithWorker.mockResolvedValueOnce({
@@ -1696,7 +1696,7 @@ describe('Go-WASM demo UI', () => {
     try {
       window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
       const wrapper = await mountApp({ attachTo: document.body })
-      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 1m stdin')
+      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 1m 1 lines stdin')
       await setProgramState(wrapper, '@IN@')
 
       mockedRunWithWorker.mockResolvedValueOnce({
@@ -1725,7 +1725,7 @@ describe('Go-WASM demo UI', () => {
     try {
       window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
       const wrapper = await mountApp({ attachTo: document.body })
-      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 1s stdin')
+      await wrapper.get('[data-test="playground-rules"]').setValue('@IN@ ::< 1s 1 lines stdin')
       await setProgramState(wrapper, '@IN@')
 
       mockedRunWithWorker.mockResolvedValueOnce({
