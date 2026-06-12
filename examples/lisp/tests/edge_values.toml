@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Graduated Lisp value-semantics edge cases.
-# These cases live in the normal tests/ sweep and must stay green.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "if rejects numeric condition"
-input = '(if 0 1 2)'
+input = "(if 0 1 2)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -15,7 +14,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "and rejects numeric lhs"
-input = '(and 1 2)'
+input = "(and 1 2)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -23,7 +23,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "or rejects numeric lhs"
-input = '(or 0 (div 1 0))'
+input = "(or 0 (div 1 0))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -31,7 +32,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "if rejects string condition"
-input = '(if "" 1 2)'
+input = "(if \"\" 1 2)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -39,7 +41,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "if rejects list condition"
-input = '(if (list) 1 2)'
+input = "(if (list) 1 2)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -47,7 +50,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "direct nested list renders"
-input = '(list 1 (list 2 3))'
+input = "(write (unparse (list 1 (list 2 3))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -55,7 +59,8 @@ stdout_stripped = "(1 (2 3))"
 
 [[case]]
 name = "rest preserves nested list element"
-input = '(rest (list 0 (list 1 2) 3))'
+input = "(write (unparse (rest (list 0 (list 1 2) 3))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -63,31 +68,35 @@ stdout_stripped = "((1 2) 3)"
 
 [[case]]
 name = "list can render stored closure"
-input = '(let ((f (fn (x) x))) (list f))'
+input = "(let ((f (fn (x) x))) (list f))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "list can render stored closure after scalar"
-input = '(let ((f (fn (x) x))) (list 1 f))'
+input = "(let ((f (fn (x) x))) (list 1 f))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "fn argument closure can be stored in list"
-input = '((fn (x) (list x)) (fn (y) y))'
+input = "((fn (x) (list x)) (fn (y) y))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "higher order closure stored in let can be applied later"
-input = '(let ((mk (fn (x) (fn (y) (add x y))))) ((mk 10) 5))'
+input = "(write (unparse (let ((mk (fn (x) (fn (y) (add x y))))) ((mk 10) 5))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -95,7 +104,8 @@ stdout_stripped = "15"
 
 [[case]]
 name = "returning closure from fn preserves captured env"
-input = '(((fn (mk) (mk 10)) (fn (x) (fn (y) (add x y)))) 5)'
+input = "(write (unparse (((fn (mk) (mk 10)) (fn (x) (fn (y) (add x y)))) 5)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -103,23 +113,26 @@ stdout_stripped = "15"
 
 [[case]]
 name = "string escape is preserved"
-input = '"a\"b"'
+input = "(write (unparse \"a\\\"b\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\"b"'
+stdout_stripped = "\"a\\\"b\""
 
 [[case]]
 name = "nested escaped string in selected if branch is preserved"
-input = '(if true "a\"b" 0)'
+input = "(write (unparse (if true \"a\\\"b\" 0)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\"b"'
+stdout_stripped = "\"a\\\"b\""
 
 [[case]]
 name = "escaped string in unchosen if branch stays protected"
-input = '(if true 1 "a\"b")'
+input = "(write (unparse (if true 1 \"a\\\"b\")))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -127,15 +140,17 @@ stdout_stripped = "1"
 
 [[case]]
 name = "list renders nested escaped string"
-input = '(list 1 "a\"b")'
+input = "(write (unparse (list 1 \"a\\\"b\")))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '(1 "a\"b")'
+stdout_stripped = "(1 \"a\\\"b\")"
 
 [[case]]
 name = "fn argument preserves computed list"
-input = '((fn (x) x) (list 1 2))'
+input = "(write (unparse ((fn (x) x) (list 1 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -143,7 +158,8 @@ stdout_stripped = "(1 2)"
 
 [[case]]
 name = "list supports deeply nested computed lists"
-input = '(list (list (list 1)))'
+input = "(write (unparse (list (list (list 1)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -151,7 +167,8 @@ stdout_stripped = "(((1)))"
 
 [[case]]
 name = "nested list can contain computed list after scalar"
-input = '(list (list 0 (list 1)))'
+input = "(write (unparse (list (list 0 (list 1)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -159,7 +176,8 @@ stdout_stripped = "((0 (1)))"
 
 [[case]]
 name = "nonfirst nested list can start with computed list"
-input = '(list 0 (list (list 1)))'
+input = "(write (unparse (list 0 (list (list 1)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -167,7 +185,8 @@ stdout_stripped = "(0 ((1)))"
 
 [[case]]
 name = "nonfirst nested list can contain computed list after scalar"
-input = '(list 0 (list 1 (list 2)))'
+input = "(write (unparse (list 0 (list 1 (list 2)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -175,7 +194,8 @@ stdout_stripped = "(0 (1 (2)))"
 
 [[case]]
 name = "deep nested list can render boolean first"
-input = '(list (list (list true)))'
+input = "(write (unparse (list (list (list true)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -183,7 +203,8 @@ stdout_stripped = "(((true)))"
 
 [[case]]
 name = "deep nested list can render string first"
-input = '(list (list (list "x")))'
+input = "(write (unparse (list (list (list \"x\")))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -191,15 +212,17 @@ stdout_stripped = "(((\"x\")))"
 
 [[case]]
 name = "deep nested list can render closure first"
-input = '(list (list (list (fn (x) x))))'
+input = "(list (list (list (fn (x) x))))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "deep nested list can render numeric second"
-input = '(list (list (list 0 1)))'
+input = "(write (unparse (list (list (list 0 1)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -207,7 +230,8 @@ stdout_stripped = "(((0 1)))"
 
 [[case]]
 name = "deep nested list can render boolean second"
-input = '(list (list (list 0 true)))'
+input = "(write (unparse (list (list (list 0 true)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -215,7 +239,8 @@ stdout_stripped = "(((0 true)))"
 
 [[case]]
 name = "deep nested list can render string second"
-input = '(list (list (list 0 "x")))'
+input = "(write (unparse (list (list (list 0 \"x\")))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -223,15 +248,17 @@ stdout_stripped = "(((0 \"x\")))"
 
 [[case]]
 name = "deep nested list can render closure second"
-input = '(list (list (list 0 (fn (x) x))))'
+input = "(list (list (list 0 (fn (x) x))))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "deep nested list can render computed list second"
-input = '(list (list (list 0 (list 1))))'
+input = "(write (unparse (list (list (list 0 (list 1))))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -239,88 +266,98 @@ stdout_stripped = "(((0 (1))))"
 
 [[case]]
 name = "deeper nested list can render computed list first"
-input = '(list (list (list (list 1))))'
+input = "(write (unparse (list (list (list (list 1))))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "((((1))))"
 
-
 [[case]]
 name = "escaped backslash string renders round-trippable"
-input = '"a\b"'
+input = "(write (unparse \"a\\b\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\b"'
+stdout_stripped = "\"a\\b\""
 
 [[case]]
 name = "escaped backslash in selected lazy branch renders round-trippable"
-input = '(if true "a\b" 0)'
+input = "(write (unparse (if true \"a\\b\" 0)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\b"'
+stdout_stripped = "\"a\\b\""
 
 [[case]]
 name = "escaped backslash inside list renders round-trippable"
-input = '(list "a\b")'
+input = "(write (unparse (list \"a\\b\")))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '("a\b")'
+stdout_stripped = "(\"a\\b\")"
 
 [[case]]
 name = "newline escape string renders round-trippable"
-input = '"a\nb"'
+input = "(write (unparse \"a\\nb\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\nb"'
+stdout_stripped = "\"a\\nb\""
 
 [[case]]
 name = "tab escape string renders round-trippable"
-input = '"a\tb"'
+input = "(write (unparse \"a\\tb\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\tb"'
+stdout_stripped = "\"a\\tb\""
 
 [[case]]
 name = "carriage return escape string renders round-trippable"
-input = '"a\rb"'
+input = "(write (unparse \"a\\rb\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\rb"'
+stdout_stripped = "\"a\\rb\""
 
 [[case]]
 name = "backspace escape string renders round-trippable"
-input = '"a\bb"'
+input = "(write (unparse \"a\\bb\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\bb"'
+stdout_stripped = "\"a\\bb\""
 
 [[case]]
 name = "form feed escape string renders round-trippable"
-input = '"a\fb"'
+input = "(write (unparse \"a\\fb\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\fb"'
+stdout_stripped = "\"a\\fb\""
 
 [[case]]
 name = "newline escape inside list renders round-trippable"
-input = '(list "a\nb")'
+input = "(write (unparse (list \"a\\nb\")))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '("a\nb")'
+stdout_stripped = "(\"a\\nb\")"
 
 [[case]]
 name = "punctuation string escape is rejected by explicit string contract"
-input = '"a\@b"'
+input = "\"a\\@b\""
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -328,7 +365,8 @@ stderr_stripped = "invalid_string_escape"
 
 [[case]]
 name = "top-level unsupported string escape is rejected"
-input = '"a\xb"'
+input = "\"a\\xb\""
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -336,7 +374,8 @@ stderr_stripped = "invalid_string_escape"
 
 [[case]]
 name = "parse unsupported string escape is rejected"
-input = '(parse "\"a\\xb\"")'
+input = "(parse \"\\\"a\\\\xb\\\"\")"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -344,24 +383,27 @@ stderr_stripped = "invalid_string_escape"
 
 [[case]]
 name = "parse and unparse escaped newline remains round-trippable"
-input = '(unparse (parse "\"a\\nb\""))'
+input = "(write (unparse (unparse (parse \"\\\"a\\\\nb\\\"\"))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"\"a\\nb\""'
+stdout_stripped = "\"\\\"a\\\\nb\\\"\""
 
 [[case]]
 name = "strings with parentheses are protected before list freezing"
-input = '(list "a)b" "c(d")'
+input = "(write (unparse (list \"a)b\" \"c(d\")))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '("a)b" "c(d")'
+stdout_stripped = "(\"a)b\" \"c(d\")"
 
 [[case]]
 name = "escaped backslash before ordinary character renders round-trippable"
-input = '"a\\xb"'
+input = "(write (unparse \"a\\\\xb\"))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = '"a\\xb"'
+stdout_stripped = "\"a\\\\xb\""

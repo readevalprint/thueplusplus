@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+program = "../lisp.tpp"
+timeout = 10
+args = ["--eval-limit", "60000"]
+
+[[case]]
+name = "plain final value does not write stdout"
+input = "(add 1 2)"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "top-level boolean final value is quiet"
+input = "true"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "top-level false final value is quiet"
+input = "false"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "top-level string final value is quiet"
+input = '"quiet"'
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "write is the only stdout producer"
+input = '(write "3\n")'
+
+[case.expect]
+exit_code = 0
+stdout = "3\n"
+stderr = ""
+
+[[case]]
+name = "write-err writes stderr only"
+input = '(write-err "bad\n")'
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = "bad\n"
+
+[[case]]
+name = "write-err requires string"
+input = "(write-err 1)"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "unparse closure still fails explicitly"
+input = "(unparse (fn (x) x))"
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unparseable_value\n"

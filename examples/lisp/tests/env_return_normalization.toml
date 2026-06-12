@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Focused safety cases for env-return normalization through KKEEPENV.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "zero-binding let normalizes plain first expression"
-input = '(let () 1 2)'
+input = "(write (unparse (let () 1 2)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -14,7 +14,8 @@ stdout_stripped = "2"
 
 [[case]]
 name = "let body normalizes env-updating first expression"
-input = '(let ((x 1)) (set x 2) x)'
+input = "(write (unparse (let ((x 1)) (set x 2) x)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -22,7 +23,8 @@ stdout_stripped = "2"
 
 [[case]]
 name = "nested let body normalizes env-updating body"
-input = '(let ((x 1)) (let () (set x 2) x) x)'
+input = "(write (unparse (let ((x 1)) (let () (set x 2) x) x)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -30,7 +32,8 @@ stdout_stripped = "2"
 
 [[case]]
 name = "while body mutation still feeds next iteration"
-input = '(let ((x 0)) (while (lt x 3) (set x (add x 1))) x)'
+input = "(write (unparse (let ((x 0)) (while (lt x 3) (set x (add x 1))) x)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -38,7 +41,8 @@ stdout_stripped = "3"
 
 [[case]]
 name = "quasiquote plain item path still builds list"
-input = '`(a 1 true)'
+input = "(write (unparse `(a 1 true)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -46,7 +50,8 @@ stdout_stripped = "(a 1 true)"
 
 [[case]]
 name = "quasiquote unquote set propagates env"
-input = '(let ((x 1)) `(a ,(set x 2) ,x) x)'
+input = "(write (unparse (let ((x 1)) `(a ,(set x 2) ,x) x)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -54,7 +59,8 @@ stdout_stripped = "2"
 
 [[case]]
 name = "quasiquote splice plain list still splices"
-input = '`(a ,@(list 1 2) b)'
+input = "(write (unparse `(a ,@(list 1 2) b)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -62,7 +68,8 @@ stdout_stripped = "(a 1 2 b)"
 
 [[case]]
 name = "quasiquote splice env-updating expression propagates env"
-input = '(let ((x 1)) `(a ,@(let () (set x 2) (list x)) b) x)'
+input = "(write (unparse (let ((x 1)) `(a ,@(let () (set x 2) (list x)) b) x)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -70,7 +77,8 @@ stdout_stripped = "2"
 
 [[case]]
 name = "quasiquote splice non-list remains type error"
-input = '`(a ,@1 b)'
+input = "`(a ,@1 b)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -78,7 +86,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "quasiquote splice env-updating non-list remains type error"
-input = '(let ((x 1)) `(a ,@(let () (set x 2) x) b))'
+input = "(let ((x 1)) `(a ,@(let () (set x 2) x) b))"
+
 [case.expect]
 exit_code = 2
 stdout = ""

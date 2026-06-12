@@ -4,24 +4,16 @@ timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
-name = "source state multiline indented nested math"
+name = "source state multiline indented nested math is quiet"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout_stripped = "15"
+stdout = ""
 
 [[case]]
 name = "input override multiline indented let body"
-input = '''
-(let (
-  (x 2)
-  (y (add 3 4))
-)
-  (add
-    x
-    (mul y 2)))
-'''
+input = "(write (unparse (let (\n  (x 2)\n  (y (add 3 4))\n)\n  (add\n    x\n    (mul y 2)))\n))"
 
 [case.expect]
 exit_code = 0
@@ -30,20 +22,18 @@ stdout_stripped = "16"
 
 [[case]]
 name = "parse trims leading newline source string"
-input = '''(parse "
-(add 1 2)")'''
+input = "(let () (write (unparse (parse \"\n(add 1 2)\"))))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout = "(add 1 2)\n"
+stdout_stripped = "(add 1 2)"
 
 [[case]]
 name = "parse trims trailing newline source string"
-input = '''(parse "(add 1 2)
-")'''
+input = "(let () (write (unparse (parse \"(add 1 2)\n\"))))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
-stdout = "(add 1 2)\n"
+stdout_stripped = "(add 1 2)"

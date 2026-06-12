@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Explicit-scope code-as-data eval acceptance.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "100000"]
 
 [[case]]
 name = "eval list code with explicit primitive callable and binding"
-input = '(eval (quote (add x 1)) (dict ((quote add) add) ((quote x) 10)))'
+input = "(write (unparse (eval (quote (add x 1)) (dict ((quote add) add) ((quote x) 10)))))"
 
 [case.expect]
 exit_code = 0
@@ -15,7 +14,7 @@ stdout_stripped = "11"
 
 [[case]]
 name = "eval generated list code"
-input = '(eval (list (quote add) (quote x) 2) (dict ((quote add) add) ((quote x) 5)))'
+input = "(write (unparse (eval (list (quote add) (quote x) 2) (dict ((quote add) add) ((quote x) 5)))))"
 
 [case.expect]
 exit_code = 0
@@ -24,7 +23,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "eval contains no hidden core env fallback"
-input = '(eval (quote (add x 1)) (dict ((quote x) 10)))'
+input = "(eval (quote (add x 1)) (dict ((quote x) 10)))"
 
 [case.expect]
 exit_code = 2
@@ -33,7 +32,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval contains no ambient caller env"
-input = '(let ((x 99)) (eval (quote x) (dict)))'
+input = "(let ((x 99)) (eval (quote x) (dict)))"
 
 [case.expect]
 exit_code = 2
@@ -42,7 +41,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval symbol get from explicit scope"
-input = '(eval (quote x) (dict ((quote x) 42)))'
+input = "(write (unparse (eval (quote x) (dict ((quote x) 42)))))"
 
 [case.expect]
 exit_code = 0
@@ -51,7 +50,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "eval scalar number self evaluates"
-input = '(eval (quote 7) (dict))'
+input = "(write (unparse (eval (quote 7) (dict))))"
 
 [case.expect]
 exit_code = 0
@@ -60,7 +59,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "eval scalar bool self evaluates"
-input = '(eval (quote true) (dict))'
+input = "(write (unparse (eval (quote true) (dict))))"
 
 [case.expect]
 exit_code = 0
@@ -69,7 +68,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "eval string self evaluates not source"
-input = '(eval "(add 1 2)" (dict ((quote add) add)))'
+input = "(write (unparse (eval \"(add 1 2)\" (dict ((quote add) add)))))"
 
 [case.expect]
 exit_code = 0
@@ -78,7 +77,7 @@ stdout_stripped = "\"(add 1 2)\""
 
 [[case]]
 name = "eval wrong arity none"
-input = '(eval)'
+input = "(eval)"
 
 [case.expect]
 exit_code = 2
@@ -87,7 +86,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval wrong arity one"
-input = '(eval (quote x))'
+input = "(eval (quote x))"
 
 [case.expect]
 exit_code = 2
@@ -96,7 +95,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval wrong arity extra"
-input = '(eval (quote x) (dict ((quote x) 1)) (dict))'
+input = "(eval (quote x) (dict ((quote x) 1)) (dict))"
 
 [case.expect]
 exit_code = 2
@@ -105,7 +104,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval scope must be dict"
-input = '(eval (quote x) 7)'
+input = "(eval (quote x) 7)"
 
 [case.expect]
 exit_code = 2
@@ -114,7 +113,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval alist code does not receive hidden scope"
-input = '(eval (dict ((quote x) 1)) (dict))'
+input = "(eval (dict ((quote x) 1)) (dict))"
 
 [case.expect]
 exit_code = 2
@@ -123,7 +122,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval closure value rejected"
-input = '(eval (fn (x) x) (dict))'
+input = "(eval (fn (x) x) (dict))"
 
 [case.expect]
 exit_code = 2
@@ -132,7 +131,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "exec remains unbound"
-input = 'exec'
+input = "exec"
 
 [case.expect]
 exit_code = 2
@@ -141,7 +140,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval rejects string-key scope entries"
-input = '(eval (quote x) (dict ("x" 1)))'
+input = "(eval (quote x) (dict (\"x\" 1)))"
 
 [case.expect]
 exit_code = 2
@@ -150,7 +149,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval empty list code fails wrong arity"
-input = '(eval (quote ()) (dict))'
+input = "(eval (quote ()) (dict))"
 
 [case.expect]
 exit_code = 2
@@ -159,16 +158,16 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval symbol returning explicit primitive is unparseable at top level"
-input = '(eval (quote add) (dict ((quote add) add)))'
+input = "(eval (quote add) (dict ((quote add) add)))"
 
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "eval rejects operator symbol scope key"
-input = '(eval (quote x) (assoc (dict) (quote +) 1))'
+input = "(eval (quote x) (assoc (dict) (quote +) 1))"
 
 [case.expect]
 exit_code = 2
@@ -177,7 +176,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval rejects operator symbol as code"
-input = '(eval (quote +) (dict))'
+input = "(eval (quote +) (dict))"
 
 [case.expect]
 exit_code = 2
@@ -186,7 +185,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval directly evaluates nested list code without render reparse"
-input = '(eval (quote (add (add x 1) 2)) (dict ((quote add) add) ((quote x) 10)))'
+input = "(write (unparse (eval (quote (add (add x 1) 2)) (dict ((quote add) add) ((quote x) 10)))))"
 
 [case.expect]
 exit_code = 0
@@ -195,7 +194,7 @@ stdout_stripped = "13"
 
 [[case]]
 name = "eval generated list code with literal args"
-input = '(eval (list (quote add) 1 2) (dict ((quote add) add)))'
+input = "(write (unparse (eval (list (quote add) 1 2) (dict ((quote add) add)))))"
 
 [case.expect]
 exit_code = 0
@@ -204,7 +203,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "eval direct generated list code keeps string data unparsed"
-input = '(eval (list (quote eq) "(add 1 2)" "(add 1 2)") (dict ((quote eq) eq)))'
+input = "(eval (list (quote eq) \"(add 1 2)\" \"(add 1 2)\") (dict ((quote eq) eq)))"
 
 [case.expect]
 exit_code = 2
@@ -213,12 +212,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval accepts generated code returned with environment"
-input = '''
-(eval
-  (let ((code (quote (add x 1))))
-    code)
-  (dict ((quote add) add) ((quote x) 10)))
-'''
+input = "(write (unparse (eval\n  (let ((code (quote (add x 1))))\n    code)\n  (dict ((quote add) add) ((quote x) 10)))\n))"
 
 [case.expect]
 exit_code = 0
@@ -227,16 +221,7 @@ stdout_stripped = "11"
 
 [[case]]
 name = "eval accepts macroexpand result returned with environment"
-input = '''
-(eval
-  (let ((macros
-         (dict
-           ((quote inc)
-            (fn (args)
-              `(add ,(first args) 1))))))
-    (macroexpand (quote (inc x)) macros))
-  (dict ((quote add) add) ((quote x) 10)))
-'''
+input = "(write (unparse (eval\n  (let ((macros\n         (dict\n           ((quote inc)\n            (fn (args)\n              `(add ,(first args) 1))))))\n    (macroexpand (quote (inc x)) macros))\n  (dict ((quote add) add) ((quote x) 10)))\n))"
 
 [case.expect]
 exit_code = 0
@@ -245,12 +230,7 @@ stdout_stripped = "11"
 
 [[case]]
 name = "eval accepts scope returned with environment"
-input = '''
-(eval
-  (quote (add x 1))
-  (let ((scope (dict ((quote add) add) ((quote x) 10))))
-    scope))
-'''
+input = "(write (unparse (eval\n  (quote (add x 1))\n  (let ((scope (dict ((quote add) add) ((quote x) 10))))\n    scope))\n))"
 
 [case.expect]
 exit_code = 0
@@ -259,12 +239,7 @@ stdout_stripped = "11"
 
 [[case]]
 name = "eval rejects non-list scope returned with environment"
-input = '''
-(eval
-  (quote x)
-  (let ((scope 7))
-    scope))
-'''
+input = "(eval\n  (quote x)\n  (let ((scope 7))\n    scope))\n"
 
 [case.expect]
 exit_code = 2
@@ -273,12 +248,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval code operand environment does not feed scope operand"
-input = '''
-(eval
-  (let ((scope (dict ((quote x) 1))))
-    (quote x))
-  scope)
-'''
+input = "(eval\n  (let ((scope (dict ((quote x) 1))))\n    (quote x))\n  scope)\n"
 
 [case.expect]
 exit_code = 2
@@ -287,16 +257,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval macroexpand result still has no hidden core fallback"
-input = '''
-(eval
-  (let ((macros
-         (dict
-           ((quote inc)
-            (fn (args)
-              `(add ,(first args) 1))))))
-    (macroexpand (quote (inc x)) macros))
-  (dict ((quote x) 10)))
-'''
+input = "(eval\n  (let ((macros\n         (dict\n           ((quote inc)\n            (fn (args)\n              `(add ,(first args) 1))))))\n    (macroexpand (quote (inc x)) macros))\n  (dict ((quote x) 10)))\n"
 
 [case.expect]
 exit_code = 2
@@ -305,26 +266,16 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval rejects closure code returned with environment"
-input = '''
-(eval
-  (let ((code (fn (x) x)))
-    code)
-  (dict))
-'''
+input = "(eval\n  (let ((code (fn (x) x)))\n    code)\n  (dict))\n"
 
 [case.expect]
 exit_code = 2
 stderr = "type_error\n"
 stdout_stripped = ""
 
-
 [[case]]
 name = "eval explicit scope closure callable at top level"
-input = '''
-(let ((f (fn (n) n)))
-  (eval (quote (f 1))
-        (dict ((quote f) f))))
-'''
+input = "(write (unparse (let ((f (fn (n) n)))\n  (eval (quote (f 1))\n        (dict ((quote f) f))))\n))"
 
 [case.expect]
 exit_code = 0
@@ -333,11 +284,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "eval explicit scope closure callable in nested argument"
-input = '''
-(let ((f (fn (n) n)))
-  (eval (quote (add (f 1) 2))
-        (dict ((quote add) add) ((quote f) f))))
-'''
+input = "(write (unparse (let ((f (fn (n) n)))\n  (eval (quote (add (f 1) 2))\n        (dict ((quote add) add) ((quote f) f))))\n))"
 
 [case.expect]
 exit_code = 0
@@ -346,28 +293,16 @@ stdout_stripped = "3"
 
 [[case]]
 name = "eval closure mutation does not clobber caller continuation env"
-input = '''
-(let ((secret 10)
-      (f (fn (x) (set secret (add secret x))))
-      (z 1))
-  (eval (quote (f 4))
-        (dict ((quote f) f) ((quote add) add)))
-  z)
-'''
+input = "(write (unparse (let ((secret 10)\n      (f (fn (x) (set secret (add secret x))))\n      (z 1))\n  (eval (quote (f 4))\n        (dict ((quote f) f) ((quote add) add)))\n  z)\n))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "1"
 
-
 [[case]]
 name = "eval explicit scope closure callee returned by nested call"
-input = '''
-(let ((make-add (fn () add)))
-  (eval (quote ((make-add) 1 2))
-        (dict ((quote make-add) make-add) ((quote add) add))))
-'''
+input = "(write (unparse (let ((make-add (fn () add)))\n  (eval (quote ((make-add) 1 2))\n        (dict ((quote make-add) make-add) ((quote add) add))))\n))"
 
 [case.expect]
 exit_code = 0
@@ -376,14 +311,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "eval explicit scope closure mutation is sandboxed from caller env"
-input = '''
-(let ((secret 10)
-      (f (fn (x) (set secret (add secret x)))))
-  (list
-    (eval (quote (f 4))
-          (dict ((quote f) f) ((quote add) add)))
-    secret))
-'''
+input = "(write (unparse (let ((secret 10)\n      (f (fn (x) (set secret (add secret x)))))\n  (list\n    (eval (quote (f 4))\n          (dict ((quote f) f) ((quote add) add)))\n    secret))\n))"
 
 [case.expect]
 exit_code = 0

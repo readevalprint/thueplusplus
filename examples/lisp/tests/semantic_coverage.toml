@@ -1,14 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Coverage-oriented manifest for supported Lisp evaluator paths.
-# These cases exercise intended runtime paths beyond the minimal core acceptance
-# suite, without weakening existing behavior.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "let subtraction uses lexical env"
-input = '(let ((x 10)) (sub x 3))'
+input = "(write (unparse (let ((x 10)) (sub x 3))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -16,7 +14,8 @@ stdout_stripped = "7"
 
 [[case]]
 name = "let multiplication uses lexical env"
-input = '(let ((x 6)) (mul x 7))'
+input = "(write (unparse (let ((x 6)) (mul x 7))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -24,7 +23,8 @@ stdout_stripped = "42"
 
 [[case]]
 name = "let multiplication nary uses lexical env"
-input = '(let ((x 2)) (mul (mul x 3) 4))'
+input = "(write (unparse (let ((x 2)) (mul (mul x 3) 4))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -32,7 +32,8 @@ stdout_stripped = "24"
 
 [[case]]
 name = "let division uses lexical env"
-input = '(let ((x 8)) (div x 2))'
+input = "(write (unparse (let ((x 8)) (div x 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -40,7 +41,8 @@ stdout_stripped = "4"
 
 [[case]]
 name = "let division literal zero fails loudly"
-input = '(let ((x 8)) (div x 0))'
+input = "(let ((x 8)) (div x 0))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -48,7 +50,8 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "let division bound zero fails loudly"
-input = '(let ((x 8) (z 0)) (div x z))'
+input = "(let ((x 8) (z 0)) (div x z))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -56,7 +59,8 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "let numeric equality uses lexical env"
-input = '(let ((x 2)) (eq x 2.0))'
+input = "(write (unparse (let ((x 2)) (eq x 2.0))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -64,7 +68,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let less-than uses lexical env"
-input = '(let ((x 2)) (lt x 3))'
+input = "(write (unparse (let ((x 2)) (lt x 3))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -72,7 +77,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let less-or-equal uses lexical env"
-input = '(let ((x 2)) (lte x 2))'
+input = "(write (unparse (let ((x 2)) (lte x 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -80,7 +86,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let greater-than uses lexical env"
-input = '(let ((x 3)) (gt x 2))'
+input = "(write (unparse (let ((x 3)) (gt x 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -88,7 +95,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "let greater-or-equal uses lexical env"
-input = '(let ((x 3)) (gte x 3))'
+input = "(write (unparse (let ((x 3)) (gte x 3))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -96,7 +104,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "env if true skips division by zero"
-input = '(let ((x 1)) (if true x (div 1 0)))'
+input = "(write (unparse (let ((x 1)) (if true x (div 1 0)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -104,7 +113,8 @@ stdout_stripped = "1"
 
 [[case]]
 name = "env if false skips division by zero"
-input = '(let ((x 1)) (if false (div 1 0) x))'
+input = "(write (unparse (let ((x 1)) (if false (div 1 0) x))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -112,7 +122,8 @@ stdout_stripped = "1"
 
 [[case]]
 name = "env and true returns rhs"
-input = '(let ((x true)) (and x 9))'
+input = "(write (unparse (let ((x true)) (and x 9))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -120,7 +131,8 @@ stdout_stripped = "9"
 
 [[case]]
 name = "env and false skips division by zero"
-input = '(let ((x false)) (and x (div 1 0)))'
+input = "(write (unparse (let ((x false)) (and x (div 1 0)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -128,7 +140,8 @@ stdout_stripped = "false"
 
 [[case]]
 name = "env or true skips division by zero"
-input = '(let ((x true)) (or x (div 1 0)))'
+input = "(write (unparse (let ((x true)) (or x (div 1 0)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -136,7 +149,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "env or false returns rhs"
-input = '(let ((x false)) (or x 9))'
+input = "(write (unparse (let ((x false)) (or x 9))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -144,7 +158,8 @@ stdout_stripped = "9"
 
 [[case]]
 name = "let list uses lexical env"
-input = '(let ((x 1)) (list x false))'
+input = "(write (unparse (let ((x 1)) (list x false))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -152,7 +167,8 @@ stdout_stripped = "(1 false)"
 
 [[case]]
 name = "let first bound list"
-input = '(let ((xs (list 4 5))) (first xs))'
+input = "(write (unparse (let ((xs (list 4 5))) (first xs))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -160,7 +176,8 @@ stdout_stripped = "4"
 
 [[case]]
 name = "let rest bound list"
-input = '(let ((xs (list 4 5))) (rest xs))'
+input = "(write (unparse (let ((xs (list 4 5))) (rest xs))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -168,7 +185,8 @@ stdout_stripped = "(5)"
 
 [[case]]
 name = "list starts with boolean renderer"
-input = '(list true 1)'
+input = "(write (unparse (list true 1)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -176,15 +194,17 @@ stdout_stripped = "(true 1)"
 
 [[case]]
 name = "fn renders closure"
-input = '(fn (x) x)'
+input = "(fn (x) x)"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "env and literal true shortcut returns rhs"
-input = '(let ((x 1)) (and true x))'
+input = "(write (unparse (let ((x 1)) (and true x))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -192,7 +212,8 @@ stdout_stripped = "1"
 
 [[case]]
 name = "env and literal false shortcut skips rhs"
-input = '(let ((x 1)) (and false (div 1 0)))'
+input = "(write (unparse (let ((x 1)) (and false (div 1 0)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -200,7 +221,8 @@ stdout_stripped = "false"
 
 [[case]]
 name = "env nary and folds"
-input = '(let ((x true)) (and x true 9))'
+input = "(write (unparse (let ((x true)) (and x true 9))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -208,7 +230,8 @@ stdout_stripped = "9"
 
 [[case]]
 name = "env or literal true shortcut skips rhs"
-input = '(let ((x 1)) (or true (div 1 0)))'
+input = "(write (unparse (let ((x 1)) (or true (div 1 0)))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -216,7 +239,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "env or literal false shortcut returns rhs"
-input = '(let ((x 1)) (or false x))'
+input = "(write (unparse (let ((x 1)) (or false x))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -224,7 +248,8 @@ stdout_stripped = "1"
 
 [[case]]
 name = "env nary or folds"
-input = '(let ((x false)) (or x false 9))'
+input = "(write (unparse (let ((x false)) (or x false 9))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -232,7 +257,8 @@ stdout_stripped = "9"
 
 [[case]]
 name = "single-item list evaluates child"
-input = '(1)'
+input = "(write (unparse (1)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -240,7 +266,8 @@ stdout_stripped = "1"
 
 [[case]]
 name = "top-level nary multiplication folds"
-input = '(mul (mul 2 3) 4)'
+input = "(write (unparse (mul (mul 2 3) 4)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -248,7 +275,8 @@ stdout_stripped = "24"
 
 [[case]]
 name = "env empty list literal"
-input = '(let ((x 1)) (list))'
+input = "(write (unparse (let ((x 1)) (list))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -256,7 +284,8 @@ stdout_stripped = "()"
 
 [[case]]
 name = "top-level computed and true returns rhs"
-input = '(and (eq 1 1) 9)'
+input = "(write (unparse (and (eq 1 1) 9)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -264,7 +293,8 @@ stdout_stripped = "9"
 
 [[case]]
 name = "top-level computed or true skips rhs"
-input = '(or (eq 1 1) (div 1 0))'
+input = "(write (unparse (or (eq 1 1) (div 1 0))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -272,7 +302,8 @@ stdout_stripped = "true"
 
 [[case]]
 name = "rest empty list through continuation"
-input = '(rest (list))'
+input = "(write (unparse (rest (list))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -280,17 +311,17 @@ stdout_stripped = "()"
 
 [[case]]
 name = "empty let evaluates body"
-input = '(let () 1)'
+input = "(write (unparse (let () 1)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "1"
 
-
-
 [[case]]
 name = "env subtraction rejects boolean lhs"
-input = '(let ((x true)) (sub x 1))'
+input = "(let ((x true)) (sub x 1))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -298,7 +329,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env subtraction rejects boolean rhs"
-input = '(let ((x true)) (sub 1 x))'
+input = "(let ((x true)) (sub 1 x))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -306,7 +338,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env multiplication rejects boolean lhs"
-input = '(let ((x true)) (mul x 1))'
+input = "(let ((x true)) (mul x 1))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -314,7 +347,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env multiplication rejects boolean rhs"
-input = '(let ((x true)) (mul 1 x))'
+input = "(let ((x true)) (mul 1 x))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -322,7 +356,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env division rejects boolean lhs"
-input = '(let ((x true)) (div x 1))'
+input = "(let ((x true)) (div x 1))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -330,7 +365,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env division rejects boolean rhs"
-input = '(let ((x true)) (div 1 x))'
+input = "(let ((x true)) (div 1 x))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -338,7 +374,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env division rational zero fails loudly"
-input = '(let ((z 0/1)) (div 1 z))'
+input = "(let ((z 0/1)) (div 1 z))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -346,7 +383,8 @@ stderr_stripped = "division_by_zero"
 
 [[case]]
 name = "env less-than rejects boolean lhs"
-input = '(let ((x true)) (lt x 1))'
+input = "(let ((x true)) (lt x 1))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -354,7 +392,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "env less-than rejects boolean rhs"
-input = '(let ((x true)) (lt 1 x))'
+input = "(let ((x true)) (lt 1 x))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -362,7 +401,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "calling boolean is not function"
-input = '(true 1)'
+input = "(true 1)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -370,7 +410,8 @@ stderr_stripped = "not_function"
 
 [[case]]
 name = "calling string is not function"
-input = '("f" 1)'
+input = "(\"f\" 1)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -378,7 +419,8 @@ stderr_stripped = "not_function"
 
 [[case]]
 name = "zero argument fn rejects extra arg"
-input = '((fn () 1) 2)'
+input = "((fn () 1) 2)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -386,7 +428,8 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "empty let with nested body"
-input = '(let () (add 1 2))'
+input = "(write (unparse (let () (add 1 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -394,7 +437,8 @@ stdout_stripped = "3"
 
 [[case]]
 name = "multi binding let with atomic body"
-input = '(let ((x 1) (y 2)) x)'
+input = "(write (unparse (let ((x 1) (y 2)) x)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -402,7 +446,8 @@ stdout_stripped = "1"
 
 [[case]]
 name = "first rejects boolean"
-input = '(first true)'
+input = "(first true)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -410,7 +455,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "rest rejects boolean"
-input = '(rest true)'
+input = "(rest true)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -418,7 +464,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "nested list first boolean renders"
-input = '(list (list true))'
+input = "(write (unparse (list (list true))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -426,7 +473,8 @@ stdout_stripped = "((true))"
 
 [[case]]
 name = "nested list first string renders"
-input = '(list (list "x"))'
+input = "(write (unparse (list (list \"x\"))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -434,15 +482,17 @@ stdout_stripped = "((\"x\"))"
 
 [[case]]
 name = "nested list first closure renders"
-input = '(list (list (fn (x) x)))'
+input = "(list (list (fn (x) x)))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "nested list next boolean renders"
-input = '(list (list 1 true))'
+input = "(write (unparse (list (list 1 true))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -450,7 +500,8 @@ stdout_stripped = "((1 true))"
 
 [[case]]
 name = "nested list next string renders"
-input = '(list (list 1 "x"))'
+input = "(write (unparse (list (list 1 \"x\"))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -458,15 +509,17 @@ stdout_stripped = "((1 \"x\"))"
 
 [[case]]
 name = "nested list next closure renders"
-input = '(list (list 1 (fn (x) x)))'
+input = "(list (list 1 (fn (x) x)))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "second nested list first boolean renders"
-input = '(list 0 (list true))'
+input = "(write (unparse (list 0 (list true))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -474,7 +527,8 @@ stdout_stripped = "(0 (true))"
 
 [[case]]
 name = "second nested list first string renders"
-input = '(list 0 (list "x"))'
+input = "(write (unparse (list 0 (list \"x\"))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -482,15 +536,17 @@ stdout_stripped = "(0 (\"x\"))"
 
 [[case]]
 name = "second nested list first closure renders"
-input = '(list 0 (list (fn (x) x)))'
+input = "(list 0 (list (fn (x) x)))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "second nested list next boolean renders"
-input = '(list 0 (list 1 true))'
+input = "(write (unparse (list 0 (list 1 true))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -498,7 +554,8 @@ stdout_stripped = "(0 (1 true))"
 
 [[case]]
 name = "second nested list next string renders"
-input = '(list 0 (list 1 "x"))'
+input = "(write (unparse (list 0 (list 1 \"x\"))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -506,8 +563,9 @@ stdout_stripped = "(0 (1 \"x\"))"
 
 [[case]]
 name = "second nested list next closure renders"
-input = '(list 0 (list 1 (fn (x) x)))'
+input = "(list 0 (list 1 (fn (x) x)))"
+
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""

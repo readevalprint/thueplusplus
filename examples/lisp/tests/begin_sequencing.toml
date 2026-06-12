@@ -5,7 +5,7 @@ args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "zero-binding let single expression returns value"
-input = '(let () (add 1 2))'
+input = "(write (unparse (let () (add 1 2))))"
 
 [case.expect]
 exit_code = 0
@@ -14,7 +14,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "zero-binding let returns final expression"
-input = '(let () (add 1 2) (add 3 4) 9)'
+input = "(write (unparse (let () (add 1 2) (add 3 4) 9)))"
 
 [case.expect]
 exit_code = 0
@@ -23,7 +23,7 @@ stdout_stripped = "9"
 
 [[case]]
 name = "zero-binding let evaluates earlier expressions before final"
-input = '(let () (div 1 0) 9)'
+input = "(let () (div 1 0) 9)"
 
 [case.expect]
 exit_code = 2
@@ -32,7 +32,7 @@ stdout = ""
 
 [[case]]
 name = "let body preserves lexical environment across sequence"
-input = '(let ((x 4)) (add x 1) (add x 2))'
+input = "(write (unparse (let ((x 4)) (add x 1) (add x 2))))"
 
 [case.expect]
 exit_code = 0
@@ -41,7 +41,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "zero-binding let selected by lazy if"
-input = '(if true (let () (add 1 2) (add 3 4)) (div 1 0))'
+input = "(write (unparse (if true (let () (add 1 2) (add 3 4)) (div 1 0))))"
 
 [case.expect]
 exit_code = 0
@@ -50,7 +50,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "empty do is unsupported"
-input = '(do)'
+input = "(do)"
 
 [case.expect]
 exit_code = 2
@@ -59,7 +59,7 @@ stdout = ""
 
 [[case]]
 name = "empty do in lexical environment is unsupported"
-input = '(let ((x 1)) (do))'
+input = "(let ((x 1)) (do))"
 
 [case.expect]
 exit_code = 2
@@ -68,7 +68,7 @@ stdout = ""
 
 [[case]]
 name = "else keyword remains unsupported in if"
-input = '(if true 1 else 2)'
+input = "(if true 1 else 2)"
 
 [case.expect]
 exit_code = 2

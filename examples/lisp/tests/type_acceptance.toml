@@ -1,123 +1,138 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
-args = ["--eval-limit", "120000"]
 timeout = 30
+args = ["--eval-limit", "120000"]
 
 [[case]]
 name = "type reports number integer"
-input = '(type 1)'
+input = "(let () (write (unparse (type 1))))"
+
 [case.expect]
-stdout = "number\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "number"
 
 [[case]]
 name = "type reports number rational"
-input = '(type 1/2)'
+input = "(let () (write (unparse (type 1/2))))"
+
 [case.expect]
-stdout = "number\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "number"
 
 [[case]]
 name = "type reports booleans"
-input = '(list (type true) (type false))'
+input = "(let () (write (unparse (list (type true) (type false)))))"
+
 [case.expect]
-stdout = "(boolean boolean)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(boolean boolean)"
 
 [[case]]
 name = "type reports string"
-input = '(type "hi")'
+input = "(let () (write (unparse (type \"hi\"))))"
+
 [case.expect]
-stdout = "string\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "string"
 
 [[case]]
 name = "type reports quoted symbol"
-input = '(type (quote hello))'
+input = "(let () (write (unparse (type (quote hello)))))"
+
 [case.expect]
-stdout = "symbol\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "symbol"
 
 [[case]]
 name = "type reports quoted list"
-input = '(type (quote (1 2)))'
+input = "(let () (write (unparse (type (quote (1 2))))))"
+
 [case.expect]
-stdout = "list\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "list"
 
 [[case]]
 name = "type reports constructed list"
-input = '(type (list 1 2))'
+input = "(let () (write (unparse (type (list 1 2)))))"
+
 [case.expect]
-stdout = "list\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "list"
 
 [[case]]
 name = "type reports dict helper result as list"
-input = '(type (dict ("a" 1)))'
+input = "(let () (write (unparse (type (dict (\"a\" 1))))))"
+
 [case.expect]
-stdout = "list\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "list"
 
 [[case]]
 name = "type reports closure as function"
-input = '(type (fn (x) x))'
+input = "(let () (write (unparse (type (fn (x) x)))))"
+
 [case.expect]
-stdout = "function\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "function"
 
 [[case]]
 name = "type reports existing builtin"
-input = '(type add)'
+input = "(let () (write (unparse (type add))))"
+
 [case.expect]
-stdout = "builtin\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "builtin"
 
 [[case]]
 name = "type reports itself as builtin"
-input = '(type type)'
+input = "(let () (write (unparse (type type))))"
+
 [case.expect]
-stdout = "builtin\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "builtin"
 
 [[case]]
 name = "type evaluates bound variables"
-input = '(let ((x "hi")) (type x))'
+input = "(let () (write (unparse (let ((x \"hi\")) (type x)))))"
+
 [case.expect]
-stdout = "string\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "string"
 
 [[case]]
 name = "type evaluates computed values"
-input = '(type (add 1 2))'
+input = "(let () (write (unparse (type (add 1 2)))))"
+
 [case.expect]
-stdout = "number\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "number"
 
 [[case]]
 name = "type of quoted builtin name is symbol"
-input = '(type (quote add))'
+input = "(let () (write (unparse (type (quote add)))))"
+
 [case.expect]
-stdout = "symbol\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "symbol"
 
 [[case]]
 name = "type missing fails through get"
-input = '(type missing)'
+input = "(type missing)"
+
 [case.expect]
 stdout = ""
 stderr = "unbound_name\n"
@@ -125,15 +140,17 @@ exit_code = 2
 
 [[case]]
 name = "top-level type primitive is unparseable"
-input = 'type'
+input = "type"
+
 [case.expect]
+exit_code = 0
 stdout = ""
-stderr = "unparseable_value\n"
-exit_code = 2
+stderr = ""
 
 [[case]]
 name = "type requires one argument when extra arguments supplied"
-input = '(type 1 2)'
+input = "(type 1 2)"
+
 [case.expect]
 stdout = ""
 stderr = "wrong_arity\n"
@@ -141,7 +158,8 @@ exit_code = 2
 
 [[case]]
 name = "type requires one argument through explicit eval apply"
-input = '(eval (quote (type)) (dict ((quote type) type)))'
+input = "(eval (quote (type)) (dict ((quote type) type)))"
+
 [case.expect]
 stdout = ""
 stderr = "wrong_arity\n"
@@ -149,15 +167,17 @@ exit_code = 2
 
 [[case]]
 name = "type works through explicit eval scope when provided"
-input = '(eval (quote (type xs)) (dict ((quote type) type) ((quote xs) (list 1 2))))'
+input = "(let () (write (unparse (eval (quote (type xs)) (dict ((quote type) type) ((quote xs) (list 1 2)))))))"
+
 [case.expect]
-stdout = "list\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "list"
 
 [[case]]
 name = "type absent from explicit eval scope is unbound"
-input = '(eval (quote (type xs)) (dict ((quote xs) (list 1 2))))'
+input = "(eval (quote (type xs)) (dict ((quote xs) (list 1 2))))"
+
 [case.expect]
 stdout = ""
 stderr = "unbound_name\n"

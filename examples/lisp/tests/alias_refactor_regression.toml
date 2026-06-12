@@ -1,51 +1,57 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
-args = ["--eval-limit", "120000"]
 timeout = 30
+args = ["--eval-limit", "120000"]
 
 [[case]]
 name = "expr alias accepts nested list forms in dict values and renders recursively"
-input = '(dict ((quote outer) (dict ((quote inner) (list (quote <=) (list 1 2))))))'
+input = "(let () (write (unparse (dict ((quote outer) (dict ((quote inner) (list (quote <=) (list 1 2)))))))))"
+
 [case.expect]
-stdout = "((outer ((inner (<= (1 2))))))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((outer ((inner (<= (1 2))))))"
 
 [[case]]
 name = "expr alias preserves evaluated index expressions for nth"
-input = '(nth (list 10 20 30 40) (add 1 2))'
+input = "(let () (write (unparse (nth (list 10 20 30 40) (add 1 2)))))"
+
 [case.expect]
-stdout = "40\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "40"
 
 [[case]]
 name = "quote symbol alias preserves multi character operator precedence"
-input = '(list (quote <=) (quote <) (quote >=) (quote >) (quote =))'
+input = "(let () (write (unparse (list (quote <=) (quote <) (quote >=) (quote >) (quote =)))))"
+
 [case.expect]
-stdout = "(<= < >= > =)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(<= < >= > =)"
 
 [[case]]
 name = "quasiquote symbol alias preserves operator-like atoms"
-input = '(quasiquote (<= < >= > =))'
+input = "(let () (write (unparse (quasiquote (<= < >= > =)))))"
+
 [case.expect]
-stdout = "(<= < >= > =)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(<= < >= > =)"
 
 [[case]]
 name = "dict key aliases keep string and symbol payloads distinct under update and delete"
-input = '(let ((d (assoc (dict ((quote x) 1) ("x" 2)) (quote x) 3))) (list (get d (quote x) 0) (get d "x" 0) (contains (dissoc d "x") (quote x)) (contains (dissoc d "x") "x")))'
+input = "(let () (write (unparse (let ((d (assoc (dict ((quote x) 1) (\"x\" 2)) (quote x) 3))) (list (get d (quote x) 0) (get d \"x\" 0) (contains (dissoc d \"x\") (quote x)) (contains (dissoc d \"x\") \"x\"))))))"
+
 [case.expect]
-stdout = "(3 2 true false)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(3 2 true false)"
 
 [[case]]
 name = "no space pct alias still detects extra unquote arguments"
-input = '(quasiquote (a (unquote (add 1 2) 3)))'
+input = "(quasiquote (a (unquote (add 1 2) 3)))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -53,15 +59,17 @@ exit_code = 2
 
 [[case]]
 name = "let value pct alias still preserves nested list binding values"
-input = '(let ((f (fn (x) (list x (quote ok))))) (f (list 1 2)))'
+input = "(let () (write (unparse (let ((f (fn (x) (list x (quote ok))))) (f (list 1 2))))))"
+
 [case.expect]
-stdout = "((1 2) ok)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((1 2) ok)"
 
 [[case]]
 name = "nonlist alias keeps first receiver type error"
-input = '(first 1)'
+input = "(first 1)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -69,7 +77,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps rest receiver type error"
-input = '(rest 1)'
+input = "(rest 1)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -77,7 +86,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps is-empty receiver type error"
-input = '(is-empty 1)'
+input = "(is-empty 1)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -85,7 +95,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps count receiver type error"
-input = '(count 1)'
+input = "(count 1)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -93,7 +104,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps nth receiver type error"
-input = '(nth 1 0)'
+input = "(nth 1 0)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -101,7 +113,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps set-nth receiver type error"
-input = '(set-nth 1 0 9)'
+input = "(set-nth 1 0 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -109,7 +122,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps cons receiver type error"
-input = '(cons 0 1)'
+input = "(cons 0 1)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -117,7 +131,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps get receiver type error"
-input = '(get 1 (quote k) 0)'
+input = "(get 1 (quote k) 0)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -125,7 +140,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps contains receiver type error"
-input = '(contains 1 (quote k))'
+input = "(contains 1 (quote k))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -133,7 +149,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps assoc receiver type error"
-input = '(assoc 1 (quote k) 2)'
+input = "(assoc 1 (quote k) 2)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -141,7 +158,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps dissoc receiver type error"
-input = '(dissoc 1 (quote k))'
+input = "(dissoc 1 (quote k))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -149,7 +167,8 @@ exit_code = 2
 
 [[case]]
 name = "nonlist alias keeps quasiquote splice type error"
-input = '(quasiquote (a (splice 1)))'
+input = "(quasiquote (a (splice 1)))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
