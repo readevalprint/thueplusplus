@@ -17,13 +17,13 @@ NONNUM <- $VBOOL
 
 ^\s*(?<src>$TOKEN(?:\s+$TOKEN)*)\s*$ ::= RUN<{{src}}|>
 
-ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
-SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
-MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
-DIV<(?<a>$NUM),(?<b>$NUM)> ::! div a b
-EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq a b
-LT<(?<a>$NUM),(?<b>$NUM)> ::! lt a b
-GT<(?<a>$NUM),(?<b>$NUM)> ::! gt a b
+ADD<(?<a>$NUM),(?<b>$NUM)> ::! add {{a}} {{b}}
+SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub {{a}} {{b}}
+MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul {{a}} {{b}}
+DIV<(?<a>$NUM),(?<b>$NUM)> ::! div {{a}} {{b}}
+EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq {{a}} {{b}}
+LT<(?<a>$NUM),(?<b>$NUM)> ::! lt {{a}} {{b}}
+GT<(?<a>$NUM),(?<b>$NUM)> ::! gt {{a}} {{b}}
 
 ^RUN<(?<rest>[^|]*)\|VBOOL<1>;(?<stack>$ITEMS)>$ ::= RUN<{{rest}}|VBOOL<true>;{{stack}}>
 ^RUN<(?<rest>[^|]*)\|VBOOL<0>;(?<stack>$ITEMS)>$ ::= RUN<{{rest}}|VBOOL<false>;{{stack}}>

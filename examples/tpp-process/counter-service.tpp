@@ -5,7 +5,7 @@ NUM <- [0-9]+
 ^N\[(?<n>$NUM)\]\|WAIT$ ::= N[{{n}}]|REQ[@IN@]
 @IN@ ::< 1s 1 lines stdin
 ^N\[(?<n>$NUM)\]\|REQ\[next\]$ ::= N[@ADD[{{n}},1]@]|RESP[{{n}}]
-@ADD\[(?<a>$NUM),(?<b>$NUM)\]@ ::! add a b
+@ADD\[(?<a>$NUM),(?<b>$NUM)\]@ ::! add {{a}} {{b}}
 ^N\[(?<n>$NUM)\]\|RESP\[(?<msg>$NUM)\]$ ::= N[{{n}}]|WAIT\nOUT[{{msg}}]
 
 ::=

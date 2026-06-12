@@ -348,23 +348,47 @@ class ThueppInterpreter:
         except re.error as e:
             raise RuntimeError(f"Line {line_number}: Invalid regex '{lhs}': {e}")
 
-        builtin_name = ""
-        builtin_args: tuple[str, ...] = ()
-        if op == Operator.BUILTIN:
-            builtin_name, builtin_args = self._parse_builtin_call(
-                rhs, line_number, set(pattern.groupindex.keys())
-            )
+        self._validate_template_captures(rhs, line_number, set(pattern.groupindex.keys()))
 
-        return Rule(lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args)
+        return Rule(lhs, pattern, op, rhs, line_number, source_path)
+
+    def _validate_template_captures(
+        self, template: str, line_number: int, capture_names: set[str]
+    ) -> None:
+        pos = 0
+        while pos < len(template):
+            start = template.find("{{", pos)
+            if start < 0:
+                return
+            end = template.find("}}", start + 2)
+            if end < 0:
+                return
+            inner = template[start + 2:end]
+            name = ""
+            if "|" in inner:
+                parts = inner.split("|")
+                if (
+                    len(parts) != 2
+                    or not py_re.fullmatch(r"[A-Za-z_]\w*", parts[0])
+                    or not py_re.fullmatch(r"[A-Za-z_]\w*", parts[1])
+                ):
+                    raise RuntimeError(f"Line {line_number}: Malformed template filter '{{{{{inner}}}}}'")
+                name = parts[0]
+            elif py_re.fullmatch(r"[A-Za-z_]\w*", inner):
+                name = inner
+            if name and name != "rule_index" and name not in capture_names:
+                raise RuntimeError(f"Line {line_number}: Missing template capture '{name}'")
+            pos = end + 2
+
+    def _expand_template_fields(self, template: str, groups: dict, extra: dict) -> list[str]:
+        return [self._expand_template(field, groups, extra) for field in template.split()]
 
     def _parse_builtin_call(
         self,
-        rhs: str,
+        tokens: list[str],
         line_number: int,
-        capture_names: set[str],
     ) -> tuple[str, tuple[str, ...]]:
-        """Parse and validate a ::! builtin call RHS."""
-        tokens = rhs.split()
+        """Parse and validate expanded ::! builtin call tokens."""
         if not tokens:
             raise RuntimeError(f"Line {line_number}: ::! requires a builtin name")
 
@@ -377,19 +401,8 @@ class ThueppInterpreter:
             raise RuntimeError(
                 f"Line {line_number}: Builtin '{name}' expects {expected} args, got {len(args)}"
             )
-        if name == "arg":
-            if not ARG_KEY_RE.fullmatch(args[0]):
-                raise RuntimeError(f"Line {line_number}: invalid script arg key '{args[0]}'")
-            return name, args
-        for arg in args:
-            if not py_re.fullmatch(r"[A-Za-z_]\w*", arg):
-                raise RuntimeError(
-                    f"Line {line_number}: ::! arguments must be capture names, got '{arg}'"
-                )
-            if arg not in capture_names:
-                raise RuntimeError(
-                    f"Line {line_number}: ::! argument '{arg}' is not a named capture"
-                )
+        if name == "arg" and not ARG_KEY_RE.fullmatch(args[0]):
+            raise RuntimeError(f"Line {line_number}: invalid script arg key '{args[0]}'")
         return name, args
 
     def _builtin_arity(self, name: str) -> Optional[int]:
@@ -755,15 +768,13 @@ class ThueppInterpreter:
             return self._pct_encode_bytes(content), None
         return "", f"invalid read unit {unit!r}"
 
-    def _parse_read_count(self, token: str, groups: dict[str, str], line_number: int) -> int:
-        if token.isdigit():
-            return int(token)
-        if token not in groups:
-            raise RuntimeError(f"Line {line_number}: ::< count {token!r} was not captured")
-        value = groups[token]
-        if not value.isdigit():
-            raise RuntimeError(f"Line {line_number}: ::< count capture {token!r} must be a non-negative integer, got {value!r}")
-        return int(value)
+    def _parse_read_count(self, token: str, line_number: int) -> int:
+        if not token.isdigit():
+            raise RuntimeError(
+                f"Line {line_number}: ::< count must be a non-negative integer, got {token!r}; "
+                "use '{{capture}}' for dynamic counts"
+            )
+        return int(token)
 
     def _write_string(self, binding: Binding, content: str) -> Optional[str]:
         """Write a string to a binding. Returns error or None."""
@@ -886,9 +897,9 @@ class ThueppInterpreter:
                     self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.READ:
-                    parts = rule.rhs.strip().split()
+                    parts = self._expand_template_fields(rule.rhs, groups, magic_vars)
                     if len(parts) != 4:
-                        raise RuntimeError(f"Line {rule.line_number}: ::< requires timeout, count, unit, and literal resource")
+                        raise RuntimeError(f"Line {rule.line_number}: ::< requires timeout, count, unit, and resource")
                     read_spec, count_spec, unit, resource = parts
                     try:
                         read_timeout = parse_read_timeout(read_spec)
@@ -896,9 +907,9 @@ class ThueppInterpreter:
                         raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
                     if unit not in {"bytes", "lines"}:
                         raise RuntimeError(f"Line {rule.line_number}: ::< unit must be bytes or lines")
-                    count = self._parse_read_count(count_spec, groups, rule.line_number)
+                    count = self._parse_read_count(count_spec, rule.line_number)
                     if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
-                        raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
+                        raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a binding name")
                     binding = self.bindings.get(resource)
                     if not binding:
                         raise RuntimeError(f"Unknown resource '{resource}'")
@@ -932,22 +943,20 @@ class ThueppInterpreter:
                         self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.BUILTIN:
-                    if rule.builtin_name == "arg":
-                        replacement = self._pct_encode(self.script_args.get(rule.builtin_args[0], ""))
+                    tokens = self._expand_template_fields(rule.rhs, groups, magic_vars)
+                    try:
+                        builtin_name, builtin_args = self._parse_builtin_call(tokens, rule.line_number)
+                    except RuntimeError:
                         self._record_rule_coverage(rule)
+                        raise
+                    if builtin_name == "arg":
+                        replacement = self._pct_encode(self.script_args.get(builtin_args[0], ""))
                     else:
-                        values = []
-                        for arg in rule.builtin_args:
-                            if arg not in groups:
-                                raise RuntimeError(
-                                    f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
-                                )
-                            values.append(groups[arg])
-                        replacement = self._eval_builtin(rule.builtin_name, values)
-                        self._record_rule_coverage(rule)
+                        replacement = self._eval_builtin(builtin_name, list(builtin_args))
+                    self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.EXIT:
-                    code_str = rule.rhs.strip()
+                    code_str = self._expand_template(rule.rhs, groups, magic_vars).strip()
                     if code_str.startswith("{") and code_str.endswith("}"):
                         code_str = code_str[1:-1]
                     try:

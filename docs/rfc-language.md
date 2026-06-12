@@ -121,17 +121,19 @@ Only one span is replaced per action. The match search is over the whole state s
 
 ## 8. Operators
 
+For every operator, expand `RHS` as a `{{capture}}` template first, then parse and validate the expanded text according to that operator. Bare tokens are literals; dynamic operands must be written explicitly as templates. Template references must name captures from the rule `LHS` (or implementation-provided magic variables such as `rule_index`); malformed or unknown templates are errors. Whitespace-delimited operator operands are expanded per original RHS field, so an empty capture in `::! b64enc {{s}}` is still one empty builtin argument rather than a missing argument.
+
 ### `::=` replace
 
 Expand `RHS` as a normal template and replace the match with the result.
 
 ### `::!` builtin
 
-Split `RHS` on whitespace. First token is builtin name; remaining tokens are capture names, not templates. Missing/unknown builtin, wrong arity, non-capture argument, or argument not present in `LHS` are errors. The builtin receives exact capture strings and replaces the match with its result.
+After template expansion, split `RHS` on whitespace. First token is builtin name; remaining tokens are builtin arguments. Missing/unknown builtin, wrong arity, or invalid expanded argument syntax are errors. The builtin receives exact expanded argument strings and replaces the match with its result. Examples: `::! add {{a}} {{b}}` calls numeric addition with captured operands; `::! arg QUERY_STRING` reads a literal script-argument key; `::! arg {{key}}` reads the key named by a capture.
 
 ### `::<` read
 
-`RHS` must be exactly four tokens: `TIMEOUT COUNT UNIT RESOURCE`. `TIMEOUT` must be a positive integer duration with an explicit unit: `ms`, `s`, or `m` (for example `500ms`, `1s`, or `1m`). Bare numbers, decimals, zero, negative values, and unsupported units are errors. `COUNT` is either a non-negative decimal integer literal or the name of an `LHS` capture whose matched value is a non-negative decimal integer. `UNIT` is exactly `bytes` or `lines`. `RESOURCE` matches `[A-Za-z_][A-Za-z0-9_]*` and must be readable.
+After template expansion, `RHS` must be exactly four tokens: `TIMEOUT COUNT UNIT RESOURCE`. `TIMEOUT` must be a positive integer duration with an explicit unit: `ms`, `s`, or `m` (for example `500ms`, `1s`, or `1m`). Bare numbers, decimals, zero, negative values, and unsupported units are errors. `COUNT` must be a non-negative decimal integer. `UNIT` is exactly `bytes` or `lines`. `RESOURCE` matches `[A-Za-z_][A-Za-z0-9_]*` and must be readable. Captured values for any of these fields use templates, for example `::< {{timeout}} {{count}} {{unit}} {{resource}}`.
 
 `COUNT lines` reads exactly that many newline-delimited messages, strips each line terminator, joins stripped lines with `\n`, and replaces the match with canonical PCT encoding of the joined payload. `COUNT bytes` reads exactly that many raw bytes and replaces the match with canonical PCT encoding of those bytes. EOF or timeout before the requested count is an error. `0 lines` and `0 bytes` return an empty payload immediately.
 
@@ -141,7 +143,7 @@ Expand `RHS` as a template, then split at first space/tab into `RESOURCE CONTENT
 
 ### `::-` exit
 
-Trim `RHS`; if wrapped in `{...}`, remove braces. If it parses as integer, exit with that code; otherwise exit `1`. No replacement occurs.
+After template expansion, trim `RHS`; if wrapped in `{...}`, remove braces. If it parses as integer, exit with that code; otherwise exit `1`. No replacement occurs.
 
 ## 9. Resources
 

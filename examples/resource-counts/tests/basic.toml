@@ -20,6 +20,15 @@ exit_code = 0
 stdout = "hello\n"
 
 [[case]]
+name = "dynamic read expands timeout count unit and resource"
+input = "dynamic-read 5s 5 bytes stdin"
+stdin = "hello world"
+
+[case.expect]
+exit_code = 0
+stdout = "hello\n"
+
+[[case]]
 name = "line count joins stripped lines"
 input = "two-lines"
 stdin = "alpha\nbeta\ngamma\n"
