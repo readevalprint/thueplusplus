@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Focused safety cases for shared strict source-expression arg collection.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "list evaluates args left-to-right with mutation"
-input = '(let ((x 0)) (list (set x 1) x))'
+input = "(write (unparse (let ((x 0)) (list (set x 1) x))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -14,7 +14,8 @@ stdout_stripped = "(1 1)"
 
 [[case]]
 name = "call evaluates args left-to-right with mutation"
-input = '(let ((x 0)) ((fn (a b) (list a b)) (set x 1) x))'
+input = "(write (unparse (let ((x 0)) ((fn (a b) (list a b)) (set x 1) x))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -22,7 +23,8 @@ stdout_stripped = "(1 1)"
 
 [[case]]
 name = "list retains empty-list direct behavior"
-input = '(list)'
+input = "(write (unparse (list)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -30,7 +32,8 @@ stdout_stripped = "()"
 
 [[case]]
 name = "zero arg closure call remains separate from empty list"
-input = '((fn () 7))'
+input = "(write (unparse ((fn () 7))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -38,7 +41,8 @@ stdout_stripped = "7"
 
 [[case]]
 name = "strict collector propagates list argument type errors"
-input = '(list (first 1) 2)'
+input = "(list (first 1) 2)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -46,7 +50,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "strict collector propagates call argument type errors"
-input = '((fn (x) x) (first 1))'
+input = "((fn (x) x) (first 1))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -54,7 +59,8 @@ stderr_stripped = "type_error"
 
 [[case]]
 name = "quote does not use strict arg collector"
-input = '(quote (first 1))'
+input = "(write (unparse (quote (first 1))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -62,7 +68,8 @@ stdout_stripped = "(first 1)"
 
 [[case]]
 name = "quasiquote does not use strict call collector"
-input = '`((fn (x) x) (first 1))'
+input = "(write (unparse `((fn (x) x) (first 1))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -70,7 +77,8 @@ stdout_stripped = "((fn (x) x) (first 1))"
 
 [[case]]
 name = "dict still evaluates entry keys and values while preserving duplicates"
-input = '(dict ((quote a) 1) ((quote a) 2))'
+input = "(write (unparse (dict ((quote a) 1) ((quote a) 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""

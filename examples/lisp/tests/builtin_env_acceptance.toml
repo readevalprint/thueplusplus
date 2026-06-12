@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Builtins are ordinary callable values resolved through the lexical environment.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "80000"]
 
 [[case]]
 name = "named add uses core env"
-input = '(add 1 2)'
+input = "(write (unparse (add 1 2)))"
 
 [case.expect]
 exit_code = 0
@@ -15,7 +14,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "named nested arithmetic"
-input = '(add 1 (mul 2 3))'
+input = "(write (unparse (add 1 (mul 2 3))))"
 
 [case.expect]
 exit_code = 0
@@ -24,7 +23,7 @@ stdout_stripped = "7"
 
 [[case]]
 name = "named comparisons"
-input = '(and (eq (add 1 2) 3) (lte 2 2) (gt 5 4))'
+input = "(write (unparse (and (eq (add 1 2) 3) (lte 2 2) (gt 5 4))))"
 
 [case.expect]
 exit_code = 0
@@ -33,7 +32,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "primitive callable wrong arity too few"
-input = '(add 1)'
+input = "(add 1)"
 
 [case.expect]
 exit_code = 2
@@ -42,7 +41,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable wrong arity too many"
-input = '(add 1 2 3)'
+input = "(add 1 2 3)"
 
 [case.expect]
 exit_code = 2
@@ -51,7 +50,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable type error"
-input = '(add 1 true)'
+input = "(add 1 true)"
 
 [case.expect]
 exit_code = 2
@@ -60,7 +59,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable shadowed by number is not callable"
-input = '(let ((add 7)) (add 1 2))'
+input = "(let ((add 7)) (add 1 2))"
 
 [case.expect]
 exit_code = 2
@@ -69,7 +68,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive name shadowed by number evaluates binding"
-input = '(let ((add 1)) add)'
+input = "(write (unparse (let ((add 1)) add)))"
 
 [case.expect]
 exit_code = 0
@@ -78,7 +77,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "primitive callable shadowed by closure"
-input = '(let ((add (fn (x y) 999))) (add 1 2))'
+input = "(write (unparse (let ((add (fn (x y) 999))) (add 1 2))))"
 
 [case.expect]
 exit_code = 0
@@ -87,7 +86,7 @@ stdout_stripped = "999"
 
 [[case]]
 name = "missing callee is get miss"
-input = '(missing 1 2)'
+input = "(missing 1 2)"
 
 [case.expect]
 exit_code = 2
@@ -96,7 +95,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "symbolic operator hard cutoff"
-input = '(+ 1 2)'
+input = "(+ 1 2)"
 
 [case.expect]
 exit_code = 2
@@ -105,16 +104,16 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable value inside list is unparseable"
-input = '(list add)'
+input = "(list add)"
 
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "primitive callable value rejected by first as non-list"
-input = '(first add)'
+input = "(first add)"
 
 [case.expect]
 exit_code = 2
@@ -123,7 +122,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable value rejected by rest as non-list"
-input = '(rest add)'
+input = "(rest add)"
 
 [case.expect]
 exit_code = 2
@@ -132,7 +131,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable value rejected by count as non-list"
-input = '(count add)'
+input = "(count add)"
 
 [case.expect]
 exit_code = 2
@@ -141,7 +140,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable value rejected by nth as non-list"
-input = '(nth add 0)'
+input = "(nth add 0)"
 
 [case.expect]
 exit_code = 2
@@ -150,7 +149,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable value rejected by cons as non-list"
-input = '(cons 1 add)'
+input = "(cons 1 add)"
 
 [case.expect]
 exit_code = 2
@@ -159,7 +158,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "primitive callable value rejected by quasiquote splice as non-list"
-input = '(quasiquote (x (splice add)))'
+input = "(quasiquote (x (splice add)))"
 
 [case.expect]
 exit_code = 2
@@ -168,7 +167,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "collection count is env callable"
-input = '(count (list 1 2))'
+input = "(write (unparse (count (list 1 2))))"
 
 [case.expect]
 exit_code = 0
@@ -177,7 +176,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "collection count shadowed by number is not callable"
-input = '(let ((count 7)) (count (list 1)))'
+input = "(let ((count 7)) (count (list 1)))"
 
 [case.expect]
 exit_code = 2
@@ -186,7 +185,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval receives count as explicit capability"
-input = '(eval (quote (count xs)) (dict ((quote count) count) ((quote xs) (list 1 2))))'
+input = "(write (unparse (eval (quote (count xs)) (dict ((quote count) count) ((quote xs) (list 1 2))))))"
 
 [case.expect]
 exit_code = 0
@@ -195,7 +194,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "eval receives count as explicit capability for long list"
-input = '(eval (quote (count xs)) (dict ((quote count) count) ((quote xs) (list 1 2 3 4 5 6))))'
+input = "(write (unparse (eval (quote (count xs)) (dict ((quote count) count) ((quote xs) (list 1 2 3 4 5 6))))))"
 
 [case.expect]
 exit_code = 0
@@ -204,7 +203,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "eval receives nth as explicit capability for arbitrary index"
-input = '(eval (quote (nth xs i)) (dict ((quote nth) nth) ((quote xs) (list 9 8 7 6 5)) ((quote i) 4)))'
+input = "(write (unparse (eval (quote (nth xs i)) (dict ((quote nth) nth) ((quote xs) (list 9 8 7 6 5)) ((quote i) 4)))))"
 
 [case.expect]
 exit_code = 0
@@ -213,7 +212,7 @@ stdout_stripped = "5"
 
 [[case]]
 name = "eval without count capability fails unbound"
-input = '(eval (quote (count xs)) (dict ((quote xs) (list 1 2))))'
+input = "(eval (quote (count xs)) (dict ((quote xs) (list 1 2))))"
 
 [case.expect]
 exit_code = 2
@@ -222,7 +221,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval receives contains as explicit capability"
-input = '(eval (quote (contains d k)) (dict ((quote contains) contains) ((quote d) (dict ((quote a) 42))) ((quote k) (quote a))))'
+input = "(write (unparse (eval (quote (contains d k)) (dict ((quote contains) contains) ((quote d) (dict ((quote a) 42))) ((quote k) (quote a))))))"
 
 [case.expect]
 exit_code = 0
@@ -231,7 +230,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "callable empty predicate remains public"
-input = '(is-empty (list))'
+input = "(write (unparse (is-empty (list))))"
 
 [case.expect]
 exit_code = 0
@@ -240,7 +239,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "callable nth remains public"
-input = '(nth (list 7 8) 1)'
+input = "(write (unparse (nth (list 7 8) 1)))"
 
 [case.expect]
 exit_code = 0
@@ -249,7 +248,7 @@ stdout_stripped = "8"
 
 [[case]]
 name = "callable cons remains public"
-input = '(cons 0 (list 1 2))'
+input = "(write (unparse (cons 0 (list 1 2))))"
 
 [case.expect]
 exit_code = 0
@@ -258,7 +257,7 @@ stdout_stripped = "(0 1 2)"
 
 [[case]]
 name = "callable get too few args fails wrong arity"
-input = '(get (dict) (quote a))'
+input = "(get (dict) (quote a))"
 
 [case.expect]
 exit_code = 2
@@ -267,7 +266,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "callable count too many args fails wrong arity"
-input = '(count (list 1) (list 2))'
+input = "(count (list 1) (list 2))"
 
 [case.expect]
 exit_code = 2
@@ -276,7 +275,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "eval receives get as explicit capability"
-input = '(eval (quote (get d k z)) (dict ((quote get) get) ((quote d) (dict ((quote a) 42))) ((quote k) (quote a)) ((quote z) 0)))'
+input = "(write (unparse (eval (quote (get d k z)) (dict ((quote get) get) ((quote d) (dict ((quote a) 42))) ((quote k) (quote a)) ((quote z) 0)))))"
 
 [case.expect]
 exit_code = 0
@@ -285,16 +284,16 @@ stdout_stripped = "42"
 
 [[case]]
 name = "top-level first primitive is unparseable"
-input = 'first'
+input = "first"
 
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "callable cons too many args fails wrong arity"
-input = '(cons 0 (list 1) 2)'
+input = "(cons 0 (list 1) 2)"
 
 [case.expect]
 exit_code = 2
@@ -303,7 +302,7 @@ stdout_stripped = ""
 
 [[case]]
 name = "callable get too many args fails wrong arity"
-input = '(get (dict) (quote a) 0 1)'
+input = "(get (dict) (quote a) 0 1)"
 
 [case.expect]
 exit_code = 2

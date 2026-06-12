@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Focused safety cases for the single closure binding iterator.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "zero arg closure call still evaluates body"
-input = '((fn () 7))'
+input = "(write (unparse ((fn () 7))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -14,7 +14,8 @@ stdout_stripped = "7"
 
 [[case]]
 name = "zero arg call to one-param closure rejects"
-input = '((fn (x) x))'
+input = "((fn (x) x))"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -22,7 +23,8 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "one arg closure binds parameter"
-input = '((fn (x) x) 9)'
+input = "(write (unparse ((fn (x) x) 9)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -30,7 +32,8 @@ stdout_stripped = "9"
 
 [[case]]
 name = "n-ary closure binds left-to-right"
-input = '((fn (x y z) (list x y z)) 1 2 3)'
+input = "(write (unparse ((fn (x y z) (list x y z)) 1 2 3)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -38,7 +41,8 @@ stdout_stripped = "(1 2 3)"
 
 [[case]]
 name = "too many args still rejects"
-input = '((fn (x y) (add x y)) 1 2 3)'
+input = "((fn (x y) (add x y)) 1 2 3)"
+
 [case.expect]
 exit_code = 2
 stdout = ""
@@ -46,15 +50,17 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "partial application still returns opaque closure at top level"
-input = '((fn (x y) (add x y)) 1)'
+input = "((fn (x y) (add x y)) 1)"
+
 [case.expect]
-exit_code = 2
+exit_code = 0
 stdout = ""
-stderr_stripped = "unparseable_value"
+stderr = ""
 
 [[case]]
 name = "partial application still completes"
-input = '(((fn (x y) (add x y)) 1) 2)'
+input = "(write (unparse (((fn (x y) (add x y)) 1) 2)))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -62,7 +68,8 @@ stdout_stripped = "3"
 
 [[case]]
 name = "partial closure preserves lexical capture"
-input = '(let ((a 10)) (((fn (x y) (add (add a x) y)) 1) 2))'
+input = "(write (unparse (let ((a 10)) (((fn (x y) (add (add a x) y)) 1) 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -70,7 +77,8 @@ stdout_stripped = "13"
 
 [[case]]
 name = "parameter shadows captured env"
-input = '(let ((x 100)) ((fn (x) x) 1))'
+input = "(write (unparse (let ((x 100)) ((fn (x) x) 1))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""
@@ -78,7 +86,8 @@ stdout_stripped = "1"
 
 [[case]]
 name = "partial application preserves parameter shadowing"
-input = '(let ((x 100)) (((fn (x y) (add x y)) 1) 2))'
+input = "(write (unparse (let ((x 100)) (((fn (x y) (add x y)) 1) 2))))"
+
 [case.expect]
 exit_code = 0
 stderr = ""

@@ -1,13 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Focused deletion-first safety cases for the let binding-stream iterator.
-# These pin sequential, non-recursive let semantics while KLETLAST is deleted.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "empty let evaluates body in caller env"
-input = '(let () 1)'
+input = "(write (unparse (let () 1)))"
 
 [case.expect]
 exit_code = 0
@@ -16,7 +14,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "single let binding evaluates body"
-input = '(let ((x 1)) x)'
+input = "(write (unparse (let ((x 1)) x)))"
 
 [case.expect]
 exit_code = 0
@@ -25,7 +23,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "later let binding sees earlier binding"
-input = '(let ((x 1) (y x)) y)'
+input = "(write (unparse (let ((x 1) (y x)) y)))"
 
 [case.expect]
 exit_code = 0
@@ -34,7 +32,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "duplicate let name shadows left to right"
-input = '(let ((x 1) (x 2)) x)'
+input = "(write (unparse (let ((x 1) (x 2)) x)))"
 
 [case.expect]
 exit_code = 0
@@ -43,7 +41,7 @@ stdout_stripped = "2"
 
 [[case]]
 name = "self reference without outer binding is unbound"
-input = '(let ((x x)) x)'
+input = "(let ((x x)) x)"
 
 [case.expect]
 exit_code = 2
@@ -52,7 +50,7 @@ stderr_stripped = "unbound_name"
 
 [[case]]
 name = "self reference uses outer binding before shadowing"
-input = '(let ((x 1)) (let ((x x)) x))'
+input = "(write (unparse (let ((x 1)) (let ((x x)) x))))"
 
 [case.expect]
 exit_code = 0
@@ -61,7 +59,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "closure rhs does not capture its own let binding"
-input = '(let ((x (fn (y) (if (gt y 0) (x (sub y 1)) y)))) (x 2))'
+input = "(let ((x (fn (y) (if (gt y 0) (x (sub y 1)) y)))) (x 2))"
 
 [case.expect]
 exit_code = 2

@@ -1,14 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Core acceptance cases for examples/lisp/lisp.tpp.
-# Originally generated from learnings/hard_acceptance_cases.tsv, then promoted
-# into the stable Lisp contract.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "literal int"
-input = '42'
+input = "(write (unparse 42))"
 
 [case.expect]
 exit_code = 0
@@ -17,7 +14,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "literal string"
-input = '"hello world"'
+input = "(write (unparse \"hello world\"))"
 
 [case.expect]
 exit_code = 0
@@ -26,7 +23,7 @@ stdout_stripped = "\"hello world\""
 
 [[case]]
 name = "literal bool"
-input = 'true'
+input = "(write (unparse true))"
 
 [case.expect]
 exit_code = 0
@@ -35,7 +32,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "nested math"
-input = '(add (add 1 (mul 2 3)) (add 4 5))'
+input = "(write (unparse (add (add 1 (mul 2 3)) (add 4 5))))"
 
 [case.expect]
 exit_code = 0
@@ -44,7 +41,7 @@ stdout_stripped = "16"
 
 [[case]]
 name = "compare"
-input = '(eq (add 1 2) 3)'
+input = "(write (unparse (eq (add 1 2) 3)))"
 
 [case.expect]
 exit_code = 0
@@ -53,7 +50,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "if lazy"
-input = '(if (eq (add 1 2) 4) (div 1 0) 12)'
+input = "(write (unparse (if (eq (add 1 2) 4) (div 1 0) 12)))"
 
 [case.expect]
 exit_code = 0
@@ -62,7 +59,7 @@ stdout_stripped = "12"
 
 [[case]]
 name = "and lazy"
-input = '(and false (div 1 0))'
+input = "(write (unparse (and false (div 1 0))))"
 
 [case.expect]
 exit_code = 0
@@ -71,7 +68,7 @@ stdout_stripped = "false"
 
 [[case]]
 name = "or lazy"
-input = '(or true (div 1 0))'
+input = "(write (unparse (or true (div 1 0))))"
 
 [case.expect]
 exit_code = 0
@@ -80,7 +77,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "list mixed"
-input = '(list 1 "hi there" false)'
+input = "(write (unparse (list 1 \"hi there\" false)))"
 
 [case.expect]
 exit_code = 0
@@ -89,7 +86,7 @@ stdout_stripped = "(1 \"hi there\" false)"
 
 [[case]]
 name = "first list"
-input = '(first (list 8 9 10))'
+input = "(write (unparse (first (list 8 9 10))))"
 
 [case.expect]
 exit_code = 0
@@ -98,7 +95,7 @@ stdout_stripped = "8"
 
 [[case]]
 name = "rest list"
-input = '(rest (list 8 "x" false))'
+input = "(write (unparse (rest (list 8 \"x\" false))))"
 
 [case.expect]
 exit_code = 0
@@ -107,7 +104,7 @@ stdout_stripped = "(\"x\" false)"
 
 [[case]]
 name = "fn nary"
-input = '((fn (x y z) (add (add x y) z)) 1 2 3)'
+input = "(write (unparse ((fn (x y z) (add (add x y) z)) 1 2 3)))"
 
 [case.expect]
 exit_code = 0
@@ -116,7 +113,7 @@ stdout_stripped = "6"
 
 [[case]]
 name = "direct lambda call"
-input = '((fn (x) x) 1)'
+input = "(write (unparse ((fn (x) x) 1)))"
 
 [case.expect]
 exit_code = 0
@@ -125,7 +122,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "direct no arg lambda call"
-input = '((fn () 1))'
+input = "(write (unparse ((fn () 1))))"
 
 [case.expect]
 exit_code = 0
@@ -134,7 +131,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "fn closure"
-input = '(((fn (x) (fn (y) (add x y))) 10) 5)'
+input = "(write (unparse (((fn (x) (fn (y) (add x y))) 10) 5)))"
 
 [case.expect]
 exit_code = 0
@@ -143,7 +140,7 @@ stdout_stripped = "15"
 
 [[case]]
 name = "fn shadow"
-input = '((fn (x) ((fn (x) x) 2)) 1)'
+input = "(write (unparse ((fn (x) ((fn (x) x) 2)) 1)))"
 
 [case.expect]
 exit_code = 0
@@ -152,16 +149,16 @@ stdout_stripped = "2"
 
 [[case]]
 name = "fn partial result is unparseable closure"
-input = '((fn (x y) (add x y)) 1)'
+input = "((fn (x y) (add x y)) 1)"
 
 [case.expect]
-exit_code = 2
-stderr = "unparseable_value\n"
-stdout_stripped = ""
+exit_code = 0
+stdout = ""
+stderr = ""
 
 [[case]]
 name = "fn partial application completes"
-input = '(((fn (x y) (add x y)) 1) 2)'
+input = "(write (unparse (((fn (x y) (add x y)) 1) 2)))"
 
 [case.expect]
 exit_code = 0
@@ -170,7 +167,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "fn partial preserves lexical capture"
-input = '(let ((a 10)) (((fn (x y) (add (add a x) y)) 1) 2))'
+input = "(write (unparse (let ((a 10)) (((fn (x y) (add (add a x) y)) 1) 2))))"
 
 [case.expect]
 exit_code = 0
@@ -179,7 +176,7 @@ stdout_stripped = "13"
 
 [[case]]
 name = "fn partial preserves shadowing"
-input = '(let ((x 100)) (((fn (x y) (add x y)) 1) 2))'
+input = "(write (unparse (let ((x 100)) (((fn (x y) (add x y)) 1) 2))))"
 
 [case.expect]
 exit_code = 0
@@ -188,7 +185,7 @@ stdout_stripped = "3"
 
 [[case]]
 name = "fn partial too many args rejects"
-input = '((fn (x y) (add x y)) 1 2 3)'
+input = "((fn (x y) (add x y)) 1 2 3)"
 
 [case.expect]
 exit_code = 2
@@ -197,7 +194,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "fn partial zero arg rejects"
-input = '((fn (x) x))'
+input = "((fn (x) x))"
 
 [case.expect]
 exit_code = 2
@@ -206,10 +203,9 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "let list"
-input = '(let ((xs (list 1 "hi there" 2))) (rest xs))'
+input = "(write (unparse (let ((xs (list 1 \"hi there\" 2))) (rest xs))))"
 
 [case.expect]
 exit_code = 0
 stderr = ""
 stdout_stripped = "(\"hi there\" 2)"
-

@@ -1,14 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Exact routing for special-form arity and unsupported-form catchers. These
-# cases pin public errors so cleanup cannot drift into unbound_name,
-# not_function, or the wrong fail-loud class.
 program = "../lisp.tpp"
 timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "bare eval fails wrong arity"
-input = '(eval)'
+input = "(eval)"
 
 [case.expect]
 exit_code = 2
@@ -17,7 +14,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "eval with one operand fails wrong arity"
-input = '(eval (quote x))'
+input = "(eval (quote x))"
 
 [case.expect]
 exit_code = 2
@@ -26,7 +23,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "eval with three operands fails wrong arity"
-input = '(eval (quote x) (list) 1)'
+input = "(eval (quote x) (list) 1)"
 
 [case.expect]
 exit_code = 2
@@ -35,7 +32,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "bare quote fails wrong arity"
-input = '(quote)'
+input = "(quote)"
 
 [case.expect]
 exit_code = 2
@@ -44,7 +41,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "quote with two operands fails wrong arity"
-input = '(quote x y)'
+input = "(quote x y)"
 
 [case.expect]
 exit_code = 2
@@ -53,7 +50,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "bare quasiquote fails wrong arity"
-input = '(quasiquote)'
+input = "(quasiquote)"
 
 [case.expect]
 exit_code = 2
@@ -62,7 +59,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "quasiquote with two operands fails wrong arity"
-input = '(quasiquote x y)'
+input = "(quasiquote x y)"
 
 [case.expect]
 exit_code = 2
@@ -71,7 +68,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "bare set fails wrong arity"
-input = '(set)'
+input = "(set)"
 
 [case.expect]
 exit_code = 2
@@ -80,7 +77,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "set with one operand fails wrong arity"
-input = '(let ((x 1)) (set x))'
+input = "(let ((x 1)) (set x))"
 
 [case.expect]
 exit_code = 2
@@ -89,7 +86,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "set with three operands fails wrong arity"
-input = '(let ((x 1)) (set x 2 3))'
+input = "(let ((x 1)) (set x 2 3))"
 
 [case.expect]
 exit_code = 2
@@ -98,7 +95,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "bare fn fails wrong arity"
-input = '(fn)'
+input = "(fn)"
 
 [case.expect]
 exit_code = 2
@@ -107,7 +104,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "fn without body fails wrong arity"
-input = '(fn (x))'
+input = "(fn (x))"
 
 [case.expect]
 exit_code = 2
@@ -116,7 +113,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "fn accepts multiple body operands"
-input = '((fn (x) (add x 1) (add x 2)) 10)'
+input = "(write (unparse ((fn (x) (add x 1) (add x 2)) 10)))"
 
 [case.expect]
 exit_code = 0
@@ -125,7 +122,7 @@ stdout_stripped = "12"
 
 [[case]]
 name = "bare if fails wrong arity"
-input = '(if)'
+input = "(if)"
 
 [case.expect]
 exit_code = 2
@@ -134,7 +131,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "if with two operands fails wrong arity"
-input = '(if true 1)'
+input = "(if true 1)"
 
 [case.expect]
 exit_code = 2
@@ -143,7 +140,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "if with four operands fails wrong arity"
-input = '(if true 1 2 3)'
+input = "(if true 1 2 3)"
 
 [case.expect]
 exit_code = 2
@@ -152,7 +149,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "bare and fails wrong arity"
-input = '(and)'
+input = "(and)"
 
 [case.expect]
 exit_code = 2
@@ -161,7 +158,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "and with one operand fails wrong arity"
-input = '(and true)'
+input = "(and true)"
 
 [case.expect]
 exit_code = 2
@@ -170,7 +167,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "bare or fails wrong arity"
-input = '(or)'
+input = "(or)"
 
 [case.expect]
 exit_code = 2
@@ -179,7 +176,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "or with one operand fails wrong arity"
-input = '(or false)'
+input = "(or false)"
 
 [case.expect]
 exit_code = 2
@@ -188,7 +185,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "bare let fails wrong arity"
-input = '(let)'
+input = "(let)"
 
 [case.expect]
 exit_code = 2
@@ -197,7 +194,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "let without body fails wrong arity"
-input = '(let ((x 1)))'
+input = "(let ((x 1)))"
 
 [case.expect]
 exit_code = 2
@@ -206,7 +203,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "let accepts multiple body operands"
-input = '(let ((x 1)) (add x 1) x)'
+input = "(write (unparse (let ((x 1)) (add x 1) x)))"
 
 [case.expect]
 exit_code = 0
@@ -215,7 +212,7 @@ stdout_stripped = "1"
 
 [[case]]
 name = "bare while fails wrong arity"
-input = '(while)'
+input = "(while)"
 
 [case.expect]
 exit_code = 2
@@ -224,7 +221,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "while without body fails wrong arity"
-input = '(while true)'
+input = "(while true)"
 
 [case.expect]
 exit_code = 2
@@ -233,7 +230,7 @@ stderr_stripped = "wrong_arity"
 
 [[case]]
 name = "while accepts multiple body operands"
-input = '(while false 1 2)'
+input = "(write (unparse (while false 1 2)))"
 
 [case.expect]
 exit_code = 0
@@ -242,7 +239,7 @@ stdout_stripped = "()"
 
 [[case]]
 name = "bare do is unsupported"
-input = '(do)'
+input = "(do)"
 
 [case.expect]
 exit_code = 2

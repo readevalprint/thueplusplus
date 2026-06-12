@@ -346,12 +346,12 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
     for snippet in forbidden_array_fragments:
         if snippet in text:
             failures.append(Failure(path, f"Lisp arrays/rest were deleted; stale implementation fragment remains: {snippet}"))
-    generic_final_render = "^RET<(?<v>$VAL)\\|KDONE>$ ::= RENDER<{{v}}|KOUT>"
-    if generic_final_render not in text:
-        failures.append(Failure(path, "Lisp final KDONE rendering must dispatch through one generic $VAL rule"))
-    stale_final_fanout = re.compile(r"^\^RET<V(?:NUM|BOOL|STR|CLOS|BUILTIN|SYM|LIST|DICT)<.*\\\|KDONE>\$ ::= RENDER<", re.MULTILINE)
-    if stale_final_fanout.search(text):
-        failures.append(Failure(path, "Lisp final KDONE rendering must not enumerate per-value tag fanout rules"))
+    generic_final_quiet = "^RET<(?<v>$VAL)\\|KDONE>$ ::= @EXIT0@"
+    if generic_final_quiet not in text:
+        failures.append(Failure(path, "Lisp final KDONE handling must exit quietly through one generic $VAL rule"))
+    stale_final_render = re.compile(r"^\^RET(?:ENV)?<.*\\\|KDONE>\$ ::= RENDER<", re.MULTILINE)
+    if stale_final_render.search(text) or "|KOUT>" in text:
+        failures.append(Failure(path, "Lisp final KDONE handling must not implicitly render values to stdout"))
     if "|KDONE>>$ ::= RET<" in text:
         failures.append(Failure(path, "stale extra-angle RET<...|KDONE>> final rendering shim remains"))
     if "VBUILTIN" in text:

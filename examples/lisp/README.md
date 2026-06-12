@@ -44,7 +44,10 @@ The evaluator uses internal typed values while reducing:
 - closures;
 - opaque primitive callables from the initial core environment.
 
-Successful top-level output renders public values as reader syntax where the value contains reader syntax:
+Top-level evaluation is quiet: evaluating an expression does not implicitly write
+the final value to stdout. Program output is produced only by explicit IO
+operations such as `write` and `write-err`. Use `unparse` plus `write` when a
+program wants to print a value as reader syntax:
 
 - numbers as normalized numeric text;
 - booleans as `true` or `false`;
@@ -52,7 +55,7 @@ Successful top-level output renders public values as reader syntax where the val
 - proper lists as ordinary parenthesized source-list syntax, for example `()`, `(1 2)`, or `(1 (2 3))`;
 - quoted symbols as their source names, for example `x`;
 - association lists as ordinary list syntax, for example `((x 1) ("external key" 2))`;
-- closures and primitive callables are not renderable values. If a successful result contains either directly or nested inside another value, rendering fails with `unparseable_value`.
+- closures and primitive callables are not renderable values. If `unparse` is asked to render either directly or nested inside another value, it fails with `unparseable_value`.
 
 Reader-backed outputs are intended to round trip where the reader contains a direct value syntax. Feeding a rendered number, boolean, string, or list back through `parse`/`eval` should recreate equivalent public data, except when any nested value is a closure or primitive callable. Association lists use only ordinary list syntax; there is no separate dictionary reader syntax. Proper lists are source-shaped code/data values, so use `(quote (...))`, `(parse "...")`, or `(list ...)` when the value must be reconstructed rather than evaluated as a call.
 
@@ -65,7 +68,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), macro expansion (`macroexpand`), and IO helpers (`write`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), macro expansion (`macroexpand`), and IO helpers (`write`, `write-err`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -140,9 +143,9 @@ There is no `defmacro`, `macrolet`, global macro registry, implicit macro expans
 
 ## IO primitives
 
-`write` and `readline` are ordinary primitive callables from the initial core environment. They are not special forms: calls use the same lookup, argument evaluation, and primitive-application path as `add`.
+`write`, `write-err`, and `readline` are ordinary primitive callables from the initial core environment. They are not special forms: calls use the same lookup, argument evaluation, and primitive-application path as `add`.
 
-`(write "text")` writes the decoded string to `stdout` and returns `()`. When used as the whole top-level program, the side effect and rendered return value both appear on stdout:
+`(write "text")` writes the decoded string to `stdout` and returns `()`. The returned value is not printed by top-level evaluation:
 
 ```lisp
 (write "Hello")
@@ -151,8 +154,11 @@ There is no `defmacro`, `macrolet`, global macro registry, implicit macro expans
 outputs:
 
 ```text
-Hello()
+Hello
 ```
+
+`(write-err "text")` is the stderr counterpart: it writes the decoded string to
+`stderr`, returns `()`, and does not affect stdout.
 
 `(readline)` reads one newline-delimited message from `stdin` and returns it as a string. Prompt-style programs compose `write` and `readline` explicitly:
 
@@ -165,7 +171,15 @@ Hello()
 With stdin `Ada\n`, this outputs:
 
 ```text
-Name: "Ada"
+Name:
+```
+
+To echo the read value, write it explicitly:
+
+```lisp
+(let ()
+  (write "Name: ")
+  (write (unparse (readline))))
 ```
 
 To retain the read value for later expressions, bind or set it explicitly:
@@ -177,7 +191,7 @@ To retain the read value for later expressions, bind or set it explicitly:
   resp)
 ```
 
-There is no dedicated `prompt` or `input` form; those names are ordinary unbound names unless user code binds them. `write` requires a string argument and fails with `type_error` for other value types. `readline` takes no arguments; extra arguments fail with `wrong_arity`.
+There is no dedicated `prompt` or `input` form; those names are ordinary unbound names unless user code binds them. `write` and `write-err` require a string argument and fail with `type_error` for other value types. `readline` takes no arguments; extra arguments fail with `wrong_arity`.
 
 ## Explicit eval scope
 

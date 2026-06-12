@@ -5,71 +5,80 @@ args = ["--eval-limit", "200000"]
 
 [[case]]
 name = "symbol constructs ordinary symbol from name string"
-input = '(symbol "x")'
+input = "(let () (write (unparse (symbol \"x\"))))"
+
 [case.expect]
-stdout = "x\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "x"
 
 [[case]]
 name = "symbol constructs operator symbol from string"
-input = '(symbol "<=")'
+input = "(let () (write (unparse (symbol \"<=\"))))"
+
 [case.expect]
-stdout = "<=\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "<="
 
 [[case]]
 name = "symbol is idempotent for symbol input"
-input = '(symbol (quote x))'
+input = "(let () (write (unparse (symbol (quote x)))))"
+
 [case.expect]
-stdout = "x\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "x"
 
 [[case]]
 name = "name returns source spelling for ordinary symbol"
-input = '(name (quote x))'
+input = "(let () (write (unparse (name (quote x)))))"
+
 [case.expect]
-stdout = "\"x\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"x\""
 
 [[case]]
 name = "name returns source spelling for operator symbol"
-input = '(name (quote <=))'
+input = "(let () (write (unparse (name (quote <=)))))"
+
 [case.expect]
-stdout = "\"<=\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"<=\""
 
 [[case]]
 name = "symbol output round trips through unparse and parse"
-input = '(parse (unparse (symbol "x")))'
+input = "(let () (write (unparse (parse (unparse (symbol \"x\"))))))"
+
 [case.expect]
-stdout = "x\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "x"
 
 [[case]]
 name = "symbol callable can be passed as value"
-input = '(type symbol)'
+input = "(let () (write (unparse (type symbol))))"
+
 [case.expect]
-stdout = "builtin\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "builtin"
 
 [[case]]
 name = "name callable can be passed as value"
-input = '(type name)'
+input = "(let () (write (unparse (type name))))"
+
 [case.expect]
-stdout = "builtin\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "builtin"
 
 [[case]]
 name = "symbol rejects missing argument"
-input = '(symbol)'
+input = "(symbol)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -77,7 +86,8 @@ exit_code = 2
 
 [[case]]
 name = "symbol rejects extra argument"
-input = '(symbol "x" "y")'
+input = "(symbol \"x\" \"y\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -85,7 +95,8 @@ exit_code = 2
 
 [[case]]
 name = "name rejects missing argument"
-input = '(name)'
+input = "(name)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -93,7 +104,8 @@ exit_code = 2
 
 [[case]]
 name = "name rejects extra argument"
-input = '(name (quote x) (quote y))'
+input = "(name (quote x) (quote y))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -101,7 +113,8 @@ exit_code = 2
 
 [[case]]
 name = "symbol rejects non symbolable values"
-input = '(symbol 1)'
+input = "(symbol 1)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -109,7 +122,8 @@ exit_code = 2
 
 [[case]]
 name = "symbol rejects list values"
-input = '(symbol (list 1))'
+input = "(symbol (list 1))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -117,7 +131,8 @@ exit_code = 2
 
 [[case]]
 name = "name rejects strings"
-input = '(name "x")'
+input = "(name \"x\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -125,7 +140,8 @@ exit_code = 2
 
 [[case]]
 name = "symbol rejects invalid string spelling with space"
-input = '(symbol "has space")'
+input = "(symbol \"has space\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "invalid_symbol"
@@ -133,7 +149,8 @@ exit_code = 2
 
 [[case]]
 name = "symbol rejects boolean spellings to preserve parse unparse type"
-input = '(symbol "true")'
+input = "(symbol \"true\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "invalid_symbol"
@@ -141,7 +158,8 @@ exit_code = 2
 
 [[case]]
 name = "symbol rejects numeric spellings to preserve parse unparse type"
-input = '(symbol "1/1")'
+input = "(symbol \"1/1\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "invalid_symbol"

@@ -1,15 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Reconciled with the canonical Lisp evaluator.
-# This manifest now contains only baseline literal behavior that is part of
-# the current Lisp core. Legacy nil/internal-state/curly fail-loud expectations
-# were either removed as out-of-scope (nil) or moved to fail_loud_debt.toml.
 program = "../lisp.tpp"
 timeout = 5
 args = ["--eval-limit", "60000"]
 
 [[case]]
 name = "top level number"
-input = '42'
+input = "(write (unparse 42))"
 
 [case.expect]
 exit_code = 0
@@ -18,7 +14,7 @@ stdout_stripped = "42"
 
 [[case]]
 name = "top level rational number"
-input = '1/2'
+input = "(write (unparse 1/2))"
 
 [case.expect]
 exit_code = 0
@@ -27,7 +23,7 @@ stdout_stripped = "1/2"
 
 [[case]]
 name = "top level true"
-input = 'true'
+input = "(write (unparse true))"
 
 [case.expect]
 exit_code = 0
@@ -36,7 +32,7 @@ stdout_stripped = "true"
 
 [[case]]
 name = "top level false"
-input = 'false'
+input = "(write (unparse false))"
 
 [case.expect]
 exit_code = 0
@@ -45,7 +41,7 @@ stdout_stripped = "false"
 
 [[case]]
 name = "top level string"
-input = '"hello world"'
+input = "(write (unparse \"hello world\"))"
 
 [case.expect]
 exit_code = 0

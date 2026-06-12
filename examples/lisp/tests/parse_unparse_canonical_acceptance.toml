@@ -5,287 +5,323 @@ args = ["--eval-limit", "200000"]
 
 [[case]]
 name = "unparse scalar number returns source string"
-input = '(unparse 42)'
+input = "(let () (write (unparse (unparse 42))))"
+
 [case.expect]
-stdout = "\"42\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"42\""
 
 [[case]]
 name = "parse scalar number returns number"
-input = '(parse "42")'
+input = "(let () (write (unparse (parse \"42\"))))"
+
 [case.expect]
-stdout = "42\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "42"
 
 [[case]]
 name = "parse symbol returns symbol data"
-input = '(type (parse "add"))'
+input = "(let () (write (unparse (type (parse \"add\")))))"
+
 [case.expect]
-stdout = "symbol\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "symbol"
 
 [[case]]
 name = "quoted primitive name remains symbol data"
-input = '(quote add)'
+input = "(let () (write (unparse (quote add))))"
+
 [case.expect]
-stdout = "add\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "add"
 
 [[case]]
 name = "unparse quoted primitive name returns source string"
-input = '(unparse (quote add))'
+input = "(let () (write (unparse (unparse (quote add)))))"
+
 [case.expect]
-stdout = "\"add\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"add\""
 
 [[case]]
 name = "unparse quoted list returns parenthesized source string"
-input = '(unparse (quote (add 1 2)))'
+input = "(let () (write (unparse (unparse (quote (add 1 2))))))"
+
 [case.expect]
-stdout = "\"(add 1 2)\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"(add 1 2)\""
 
 [[case]]
 name = "parse list source returns list data without evaluation"
-input = '(first (parse "(add 1 (div 1 0))"))'
+input = "(let () (write (unparse (first (parse \"(add 1 (div 1 0))\")))))"
+
 [case.expect]
-stdout = "add\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "add"
 
 [[case]]
 name = "parse plus list can eval with explicit alist scope"
-input = '(eval (parse "(add 1 2)") (dict ((quote add) add)))'
+input = "(let () (write (unparse (eval (parse \"(add 1 2)\") (dict ((quote add) add))))))"
+
 [case.expect]
-stdout = "3\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "3"
 
 [[case]]
 name = "list helper output is canonical list syntax"
-input = '(list 1 2 3)'
+input = "(let () (write (unparse (list 1 2 3))))"
+
 [case.expect]
-stdout = "(1 2 3)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(1 2 3)"
 
 [[case]]
 name = "dict helper returns ordinary alist with evaluated keys"
-input = '(dict ((quote x) 1) ("k" 2))'
+input = "(let () (write (unparse (dict ((quote x) 1) (\"k\" 2)))))"
+
 [case.expect]
-stdout = "((x 1) (\"k\" 2))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((x 1) (\"k\" 2))"
 
 [[case]]
 name = "dict helper type is list"
-input = '(type (dict ((quote x) 1)))'
+input = "(let () (write (unparse (type (dict ((quote x) 1))))))"
+
 [case.expect]
-stdout = "list\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "list"
 
 [[case]]
 name = "dict helper evaluates value side"
-input = '(dict ((quote x) (add 1 2)))'
+input = "(let () (write (unparse (dict ((quote x) (add 1 2))))))"
+
 [case.expect]
-stdout = "((x 3))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((x 3))"
 
 [[case]]
 name = "dict helper evaluates key side to string"
-input = '(let ((k "dyn")) (dict (k 7)))'
+input = "(let () (write (unparse (let ((k \"dyn\")) (dict (k 7))))))"
+
 [case.expect]
-stdout = "((\"dyn\" 7))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((\"dyn\" 7))"
 
 [[case]]
 name = "alist get finds symbol key"
-input = '(get (dict ((quote x) 1) ("k" 2)) (quote x) 0)'
+input = "(let () (write (unparse (get (dict ((quote x) 1) (\"k\" 2)) (quote x) 0))))"
+
 [case.expect]
-stdout = "1\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "1"
 
 [[case]]
 name = "alist get finds string key"
-input = '(get (dict ((quote x) 1) ("k" 2)) "k" 0)'
+input = "(let () (write (unparse (get (dict ((quote x) 1) (\"k\" 2)) \"k\" 0))))"
+
 [case.expect]
-stdout = "2\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "2"
 
 [[case]]
 name = "alist get missing returns default"
-input = '(get (dict ((quote x) 1)) (quote y) 99)'
+input = "(let () (write (unparse (get (dict ((quote x) 1)) (quote y) 99))))"
+
 [case.expect]
-stdout = "99\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "99"
 
 [[case]]
 name = "alist contains reports present and missing"
-input = '(list (contains (dict ((quote x) 1)) (quote x)) (contains (dict ((quote x) 1)) (quote y)))'
+input = "(let () (write (unparse (list (contains (dict ((quote x) 1)) (quote x)) (contains (dict ((quote x) 1)) (quote y))))))"
+
 [case.expect]
-stdout = "(true false)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(true false)"
 
 [[case]]
 name = "assoc updates first matching alist key"
-input = '(assoc (quote ((x 1) (x 2))) (quote x) 9)'
+input = "(let () (write (unparse (assoc (quote ((x 1) (x 2))) (quote x) 9))))"
+
 [case.expect]
-stdout = "((x 9) (x 2))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((x 9) (x 2))"
 
 [[case]]
 name = "dissoc removes all matching alist keys"
-input = '(dissoc (quote ((x 1) (y 2) (x 3))) (quote x))'
+input = "(let () (write (unparse (dissoc (quote ((x 1) (y 2) (x 3))) (quote x)))))"
+
 [case.expect]
-stdout = "((y 2))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((y 2))"
 
 [[case]]
 name = "loose alist get skips non-list entries"
-input = '(get (quote (x)) (quote x) 0)'
+input = "(let () (write (unparse (get (quote (x)) (quote x) 0))))"
+
 [case.expect]
-stdout = "0\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "0"
 
 [[case]]
 name = "loose alist get skips empty list entries"
-input = '(get (quote (() (k v))) (quote k) (quote missing))'
+input = "(let () (write (unparse (get (quote (() (k v))) (quote k) (quote missing)))))"
+
 [case.expect]
-stdout = "v\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "v"
 
 [[case]]
 name = "loose alist get reads second item and ignores extra tail"
-input = '(get (quote ((k v1 v2) foo)) (quote k) (quote missing))'
+input = "(let () (write (unparse (get (quote ((k v1 v2) foo)) (quote k) (quote missing)))))"
+
 [case.expect]
-stdout = "v1\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "v1"
 
 [[case]]
 name = "loose alist get skips key-only entries until value exists"
-input = '(get (quote ((k) (k v1))) (quote k) (quote missing))'
+input = "(let () (write (unparse (get (quote ((k) (k v1))) (quote k) (quote missing)))))"
+
 [case.expect]
-stdout = "v1\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "v1"
 
 [[case]]
 name = "loose alist get defaults for key-only entry"
-input = '(get (quote ((k))) (quote k) (quote missing))'
+input = "(let () (write (unparse (get (quote ((k))) (quote k) (quote missing)))))"
+
 [case.expect]
-stdout = "missing\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "missing"
 
 [[case]]
 name = "loose alist contains sees key-only entry"
-input = '(contains (quote ((k))) (quote k))'
+input = "(let () (write (unparse (contains (quote ((k))) (quote k)))))"
+
 [case.expect]
-stdout = "true\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "true"
 
 [[case]]
 name = "loose assoc preserves extra entry tail"
-input = '(assoc (quote ((k v1 v2) foo)) (quote k) (quote new))'
+input = "(let () (write (unparse (assoc (quote ((k v1 v2) foo)) (quote k) (quote new)))))"
+
 [case.expect]
-stdout = "((k new v2) foo)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((k new v2) foo)"
 
 [[case]]
 name = "loose assoc fills key-only entry"
-input = '(assoc (quote ((k) foo)) (quote k) (quote new))'
+input = "(let () (write (unparse (assoc (quote ((k) foo)) (quote k) (quote new)))))"
+
 [case.expect]
-stdout = "((k new) foo)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((k new) foo)"
 
 [[case]]
 name = "loose assoc prepends on miss and preserves atoms"
-input = '(assoc (quote (foo)) (quote k) (quote v))'
+input = "(let () (write (unparse (assoc (quote (foo)) (quote k) (quote v)))))"
+
 [case.expect]
-stdout = "((k v) foo)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((k v) foo)"
 
 [[case]]
 name = "loose dissoc removes all matches and preserves atoms"
-input = '(dissoc (quote ((k v1) foo (k v2))) (quote k))'
+input = "(let () (write (unparse (dissoc (quote ((k v1) foo (k v2))) (quote k)))))"
+
 [case.expect]
-stdout = "(foo)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(foo)"
 
 [[case]]
 name = "dict allows duplicate keys and get uses first match"
-input = '(list (dict ((quote k) 1) ((quote k) 2)) (get (dict ((quote k) 1) ((quote k) 2)) (quote k) 0))'
+input = "(let () (write (unparse (list (dict ((quote k) 1) ((quote k) 2)) (get (dict ((quote k) 1) ((quote k) 2)) (quote k) 0)))))"
+
 [case.expect]
-stdout = "(((k 1) (k 2)) 1)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(((k 1) (k 2)) 1)"
 
 [[case]]
 name = "alist allows number and list keys"
-input = '(list (get (quote ((1 one))) 1 (quote missing)) (get (quote (((a) nested))) (quote (a)) (quote missing)))'
+input = "(let () (write (unparse (list (get (quote ((1 one))) 1 (quote missing)) (get (quote (((a) nested))) (quote (a)) (quote missing))))))"
+
 [case.expect]
-stdout = "(one nested)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(one nested)"
 
 [[case]]
 name = "dict allows number and list keys"
-input = '(list (get (dict (1 (quote one))) 1 (quote missing)) (get (dict ((quote (a)) (quote nested))) (quote (a)) (quote missing)))'
+input = "(let () (write (unparse (list (get (dict (1 (quote one))) 1 (quote missing)) (get (dict ((quote (a)) (quote nested))) (quote (a)) (quote missing))))))"
+
 [case.expect]
-stdout = "(one nested)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(one nested)"
 
 [[case]]
 name = "alist exact key comparison keeps public values distinct"
-input = '(list (get (quote ((x sym) ("x" str))) (quote x) (quote missing)) (get (quote ((x sym) ("x" str))) "x" (quote missing)) (get (quote ((1 int) (1.0 decimal) ("1" string))) 1 (quote missing)) (get (quote ((1 int) (1.0 decimal) ("1" string))) 1.0 (quote missing)) (get (quote ((((a)) nested2) ((a) nested1))) (quote (a)) (quote missing)))'
+input = "(let () (write (unparse (list (get (quote ((x sym) (\"x\" str))) (quote x) (quote missing)) (get (quote ((x sym) (\"x\" str))) \"x\" (quote missing)) (get (quote ((1 int) (1.0 decimal) (\"1\" string))) 1 (quote missing)) (get (quote ((1 int) (1.0 decimal) (\"1\" string))) 1.0 (quote missing)) (get (quote ((((a)) nested2) ((a) nested1))) (quote (a)) (quote missing))))))"
+
 [case.expect]
-stdout = "(sym str int decimal nested1)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(sym str int decimal nested1)"
 
 [[case]]
 name = "top level primitive value fails through unparse"
-input = 'add'
+input = "add"
+
 [case.expect]
+exit_code = 0
 stdout = ""
-stderr_stripped = "unparseable_value"
-exit_code = 2
+stderr = ""
 
 [[case]]
 name = "top level closure value fails through unparse"
-input = '(fn (x) x)'
+input = "(fn (x) x)"
+
 [case.expect]
+exit_code = 0
 stdout = ""
-stderr_stripped = "unparseable_value"
-exit_code = 2
+stderr = ""
 
 [[case]]
 name = "unparse primitive value fails"
-input = '(unparse add)'
+input = "(unparse add)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "unparseable_value"
@@ -293,7 +329,8 @@ exit_code = 2
 
 [[case]]
 name = "parse wrong type fails"
-input = '(parse 1)'
+input = "(parse 1)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"

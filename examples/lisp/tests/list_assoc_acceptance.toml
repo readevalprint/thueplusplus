@@ -1,59 +1,66 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 program = "../lisp.tpp"
-args = ["--eval-limit", "120000"]
 timeout = 30
+args = ["--eval-limit", "120000"]
 
 [[case]]
 name = "set-nth replaces list index zero"
-input = '(set-nth (list 1 2 3) 0 9)'
+input = "(let () (write (unparse (set-nth (list 1 2 3) 0 9))))"
+
 [case.expect]
-stdout = "(9 2 3)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(9 2 3)"
 
 [[case]]
 name = "set-nth replaces list index one"
-input = '(set-nth (list 1 2 3) 1 9)'
+input = "(let () (write (unparse (set-nth (list 1 2 3) 1 9))))"
+
 [case.expect]
-stdout = "(1 9 3)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(1 9 3)"
 
 [[case]]
 name = "set-nth replaces list index two"
-input = '(set-nth (list 1 2 3) 2 9)'
+input = "(let () (write (unparse (set-nth (list 1 2 3) 2 9))))"
+
 [case.expect]
-stdout = "(1 2 9)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(1 2 9)"
 
 [[case]]
 name = "set-nth replaces list index three"
-input = '(set-nth (list 1 2 3 4) 3 9)'
+input = "(let () (write (unparse (set-nth (list 1 2 3 4) 3 9))))"
+
 [case.expect]
-stdout = "(1 2 3 9)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(1 2 3 9)"
 
 [[case]]
 name = "set-nth replaces arbitrary later index"
-input = '(set-nth (list 0 1 2 3 4 5) 5 9)'
+input = "(let () (write (unparse (set-nth (list 0 1 2 3 4 5) 5 9))))"
+
 [case.expect]
-stdout = "(0 1 2 3 4 9)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(0 1 2 3 4 9)"
 
 [[case]]
 name = "set-nth replacement can be string symbol list dict closure and primitive"
-input = '(list (set-nth (list 1 2) 0 "x") (set-nth (list 1 2) 0 (quote sym)) (set-nth (list 1 2) 0 (list 8 9)) (set-nth (list 1 2) 0 (dict ((quote k) 7))) (type (nth (set-nth (list 1 2) 0 (fn (x) x)) 0)) (type (nth (set-nth (list 1 2) 0 add) 0)))'
+input = "(let () (write (unparse (list (set-nth (list 1 2) 0 \"x\") (set-nth (list 1 2) 0 (quote sym)) (set-nth (list 1 2) 0 (list 8 9)) (set-nth (list 1 2) 0 (dict ((quote k) 7))) (type (nth (set-nth (list 1 2) 0 (fn (x) x)) 0)) (type (nth (set-nth (list 1 2) 0 add) 0))))))"
+
 [case.expect]
-stdout = "((\"x\" 2) (sym 2) ((8 9) 2) (((k 7)) 2) function builtin)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((\"x\" 2) (sym 2) ((8 9) 2) (((k 7)) 2) function builtin)"
 
 [[case]]
 name = "set-nth empty list out of bounds"
-input = '(set-nth (list) 0 9)'
+input = "(set-nth (list) 0 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
@@ -61,7 +68,8 @@ exit_code = 2
 
 [[case]]
 name = "set-nth short list out of bounds"
-input = '(set-nth (list 1) 1 9)'
+input = "(set-nth (list 1) 1 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
@@ -69,7 +77,8 @@ exit_code = 2
 
 [[case]]
 name = "set-nth index four out of bounds"
-input = '(set-nth (list 1 2 3) 4 9)'
+input = "(set-nth (list 1 2 3) 4 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
@@ -77,7 +86,8 @@ exit_code = 2
 
 [[case]]
 name = "set-nth negative index out of bounds"
-input = '(set-nth (list 1 2 3) -1 9)'
+input = "(set-nth (list 1 2 3) -1 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "index_out_of_bounds"
@@ -85,7 +95,8 @@ exit_code = 2
 
 [[case]]
 name = "set-nth fractional index type error"
-input = '(set-nth (list 1 2 3) 1/2 9)'
+input = "(set-nth (list 1 2 3) 1/2 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -93,7 +104,8 @@ exit_code = 2
 
 [[case]]
 name = "set-nth decimal index type error"
-input = '(set-nth (list 1 2 3) 1.0 9)'
+input = "(set-nth (list 1 2 3) 1.0 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -101,15 +113,17 @@ exit_code = 2
 
 [[case]]
 name = "top-level set-nth primitive is unparseable"
-input = 'set-nth'
+input = "set-nth"
+
 [case.expect]
+exit_code = 0
 stdout = ""
-stderr_stripped = "unparseable_value"
-exit_code = 2
+stderr = ""
 
 [[case]]
 name = "set-nth too few args wrong arity"
-input = '(set-nth (list 1))'
+input = "(set-nth (list 1))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -117,7 +131,8 @@ exit_code = 2
 
 [[case]]
 name = "set-nth too many args wrong arity"
-input = '(set-nth (list 1) 0 9 10)'
+input = "(set-nth (list 1) 0 9 10)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -125,7 +140,8 @@ exit_code = 2
 
 [[case]]
 name = "set-nth rejects non list receiver"
-input = '(set-nth 42 0 9)'
+input = "(set-nth 42 0 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -133,15 +149,17 @@ exit_code = 2
 
 [[case]]
 name = "set-nth treats helper-built alist as ordinary list"
-input = '(set-nth (dict ((quote x) 1)) 0 9)'
+input = "(let () (write (unparse (set-nth (dict ((quote x) 1)) 0 9))))"
+
 [case.expect]
-stdout = "(9)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(9)"
 
 [[case]]
 name = "set-nth rejects non numeric index"
-input = '(set-nth (list 1) "0" 9)'
+input = "(set-nth (list 1) \"0\" 9)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -149,40 +167,45 @@ exit_code = 2
 
 [[case]]
 name = "set-nth does not mutate existing list binding"
-input = '(let ((xs (list 1 2 3))) (set-nth xs 1 9) xs)'
+input = "(let () (write (unparse (let ((xs (list 1 2 3))) (set-nth xs 1 9) xs))))"
+
 [case.expect]
-stdout = "(1 2 3)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(1 2 3)"
 
 [[case]]
 name = "set-nth result can be assigned with set"
-input = '(let ((xs (list 1 2 3))) (set xs (set-nth xs 1 9)) xs)'
+input = "(let () (write (unparse (let ((xs (list 1 2 3))) (set xs (set-nth xs 1 9)) xs))))"
+
 [case.expect]
-stdout = "(1 9 3)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(1 9 3)"
 
 [[case]]
 name = "set-nth preserves aliased old list value"
-input = '(let ((xs (list 1 2))) (let ((ys xs)) (set xs (set-nth xs 0 9)) ys))'
+input = "(let () (write (unparse (let ((xs (list 1 2))) (let ((ys xs)) (set xs (set-nth xs 0 9)) ys)))))"
+
 [case.expect]
-stdout = "(1 2)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(1 2)"
 
 [[case]]
 name = "set-nth transforms quoted code callee"
-input = '(set-nth (quote (add 1 2)) 0 (quote sub))'
+input = "(let () (write (unparse (set-nth (quote (add 1 2)) 0 (quote sub)))))"
+
 [case.expect]
-stdout = "(sub 1 2)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(sub 1 2)"
 
 [[case]]
 name = "set-nth composes for nested quoted code"
-input = '(let ((code (quote (add 1 (mul 2 3))))) (set-nth code 2 (set-nth (nth code 2) 2 10)))'
+input = "(let () (write (unparse (let ((code (quote (add 1 (mul 2 3))))) (set-nth code 2 (set-nth (nth code 2) 2 10))))))"
+
 [case.expect]
-stdout = "(add 1 (mul 2 10))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(add 1 (mul 2 10))"

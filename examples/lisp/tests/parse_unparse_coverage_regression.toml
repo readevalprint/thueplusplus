@@ -5,7 +5,8 @@ args = ["--eval-limit", "200000"]
 
 [[case]]
 name = "parse rejects at sign as invalid string escape"
-input = '(parse "@")'
+input = "(parse \"@\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "invalid_string_escape"
@@ -13,31 +14,35 @@ exit_code = 2
 
 [[case]]
 name = "parse preserves quoted string source"
-input = '(parse "\"a\"")'
+input = "(let () (write (unparse (parse \"\\\"a\\\"\"))))"
+
 [case.expect]
-stdout = "\"a\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"a\""
 
 [[case]]
 name = "parse string source can unparse again"
-input = '(unparse (parse "\"a\""))'
+input = "(let () (write (unparse (unparse (parse \"\\\"a\\\"\")))))"
+
 [case.expect]
-stdout = "\"\\\"a\\\"\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"\\\"a\\\"\""
 
 [[case]]
 name = "zero-binding let can ignore unrendered primitive before scalar"
-input = '(let () add 1)'
+input = "(let () (write (unparse (let () add 1))))"
+
 [case.expect]
-stdout = "1\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "1"
 
 [[case]]
 name = "eval scope rejects malformed alist entry"
-input = '(eval (quote x) (quote (x)))'
+input = "(eval (quote x) (quote (x)))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -45,7 +50,8 @@ exit_code = 2
 
 [[case]]
 name = "eval scope rejects operator symbol key"
-input = '(eval (quote +) (quote ((+ 1))))'
+input = "(eval (quote +) (quote ((+ 1))))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -53,7 +59,8 @@ exit_code = 2
 
 [[case]]
 name = "eval scope rejects number key"
-input = '(eval (quote x) (quote ((1 2))))'
+input = "(eval (quote x) (quote ((1 2))))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -61,31 +68,35 @@ exit_code = 2
 
 [[case]]
 name = "get treats number-key alist entry as ordinary entry"
-input = '(get (quote ((1 2))) (quote x) 0)'
+input = "(let () (write (unparse (get (quote ((1 2))) (quote x) 0))))"
+
 [case.expect]
-stdout = "0\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "0"
 
 [[case]]
 name = "assoc preserves unrelated number-key alist entry"
-input = '(assoc (quote ((1 2))) (quote x) 9)'
+input = "(let () (write (unparse (assoc (quote ((1 2))) (quote x) 9))))"
+
 [case.expect]
-stdout = "((x 9) (1 2))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((x 9) (1 2))"
 
 [[case]]
 name = "dissoc preserves unrelated number-key alist entry"
-input = '(dissoc (quote ((1 2))) (quote x))'
+input = "(let () (write (unparse (dissoc (quote ((1 2))) (quote x)))))"
+
 [case.expect]
-stdout = "((1 2))\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "((1 2))"
 
 [[case]]
 name = "parse rejects extra args"
-input = '(parse "1" "2")'
+input = "(parse \"1\" \"2\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -93,7 +104,8 @@ exit_code = 2
 
 [[case]]
 name = "unparse rejects extra args"
-input = '(unparse 1 2)'
+input = "(unparse 1 2)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "wrong_arity"
@@ -101,39 +113,44 @@ exit_code = 2
 
 [[case]]
 name = "parse source escaped newline matches top-level reader"
-input = '(parse "\"a\\n\"")'
+input = "(let () (write (unparse (parse \"\\\"a\\\\n\\\"\"))))"
+
 [case.expect]
-stdout = "\"a\\n\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"a\\n\""
 
 [[case]]
 name = "parse source escaped tab matches top-level reader"
-input = '(parse "\"a\\t\"")'
+input = "(let () (write (unparse (parse \"\\\"a\\\\t\\\"\"))))"
+
 [case.expect]
-stdout = "\"a\\t\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"a\\t\""
 
 [[case]]
 name = "parse source escaped backslash matches top-level reader"
-input = '(parse "\"a\\\\b\"")'
+input = "(let () (write (unparse (parse \"\\\"a\\\\\\\\b\\\"\"))))"
+
 [case.expect]
-stdout = "\"a\\b\"\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "\"a\\b\""
 
 [[case]]
 name = "parse source list returns canonical data"
-input = '(parse "(add 1 2)")'
+input = "(let () (write (unparse (parse \"(add 1 2)\"))))"
+
 [case.expect]
-stdout = "(add 1 2)\n"
 stderr = ""
 exit_code = 0
+stdout_stripped = "(add 1 2)"
 
 [[case]]
 name = "parse source malformed list fails loudly"
-input = '(parse "(add 1")'
+input = "(parse \"(add 1\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "malformed_list"
@@ -141,7 +158,8 @@ exit_code = 2
 
 [[case]]
 name = "top-level malformed list fails loudly"
-input = '(add 1'
+input = "(add 1"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "malformed_list"
@@ -149,7 +167,8 @@ exit_code = 2
 
 [[case]]
 name = "parse source invalid string escape fails sharply"
-input = '(parse "\"a\\q\"")'
+input = "(parse \"\\\"a\\\\q\\\"\")"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "invalid_string_escape"
@@ -157,7 +176,8 @@ exit_code = 2
 
 [[case]]
 name = "contains rejects non-list receiver"
-input = '(contains 1 (quote x))'
+input = "(contains 1 (quote x))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -165,7 +185,8 @@ exit_code = 2
 
 [[case]]
 name = "get rejects non-list receiver"
-input = '(get 1 (quote x) 0)'
+input = "(get 1 (quote x) 0)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -173,7 +194,8 @@ exit_code = 2
 
 [[case]]
 name = "assoc rejects non-list receiver"
-input = '(assoc 1 (quote x) 2)'
+input = "(assoc 1 (quote x) 2)"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
@@ -181,7 +203,8 @@ exit_code = 2
 
 [[case]]
 name = "dissoc rejects non-list receiver"
-input = '(dissoc 1 (quote x))'
+input = "(dissoc 1 (quote x))"
+
 [case.expect]
 stdout = ""
 stderr_stripped = "type_error"
