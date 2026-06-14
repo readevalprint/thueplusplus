@@ -127,6 +127,7 @@ ARGENV evaluates demanded nodes in the current lexical environment. EENVKEEP nor
 ^ARGENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^ARGENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
 ^EENVKEEP<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
+^EENVKEEP<(?<node>$NUM|true|false|$VSTR|$VLIST|$VSYM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|KKEEPENV<{{env}}> {{k}}>
 ^EENVKEEP<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
 ^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
@@ -144,7 +145,8 @@ Zero operand special forms need explicit ownership before generic call lookup wo
 ^EENV<L<fn%20L%3C(?<params>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})+)%3E(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 
 ^EENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
-^EENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node}}|{{env}}|{{k}}>
+^EENV<(?<node>$NUM|true|false|$VSTR|$VLIST|$VSYM)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
+^EENV<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|{{k}}>
 
 Special forms before generic calls
 Control forms choose which operands to evaluate. Symbolic arithmetic syntax is deliberately unsupported; named primitive values such as add and eq dispatch through APPLY.

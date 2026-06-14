@@ -116,3 +116,46 @@ Delta from first optimized baseline:
 - User CPU time: 92.813s -> 91.258s, about 1.7% lower.
 - Successful rewrite matches: 52570 -> 44274, about 15.8% fewer matches.
 - `KKEEPENV` matches fell from 2865 to 1889.
+
+## Third-pass optimization: direct scalar node evaluation
+
+Baseline for this pass is the merged second-pass result:
+
+```text
+elapsed=11.409 user=91.258 sys=18.602
+parity: 811 cases passed for python, go
+examples/lisp/lisp.tpp
+  rules:      451
+  covered:    451
+  uncovered:  0
+  matches:    44274
+```
+
+Change:
+
+- Split generic `EENV` node evaluation so scalar runtime nodes (`number`, `bool`, `VSTR`, `VLIST`, `VSYM`) dispatch straight to `ARG`, while `L<...>` list-source nodes still recurse into `EENV` with decoded payload.
+- Add the same scalar fast path for `EENVKEEP`, preserving environment-return semantics through the existing `KKEEPENV` continuation but skipping an `ARGENV` hop.
+
+Observed result:
+
+```text
+elapsed=11.304 user=90.865 sys=18.489
+parity: 811 cases passed for python, go
+examples/lisp/lisp.tpp
+  rules:      453
+  covered:    453
+  uncovered:  0
+  matches:    44257
+  hottest:
+       4588  examples/lisp/lisp.tpp:84   READ list freezing
+       1889  examples/lisp/lisp.tpp:132  RET KKEEPENV
+       1560  examples/lisp/lisp.tpp:249  SRCEVALARGS apply completion
+```
+
+Delta from merged second-pass baseline:
+
+- Full Lisp manifest elapsed time: 11.409s -> 11.304s, about 0.9% faster.
+- User CPU time: 91.258s -> 90.865s, about 0.4% lower.
+- Successful rewrite matches: 44274 -> 44257, 17 fewer matches.
+
+This is a small but measurable rewrite-count improvement. The remaining dominant cost is source reader/list freezing.
