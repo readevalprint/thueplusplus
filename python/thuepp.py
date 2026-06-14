@@ -114,8 +114,6 @@ class ThueppInterpreter:
         self.rule_coverage_path = rule_coverage_path
         self.rule_coverage_counts: dict[str, int] = {}
         self.program_path = ""
-        self._initial_rows: list[str] = []
-        self._row_sources: list[tuple[str, int]] = []
         self.script_args: dict[str, str] = {}
 
         # Predefined bindings
@@ -299,14 +297,10 @@ class ThueppInterpreter:
             if rule is not None:
                 self.rules.append(rule)
 
-        self._initial_rows = [row.text for row in state_rows]
-        self._row_sources = [(row.source_path, row.source_line) for row in state_rows]
         self.state = "\n".join(row.text for row in state_rows)
 
     def apply_input_override(self, value: str) -> None:
         """Replace source data rows with explicit input while preserving compiled rules."""
-        self._initial_rows = [value]
-        self._row_sources = [(self.program_path, 1)]
         self.state = value
 
     def _translate_lhs(self, lhs: str) -> str:
@@ -1000,7 +994,7 @@ class ThueppInterpreter:
         ]
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
-    def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
+    def _match_state(self, rule: Rule) -> Any:
         return rule.lhs_pattern.search(self.state)
 
     def _state_bytes(self) -> int:
@@ -1009,24 +1003,6 @@ class ThueppInterpreter:
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""
         while True:
-            state_rows = []
-            offset = 0
-            if self.state:
-                for index, segment in enumerate(self.state.splitlines(keepends=True)):
-                    line_number = index + 1
-                    row = segment[:-1] if segment.endswith("\n") else segment
-                    if row.endswith("\r"):
-                        row = row[:-1]
-                    end = offset + len(segment)
-                    source_path, source_line = (self.program_path, line_number)
-                    if index < len(self._initial_rows) and self._initial_rows[index] == row:
-                        source_path, source_line = self._row_sources[index]
-                    state_rows.append((line_number, row, offset, end, source_path, source_line, index))
-                    offset = end
-                if self.state.endswith("\n"):
-                    line_number = len(state_rows) + 1
-                    state_rows.append((line_number, "", offset, offset, self.program_path, line_number, len(state_rows)))
-
             applied = False
             state_bytes = self._state_bytes()
 
@@ -1038,7 +1014,7 @@ class ThueppInterpreter:
                 self.eval_check_count += 1
                 self.cumulative_state_bytes += state_bytes
 
-                match = self._match_state(rule, state_rows)
+                match = self._match_state(rule)
                 if not match:
                     continue
 
