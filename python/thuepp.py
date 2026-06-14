@@ -1003,8 +1003,8 @@ class ThueppInterpreter:
     def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
         return rule.lhs_pattern.search(self.state)
 
-    def _escaped_state_bytes(self) -> int:
-        return len(self.state.replace("\n", "\\n").encode("utf-8"))
+    def _state_bytes(self) -> int:
+        return len(self.state.encode("utf-8"))
 
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""
@@ -1028,7 +1028,7 @@ class ThueppInterpreter:
                     state_rows.append((line_number, "", offset, offset, self.program_path, line_number, len(state_rows)))
 
             applied = False
-            state_bytes = self._escaped_state_bytes()
+            state_bytes = self._state_bytes()
 
             for rule_index, rule in enumerate(self.rules):
                 if self.eval_limit is not None and self.eval_check_count >= self.eval_limit:
@@ -1212,7 +1212,7 @@ def main():
     parser.add_argument(
         "--metrics-json",
         type=str,
-        help="Write eval_check_count and cumulative_state_bytes as JSON to this path",
+        help="Write successful_rewrites, eval_check_count, and raw cumulative_state_bytes as JSON to this path",
     )
     parser.add_argument(
         "--list-rules",

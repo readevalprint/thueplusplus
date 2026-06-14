@@ -1,6 +1,6 @@
 {
   "challenge": "02_fixed-greet",
-  "cumulative_state_bytes": 41,
+  "cumulative_state_bytes": 36,
   "eval_check_count": 6,
   "rank": 1,
   "rule_count": 3,

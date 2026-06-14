@@ -3,7 +3,7 @@
 <!-- challenges:leaderboard:start -->
 | Rank | Solution | Rules | Steps | Eval Checks | Cumulative State |
 |---:|---|---:|---:|---:|---:|
-| 1 | Stdout Says Ok | 3 | 3 | 6 | 41 bytes |
+| 1 | Stdout Says Ok | 3 | 3 | 6 | 36 bytes |
 
 ### Best-In-Class Records
 
