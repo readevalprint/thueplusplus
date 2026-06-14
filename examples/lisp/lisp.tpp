@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 Lisp evaluator guide
-This file is executable docutation written as Thueplusplus rewrite rules.
+This file is executable documentation written as Thueplusplus rewrite rules.
 Rows like this one are inert prose rows, not hash comments and not rules.
 The evaluator reads Lisp source, protects strings, freezes lists inside out as L pct payloads, and then evaluates typed V values through explicit continuations.
 Runtime value families are numbers, booleans, strings, lists, symbols, closures, and primitive callable handles.
@@ -92,7 +92,7 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;write-err=VPRIM%3Cwrite-err%3E;arg=VPRIM%3Carg%3E;param=VPRIM%3Cparam%3E;escape-html=VPRIM%3Cescape-html%3E;streq=VPRIM%3Cstreq%3E;re2full=VPRIM%3Cre2full%3E;re2fullgroups=VPRIM%3Cre2fullgroups%3E;|{{k}}>
+^CBOOT<(?<mode>SEQ|EENV)\|(?<body>[^|]*)\|(?<k>.*)>$ ::= CBOOTENV<{{mode}}|{{body}}|@CORE;|{{k}}>
 ^CBOOTENV<SEQ\|(?<body>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= SEQ<{{body}}|{{env}}|{{k}}>
 ^CBOOTENV<EENV\|(?<expr>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|{{env}}|{{k}}>
 
@@ -107,12 +107,15 @@ ARG turns already decoded scalar nodes into typed runtime values. Lists are deco
 
 Environment lookup and closures
 LOOK scans name bindings from left to right. Closures carry parameter source, body source, and the captured lexical environment in a single framed value.
+^LOOK<(?<want>$NAME)\|@CORE;\|(?<k>.*)>$ ::= CORELOOK<{{want}}|{{k}}>
 ^LOOK<(?<want>$NAME)\|\|(?<k>.*)>$ ::= ERR<unbound_name>
 ^LOOK<(?<want>$NAME)\|(?<got>$NAME)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQTEST<{{want}}|{{got}}|{{val}}|{{rest}}|{{k}}>
 ^LOOKEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQ<STREQ<{{a}},{{b}}>|{{a}}|{{val}}|{{rest}}|{{k}}>
 STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 ^LOOKEQ<1\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
 ^LOOKEQ<0\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{want}}|{{rest}}|{{k}}>
+^CORELOOK<(?<op>$PRIM0|$PRIM1|$PRIM2|$PRIM3)\|(?<k>.*)>$ ::= RET<VPRIM<{{op}}>|{{k}}>
+^CORELOOK<(?<want>$NAME)\|(?<k>.*)>$ ::= ERR<unbound_name>
 
 ^EENV<fn L<(?<params>$PCT)> (?<body>[^|]+)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
 
@@ -182,11 +185,13 @@ While reevaluates one or more body expressions until the condition is false. Set
 ^EENV<set (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
 ^EENV<set (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
 ^RET<(?<v>$VAL)\|KSET<(?<name>$NAME)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SETENV<{{name}}|{{v}}|{{env}}|{{k}}|>
-^SETENV<(?<name>$NAME)\|(?<v>$VAL)\|\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= ERR<unbound_name>
+^SETENV<(?<want>$NAME)\|(?<v>$VAL)\|@CORE;\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETCORE<{{want}}|{{v}}|{{k}}|{{prefix}}>
 ^SETENV<(?<want>$NAME)\|(?<v>$VAL)\|(?<got>$NAME)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQTEST<{{want}}|{{got}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
 ^SETEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQ<STREQ<{{a}},{{b}}>|{{a}}|{{b}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
 ^SETEQ<1\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= RETENV<{{v}}|{{prefix}}{{got}}={{v|pctenc}};{{rest}}|{{k}}>
 ^SETEQ<0\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETENV<{{want}}|{{v}}|{{rest}}|{{k}}|{{prefix}}{{got}}={{old}};>
+^SETCORE<(?<op>$PRIM0|$PRIM1|$PRIM2|$PRIM3)\|(?<v>$VAL)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= RETENV<{{v}}|{{prefix}}{{op}}={{v|pctenc}};@CORE;|{{k}}>
+^SETCORE<(?<want>$NAME)\|(?<v>$VAL)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= ERR<unbound_name>
 
 Quote and code as data
 Quote converts source nodes into runtime data. Symbols become VSYM values and lists become VLIST values containing pct encoded runtime items.
