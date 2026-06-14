@@ -1412,8 +1412,8 @@ func (i *Interpreter) WriteRuleCoverage() error {
 	return os.WriteFile(i.RuleCoveragePath, []byte(i.RuleCoverageTSV()), 0644)
 }
 
-func escapedStateBytes(state string) int {
-	return len([]byte(strings.ReplaceAll(state, "\n", `\n`)))
+func stateBytes(state string) int {
+	return len(state)
 }
 
 func formatDebugGroups(groups map[string]string) string {
@@ -1434,7 +1434,7 @@ func formatDebugGroups(groups map[string]string) string {
 func (i *Interpreter) Run() (int, error) {
 	appliedSteps := 0
 	for {
-		stateBytes := escapedStateBytes(i.State)
+		currentStateBytes := stateBytes(i.State)
 
 		applied := false
 		for ruleIndex, rule := range i.Rules {
@@ -1442,7 +1442,7 @@ func (i *Interpreter) Run() (int, error) {
 				return 1, fmt.Errorf("Evaluation limit (%d) exceeded", *i.EvalLimit)
 			}
 			i.EvalCheckCount++
-			i.CumulativeStateBytes += stateBytes
+			i.CumulativeStateBytes += currentStateBytes
 
 			match, ok := findMatch(rule, i.State)
 			if !ok {

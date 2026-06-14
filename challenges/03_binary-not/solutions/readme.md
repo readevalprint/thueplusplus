@@ -3,7 +3,7 @@
 <!-- challenges:leaderboard:start -->
 | Rank | Solution | Rules | Steps | Eval Checks | Cumulative State |
 |---:|---|---:|---:|---:|---:|
-| 1 | Truth Table Flip | 6 | 8 | 28 | 175 bytes |
+| 1 | Truth Table Flip | 6 | 8 | 28 | 154 bytes |
 
 ### Best-In-Class Records
 

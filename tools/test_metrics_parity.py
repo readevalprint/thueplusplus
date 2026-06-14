@@ -55,13 +55,17 @@ prefix"""
     assert_python_go_metrics_match(tmp_path, program, "prefix")
 
 
-def test_metrics_count_current_escaped_state_bytes_per_rule_check(tmp_path: Path) -> None:
-    program = """^x$ ::= yy
-^yy$ ::= z
-^z$ ::- 0
+def test_metrics_count_raw_state_bytes_per_rule_check(tmp_path: Path) -> None:
+    program = """^second$ ::= done
+^done$ ::- 0
 ::=
-x"""
-    assert_python_go_metrics_match(tmp_path, program, "x")
+first
+second"""
+    subprocess.run(["make", "build/thuepp"], cwd=ROOT, check=True)
+    python_metrics = run_metrics(tmp_path, "python", program, "first\nsecond")
+    go_metrics = run_metrics(tmp_path, "go", program, "first\nsecond")
+    assert python_metrics["cumulative_state_bytes"] == 32
+    assert python_metrics == go_metrics
 
 
 def test_metrics_are_invariant_under_line_prefix_prefilter(tmp_path: Path) -> None:
