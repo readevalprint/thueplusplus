@@ -15,7 +15,7 @@ test: build/thuepp
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }
 	uv run python tools/check_contract.py
 	uv run python tools/check_read_timeouts.py
-	uv run --with pytest pytest tools/test_cli_input_file.py tools/test_cli_export_state.py tools/test_lisp_cgi_script.py tools/test_example_runner.py tools/test_submission_automerge.py tools/test_metrics_parity.py -q --tb=short
+	uv run --with pytest pytest tools/test_cli_input_file.py tools/test_cli_export_state.py tools/test_lisp_cgi_script.py tools/test_example_runner.py tools/test_submission_automerge.py tools/test_metrics_parity.py tools/test_python_template_cache.py -q --tb=short
 	uv run python tools/example_runner.py
 	uv run python tools/challenge_generator.py --check
 
