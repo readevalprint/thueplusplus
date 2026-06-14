@@ -245,7 +245,10 @@ SRCEVALARGS evaluates source operands from left to right, preserves environment 
 ^EENV<list (?<items>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= SRCEVALARGS<{{items}}|{{env}}|> KSRCLIST {{k}}>
 ^SRCEVALARGS<\|(?<env>[^|]*)\|(?<acc>$ITEMS)> KSRCLIST (?<k>.*)>$ ::= RET<VLIST<{{acc}}>|{{k}}>
 ^SRCEVALARGS<\|(?<env>[^|]*)\|(?<acc>$ITEMS)> KSRCAPPLY<(?<fn>$VAL)> (?<k>.*)>$ ::= APPLY<{{fn}}|{{acc}}|{{k}}>
-^SRCEVALARGS<(?<arg>$EXPR)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= ARGENV<{{arg}}|{{env}}|KKEEPENV<{{env}}> KSRCARG<{{rest}}|{{env}}|{{acc}}> {{done}}>
+^SRCEVALARGS<(?<arg>$NUM|true|false|$VSTR|$VLIST|$VSYM)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= ARG<{{arg}}|KSRCARGFAST<{{rest}}|{{env}}|{{acc}}> {{done}}>
+^RET<(?<v>$VAL)\|KSRCARGFAST<(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= SRCEVALARGS<{{rest}}|{{env}}|{{acc}}{{v|pctenc}};> {{done}}>
+^SRCEVALARGS<L<(?<payload>$PCT)>(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> KSRCARG<{{rest}}|{{env}}|{{acc}}> {{done}}>
+^SRCEVALARGS<(?<arg>$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= ARGENV<{{arg}}|{{env}}|KKEEPENV<{{env}}> KSRCARG<{{rest}}|{{env}}|{{acc}}> {{done}}>
 ^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KSRCARG<(?<rest>[^|]*)\|(?<oldenv>[^|]*)\|(?<acc>$ITEMS)> (?<done>K(?:SRCLIST|SRCAPPLY<.*>) .*)>$ ::= SRCEVALARGS<{{rest}}|{{env}}|{{acc}}{{v|pctenc}};> {{done}}>
 
 Explicit eval
@@ -368,6 +371,7 @@ After special forms have had a chance to run, generic calls evaluate the callee 
 ^EENV<(?<form>$UNSUPPORTED_FORM)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
 ^EENV<(?<callee>$NAME) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
 ^EENV<(?<callee>$NAME) (?<a>$EXPR) (?<bad>-?[0-9]+$NAME)(?: (?<rest>[^|]*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<invalid_numeric_token>
+^EENV<(?<op>$PRIM0|$PRIM1|$PRIM2|$PRIM3) (?<args>[^|]*)\|@CORE;\|(?<k>.*)>$ ::= SRCEVALARGS<{{args}}|@CORE;|> KSRCAPPLY<VPRIM<{{op}}>> {{k}}>
 ^EENV<(?<callee>$EXPR) (?<args>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{callee}}|{{env}}|KENVCALL<{{args|pctenc}}|{{env}}> {{k}}>
 ^RET<(?<fn>$VAL)\|KENVCALL<(?<args>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= SRCEVALARGS<{{args|pctdec}}|{{env}}|> KSRCAPPLY<{{fn}}> {{k}}>
 ^RETENV<(?<fn>$VAL)\|(?<env>[^|]*)\|KENVCALL<(?<args>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= SRCEVALARGS<{{args|pctdec}}|{{env}}|> KSRCAPPLY<{{fn}}> {{k}}>

@@ -74,3 +74,45 @@ examples/lisp/lisp.tpp
 ## Follow-up candidates
 
 After this change, the hottest work is no longer environment lookup. Next targets should be source reader/list freezing and generic strict argument/continuation walkers, not more core env work.
+
+## Second-pass optimization: core-env primitive calls and source-argument fast paths
+
+Baseline for this pass is the optimized result above:
+
+```text
+elapsed=11.468 user=92.813 sys=18.458
+parity: 811 cases passed for python, go
+examples/lisp/lisp.tpp
+  rules:      447
+  covered:    447
+  uncovered:  0
+  matches:    52570
+```
+
+Change:
+
+- Add a direct generic-call path for primitive callees when the environment is exactly `@CORE;`. This skips callee `ARGENV` / `LOOK` / `CORELOOK` / `KENVCALL` for top-level core primitive calls while preserving lexical shadowing in any extended env such as `x=...;@CORE;` or `add=...;@CORE;`.
+- Split the strict source-argument walker into scalar, list, and name paths. Scalars use `ARG` directly and list nodes enter `EENV` directly, avoiding unnecessary `ARGENV` hops and reducing `KKEEPENV` traffic.
+
+Observed result:
+
+```text
+elapsed=11.409 user=91.258 sys=18.602
+parity: 811 cases passed for python, go
+examples/lisp/lisp.tpp
+  rules:      451
+  covered:    451
+  uncovered:  0
+  matches:    44274
+  hottest:
+       4588  examples/lisp/lisp.tpp:84   READ list freezing
+       1889  examples/lisp/lisp.tpp:131  RET KKEEPENV
+       1560  examples/lisp/lisp.tpp:247  SRCEVALARGS apply completion
+```
+
+Delta from first optimized baseline:
+
+- Full Lisp manifest elapsed time: 11.468s -> 11.409s, about 0.5% faster.
+- User CPU time: 92.813s -> 91.258s, about 1.7% lower.
+- Successful rewrite matches: 52570 -> 44274, about 15.8% fewer matches.
+- `KKEEPENV` matches fell from 2865 to 1889.
