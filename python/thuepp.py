@@ -66,6 +66,13 @@ class SourceRow:
     source_line: int
 
 
+@dataclass(frozen=True)
+class TemplatePart:
+    kind: str
+    text: str
+    filt: str = ""
+
+
 @dataclass
 class Rule:
     """A single thue++ rule."""
@@ -77,6 +84,8 @@ class Rule:
     source_path: str
     builtin_name: str = ""
     builtin_args: tuple[str, ...] = ()
+    rhs_template: tuple[TemplatePart, ...] = ()
+    rhs_field_templates: tuple[tuple[TemplatePart, ...], ...] = ()
 
 
 @dataclass
@@ -351,7 +360,16 @@ class ThueppInterpreter:
         if op != Operator.BUILTIN:
             self._validate_template_captures(rhs, line_number, set(pattern.groupindex.keys()))
 
-        return Rule(lhs, pattern, op, rhs, line_number, source_path)
+        return Rule(
+            lhs,
+            pattern,
+            op,
+            rhs,
+            line_number,
+            source_path,
+            rhs_template=self._compile_template(rhs),
+            rhs_field_templates=tuple(self._compile_template(field) for field in rhs.split()),
+        )
 
     def _validate_template_captures(
         self, template: str, line_number: int, capture_names: set[str]
@@ -381,8 +399,13 @@ class ThueppInterpreter:
                 raise RuntimeError(f"Line {line_number}: Missing template capture '{name}'")
             pos = end + 2
 
-    def _expand_template_fields(self, template: str, groups: dict, extra: dict) -> list[str]:
-        return [self._expand_template(field, groups, extra) for field in template.split()]
+    def _expand_compiled_template_fields(
+        self,
+        templates: tuple[tuple[TemplatePart, ...], ...],
+        groups: dict,
+        extra: dict,
+    ) -> list[str]:
+        return [self._expand_template(template, groups, extra) for template in templates]
 
     def _parse_builtin_call(
         self,
@@ -766,7 +789,33 @@ class ThueppInterpreter:
         raise AssertionError(f"internal error: validated builtin '{name}' has no evaluator")
 
 
-    def _expand_template(self, template: str, groups: dict, extra: dict = None) -> str:
+    def _compile_template(self, template: str) -> tuple[TemplatePart, ...]:
+        """Compile a template string into decoded literals and variable lookups."""
+        parts: list[TemplatePart] = []
+        pos = 0
+        for match in py_re.finditer(r"{{([^}]*)}}", template):
+            parts.append(TemplatePart("literal", self._decode_replacement_escapes(template[pos:match.start()])))
+            inner = match.group(1)
+            if "|" in inner:
+                name, filt = inner.split("|", 1)
+                if py_re.fullmatch(r"[A-Za-z_]\w*", name) and py_re.fullmatch(r"[A-Za-z_]\w*", filt):
+                    parts.append(TemplatePart("filter", name, filt))
+                else:
+                    parts.append(TemplatePart("literal", match.group(0)))
+            elif py_re.fullmatch(r"\w+", inner):
+                parts.append(TemplatePart("var", inner))
+            else:
+                parts.append(TemplatePart("literal", match.group(0)))
+            pos = match.end()
+        parts.append(TemplatePart("literal", self._decode_replacement_escapes(template[pos:])))
+        return tuple(parts)
+
+    def _expand_template(
+        self,
+        template: str | tuple[TemplatePart, ...],
+        groups: dict,
+        extra: Optional[dict] = None,
+    ) -> str:
         """Expand a template string with captured groups, extras, and strict PCT filters."""
         if extra is None:
             extra = {}
@@ -776,33 +825,27 @@ class ThueppInterpreter:
             for k, v in raw_vars.items()
         }
 
+        compiled = self._compile_template(template) if isinstance(template, str) else template
         pieces = []
-        pos = 0
-        for match in py_re.finditer(r"{{([^}]*)}}", template):
-            pieces.append(self._decode_replacement_escapes(template[pos:match.start()]))
-            inner = match.group(1)
-            if "|" in inner:
-                name, filt = inner.split("|", 1)
-                if not py_re.fullmatch(r"[A-Za-z_]\w*", name) or not py_re.fullmatch(r"[A-Za-z_]\w*", filt):
-                    raise RuntimeError(f"Malformed template filter '{{{{{inner}}}}}'")
+        for part in compiled:
+            if part.kind == "literal":
+                pieces.append(part.text)
+            elif part.kind == "filter":
+                name = part.text
                 if name not in raw_vars:
                     raise RuntimeError(f"Missing template capture '{name}'")
                 value = str(raw_vars[name])
-                if filt == "pctenc":
+                if part.filt == "pctenc":
                     pieces.append(self._pct_encode(value))
-                elif filt == "pctdec":
+                elif part.filt == "pctdec":
                     pieces.append(self._pct_decode(value))
-                elif filt == "raw":
+                elif part.filt == "raw":
                     pieces.append(value)
                 else:
-                    raise RuntimeError(f"Unknown template filter '{filt}'")
-            elif py_re.fullmatch(r"\w+", inner):
-                value = escaped_vars.get(inner, "")
+                    raise RuntimeError(f"Unknown template filter '{part.filt}'")
+            elif part.kind == "var":
+                value = escaped_vars.get(part.text, "")
                 pieces.append(str(value) if value else "")
-            else:
-                pieces.append(match.group(0))
-            pos = match.end()
-        pieces.append(self._decode_replacement_escapes(template[pos:]))
         return "".join(pieces)
     def _decode_replacement_escapes(self, text: str) -> str:
         placeholder = "\x00BACKSLASH\x00"
@@ -1035,11 +1078,11 @@ class ThueppInterpreter:
                 magic_vars = {"rule_index": str(rule_index)}
 
                 if rule.operator == Operator.SUBSTITUTE:
-                    replacement = self._expand_template(rule.rhs, groups, magic_vars)
+                    replacement = self._expand_template(rule.rhs_template, groups, magic_vars)
                     self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.READ:
-                    parts = self._expand_template_fields(rule.rhs, groups, magic_vars)
+                    parts = self._expand_compiled_template_fields(rule.rhs_field_templates, groups, magic_vars)
                     if len(parts) != 4:
                         raise RuntimeError(f"Line {rule.line_number}: ::< requires timeout, count, unit, and resource")
                     read_spec, count_spec, unit, resource = parts
@@ -1061,7 +1104,7 @@ class ThueppInterpreter:
                     self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.WRITE:
-                    expanded = self._expand_template(rule.rhs, groups, magic_vars)
+                    expanded = self._expand_template(rule.rhs_template, groups, magic_vars)
                     space_idx = -1
                     for pos, ch in enumerate(expanded):
                         if ch in " \t":
@@ -1098,7 +1141,7 @@ class ThueppInterpreter:
                     self._record_rule_coverage(rule)
 
                 elif rule.operator == Operator.EXIT:
-                    code_str = self._expand_template(rule.rhs, groups, magic_vars).strip()
+                    code_str = self._expand_template(rule.rhs_template, groups, magic_vars).strip()
                     if code_str.startswith("{") and code_str.endswith("}"):
                         code_str = code_str[1:-1]
                     try:
