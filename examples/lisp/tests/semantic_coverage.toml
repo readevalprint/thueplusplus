@@ -4,6 +4,15 @@ timeout = 10
 args = ["--eval-limit", "60000"]
 
 [[case]]
+name = "set can override core primitive through lexical env"
+input = "(write (unparse (let () (set add (fn (x y) 9)) (add 1 2))))"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout_stripped = "9"
+
+[[case]]
 name = "let subtraction uses lexical env"
 input = "(write (unparse (let ((x 10)) (sub x 3))))"
 
