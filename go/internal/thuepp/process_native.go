@@ -6,6 +6,7 @@ package thuepp
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -21,9 +22,8 @@ type processResource struct {
 	cmd      *exec.Cmd
 	stdin    io.WriteCloser
 	stdout   io.ReadCloser
-	reader   *bufio.Reader
-	stderr   bytes.Buffer
-	exitCh   chan error
+	stderr   io.ReadCloser
+	eventCh  chan string
 	stopOnce sync.Once
 	mu       sync.Mutex
 }
@@ -32,13 +32,14 @@ func newProcessResource(name, command string) *processResource {
 	return &processResource{name: name, command: command}
 }
 
+func (r *processResource) IsPipeResource() bool { return true }
+
 func (r *processResource) ensureStarted() error {
 	if r.cmd != nil {
 		return nil
 	}
 	r.cmd = exec.Command("/bin/sh", "-c", "stdbuf -oL "+r.command)
 	r.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	r.cmd.Stderr = &r.stderr
 	var err error
 	r.stdin, err = r.cmd.StdinPipe()
 	if err != nil {
@@ -48,35 +49,49 @@ func (r *processResource) ensureStarted() error {
 	if err != nil {
 		return err
 	}
-	r.reader = bufio.NewReader(r.stdout)
-	r.exitCh = make(chan error, 1)
+	r.stderr, err = r.cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	r.eventCh = make(chan string, 64)
 	if err := r.cmd.Start(); err != nil {
 		return err
 	}
-	go func() { r.exitCh <- r.cmd.Wait() }()
+	var scannerWG sync.WaitGroup
+	scannerWG.Add(2)
+	go func() {
+		defer scannerWG.Done()
+		r.scanEvents("out", r.stdout)
+	}()
+	go func() {
+		defer scannerWG.Done()
+		r.scanEvents("err", r.stderr)
+	}()
+	go func() {
+		scannerWG.Wait()
+		err := r.cmd.Wait()
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				r.eventCh <- fmt.Sprintf("exit|%d", exitErr.ExitCode())
+			} else {
+				r.eventCh <- "fail|" + pctEncode(err.Error())
+			}
+			return
+		}
+		r.eventCh <- "exit|0"
+	}()
 	return nil
 }
 
-func (r *processResource) exitError(err error) error {
-	if err == nil {
-		return nil
+func (r *processResource) scanEvents(kind string, stream io.Reader) {
+	scanner := bufio.NewScanner(stream)
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+	for scanner.Scan() {
+		r.eventCh <- kind + "|" + pctEncode(scanner.Text())
 	}
-	msg := strings.TrimSpace(r.stderr.String())
-	if msg == "" {
-		msg = fmt.Sprintf("process exited %d", r.cmd.ProcessState.ExitCode())
+	if err := scanner.Err(); err != nil {
+		r.eventCh <- "fail|" + pctEncode(err.Error())
 	}
-	return fmt.Errorf("%s", msg)
-}
-
-func (r *processResource) eofOrExitError(fallback string) error {
-	select {
-	case err := <-r.exitCh:
-		if exitErr := r.exitError(err); exitErr != nil {
-			return exitErr
-		}
-	case <-time.After(50 * time.Millisecond):
-	}
-	return fmt.Errorf("%s", fallback)
 }
 
 func (r *processResource) ReadLines(count int, timeout time.Duration) (string, error) {
@@ -88,78 +103,24 @@ func (r *processResource) ReadLines(count int, timeout time.Duration) (string, e
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	resultCh := make(chan struct {
-		content string
-		err     error
-	}, 1)
-	go func() {
-		lines := make([]string, 0, count)
-		for idx := 0; idx < count; idx++ {
-			line, err := r.reader.ReadString('\n')
-			if err != nil {
-				resultCh <- struct {
-					content string
-					err     error
-				}{"", r.eofOrExitError(fmt.Sprintf("EOF before %d lines", count))}
-				return
-			}
-			stripped, complete := stripLineTerminator(line)
-			if !complete {
-				resultCh <- struct {
-					content string
-					err     error
-				}{"", fmt.Errorf("EOF before %d lines", count)}
-				return
-			}
-			lines = append(lines, stripped)
+	deadline := time.After(timeout)
+	events := make([]string, 0, count)
+	for len(events) < count {
+		select {
+		case event := <-r.eventCh:
+			events = append(events, event)
+		case <-deadline:
+			return "", fmt.Errorf("timeout")
 		}
-		resultCh <- struct {
-			content string
-			err     error
-		}{strings.Join(lines, "\n"), nil}
-	}()
-	select {
-	case result := <-resultCh:
-		return result.content, result.err
-	case <-time.After(timeout):
-		return "", fmt.Errorf("timeout")
 	}
+	return strings.Join(events, "\n"), nil
 }
 
 func (r *processResource) ReadBytes(count int, timeout time.Duration) ([]byte, error) {
 	if count == 0 {
 		return []byte{}, nil
 	}
-	if err := r.ensureStarted(); err != nil {
-		return nil, err
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	resultCh := make(chan struct {
-		content []byte
-		err     error
-	}, 1)
-	go func() {
-		buf := make([]byte, count)
-		_, err := io.ReadFull(r.reader, buf)
-		if err != nil {
-			resultCh <- struct {
-				content []byte
-				err     error
-			}{nil, r.eofOrExitError(fmt.Sprintf("EOF before %d bytes", count))}
-			return
-		}
-		resultCh <- struct {
-			content []byte
-			err     error
-		}{buf, nil}
-	}()
-	select {
-	case result := <-resultCh:
-		return result.content, result.err
-	case <-time.After(timeout):
-		return nil, fmt.Errorf("timeout")
-	}
+	return nil, fmt.Errorf("byte reads are unsupported for pipe resources")
 }
 
 func (r *processResource) WriteString(content string) error {
@@ -175,3 +136,45 @@ func (r *processResource) Cleanup() {
 		r.stopOnce.Do(func() { _ = syscall.Kill(-r.cmd.Process.Pid, syscall.SIGKILL) })
 	}
 }
+
+type commandResource struct {
+	name    string
+	command string
+}
+
+func newCommandResource(name, command string) *commandResource {
+	return &commandResource{name: name, command: command}
+}
+
+func (r *commandResource) InvokeCommand(content string, timeout time.Duration) string {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", r.command)
+	cmd.Stdin = strings.NewReader(content)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		return "!timeout|" + pctEncode(stdout.String()) + "|" + pctEncode(stderr.String())
+	}
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return fmt.Sprintf("%d|%s|%s", exitErr.ExitCode(), pctEncode(stdout.String()), pctEncode(stderr.String()))
+		}
+		return "!spawn||" + pctEncode(err.Error())
+	}
+	return fmt.Sprintf("0|%s|%s", pctEncode(stdout.String()), pctEncode(stderr.String()))
+}
+
+func (r *commandResource) ReadLines(count int, timeout time.Duration) (string, error) {
+	return "", fmt.Errorf("read requires pipe or input stream binding")
+}
+func (r *commandResource) ReadBytes(count int, timeout time.Duration) ([]byte, error) {
+	return nil, fmt.Errorf("read requires pipe or input stream binding")
+}
+func (r *commandResource) WriteString(content string) error {
+	return fmt.Errorf("write requires pipe or output stream binding")
+}
+func (r *commandResource) Cleanup() {}

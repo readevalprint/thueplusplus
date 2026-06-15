@@ -21,7 +21,7 @@ async function runSmoke(cases) {
 }
 
 (async () => {
-  const [hello, emptyOverride, resource, missing, proc, callbackError] = await runSmoke([
+  const [hello, emptyOverride, resource, missing, pipe, callbackError] = await runSmoke([
     {
       sourcePath: 'hello.tpp',
       sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
@@ -46,7 +46,7 @@ async function runSmoke(cases) {
     },
     {
       sourceText: '^start$ ::< 5s 1 lines sh\n::=\nstart',
-      procs: { sh: 'printf nope' },
+      pipes: { sh: 'printf nope' },
     },
     {
       sourceText: '^start$ ::< 1s 1 lines input\n::=\nstart',
@@ -69,8 +69,8 @@ async function runSmoke(cases) {
   assert.strictEqual(missing.exitCode, 1, JSON.stringify(missing));
   assert.match(missing.error || '', /Unknown resource 'missing'/);
 
-  assert.strictEqual(proc.exitCode, 1, JSON.stringify(proc));
-  assert.match(proc.error || '', /subprocess resources are not supported/);
+  assert.strictEqual(pipe.exitCode, 1, JSON.stringify(pipe));
+  assert.match(pipe.error || '', /subprocess resources are not supported/);
 
   assert.strictEqual(callbackError.exitCode, 1, JSON.stringify(callbackError));
   assert.match(callbackError.error || '', /ERR:resource:input:callback boom/);

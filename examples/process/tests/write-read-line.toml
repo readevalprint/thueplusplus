@@ -3,7 +3,7 @@ name = "write then newline read through process"
 program = "../write-read-line.tpp"
 timeout = 10
 
-[bindings.procs]
+[bindings.pipes]
 worker = "python3 -u examples/process/tests/fixtures/echo_worker.py"
 
 [expect]

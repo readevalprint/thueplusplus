@@ -1884,7 +1884,7 @@ describe('Go-WASM demo UI', () => {
       { name: 'stderr', inputText: '', lineMode: true, readError: undefined },
       { name: 'random', inputText: '7', lineMode: true, readError: undefined },
     ])
-    expect(mockedRunWithWorker.mock.calls[0][0].procs).toBeUndefined()
+    expect(mockedRunWithWorker.mock.calls[0][0].pipes).toBeUndefined()
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n')
     expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', 'x\n3\n8\n7')
     expect(wrapper.get('[data-test="resource-input-random"]').element).toHaveProperty('value', '7')

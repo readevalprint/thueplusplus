@@ -17,6 +17,14 @@ type runtimeResource interface {
 	Cleanup()
 }
 
+type commandInvoker interface {
+	InvokeCommand(content string, timeout time.Duration) string
+}
+
+type pipeEventResource interface {
+	IsPipeResource() bool
+}
+
 type resourceError struct {
 	message  string
 	omitName bool

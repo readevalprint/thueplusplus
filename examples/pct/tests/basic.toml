@@ -24,7 +24,7 @@ stdout = "hello world\n"
 name = "line read produces PCT and pctdec filter writes output"
 input = "read"
 
-[bindings.procs]
+[bindings.pipes]
 input = "printf 'hello world @RULE@ {{x}}\n'"
 
 [case.expect]

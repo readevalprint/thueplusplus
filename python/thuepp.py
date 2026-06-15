@@ -17,7 +17,7 @@ import re2 as re
 import select
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from fractions import Fraction
 from pathlib import Path
@@ -43,7 +43,7 @@ def parse_read_timeout(spec: str) -> float:
     if unit == "m":
         return float(amount * 60)
     raise ValueError(spec)
-RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!-])(?P<rhs>.*)$")
+RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!$-])(?P<rhs>.*)$")
 ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
 ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
 INVALID_ALIAS_TOKEN_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
@@ -55,6 +55,7 @@ class Operator(Enum):
     SUBSTITUTE = "::="
     READ = "::<"   # Read from stdin or proc character streams
     WRITE = "::>"
+    COMMAND = "::$"
     EXIT = "::-"
     BUILTIN = "::!"
 
@@ -90,11 +91,13 @@ class Rule:
 
 @dataclass
 class Binding:
-    """A resource binding (stdin/stdout/stderr or process)."""
+    """A resource binding (stdin/stdout/stderr, pipe, or command)."""
     name: str
-    is_process: bool
+    kind: str
     path_or_command: str
     process: Optional[subprocess.Popen] = None
+    event_queue: list[str] = field(default_factory=list)
+    pipe_exit_reported: bool = False
 
 
 class ThueppInterpreter:
@@ -126,14 +129,18 @@ class ThueppInterpreter:
         self.script_args: dict[str, str] = {}
 
         # Predefined bindings
-        self.bindings["stdin"] = Binding("stdin", False, "stdin")
-        self.bindings["stdout"] = Binding("stdout", False, "stdout")
-        self.bindings["stderr"] = Binding("stderr", False, "stderr")
+        self.bindings["stdin"] = Binding("stdin", "stdio", "stdin")
+        self.bindings["stdout"] = Binding("stdout", "stdio", "stdout")
+        self.bindings["stderr"] = Binding("stderr", "stdio", "stderr")
 
 
-    def add_proc_binding(self, name: str, command: str) -> None:
-        """Bind a symbolic name to a process command."""
-        self.bindings[name] = Binding(name, True, command)
+    def add_pipe_binding(self, name: str, command: str) -> None:
+        """Bind a symbolic name to a long-lived process pipe."""
+        self.bindings[name] = Binding(name, "pipe", command)
+
+    def add_command_binding(self, name: str, command: str) -> None:
+        """Bind a symbolic name to a one-shot command invocation."""
+        self.bindings[name] = Binding(name, "command", command)
 
     def set_script_args(self, args: list[str]) -> None:
         self.script_args = {}
@@ -330,7 +337,7 @@ class ThueppInterpreter:
 
         match = RULE_RE.match(line)
         if not match:
-            if py_re.search(r"(?<!\\)::[^\s\w=<>!-]", line):
+            if py_re.search(r"(?<!\\)::[^\s\w=<>!$-]", line):
                 raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
             return None
 
@@ -340,6 +347,7 @@ class ThueppInterpreter:
             "=": Operator.SUBSTITUTE,
             "<": Operator.READ,
             ">": Operator.WRITE,
+            "$": Operator.COMMAND,
             "-": Operator.EXIT,
             "!": Operator.BUILTIN,
         }[match.group("op")]
@@ -858,7 +866,7 @@ class ThueppInterpreter:
 
     def _ensure_process(self, binding: Binding) -> None:
         """Ensure a process binding has a running process."""
-        if binding.is_process and binding.process is None:
+        if binding.kind == "pipe" and binding.process is None:
             # Use stdbuf to force line-buffered output (avoids PTY issues)
             cmd = f"stdbuf -oL {binding.path_or_command}"
             binding.process = subprocess.Popen(
@@ -874,6 +882,8 @@ class ThueppInterpreter:
         """Read exactly count newline-delimited messages, stripping line terminators and joining with \n."""
         if count == 0:
             return "", None
+        if binding.kind == "pipe":
+            return self._read_pipe_events(binding, count, timeout)
         lines: list[str] = []
         for _ in range(count):
             if binding.name == "stdin":
@@ -882,24 +892,6 @@ class ThueppInterpreter:
                     return "", "ERR:resource:stdin:timeout"
                 line = sys.stdin.readline()
                 resource_name = "stdin"
-            elif binding.is_process:
-                self._ensure_process(binding)
-                try:
-                    ready, _, _ = select.select([binding.process.stdout], [], [], timeout)
-                    if not ready:
-                        if binding.process.poll() not in (None, 0):
-                            stderr = binding.process.stderr.read()
-                            if isinstance(stderr, bytes):
-                                stderr = stderr.decode("utf-8", errors="replace")
-                            stderr = stderr.strip() or f"process exited {binding.process.returncode}"
-                            return "", f"ERR:resource:{binding.name}:{stderr}"
-                        return "", f"ERR:resource:{binding.name}:timeout"
-                    line = binding.process.stdout.readline()
-                    if isinstance(line, bytes):
-                        line = line.decode("utf-8", errors="replace")
-                    resource_name = binding.name
-                except OSError as e:
-                    return "", f"ERR:resource:{binding.name}:{e}"
             elif binding.name in ("stdout", "stderr"):
                 return "", "ERR:resource:cannot_read_output_stream"
             else:
@@ -915,6 +907,51 @@ class ThueppInterpreter:
                 continue
             return "", f"ERR:resource:{resource_name}:EOF before {count} lines"
         return "\n".join(lines), None
+
+    def _read_pipe_events(self, binding: Binding, count: int, timeout: float) -> tuple[str, Optional[str]]:
+        """Read pipe events as out|pct, err|pct, exit|code, or fail|pct records."""
+        self._ensure_process(binding)
+        events: list[str] = []
+        while len(events) < count:
+            if binding.event_queue:
+                events.append(binding.event_queue.pop(0))
+                continue
+            if binding.process is None:
+                return "", f"ERR:resource:{binding.name}:missing process"
+            streams = [binding.process.stdout, binding.process.stderr]
+            try:
+                ready, _, _ = select.select(streams, [], [], timeout)
+            except OSError as exc:
+                return "", f"ERR:resource:{binding.name}:{exc}"
+            if not ready:
+                code = binding.process.poll()
+                if code is not None and not binding.pipe_exit_reported:
+                    binding.pipe_exit_reported = True
+                    events.append(f"exit|{code}")
+                    continue
+                return "", f"ERR:resource:{binding.name}:timeout"
+            queued_line = False
+            saw_eof = False
+            for stream in ready:
+                line = stream.readline()
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8", errors="replace")
+                if line == "":
+                    saw_eof = True
+                    continue
+                if line.endswith("\n"):
+                    line = line[:-1]
+                    if line.endswith("\r"):
+                        line = line[:-1]
+                kind = "out" if stream is binding.process.stdout else "err"
+                binding.event_queue.append(f"{kind}|{self._pct_encode(line)}")
+                queued_line = True
+            if saw_eof and not queued_line:
+                code = binding.process.poll()
+                if code is not None and not binding.pipe_exit_reported:
+                    binding.pipe_exit_reported = True
+                    binding.event_queue.append(f"exit|{code}")
+        return "\n".join(events), None
 
     def _read_bytes(self, binding: Binding, count: int, timeout: float) -> tuple[bytes, Optional[str]]:
         """Read exactly count bytes."""
@@ -932,24 +969,8 @@ class ThueppInterpreter:
                 return b"", f"ERR:resource:stdin:EOF before {count} bytes"
             return data, None
 
-        if binding.is_process:
-            self._ensure_process(binding)
-            try:
-                ready, _, _ = select.select([binding.process.stdout], [], [], timeout)
-                if not ready:
-                    if binding.process.poll() not in (None, 0):
-                        stderr = binding.process.stderr.read()
-                        if isinstance(stderr, bytes):
-                            stderr = stderr.decode("utf-8", errors="replace")
-                        stderr = stderr.strip() or f"process exited {binding.process.returncode}"
-                        return b"", f"ERR:resource:{binding.name}:{stderr}"
-                    return b"", f"ERR:resource:{binding.name}:timeout"
-                data = binding.process.stdout.read(count)
-                if len(data) != count:
-                    return b"", f"ERR:resource:{binding.name}:EOF before {count} bytes"
-                return data, None
-            except OSError as e:
-                return b"", f"ERR:resource:{binding.name}:{e}"
+        if binding.kind == "pipe":
+            return b"", f"ERR:resource:{binding.name}:byte reads are unsupported for pipe resources"
 
         return b"", f"ERR:resource:{binding.name}:byte read requires process or stdin binding"
 
@@ -958,12 +979,18 @@ class ThueppInterpreter:
             content, error = self._read_lines(binding, count, timeout)
             if error:
                 return "", error
-            return self._pct_encode(content), None
+            if binding.kind == "pipe":
+                return content, None
+            encoded = self._pct_encode(content)
+            return encoded, None
         if unit == "bytes":
             content, error = self._read_bytes(binding, count, timeout)
             if error:
                 return "", error
-            return self._pct_encode_bytes(content), None
+            encoded = self._pct_encode_bytes(content)
+            if binding.kind == "pipe":
+                return f"out|{encoded}", None
+            return encoded, None
         return "", f"invalid read unit {unit!r}"
 
     def _parse_read_count(self, token: str, line_number: int) -> int:
@@ -985,7 +1012,7 @@ class ThueppInterpreter:
             sys.stderr.flush()
             return None
 
-        if binding.is_process:
+        if binding.kind == "pipe":
             self._ensure_process(binding)
             try:
                 binding.process.stdin.write(content.encode("utf-8"))
@@ -993,7 +1020,32 @@ class ThueppInterpreter:
                 return None
             except OSError as e:
                 return f"ERR:resource:{binding.name}:{e}"
-        return f"ERR:resource:{binding.name}:write requires process or output stream binding"
+        return f"ERR:resource:{binding.name}:write requires pipe or output stream binding"
+
+    def _invoke_command(self, binding: Binding, content: str, timeout: float = 10.0) -> str:
+        """Invoke a configured one-shot command and return status|pct_stdout|pct_stderr."""
+        if binding.kind != "command":
+            raise RuntimeError(f"ERR:resource:{binding.name}:command invocation requires command binding")
+        try:
+            completed = subprocess.run(
+                binding.path_or_command,
+                shell=True,
+                input=content,
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = exc.stdout or ""
+            stderr = exc.stderr or ""
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", errors="replace")
+            return f"!timeout|{self._pct_encode(stdout)}|{self._pct_encode(stderr)}"
+        except OSError as exc:
+            return f"!spawn||{self._pct_encode(str(exc))}"
+        return f"{completed.returncode}|{self._pct_encode(completed.stdout)}|{self._pct_encode(completed.stderr)}"
 
     def _set_state(self, new_state: str) -> None:
         """Set the state, checking size limits."""
@@ -1127,6 +1179,27 @@ class ThueppInterpreter:
                     if binding and not write_error:
                         self._record_rule_coverage(rule)
 
+                elif rule.operator == Operator.COMMAND:
+                    expanded = self._expand_template(rule.rhs_template, groups, magic_vars)
+                    space_idx = -1
+                    for pos, ch in enumerate(expanded):
+                        if ch in " \t":
+                            space_idx = pos
+                            break
+                    if space_idx >= 0:
+                        resource = expanded[:space_idx]
+                        content = expanded[space_idx + 1:]
+                    else:
+                        resource = expanded
+                        content = ""
+                    if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
+                        raise RuntimeError(f"Line {rule.line_number}: ::$ resource must be a binding name")
+                    binding = self.bindings.get(resource)
+                    if not binding:
+                        raise RuntimeError(f"Unknown resource '{resource}'")
+                    replacement = self._invoke_command(binding, content)
+                    self._record_rule_coverage(rule)
+
                 elif rule.operator == Operator.BUILTIN:
                     tokens = rule.rhs.split()
                     try:
@@ -1187,7 +1260,7 @@ def main():
         raw_args = raw_args[:split_at]
     parser = argparse.ArgumentParser(
         description="thue++ interpreter",
-        usage="thuepp.py <program> [--proc:<name> <command>]... [--input <state>] [options] [-- <script args>...]",
+        usage="thuepp.py <program> [--command:<name> <command>]... [--pipe:<name> <command>]... [--input <state>] [options] [-- <script args>...]",
     )
     parser.add_argument("program", help="Path to the thue++ program")
     parser.add_argument(
@@ -1258,15 +1331,27 @@ def main():
     i = 0
     while i < len(remaining):
         arg = remaining[i]
-        if arg.startswith("--proc:"):
-            name = arg[7:]
+        if arg.startswith("--command:"):
+            name = arg[len("--command:"):]
             if i + 1 >= len(remaining):
                 print(
-                    f"Error: --proc:{name} requires a command argument", file=sys.stderr)
+                    f"Error: --command:{name} requires a command argument", file=sys.stderr)
                 sys.exit(1)
             command = remaining[i + 1]
-            interpreter.add_proc_binding(name, command)
+            interpreter.add_command_binding(name, command)
             i += 2
+        elif arg.startswith("--pipe:"):
+            name = arg[len("--pipe:"):]
+            if i + 1 >= len(remaining):
+                print(
+                    f"Error: --pipe:{name} requires a command argument", file=sys.stderr)
+                sys.exit(1)
+            command = remaining[i + 1]
+            interpreter.add_pipe_binding(name, command)
+            i += 2
+        elif arg.startswith("--proc:"):
+            print("Error: --proc:<name> is no longer supported; use --pipe:<name> or --command:<name>", file=sys.stderr)
+            sys.exit(1)
         else:
             print(f"Error: Unknown argument: {arg}", file=sys.stderr)
             sys.exit(1)

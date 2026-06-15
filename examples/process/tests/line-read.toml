@@ -3,7 +3,7 @@ name = "one newline process read"
 program = "../line-read.tpp"
 timeout = 10
 
-[bindings.procs]
+[bindings.pipes]
 worker = "printf 'alpha\n'"
 
 [expect]

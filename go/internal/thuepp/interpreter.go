@@ -25,13 +25,14 @@ const (
 	Substitute Operator = "::="
 	Read       Operator = "::<"
 	Write      Operator = "::>"
+	Command    Operator = "::$"
 	Exit       Operator = "::-"
 	Builtin    Operator = "::!"
 )
 
 var (
 	numericLiteralPattern    = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
-	rulePattern              = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!-])(.*)$`)
+	rulePattern              = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!$-])(.*)$`)
 	zeroDenominatorPattern   = regexp.MustCompile(`^-?[0-9]+/0+$`)
 	aliasDefPattern          = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
 	invalidAliasTokenPattern = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
@@ -119,8 +120,12 @@ func NewWithHostResources(host HostResources) *Interpreter {
 	return i
 }
 
-func (i *Interpreter) AddProcBinding(name, command string) {
+func (i *Interpreter) AddPipeBinding(name, command string) {
 	i.Bindings[name] = &Binding{Name: name, PathOrCommand: command, Resource: newProcessResource(name, command)}
+}
+
+func (i *Interpreter) AddCommandBinding(name, command string) {
+	i.Bindings[name] = &Binding{Name: name, PathOrCommand: command, Resource: newCommandResource(name, command)}
 }
 
 func (i *Interpreter) SetScriptArgs(args []string) error {
@@ -431,7 +436,7 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	}
 	matches := rulePattern.FindStringSubmatch(line)
 	if matches == nil {
-		if regexp.MustCompile(`(?:^|[^\\])::[^\s\w=<>!-]`).FindStringIndex(line) != nil {
+		if regexp.MustCompile(`(?:^|[^\\])::[^\s\w=<>!$-]`).FindStringIndex(line) != nil {
 			return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 		}
 		return nil, nil
@@ -446,6 +451,8 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 		op = Read
 	case ">":
 		op = Write
+	case "$":
+		op = Command
 	case "-":
 		op = Exit
 	case "!":
@@ -1240,13 +1247,21 @@ func (i *Interpreter) readResource(b *Binding, timeout time.Duration, count int,
 		if err != nil {
 			return "", formatResourceError(b.Name, err)
 		}
-		return pctEncode(content), ""
+		if pipe, ok := b.Resource.(pipeEventResource); ok && pipe.IsPipeResource() {
+			return content, ""
+		}
+		encoded := pctEncode(content)
+		return encoded, ""
 	case "bytes":
 		content, err := b.Resource.ReadBytes(count, timeout)
 		if err != nil {
 			return "", formatResourceError(b.Name, err)
 		}
-		return pctEncodeBytes(content), ""
+		encoded := pctEncodeBytes(content)
+		if pipe, ok := b.Resource.(pipeEventResource); ok && pipe.IsPipeResource() {
+			return "out|" + encoded, ""
+		}
+		return encoded, ""
 	default:
 		return "", fmt.Sprintf("Line ?: invalid read unit '%s'", unit)
 	}
@@ -1297,6 +1312,17 @@ func (i *Interpreter) writeString(b *Binding, content string) string {
 		return formatResourceError(b.Name, err)
 	}
 	return ""
+}
+
+func (i *Interpreter) invokeCommand(b *Binding, content string, timeout time.Duration) (string, error) {
+	if b.Resource == nil {
+		return "", fmt.Errorf("ERR:resource:%s:missing host resource", b.Name)
+	}
+	invoker, ok := b.Resource.(commandInvoker)
+	if !ok {
+		return "", fmt.Errorf("ERR:resource:%s:command invocation requires command binding", b.Name)
+	}
+	return invoker.InvokeCommand(content, timeout), nil
 }
 
 func (i *Interpreter) setState(s string) error {
@@ -1496,7 +1522,7 @@ func (i *Interpreter) Run() (int, error) {
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
 				}
-				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
+				if resource == "" || !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
 					err := fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
 					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return 1, err
@@ -1530,6 +1556,30 @@ func (i *Interpreter) Run() (int, error) {
 				if b != nil && repl == "" {
 					i.recordRuleCoverage(rule)
 				}
+			case Command:
+				expanded, err := i.expandTemplate(rule.RHS, groups, magicVars)
+				if err != nil {
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				resource, content := splitResource(expanded)
+				if resource == "" || !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
+					err := fmt.Errorf("Line %d: ::$ resource must be a literal binding name", rule.LineNumber)
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				b := i.Bindings[resource]
+				if b == nil {
+					err := fmt.Errorf("Unknown resource '%s'", resource)
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				repl, err = i.invokeCommand(b, content, 10*time.Second)
+				if err != nil {
+					i.recordTraceWithError(appliedStep, rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+					return 1, err
+				}
+				i.recordRuleCoverage(rule)
 			case Builtin:
 				tokens := strings.Fields(rule.RHS)
 				builtinName, builtinArgs, err := parseBuiltinCallTokens(tokens, rule.LineNumber, groups)

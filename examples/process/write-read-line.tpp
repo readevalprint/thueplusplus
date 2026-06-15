@@ -5,7 +5,7 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^WRITE$ ::> worker ping\n
 ^read$ ::= response:@R@
 @R@ ::< 1s 1 lines worker
-^response:(?<value>$PCT)$ ::> stdout {{value|pctdec}}
+^response:out\|(?<value>$PCT)$ ::> stdout {{value|pctdec}}
 
 ::=
 start

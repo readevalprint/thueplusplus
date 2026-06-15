@@ -2,10 +2,10 @@
 program = "../process.tpp"
 timeout = 10
 
-# Keep this shell command simple: both implementations prefix
-# process commands with `stdbuf -oL`, and this compact command exercises the
-# documented --proc path without depending on host-specific newline quoting.
-[bindings.procs]
+# Keep this shell command simple: both implementations prefix pipe commands with
+# `stdbuf -oL`, and this compact command exercises the documented --pipe path
+# without depending on host-specific newline quoting.
+[bindings.pipes]
 worker = "printf 'proc-outputn\\n'"
 
 [expect]

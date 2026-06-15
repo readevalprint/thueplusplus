@@ -111,7 +111,7 @@ EXPECT_KEYS = {
     "stderr_stripped",
     "stderr_contains",
 }
-BINDING_KEYS = {"procs", "tpp"}
+BINDING_KEYS = {"commands", "pipes", "tpp"}
 
 
 def validate_expect(config_path: Path, scope: str, expect) -> None:
@@ -132,9 +132,12 @@ def validate_bindings(config_path: Path, scope: str, bindings) -> None:
     unknown = sorted(set(bindings) - BINDING_KEYS)
     if unknown:
         raise RuntimeError(f"{config_path} {scope}: unknown bindings key(s): {', '.join(unknown)}")
-    for name, command in bindings.get("procs", {}).items():
+    for name, command in bindings.get("commands", {}).items():
         if not isinstance(name, str) or not name or not isinstance(command, str) or not command:
-            raise RuntimeError(f"{config_path} {scope}: proc bindings must map non-empty names to non-empty command strings")
+            raise RuntimeError(f"{config_path} {scope}: command bindings must map non-empty names to non-empty command strings")
+    for name, command in bindings.get("pipes", {}).items():
+        if not isinstance(name, str) or not name or not isinstance(command, str) or not command:
+            raise RuntimeError(f"{config_path} {scope}: pipe bindings must map non-empty names to non-empty command strings")
     for name, spec in bindings.get("tpp", {}).items():
         if not isinstance(name, str) or not name:
             raise RuntimeError(f"{config_path} {scope}: tpp binding names must be non-empty strings")
@@ -243,14 +246,16 @@ def build_case_args(
     if extra_args:
         args.extend(extra_args)
     bound_files: dict[str, str] = {}
-    for name, command in case.get("bindings", {}).get("procs", {}).items():
-        args.extend([f"--proc:{name}", command])
+    for name, command in case.get("bindings", {}).get("commands", {}).items():
+        args.extend([f"--command:{name}", command])
+    for name, command in case.get("bindings", {}).get("pipes", {}).items():
+        args.extend([f"--pipe:{name}", command])
     for name, spec in case.get("bindings", {}).get("tpp", {}).items():
         if interpreter is None:
             raise RuntimeError(f"{config_path} {case_name(config_path, case)}: tpp bindings require an interpreter command")
         child_program = (tests_dir / spec["program"]).resolve()
         command = " ".join(shlex.quote(part) for part in (*interpreter.argv, str(child_program)))
-        args.extend([f"--proc:{name}", command])
+        args.extend([f"--pipe:{name}", command])
     if "input" in case:
         args.extend(["--input", case["input"]])
     if case.get("script_args"):

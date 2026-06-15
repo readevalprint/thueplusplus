@@ -137,11 +137,11 @@ func run(args []js.Value) wasmResult {
 			interp.AddCallbackBinding(name, name, &jsResource{name: name, obj: resourceObj})
 		}
 	}
-	if procs := opts.Get("procs"); procs.Type() == js.TypeObject {
-		keys := js.Global().Get("Object").Call("keys", procs)
+	if pipes := opts.Get("pipes"); pipes.Type() == js.TypeObject {
+		keys := js.Global().Get("Object").Call("keys", pipes)
 		for idx := 0; idx < keys.Length(); idx++ {
 			name := keys.Index(idx).String()
-			interp.AddProcBinding(name, procs.Get(name).String())
+			interp.AddPipeBinding(name, pipes.Get(name).String())
 		}
 	}
 	if err := interp.LoadProgramText(sourcePath, sourceText); err != nil {
