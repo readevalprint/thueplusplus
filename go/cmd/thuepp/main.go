@@ -145,14 +145,25 @@ func main() {
 			}
 			interp.MaxStateBytes = &v
 			idx++
-		case strings.HasPrefix(arg, "--proc:"):
-			name := strings.TrimPrefix(arg, "--proc:")
+		case strings.HasPrefix(arg, "--command:"):
+			name := strings.TrimPrefix(arg, "--command:")
 			if idx+1 >= len(args) {
-				fmt.Fprintf(os.Stderr, "Error: --proc:%s requires a command argument\n", name)
+				fmt.Fprintf(os.Stderr, "Error: --command:%s requires a command argument\n", name)
 				os.Exit(1)
 			}
-			interp.AddProcBinding(name, args[idx+1])
+			interp.AddCommandBinding(name, args[idx+1])
 			idx += 2
+		case strings.HasPrefix(arg, "--pipe:"):
+			name := strings.TrimPrefix(arg, "--pipe:")
+			if idx+1 >= len(args) {
+				fmt.Fprintf(os.Stderr, "Error: --pipe:%s requires a command argument\n", name)
+				os.Exit(1)
+			}
+			interp.AddPipeBinding(name, args[idx+1])
+			idx += 2
+		case strings.HasPrefix(arg, "--proc:"):
+			fmt.Fprintln(os.Stderr, "Error: --proc:<name> is no longer supported; use --pipe:<name> or --command:<name>")
+			os.Exit(1)
 		default:
 			fmt.Fprintf(os.Stderr, "Error: Unknown argument: %s\n", arg)
 			os.Exit(1)
@@ -201,7 +212,7 @@ func main() {
 	}
 	if metricsJSONPath != "" {
 		payload, err := json.Marshal(map[string]int{
-			"successful_rewrites":   interp.SuccessfulRewrites,
+			"successful_rewrites":    interp.SuccessfulRewrites,
 			"eval_check_count":       interp.EvalCheckCount,
 			"cumulative_state_bytes": interp.CumulativeStateBytes,
 		})
@@ -229,5 +240,5 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options] [-- <script args>...]")
+	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--command:<name> <command>]... [--pipe:<name> <command>]... [--input <state>] [options] [-- <script args>...]")
 }

@@ -5,6 +5,6 @@ PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 ^dec:(?<x>$PCT)$ ::! pctdec x
 ^read$ ::= out:@IN@
 @IN@ ::< 5s 1 lines input
-^out:(?<x>$PCT)$ ::> stdout {{x|pctdec}}
+^out:(?:out\|)?(?<x>$PCT)$ ::> stdout {{x|pctdec}}
 ^(?<out>[^\n]+)$ ::> stdout {{out}}\n
 ::=

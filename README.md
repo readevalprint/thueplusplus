@@ -86,7 +86,7 @@ These operators are the boundary between pure rewriting and effects:
 ::!   call a builtin
 ```
 
-The default resources are `stdin`, `stdout`, and `stderr`. A runner can bind more names to processes, browser callbacks, or other streams.
+The default resources are `stdin`, `stdout`, and `stderr`. A runner can bind more names to one-shot commands, long-lived pipes, browser callbacks, or other streams.
 
 Runners can also pass script arguments after `--`. A rule can read a named script argument with `::! arg key_capture`; the value enters state PCT-encoded, just like resource input. Builtin arguments are raw named captures from the rule's LHS, not templates or literals. To read a fixed key, stage that key in state and capture it explicitly; for example, `examples/args/args.tpp` rewrites `start` to `ARG<QUERY_STRING>`, then captures `QUERY_STRING` before calling `::! arg key`.
 
@@ -122,7 +122,7 @@ Hello, World!
 ```
 <!-- thuepp-readme-example:end -->
 
-## Input and processes
+## Input, commands, and pipes
 
 Reads and writes go through named resources.
 
@@ -140,7 +140,18 @@ START
 
 `::< 30s 1 lines stdin` reads exactly one newline-terminated line from `stdin` with an explicit 30-second timeout. Every operator RHS is expanded as a `{{capture}}` template before that operator parses it, so captured read operands are explicit: `::< {{timeout}} {{count}} {{unit}} {{resource}}`. Read timeouts are positive integer durations with `ms`, `s`, or `m` units; bare numeric seconds are invalid. Resource reads use `TIMEOUT COUNT UNIT RESOURCE`: after template expansion, `UNIT` is plural-only `lines` or `bytes`, `COUNT` is a non-negative integer, and `RESOURCE` is a bound resource name. `lines` strips terminators and joins multiple lines with `\n`; `bytes` reads exact raw bytes. The payload is PCT-encoded before it enters state. `{{name|pctdec}}` decodes it before writing.
 
-The same resource interface can connect to a process. The runner binds a resource name, and Thue++ reads or writes through that name.
+Host process integration is explicit and split by lifetime. A command binding is a one-shot invocation selected with the `::$` operator:
+
+```thuepp
+^SQL<(?<query>[\s\S]*)>$ ::$ sqlite {{query}}
+^0\|(?<stdout>$PCT)\|(?<stderr>$PCT)$ ::> stdout {{stdout|pctdec}}
+```
+
+Native runners bind commands with `--command:<name> '<shell command>'`. When a `::$` rule matches, the interpreter sends the expanded payload after the resource name to the command's stdin and rewrites the match directly to `status|pct_stdout|pct_stderr`. `status` is the decimal process exit code on a completed process, or a fail-loud host status such as `!spawn` or `!timeout`.
+
+A pipe binding is a long-lived process stream selected by `::>` writes and `::<` reads. Native runners bind pipes with `--pipe:<name> '<shell command>'`. Pipe reads return event records rather than bare payloads: `out|pct_chunk` for stdout lines, `err|pct_chunk` for stderr lines, `exit|code` for process exit, and `fail|pct_reason` for host-side stream failures. This makes stream origin and lifecycle visible in ordinary rewrite rules. Pipe byte reads are intentionally unsupported in the first process-resource pass; use line events.
+
+The legacy `--proc:<name>` flag has been removed. Use `--command:<name>` for finite one-shot work and `--pipe:<name>` for long-lived stdin/stdout/stderr streams.
 
 ## Conditionals by rewriting: guess the number
 
@@ -150,13 +161,13 @@ The guess-number example uses this to validate input and choose the next state. 
 
 Numeric builtins are deterministic exact-rational operations. Decimal-looking input such as `0.1` is parsed as the rational `1/10`; adding `0.1` and `0.2` returns `3/10`, not a [floating-point](https://floating-point-gui.de/) approximation. The interpreters do not use decimal or binary float arithmetic internally.
 
-It also shows process resources. The program reads `@RANDOM_NUMBER@` from the `random` resource. This command runs the Go backend and binds `random` to a process that writes `7`:
+It also shows pipe resources. The program reads `@RANDOM_NUMBER@` from the `random` resource. This command runs the Go backend and binds `random` to a pipe that writes `7`:
 
 ```bash
 printf 'x\n3\n8\n7\n' | \
   go -C go run ./cmd/thuepp \
     ../examples/guess-number/guess-number.tpp \
-    --proc:random 'printf 7; echo'
+    --pipe:random 'printf 7; echo'
 ```
 
 <!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-30 expected-output=examples/guess-number/tests/basic.toml -->
@@ -186,7 +197,7 @@ PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 @EQUAL\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! numeq guess secret
 @LESS_THAN\[(?<guess>$NUMBER),(?<secret>$NUMBER)\]@ ::! lt guess secret
 
-^SECRET<(?<secret>$NUMBER)>$ ::= @PROMPT@GUESS<{{secret}}|@USER_GUESS@>
+^SECRET<(?:out\|)?(?<secret>$NUMBER)>$ ::= @PROMPT@GUESS<{{secret}}|@USER_GUESS@>
 
 ^GUESS<(?<secret>$NUMBER)\|(?<guess>$NUMBER)>$ ::= CHECK<{{secret}}|{{guess}}|@EQUAL[{{guess}},{{secret}}]@>
 

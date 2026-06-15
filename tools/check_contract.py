@@ -67,8 +67,10 @@ def shell_single_quote_escaped(value: str) -> str:
 def readme_example_command(root: Path, source_path: str, expected_output_path: str) -> str:
     config = load_toml(root / expected_output_path)
     command = f"./python/thuepp.py {source_path}"
-    for name, proc_command in config.get("bindings", {}).get("procs", {}).items():
-        command += f" --proc:{name} {shell_single_quote_escaped(proc_command)}"
+    for name, command_spec in config.get("bindings", {}).get("commands", {}).items():
+        command += f" --command:{name} {shell_single_quote_escaped(command_spec)}"
+    for name, pipe_command in config.get("bindings", {}).get("pipes", {}).items():
+        command += f" --pipe:{name} {shell_single_quote_escaped(pipe_command)}"
     if "stdin" in config:
         command = f"printf {shell_single_quote_escaped(config['stdin'])} | {command}"
     return command

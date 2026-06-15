@@ -108,12 +108,12 @@ const curatedGroups: CuratedGroup[] = [
       {
         manifestPath: 'examples/process/tests/write-read-line.toml',
         label: 'Write/read line',
-        description: 'Writes to a process resource, then reads a newline-delimited response.',
+        description: 'Writes to a pipe resource, then reads a newline-delimited event response.',
       },
       {
         manifestPath: 'examples/process/tests/sequential-line-read.toml',
         label: 'Sequential reads',
-        description: 'Consumes multiple process lines in order so resource state is visible.',
+        description: 'Consumes multiple pipe events in order so resource state is visible.',
       },
       {
         manifestPath: 'examples/lisp/tests/io_acceptance.toml',
@@ -139,13 +139,13 @@ const curatedGroups: CuratedGroup[] = [
       },
       {
         manifestPath: 'examples/process/tests/basic.toml',
-        label: 'Process resource',
-        description: 'Minimal process resource call for seeing external process plumbing.',
+        label: 'Pipe resource',
+        description: 'Minimal pipe resource call for seeing external process plumbing.',
       },
       {
         manifestPath: 'examples/process/tests/line-read.toml',
         label: 'Line read',
-        description: 'Waits for and consumes one newline-delimited process response.',
+        description: 'Waits for and consumes one newline-delimited pipe event.',
       },
       {
         manifestPath: 'examples/process/tests/line-timeout.toml',

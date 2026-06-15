@@ -4,7 +4,7 @@ program = "../guess-number.tpp"
 stdin = "x\n3\n8\n7\n"
 timeout = 10
 
-[bindings.procs]
+[bindings.pipes]
 random = "printf 7; echo"
 
 [expect]

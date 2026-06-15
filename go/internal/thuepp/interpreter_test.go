@@ -3,6 +3,7 @@ package thuepp
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -42,20 +43,39 @@ func TestProcessResourceDrainsBufferedOutputAfterFastExit(t *testing.T) {
 			resource.Cleanup()
 			t.Fatalf("ReadLine #1 error on iteration %d: %v", i, err)
 		}
-		if line != "alpha" {
+		if line != "out|alpha" {
 			resource.Cleanup()
-			t.Fatalf("ReadLine #1 on iteration %d = %q, want alpha", i, line)
+			t.Fatalf("ReadLine #1 on iteration %d = %q, want out|alpha", i, line)
 		}
 		line, err = resource.ReadLines(1, time.Second)
 		if err != nil {
 			resource.Cleanup()
 			t.Fatalf("ReadLine #2 error on iteration %d: %v", i, err)
 		}
-		if line != "beta" {
+		if line != "out|beta" {
 			resource.Cleanup()
-			t.Fatalf("ReadLine #2 on iteration %d = %q, want beta", i, line)
+			t.Fatalf("ReadLine #2 on iteration %d = %q, want out|beta", i, line)
 		}
 		resource.Cleanup()
+	}
+}
+
+func TestProcessResourceDoesNotClosePipesBeforeScannersDrain(t *testing.T) {
+	oldPath := os.Getenv("PATH")
+	t.Setenv("PATH", t.TempDir())
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+
+	resource := newProcessResource("worker", "printf 'alpha\\n'")
+	event, err := resource.ReadLines(1, time.Second)
+	resource.Cleanup()
+	if err != nil {
+		t.Fatalf("ReadLines error: %v", err)
+	}
+	if strings.Contains(event, "file%20already%20closed") || strings.Contains(event, "file already closed") {
+		t.Fatalf("scanner observed pipe closed by Wait before drain: %q", event)
+	}
+	if !strings.HasPrefix(event, "err|") {
+		t.Fatalf("ReadLines = %q, want shell stderr event for missing stdbuf", event)
 	}
 }
 
@@ -66,29 +86,44 @@ func TestProcessResourceCleanupUnblocksFullOutputChannel(t *testing.T) {
 		resource.Cleanup()
 		t.Fatalf("ReadLine error: %v", err)
 	}
-	if line != "alpha" {
+	if line != "out|alpha" {
 		resource.Cleanup()
-		t.Fatalf("ReadLine = %q, want alpha", line)
+		t.Fatalf("ReadLine = %q, want out|alpha", line)
 	}
 
 	time.Sleep(50 * time.Millisecond)
 	resource.Cleanup()
-	select {
-	case <-resource.exitCh:
-	case <-time.After(time.Second):
-		t.Fatal("Cleanup did not unblock stdout reader and reap process")
+	deadline := time.After(time.Second)
+	for {
+		select {
+		case event := <-resource.eventCh:
+			if strings.HasPrefix(event, "exit|") || strings.HasPrefix(event, "fail|") {
+				return
+			}
+		case <-deadline:
+			t.Fatal("Cleanup did not unblock stdout reader and reap process")
+		}
 	}
 }
 
-func TestProcessResourceReportsProcessErrorWhenNoLineIsAvailable(t *testing.T) {
+func TestProcessResourceReportsStderrAndExitEvents(t *testing.T) {
 	resource := newProcessResource("worker", "sh -c 'echo child-error >&2; exit 7'")
-	_, err := resource.ReadLines(1, time.Second)
-	resource.Cleanup()
-	if err == nil {
-		t.Fatal("ReadLines succeeded, want process error")
+	event, err := resource.ReadLines(1, time.Second)
+	if err != nil {
+		resource.Cleanup()
+		t.Fatalf("ReadLines stderr event error: %v", err)
 	}
-	if got := err.Error(); !strings.Contains(got, "child-error") {
-		t.Fatalf("ReadLines error = %q, want child stderr", got)
+	if event != "err|child-error" {
+		resource.Cleanup()
+		t.Fatalf("ReadLines = %q, want err|child-error", event)
+	}
+	event, err = resource.ReadLines(1, time.Second)
+	resource.Cleanup()
+	if err != nil {
+		t.Fatalf("ReadLines exit event error: %v", err)
+	}
+	if event != "exit|7" {
+		t.Fatalf("ReadLines = %q, want exit|7", event)
 	}
 }
 
@@ -406,9 +441,9 @@ func TestFastExitProcessOutputIsReadable(t *testing.T) {
 		Stdout: &bytes.Buffer{},
 		Stderr: &bytes.Buffer{},
 	})
-	interp.AddProcBinding("once", "printf '7\\n'")
+	interp.AddPipeBinding("once", "printf '7\\n'")
 	interp.ProgramPath = "test.tpp"
-	if err := interp.parseProgram("@N@ ::< 1s 1 lines once\n^(?<n>[0-9]+)$ ::> stdout {{n}}\\n\n::=\n@N@"); err != nil {
+	if err := interp.parseProgram("@N@ ::< 1s 1 lines once\n^out\\|(?<n>[0-9]+)$ ::> stdout {{n}}\\n\n::=\n@N@"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()

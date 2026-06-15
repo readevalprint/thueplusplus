@@ -2,7 +2,7 @@
 name = "echo process input with line read"
 program = "../echo.tpp"
 
-[bindings.procs]
+[bindings.pipes]
 input = "printf 'abc\\n'"
 
 [expect]
