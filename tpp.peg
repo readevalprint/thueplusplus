@@ -11,15 +11,19 @@ SourceRow     <- !Sep (Rule / Alias / Comment / Blank)
 Sep           <- WS* '::=' WS* (NL / EOF)
 StateText     <- .*
 Alias        <- WS* Name WS* '<-' WS* Regex
-Rule         <- LHS Op WS* RHS
+Rule         <- LHS Mid* Op WS* RHS
 Reserved     <- LHS ReservedOp RHS
-Comment      <- (!ReservedOp !Op !NL .)+
+Comment      <- (!ReservedOp !Op !MidOp !NL .)+
 
 LHS          <- WS* LHSBody WS*
 LHSBody      <- LHSUnit* LHSNonWS LHSUnit*
-LHSUnit      <- !ReservedOp !Op !NL .
-LHSNonWS     <- !ReservedOp !Op !WS !NL .
-Regex        <- (!ReservedOp !Op !NL .)*
+LHSUnit      <- !ReservedOp !Op !MidOp !NL .
+LHSNonWS     <- !ReservedOp !Op !MidOp !WS !NL .
+Regex        <- (!ReservedOp !Op !MidOp !NL .)*
+Mid          <- MidOp MidBody
+MidBody      <- WS* Capture '[' MidKey ']' ('=' Regex)? WS*
+MidKey       <- (!']' .)+
+MidOp        <- '::|'
 RHS          <- (Template / !NL .)*
 Template     <- '{{' Var ('|' Filter)? '}}'
 Var          <- 'rule_index' / Capture
@@ -27,7 +31,7 @@ Filter       <- 'pctenc' / 'pctdec'
 Capture      <- [A-Za-z_] [A-Za-z0-9_]*
 
 Op           <- '::=' / '::<' / '::>' / '::-' / '::!'
-ReservedOp   <- '::"' / '::#' / '::$' / '::%' / '::&' / '::\'' / '::(' / '::)' / '::*' / '::+' / '::,' / '::.' / '::/' / ':::' / '::;' / '::?' / '::@' / '::[' / '::\\' / '::]' / '::^' / '::_' / '::`' / '::{' / '::|' / '::}' / '::~'
+ReservedOp   <- '::"' / '::#' / '::$' / '::%' / '::&' / '::\'' / '::(' / '::)' / '::*' / '::+' / '::,' / '::.' / '::/' / ':::' / '::;' / '::?' / '::@' / '::[' / '::\\' / '::]' / '::^' / '::_' / '::`' / '::{' / '::}' / '::~'
 
 Name         <- [A-Z] [A-Z0-9_]*
 Blank        <- WS*
