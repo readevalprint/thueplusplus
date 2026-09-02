@@ -20,9 +20,7 @@ LHSBody      <- LHSUnit* LHSNonWS LHSUnit*
 LHSUnit      <- !ReservedOp !Op !MidOp !NL .
 LHSNonWS     <- !ReservedOp !Op !MidOp !WS !NL .
 Regex        <- (!ReservedOp !Op !MidOp !NL .)*
-Mid          <- MidOp MidBody
-MidBody      <- WS* Capture '[' MidKey ']' ('=' Regex)? WS*
-MidKey       <- (!']' .)+
+Mid          <- MidOp WS* Regex WS*
 MidOp        <- '::|'
 RHS          <- (Template / !NL .)*
 Template     <- '{{' Var ('|' Filter)? '}}'
