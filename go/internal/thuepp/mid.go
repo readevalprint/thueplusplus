@@ -6,90 +6,11 @@ import (
 	"strings"
 )
 
-// Mid is one ::| clause.
-// Pattern is a regex. {{templates}} come from earlier captures.
-// Named captures bind for later mids and the RHS.
-// After template expansion the regex is searched against the whole state.
+// Mid is one ::| clause: a regex over the whole state.
+// {{templates}} come from earlier captures. Named captures bind forward.
 // No match skips the rule. Invalid expanded regex is an error.
 type Mid struct {
 	Pattern string
-}
-
-func isRuleOpChar(c byte) bool {
-	switch c {
-	case '=', '<', '>', '!', '-', '|':
-		return true
-	}
-	return false
-}
-
-func operatorFromChar(c byte) (Operator, bool) {
-	switch c {
-	case '=':
-		return Substitute, true
-	case '<':
-		return Read, true
-	case '>':
-		return Write, true
-	case '-':
-		return Exit, true
-	case '!':
-		return Builtin, true
-	default:
-		return "", false
-	}
-}
-
-func unescapedColonColon(line string, i int) bool {
-	if i+1 >= len(line) || line[i] != ':' || line[i+1] != ':' {
-		return false
-	}
-	if i > 0 && line[i-1] == '\\' {
-		return false
-	}
-	return true
-}
-
-func splitRuleLine(line string) (lhs string, mids []string, op Operator, rhs string, ok bool, err error) {
-	i := 0
-	lhsSet := false
-	for i < len(line) {
-		if !unescapedColonColon(line, i) {
-			i++
-			continue
-		}
-		if i+2 >= len(line) {
-			return "", nil, "", "", false, nil
-		}
-		c := line[i+2]
-		if c == '|' {
-			if !lhsSet {
-				lhs = line[:i]
-				lhsSet = true
-			}
-			j := i + 3
-			for j < len(line) {
-				if unescapedColonColon(line, j) && j+2 < len(line) && isRuleOpChar(line[j+2]) {
-					break
-				}
-				j++
-			}
-			if j >= len(line) || !unescapedColonColon(line, j) {
-				return "", nil, "", "", false, fmt.Errorf("::| requires a terminal operator")
-			}
-			mids = append(mids, line[i+3:j])
-			i = j
-			continue
-		}
-		if opVal, found := operatorFromChar(c); found {
-			if !lhsSet {
-				lhs = line[:i]
-			}
-			return lhs, mids, opVal, line[i+3:], true, nil
-		}
-		return "", nil, "", "", false, nil
-	}
-	return "", nil, "", "", false, nil
 }
 
 func parseMid(text string, lineNumber int) (Mid, error) {
