@@ -17,7 +17,7 @@ func runSource(t *testing.T, src string) (int, string, error) {
 }
 
 func TestMidHitBindsValue(t *testing.T) {
-	src := "^MAP:(?<idx>.*)$ ::| idx[a]=(?<v>.*) ::= {{v}}\n::=\nMAP:a=hello,b=world"
+	src := "^KEY=(?<k>[^\\n]+)\\n.*$ ::| {{k}}=(?<v>[^,\\n]*) ::= {{v}}\n::=\nKEY=a\na=hello,b=world"
 	code, state, err := runSource(t, src)
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestMidHitBindsValue(t *testing.T) {
 }
 
 func TestMidMissSkipsRule(t *testing.T) {
-	src := "^MAP:(?<idx>.*)$ ::| idx[z]=(?<v>.*) ::= {{v}}\n^MAP: ::- 3\n::=\nMAP:a=hello"
+	src := "^KEY=(?<k>[^\\n]+)\\n.*$ ::| {{k}}=(?<v>[^,\\n]*) ::= {{v}}\n^KEY= ::- 3\n::=\nKEY=z\na=hello"
 	code, _, err := runSource(t, src)
 	if err != nil {
 		t.Fatal(err)
@@ -41,19 +41,8 @@ func TestMidMissSkipsRule(t *testing.T) {
 	}
 }
 
-func TestMidFirstWins(t *testing.T) {
-	src := "^MAP:(?<idx>.*)$ ::| idx[a]=(?<v>.*) ::= {{v}}\n::=\nMAP:a=first,a=second"
-	_, state, err := runSource(t, src)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if state != "first" {
-		t.Fatalf("state=%q want first", state)
-	}
-}
-
 func TestMidChain(t *testing.T) {
-	src := "^MAP:(?<idx>.*)$ ::| idx[a]=(?<ak>.*) ::| idx[b]=(?<bv>.*) ::= {{ak}}-{{bv}}\n::=\nMAP:a=1,b=2"
+	src := "^MAP:.*$ ::| a=(?<ak>[^,]*) ::| b=(?<bv>[^,]*) ::= {{ak}}-{{bv}}\n::=\nMAP:a=1,b=2"
 	_, state, err := runSource(t, src)
 	if err != nil {
 		t.Fatal(err)
@@ -63,30 +52,19 @@ func TestMidChain(t *testing.T) {
 	}
 }
 
-func TestMidTemplatedKey(t *testing.T) {
-	src := "^(?<k>[^=]+)=(?<idx>.*)$ ::| idx[{{k}}]=(?<v>.*) ::= {{v}}\n::=\na=a=hello,b=x"
+func TestMidSearchesWholeState(t *testing.T) {
+	src := "^START$ ::| secret=(?<v>[^\\n]*) ::= {{v}}\n::=\nSTART\nsecret=ok"
 	_, state, err := runSource(t, src)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state != "hello" {
+	if state != "ok\nsecret=ok" {
 		t.Fatalf("state=%q", state)
 	}
 }
 
-func TestMidMalformedRegionErrors(t *testing.T) {
-	src := "^MAP:(?<idx>.*)$ ::| idx[a]=(?<v>.*) ::= {{v}}\n::=\nMAP:not-an-index"
-	_, _, err := runSource(t, src)
-	if err == nil {
-		t.Fatal("expected malformed region error")
-	}
-	if !strings.Contains(err.Error(), "malformed MID region") {
-		t.Fatalf("err=%v", err)
-	}
-}
-
 func TestMidRequiresTerminalOp(t *testing.T) {
-	src := "^(?<idx>.*)$ ::| idx[a]\n::=\na=1"
+	src := "^x$ ::| a=(?<v>.*)\n::=\nx"
 	_, _, err := runSource(t, src)
 	if err == nil {
 		t.Fatal("expected parse error")
@@ -94,7 +72,7 @@ func TestMidRequiresTerminalOp(t *testing.T) {
 }
 
 func TestMidBuiltinUsesValueCapture(t *testing.T) {
-	src := "^MAP:(?<idx>.*)$ ::| idx[a]=(?<v>.*) ::! eq v v\n::=\nMAP:a=x"
+	src := "^MAP:.*$ ::| a=(?<v>[^,]*) ::! eq v v\n::=\nMAP:a=x"
 	_, state, err := runSource(t, src)
 	if err != nil {
 		t.Fatal(err)
@@ -104,13 +82,13 @@ func TestMidBuiltinUsesValueCapture(t *testing.T) {
 	}
 }
 
-func TestMidPresenceOnly(t *testing.T) {
-	src := "^MAP:(?<idx>.*)$ ::| idx[a] ::= HIT\n::=\nMAP:a=1,b=2"
-	_, state, err := runSource(t, src)
-	if err != nil {
-		t.Fatal(err)
+func TestMidInvalidExpandedRegexErrors(t *testing.T) {
+	src := "^(?<k>.*)$ ::| {{k}} ::= x\n::=\n("
+	_, _, err := runSource(t, src)
+	if err == nil {
+		t.Fatal("expected invalid regex error")
 	}
-	if state != "HIT" {
-		t.Fatalf("state=%q", state)
+	if !strings.Contains(err.Error(), "Invalid ::| regex") {
+		t.Fatalf("err=%v", err)
 	}
 }
