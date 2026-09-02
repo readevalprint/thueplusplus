@@ -1,0 +1,8 @@
+name = "mid chain"
+program = "../chain.tpp"
+input = "MAP:a=1,b=2"
+
+[expect]
+stdout = ""
+stderr = ""
+exit_code = 0
