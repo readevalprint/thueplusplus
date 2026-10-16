@@ -489,6 +489,7 @@ async function executeProgram(options: { maxSteps?: number; status: string; coll
     const trace = result.trace ?? []
     if (typeof result.evalCount === 'number') probeCount.value += result.evalCount
     if (trace.length > 0) appliedSteps.value += trace.length
+    else if (typeof result.appliedSteps === 'number') appliedSteps.value = result.appliedSteps
     appendStateDiffs(trace)
     if (options.collapsedHistory) appendCollapsedEndDiff(runState, nextState ?? runState, result.evalCount)
     const pendingResource = pendingInputResource(result)

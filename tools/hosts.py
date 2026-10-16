@@ -74,13 +74,26 @@ def host_timeout(seconds: float, host_id: str) -> float:
     return scaled
 
 
-def build_registered(build_root: Path) -> list:
-    """Build every registry host and return conformance Interpreter values."""
+def build_registered(build_root: Path, hosts: tuple[str, ...] | None = None) -> list:
+    """Build registry hosts and return conformance Interpreter values.
+
+    hosts=None builds every host in hosts.toml. A name outside the registry
+    fails. The returned list follows the requested order, or the file order.
+    """
     from example_runner import Interpreter
 
+    known = {host.id: host for host in load_hosts()}
+    if hosts is None:
+        ordered = list(known.values())
+    else:
+        selected = tuple(dict.fromkeys(hosts))
+        unknown = [name for name in selected if name not in known]
+        if unknown:
+            raise HostError(f"unknown host(s): {', '.join(unknown)}")
+        ordered = [known[name] for name in selected]
     build_root.mkdir(parents=True, exist_ok=True)
     interpreters = []
-    for host in load_hosts():
+    for host in ordered:
         if host.build:
             _run_build(host)
         interpreters.append(Interpreter(host.id, host.command, host.env))

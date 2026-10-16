@@ -1,0 +1,10 @@
+program = "../max-evals.tpp"
+
+[[case]]
+name = "one probe then the eval limit exits 11"
+args = ["--max-evals", "1"]
+
+[case.expect]
+exit_code = 11
+stdout = ""
+stderr = "Error: Evaluation step limit (1) exceeded\n"

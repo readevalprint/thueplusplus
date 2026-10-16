@@ -23,7 +23,7 @@ TASK_SOURCE = "make tasks"
 ENTRY_KEYS = frozenset({"commit", "author", "timestamp", "guests", "tasks", "benchmarks"})
 GUEST_KEYS = frozenset({"program", "rule_lines", "error"})
 TASK_KEYS = frozenset({"source", "results"})
-TASK_ROW_KEYS = frozenset({"task", "guest", "host", "pass", "status", "applied_steps", "probes"})
+TASK_ROW_KEYS = frozenset({"task", "guest", "host", "environment", "pass", "status", "applied_steps", "probes"})
 BENCHMARK_KEYS = frozenset(
     {
         "program",
@@ -36,7 +36,7 @@ BENCHMARK_KEYS = frozenset(
     }
 )
 BENCHMARK_HOST_KEYS = frozenset(
-    {"duration_ms", "exit_code", "applied_steps", "probes", "host_timeout_seconds"}
+    {"duration_ms", "exit_code", "applied_steps", "probes", "host_timeout_seconds", "environment"}
 )
 BENCHMARK_TOML_KEYS = frozenset(
     {"program", "max_steps", "max_evals", "max_state_bytes", "timeout_seconds", "memory_cap_bytes"}
@@ -46,6 +46,47 @@ COUNTS_KEYS = frozenset({"applied_steps", "probes"})
 
 class HistoryError(ValueError):
     pass
+
+
+REQUIRED_ENVIRONMENTS = {
+    "python": "python",
+    "go": "go native",
+    "wasm": "wasm (node)",
+    "rust": "rust",
+}
+ENVIRONMENTS_PATH = Path(__file__).resolve().parent / "environments.json"
+
+
+def load_environments() -> dict[str, str]:
+    try:
+        data = json.loads(ENVIRONMENTS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HistoryError(f"{ENVIRONMENTS_PATH}: {exc}") from exc
+    if data != REQUIRED_ENVIRONMENTS:
+        raise HistoryError(f"{ENVIRONMENTS_PATH.name} must be {REQUIRED_ENVIRONMENTS}, got {data}")
+    if len(set(data.values())) != len(data):
+        raise HistoryError("environment labels must be unique")
+    if "wasm" in data["go"] or data["wasm"] == data["go"]:
+        raise HistoryError("go native and wasm (node) must stay distinct")
+    return data
+
+
+def environment_for(host: str) -> str:
+    try:
+        return load_environments()[host]
+    except KeyError as exc:
+        raise HistoryError(f"host {host!r} has no environment label") from exc
+
+
+def assert_environment(host: str, environment: str) -> str:
+    expected = environment_for(host)
+    if environment != expected:
+        raise HistoryError(f"host {host} is {expected}, not {environment}")
+    if host == "go" and "wasm" in environment:
+        raise HistoryError("go native timing labeled as wasm")
+    if host == "wasm" and environment == REQUIRED_ENVIRONMENTS["go"]:
+        raise HistoryError("wasm timing labeled as go native")
+    return expected
 
 
 def parse_counts(text: str) -> tuple[int, int]:
@@ -151,6 +192,7 @@ def task_row(
         raise HistoryError(f"status {status!r}")
     if host not in host_ids():
         raise HistoryError(f"unknown host {host!r}")
+    environment = environment_for(host)
     if not task or not guest:
         raise HistoryError("task and guest must be non-empty")
     if status == "pass" and (applied_steps is None or probes is None):
@@ -161,6 +203,7 @@ def task_row(
         "task": task,
         "guest": guest,
         "host": host,
+        "environment": environment,
         "pass": status == "pass",
         "status": status,
         "applied_steps": applied_steps,
@@ -294,6 +337,7 @@ def _validate_tasks(commit: str, tasks) -> None:
             raise HistoryError(f"{commit}: duplicate task row {identity}")
         seen.add(identity)
         task_row(row["task"], row["guest"], row["host"], row["status"], row["applied_steps"], row["probes"])
+        assert_environment(row["host"], row["environment"])
         if row["pass"] is not (row["status"] == "pass"):
             raise HistoryError(f"{commit}: pass does not match status for {identity}")
 
@@ -320,6 +364,7 @@ def _validate_benchmarks(commit: str, benchmarks) -> None:
     for host, row in hosts.items():
         if not isinstance(row, dict) or set(row) != BENCHMARK_HOST_KEYS:
             raise HistoryError(f"{commit} {host}: benchmark host keys must be {', '.join(sorted(BENCHMARK_HOST_KEYS))}")
+        assert_environment(host, row["environment"])
         _non_negative_int(row["duration_ms"], f"{commit} {host} duration_ms")
         if isinstance(row["exit_code"], bool) or not isinstance(row["exit_code"], int):
             raise HistoryError(f"{commit} {host}: exit_code must be an integer")

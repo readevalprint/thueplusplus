@@ -20,6 +20,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+import environments
 from run_limits import (
     DEFAULT_TIMEOUT_SECONDS,
     apply_explicit_limits,
@@ -411,9 +412,13 @@ def run_manifest_case_set(
         coverage_path = case_tmp / "rule-coverage.tsv"
         if interpreter.name == "python":
             extra_args = ["--rule-coverage", str(coverage_path)]
-        results.append(run_case(interpreter, config_path, case, case_tmp, extra_args=extra_args))
+        result = run_case(interpreter, config_path, case, case_tmp, extra_args=extra_args)
+        results.append(result)
         if interpreter.name == "python":
-            coverage_counts.update(read_coverage(coverage_path))
+            # Exit 2 before the program starts does not write coverage. A program
+            # that reaches ::- 2 still writes the file.
+            if not (result.exit_code == 2 and not coverage_path.is_file()):
+                coverage_counts.update(read_coverage(coverage_path))
     assert_parity(config_path, case, results)
     return program, coverage_counts
 
@@ -460,43 +465,44 @@ def check_rule_coverage(
         raise RuntimeError("rule coverage failed\n" + "\n".join(failures))
 
 
-def run_configs(interpreters: list[Interpreter], configs: list[Path], *, jobs: int = INTERNAL_JOBS) -> int:
-    jobs = max(1, jobs)
+def run_configs(
+    interpreters: list[Interpreter],
+    configs: list[Path],
+    *,
+    jobs: int = INTERNAL_JOBS,
+    coverage: bool = True,
+) -> int:
     work: list[tuple[Path, dict]] = []
-    has_success_by_program: dict[Path, bool] = {}
     for config_path in configs:
         data = load_toml(config_path)
         for case in expand_cases(data, config_path):
-            program = case_program(config_path, case)
-            has_success_by_program[program] = has_success_by_program.get(program, False) or case.get("expect", {}).get("exit_code") == 0
             work.append((config_path, case))
+    return run_work(interpreters, work, coverage=coverage, jobs=jobs)
 
-    coverage_by_program: dict[Path, Counter[str]] = {program: Counter() for program in has_success_by_program}
-    with tempfile.TemporaryDirectory(prefix="thuepp-examples-") as tmpdir:
-        root_tmp = Path(tmpdir)
-        if jobs == 1 or len(work) <= 1:
-            for config_path, case in work:
-                program, counts = run_manifest_case_set(interpreters, config_path, case, root_tmp)
-                coverage_by_program[program].update(counts)
-        else:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
-                futures = [
-                    executor.submit(run_manifest_case_set, interpreters, config_path, case, root_tmp)
-                    for config_path, case in work
-                ]
-                for future in futures:
-                    program, counts = future.result()
-                    coverage_by_program[program].update(counts)
 
-    names = ", ".join(interpreter.name for interpreter in interpreters)
-    print(f"parity: {len(work)} cases passed for {names}")
-    python_interpreter = next(interpreter for interpreter in interpreters if interpreter.name == "python")
-    check_rule_coverage(python_interpreter, coverage_by_program, has_success_by_program)
-    return 0
+_GO_BUILD_INPUTS = {".go", ".mod", ".sum"}
+
+
+def _artifact_stale(artifact: Path) -> bool:
+    if not artifact.is_file():
+        return True
+    stamp = artifact.stat().st_mtime
+    root = ROOT / "go"
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        if path.suffix not in _GO_BUILD_INPUTS and path.name not in {"go.mod", "go.sum"}:
+            continue
+        if path.stat().st_mtime > stamp:
+            return True
+    return False
 
 
 def build_wasm(build_root: Path) -> Path:
     wasm_artifact = build_root / "thuepp.wasm"
+    if not _artifact_stale(wasm_artifact):
+        return wasm_artifact
+    build_root.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env.update({"GOOS": "js", "GOARCH": "wasm", "CGO_ENABLED": "0"})
     completed = subprocess.run(
@@ -514,26 +520,137 @@ def build_wasm(build_root: Path) -> Path:
     return wasm_artifact
 
 
-def build_interpreters(build_root: Path) -> list[Interpreter]:
+def build_interpreters(build_root: Path, hosts: tuple[str, ...] | None = None) -> list[Interpreter]:
+    wanted = ("python", "go", "wasm") if hosts is None else hosts
+    unknown = [name for name in wanted if name not in {"python", "go", "wasm"}]
+    if unknown:
+        raise RuntimeError(f"unknown built-in host(s): {', '.join(unknown)}")
     build_root.mkdir(parents=True, exist_ok=True)
-    go_artifact = build_root / "go-thuepp"
-    completed = subprocess.run(
-        ["go", "build", "-o", str(go_artifact), "./cmd/thuepp"],
-        cwd=ROOT / "go",
-        capture_output=True,
-        text=True,
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(
-            "go implementation build failed with exit "
-            f"{completed.returncode}\nstdout={completed.stdout!r}\nstderr={completed.stderr!r}"
+    interpreters: list[Interpreter] = []
+    if "python" in wanted:
+        interpreters.append(Interpreter("python", ("uv", "run", "thuepp")))
+    if "go" in wanted:
+        go_artifact = build_root / "go-thuepp"
+        if _artifact_stale(go_artifact):
+            completed = subprocess.run(
+                ["go", "build", "-o", str(go_artifact), "./cmd/thuepp"],
+                cwd=ROOT / "go",
+                capture_output=True,
+                text=True,
+            )
+            if completed.returncode != 0:
+                raise RuntimeError(
+                    "go implementation build failed with exit "
+                    f"{completed.returncode}\nstdout={completed.stdout!r}\nstderr={completed.stderr!r}"
+                )
+        interpreters.append(Interpreter("go", (str(go_artifact),)))
+    if "wasm" in wanted:
+        wasm_artifact = build_wasm(build_root)
+        interpreters.append(
+            Interpreter("wasm", ("node", str(ROOT / "js" / "src" / "cli.js")), (("THUEPP_WASM", str(wasm_artifact)),))
         )
-    wasm_artifact = build_wasm(build_root)
-    return [
-        Interpreter("python", ("uv", "run", "thuepp")),
-        Interpreter("go", (str(go_artifact),)),
-        Interpreter("wasm", ("node", str(ROOT / "js" / "src" / "cli.js")), (("THUEPP_WASM", str(wasm_artifact)),)),
-    ]
+    return interpreters
+
+
+GUEST_DIRS = frozenset({"forth", "lisp", "basic", "brainfuck"})
+# One case per core feature. Guest languages are not in this list.
+CORE_CASES: tuple[tuple[str, str | None], ...] = (
+    ("examples/hello/tests/basic.toml", None),
+    ("examples/pattern-order/tests/basic.toml", None),
+    ("examples/mid/tests/literal.toml", "captured dot is a wildcard"),
+    ("examples/mid/tests/filter.toml", "pctenc text is inserted as regex source"),
+    ("examples/pct/tests/basic.toml", "pctenc builtin encodes unsafe bytes"),
+    ("examples/template-delimiters/tests/basic.toml", None),
+    ("examples/pattern-alias/tests/dollar_transitive.toml", None),
+    ("examples/pattern-alias/tests/rhs_literal.toml", "rhs replacement leaves dollar alias text literal"),
+    ("examples/source-parsing/tests/no_separator_empty_state.toml", None),
+    ("examples/trace/tests/rule-failure.toml", "matched builtin failure records a trace event then returns 1"),
+    ("examples/trace/tests/state-limit.toml", "state limit records the rejected replacement then returns 12"),
+    ("examples/limits/tests/max_steps.toml", "one applied step stops before the second rewrite"),
+    ("examples/limits/tests/max_evals.toml", None),
+    ("examples/limits/tests/cli_usage.toml", None),
+    ("examples/process/tests/line-read.toml", None),
+    ("examples/process/tests/line-timeout.toml", None),
+    ("examples/builtin/tests/bad-unknown.toml", "unknown builtin fails loudly"),
+)
+
+
+def is_guest_manifest(path: Path) -> bool:
+    rel = path.resolve().relative_to((ROOT / "examples").resolve())
+    return bool(rel.parts) and rel.parts[0] in GUEST_DIRS
+
+
+def core_work() -> list[tuple[Path, dict]]:
+    work: list[tuple[Path, dict]] = []
+    for rel_path, expected_name in CORE_CASES:
+        config_path = ROOT / rel_path
+        if is_guest_manifest(config_path):
+            raise RuntimeError(f"core suite must not include guest manifest {rel_path}")
+        cases = expand_cases(load_toml(config_path), config_path)
+        if expected_name is None:
+            work.extend((config_path, case) for case in cases)
+            continue
+        matched = [case for case in cases if case_name(config_path, case) == expected_name]
+        if len(matched) != 1:
+            raise RuntimeError(f"{rel_path}: core case {expected_name!r} matched {len(matched)}")
+        work.append((config_path, matched[0]))
+    return work
+
+
+def guest_work() -> list[tuple[Path, dict]]:
+    work: list[tuple[Path, dict]] = []
+    for config_path in collect_configs([]):
+        if not is_guest_manifest(config_path):
+            continue
+        for case in expand_cases(load_toml(config_path), config_path):
+            work.append((config_path, case))
+    if not work:
+        raise RuntimeError("guest tier found no Forth, Lisp, BASIC, or Brainfuck manifests")
+    return work
+
+
+def run_work(
+    interpreters: list[Interpreter],
+    work: list[tuple[Path, dict]],
+    *,
+    coverage: bool,
+    jobs: int = INTERNAL_JOBS,
+) -> int:
+    if not work:
+        raise RuntimeError("no cases to run")
+    for interpreter in interpreters:
+        environments.label(interpreter.name)
+    has_success_by_program: dict[Path, bool] = {}
+    for config_path, case in work:
+        program = case_program(config_path, case)
+        has_success_by_program[program] = has_success_by_program.get(program, False) or case.get("expect", {}).get("exit_code") == 0
+    coverage_by_program: dict[Path, Counter[str]] = {program: Counter() for program in has_success_by_program}
+    jobs = max(1, jobs)
+    with tempfile.TemporaryDirectory(prefix="thuepp-examples-") as tmpdir:
+        root_tmp = Path(tmpdir)
+        if jobs == 1 or len(work) <= 1:
+            for config_path, case in work:
+                program, counts = run_manifest_case_set(interpreters, config_path, case, root_tmp)
+                coverage_by_program[program].update(counts)
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
+                futures = [
+                    executor.submit(run_manifest_case_set, interpreters, config_path, case, root_tmp)
+                    for config_path, case in work
+                ]
+                for future in futures:
+                    program, counts = future.result()
+                    coverage_by_program[program].update(counts)
+    names = ", ".join(environments.label(interpreter.name) for interpreter in interpreters)
+    print(f"parity: {len(work)} cases passed for {names}")
+    if not coverage:
+        print("rule coverage: full tier owns this gate")
+        return 0
+    python_interpreter = next((interpreter for interpreter in interpreters if interpreter.name == "python"), None)
+    if python_interpreter is None:
+        raise RuntimeError("rule coverage runs on the python host")
+    check_rule_coverage(python_interpreter, coverage_by_program, has_success_by_program)
+    return 0
 
 
 def collect_configs(configs: list[Path]) -> list[Path]:
@@ -565,22 +682,58 @@ def parse_impl(spec: str) -> Interpreter:
     argv = tuple(shlex.split(command, posix=True))
     if not argv:
         raise RuntimeError(f"--impl command is empty: {spec!r}")
+    environments.label(name)
     return Interpreter(name, argv)
+
+
+def _select_hosts(only: list[str], extras: list[Interpreter]) -> tuple[list[str], list[Interpreter]]:
+    extra_by_name = {item.name: item for item in extras}
+    if not only:
+        return ["python", "go", "wasm"], extras
+    builtin: list[str] = []
+    selected_extras: list[Interpreter] = []
+    for name in only:
+        if name in {"python", "go", "wasm"}:
+            builtin.append(name)
+            continue
+        if name not in extra_by_name:
+            raise RuntimeError(f"--only {name} needs --impl {name}=COMMAND")
+        selected_extras.append(extra_by_name[name])
+    return builtin, selected_extras
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run shared thue++ example manifests with mandatory Python/Go/wasm parity and rule coverage")
     parser.add_argument("configs", type=Path, nargs="*", help="optional explicit example TOML manifest(s); defaults to examples/**/tests/*.toml")
     parser.add_argument("--impl", action="append", default=[], metavar="NAME=COMMAND", help="extra command included in the parity set; COMMAND is split on shell quoting")
+    parser.add_argument("--tier", choices=("core", "guests", "full"), default="full")
+    parser.add_argument("--only", action="append", default=[], help="run one named host; repeatable")
     args = parser.parse_args(argv)
+    if args.configs and args.tier != "full":
+        raise RuntimeError("explicit manifests are the full tier; omit --tier")
     extras = [parse_impl(spec) for spec in args.impl]
     extra_names = [item.name for item in extras]
     if len(extra_names) != len(set(extra_names)):
         raise RuntimeError("duplicate --impl name")
-    configs = collect_configs(args.configs)
-    with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
-        interpreters = [*build_interpreters(Path(tmpdir)), *extras]
-        return run_configs(interpreters, configs)
+    if args.tier == "guests":
+        if args.only not in ([], ["go"]):
+            raise RuntimeError("guest programs run on the go native host")
+        hosts = ["go"]
+        selected_extras: list[Interpreter] = []
+        work = guest_work()
+        coverage = False
+    elif args.tier == "core":
+        hosts, selected_extras = _select_hosts(args.only, extras)
+        work = core_work()
+        coverage = False
+    else:
+        hosts, selected_extras = _select_hosts(args.only, extras)
+        work = None
+        coverage = True
+    interpreters = [*build_interpreters(ROOT / "build", hosts=tuple(hosts)), *selected_extras]
+    if work is None:
+        return run_configs(interpreters, collect_configs(args.configs), coverage=coverage)
+    return run_work(interpreters, work, coverage=coverage)
 
 
 if __name__ == "__main__":

@@ -73,8 +73,10 @@ class HistoryTests(unittest.TestCase):
             }
         )
         self.assertEqual(rows[0]["pass"], True)
+        self.assertEqual(rows[0]["environment"], "python")
         self.assertEqual(rows[0]["applied_steps"], 4)
         self.assertEqual(rows[0]["probes"], 9)
+        self.assertEqual(rows[1]["environment"], "go native")
         self.assertEqual(rows[1]["pass"], False)
         self.assertIsNone(rows[1]["probes"])
 
@@ -120,6 +122,7 @@ class HistoryTests(unittest.TestCase):
                     "task": "factorial",
                     "guest": "lisp",
                     "host": "python",
+                    "environment": "python",
                     "pass": True,
                     "status": "pass",
                     "applied_steps": 1,
@@ -129,6 +132,30 @@ class HistoryTests(unittest.TestCase):
         }
         with self.assertRaises(historylib.HistoryError):
             historylib.validate_history({"schema_version": 1, "entries": [broken]}, require_measurement=False)
+
+    def test_swapped_environment_is_rejected(self) -> None:
+        swapped = entry(COMMIT_A, "2026-10-16T00:00:01Z")
+        swapped["benchmarks"] = {
+            "program": "benchmark.tpp",
+            "max_steps": 1,
+            "max_evals": 1,
+            "max_state_bytes": 1,
+            "timeout_seconds": 1,
+            "memory_cap_bytes": 1,
+            "hosts": {
+                host: {
+                    "duration_ms": 1,
+                    "exit_code": 0,
+                    "applied_steps": 1,
+                    "probes": 1,
+                    "host_timeout_seconds": 1,
+                    "environment": "wasm (node)" if host == "go" else historylib.environment_for(host),
+                }
+                for host in historylib.host_ids()
+            },
+        }
+        with self.assertRaises(historylib.HistoryError):
+            historylib.validate_history({"schema_version": 1, "entries": [swapped]}, require_measurement=False)
 
     def test_history_only_matches_the_bookkeeping_path(self) -> None:
         self.assertTrue(historylib.history_only(["metrics/history.json"]))
@@ -228,6 +255,7 @@ def _benchmark(*hosts: str) -> dict:
                 "applied_steps": 10,
                 "probes": 12,
                 "host_timeout_seconds": 30,
+                "environment": historylib.environment_for(host),
             }
             for host in hosts
         },

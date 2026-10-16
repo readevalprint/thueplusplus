@@ -85,7 +85,7 @@ def run_make_tasks() -> None:
         str(SUITE_TIMEOUT_KILL_SECONDS),
         str(SUITE_TIMEOUT_SECONDS),
         "make",
-        "tasks",
+        "tasks-full",
     ]
     completed = subprocess.run(command, cwd=ROOT)
     if not RESULTS_PATH.is_file():
@@ -179,12 +179,14 @@ def run_benchmarks(limits: dict) -> dict:
             if not counts_path.is_file():
                 raise RecordError(f"benchmark {host} did not write counts")
             applied, probes = historylib.parse_counts(counts_path.read_text(encoding="utf-8"))
+        environment = historylib.environment_for(host)
         return host, {
             "duration_ms": duration_ms,
             "exit_code": completed.returncode,
             "applied_steps": applied,
             "probes": probes,
             "host_timeout_seconds": int(timeout) if timeout == int(timeout) else timeout,
+            "environment": environment,
         }
 
     with ThreadPoolExecutor(max_workers=len(registered)) as pool:
@@ -193,7 +195,8 @@ def run_benchmarks(limits: dict) -> dict:
     probes = {row["probes"] for row in rows.values()}
     if len(steps) != 1 or len(probes) != 1:
         rendered = ", ".join(
-            f"{host} steps={rows[host]['applied_steps']} probes={rows[host]['probes']}" for host in registered
+            f"{rows[host]['environment']} steps={rows[host]['applied_steps']} probes={rows[host]['probes']}"
+            for host in registered
         )
         raise RecordError(f"benchmark hosts disagree: {rendered}")
     return {
@@ -205,6 +208,17 @@ def run_benchmarks(limits: dict) -> dict:
         "memory_cap_bytes": limits["memory_cap_bytes"],
         "hosts": {host: rows[host] for host in registered},
     }
+
+
+def print_benchmarks(benchmarks: dict) -> None:
+    for host in host_ids():
+        row = benchmarks["hosts"].get(host)
+        if row is None:
+            continue
+        historylib.assert_environment(host, row["environment"])
+        print(
+            f"benchmark {row['environment']}: {row['duration_ms']} ms exit {row['exit_code']}"
+        )
 
 
 def already_measured(document: dict, head: str) -> bool:
@@ -233,6 +247,7 @@ def measure(results_path: Path | None, *, force: bool = False) -> int:
     tasks_document = load_tasks(results_path, head)
     tasks = {"source": historylib.TASK_SOURCE, "results": historylib.rows_from_tasks(tasks_document)}
     benchmarks = run_benchmarks(historylib.load_benchmark(BENCHMARK_TOML))
+    print_benchmarks(benchmarks)
     entry = {
         "commit": head,
         "author": git_text(["log", "-1", "--format=%an <%ae>", head]),

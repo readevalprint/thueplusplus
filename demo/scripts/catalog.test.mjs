@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { CatalogError, buildCatalog, sitemapXml, taskDescription, transcriptCases } from './build-catalog.mjs'
+import { CatalogError, buildCatalog, catalogFromSources, sitemapXml, taskDescription, transcriptCases } from './build-catalog.mjs'
 
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
 
@@ -163,6 +163,25 @@ describe('buildCatalog', () => {
       forth: { kind: 'solution', text: '1\n' },
       lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
     })), /results\.errors/)
+  })
+})
+
+describe('catalogFromSources', () => {
+  it('marks solutions unmeasured and does not claim a pass', () => {
+    const catalog = catalogFromSources(sourcesFor({
+      forth: { kind: 'solution', text: '1\n' },
+      lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
+    }))
+    assert.equal(catalog.commit, 'unmeasured')
+    assert.equal(catalog.guests[0].ruleCount, 0)
+    assert.equal(catalog.guests[0].passCount, 0)
+    const forth = catalog.tasks[0].guests.find(guest => guest.id === 'forth')
+    const lisp = catalog.tasks[0].guests.find(guest => guest.id === 'lisp')
+    assert.equal(forth.status, 'unmeasured')
+    assert.equal(forth.stepCount, null)
+    assert.equal(lisp.status, 'unsupported')
+    assert.equal(lisp.reason, 'Lisp cannot print plain text.')
+    assert.equal(catalog.tasks[0].guests.some(guest => guest.status === 'pass'), false)
   })
 })
 

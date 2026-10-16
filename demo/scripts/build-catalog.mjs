@@ -377,13 +377,87 @@ function writeSitemap(catalog) {
   writeFileSync(join(demoRoot, 'public', 'sitemap.xml'), sitemapXml(entries))
 }
 
-function main() {
-  if (!existsSync(resultsPath)) {
-    throw new CatalogError('build/tasks/results.json is missing. Run make tasks before building the site.')
+export function catalogFromSources(sources) {
+  const taskIds = requireStringList(sources.taskOrder, 'suite order')
+  const guests = sources.guests
+  if (!Array.isArray(guests) || guests.length === 0) throw new CatalogError('guests.toml has no guests')
+  const specVersion = readFileSync(join(repoRoot, 'SPEC_VERSION'), 'utf8').trim()
+  if (!specVersion) throw new CatalogError('SPEC_VERSION is empty')
+  const tasks = taskIds.map(taskId => buildUnmeasuredTask(sources, taskId, guests))
+  return {
+    schemaVersion: 1,
+    specVersion,
+    commit: 'unmeasured',
+    commitDirty: false,
+    author: 'unmeasured',
+    timestamp: '1970-01-01T00:00:00Z',
+    guests: guests.map(guest => buildUnmeasuredGuest(guest, tasks)),
+    tasks,
   }
-  const results = JSON.parse(readFileSync(resultsPath, 'utf8'))
+}
+
+function buildUnmeasuredTask(sources, taskId, guests) {
+  const file = sources.files?.[taskId]
+  if (!file) throw new CatalogError(`${taskId}: missing task files`)
+  const described = taskDescription(file.markdown, `${taskId}/task.md`)
+  const cases = transcriptCases(taskId, file.transcript)
+  const summary = described.description.split(/\n\n+/)[0].replace(/\s+/g, ' ').trim()
+  const path = `/tasks/${taskId}`
+  return {
+    id: taskId,
+    title: described.title,
+    description: described.description,
+    summary,
+    path,
+    canonical: `https://thuelang.org${path}`,
+    documentTitle: `${described.title} — Thue++ Tasks`,
+    cases,
+    guests: guests.map(guest => unmeasuredGuestResult(file, taskId, guest.id)),
+  }
+}
+
+function unmeasuredGuestResult(file, taskId, guestId) {
+  const solution = file.solutions?.[guestId]
+  if (!solution) throw new CatalogError(`${taskId}/${guestId}: missing solution file`)
+  const name = guestName(guestId)
+  if (solution.kind === 'unsupported') {
+    return { id: guestId, name, status: 'unsupported', stepCount: null, solution: null, solutionPath: null, reason: solution.reason, error: null }
+  }
+  return {
+    id: guestId,
+    name,
+    status: 'unmeasured',
+    stepCount: null,
+    solution: solution.text,
+    solutionPath: `tasks/${taskId}/solutions/${guestId}`,
+    reason: null,
+    error: null,
+  }
+}
+
+function buildUnmeasuredGuest(guest, tasks) {
+  return {
+    id: guest.id,
+    name: guestName(guest.id),
+    program: guest.program,
+    ruleCount: 0,
+    passCount: 0,
+    taskCount: tasks.length,
+    stepCount: 0,
+  }
+}
+
+function main() {
   const { taskOrder, guests } = loadSuite()
-  const catalog = buildCatalog(results, { taskOrder, guests, files: loadSources(taskOrder, guests) })
+  const sources = { taskOrder, guests, files: loadSources(taskOrder, guests) }
+  let catalog
+  if (!existsSync(resultsPath)) {
+    console.log('catalog: build/tasks/results.json is missing; statuses are unmeasured')
+    catalog = catalogFromSources(sources)
+  } else {
+    const results = JSON.parse(readFileSync(resultsPath, 'utf8'))
+    catalog = buildCatalog(results, sources)
+  }
   mkdirSync(dirname(catalogPath), { recursive: true })
   writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`)
   writeSitemap(catalog)

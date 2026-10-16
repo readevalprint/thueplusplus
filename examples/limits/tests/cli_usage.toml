@@ -1,0 +1,10 @@
+program = "../max-steps.tpp"
+
+[[case]]
+name = "non-integer step limit is cli usage"
+args = ["--max-steps", "nope"]
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "strconv.Atoi: parsing \"nope\": invalid syntax\n"

@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import environments  # noqa: E402
 import example_runner  # noqa: E402
 from hosts import build_registered, host_by_id, host_ids  # noqa: E402
 from run_limits import (  # noqa: E402
@@ -727,7 +728,9 @@ def _run_selected(tasks, guests, args, started: float) -> int:
     output = args.output if args.output.is_absolute() else ROOT / args.output
     with tempfile.TemporaryDirectory(prefix="thuepp-tasks-") as tmpname:
         tmp = Path(tmpname)
-        built = build_registered(ROOT / "build")
+        names = list(args.host) if args.host else list(host_ids())
+        build_names = tuple(dict.fromkeys(["python", *names]))
+        built = build_registered(ROOT / "build", hosts=build_names)
         by_name = {interpreter.name: interpreter for interpreter in built}
         python = by_name["python"]
         rule_info = _guest_rules(python, guests)
@@ -748,7 +751,7 @@ def _run_selected(tasks, guests, args, started: float) -> int:
                 rows.extend(produced)
                 for row in produced:
                     print(
-                        f"  {row['host']}: {row['status']} steps={row['step_count']} probes={row['probe_count']} {row['duration_ms']}ms",
+                        f"  {environments.label(row['host'])}: {row['status']} steps={row['step_count']} probes={row['probe_count']} {row['duration_ms']}ms",
                         file=sys.stderr,
                     )
         document = build_document(

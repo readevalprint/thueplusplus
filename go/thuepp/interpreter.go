@@ -51,6 +51,10 @@ type Rule struct {
 	SourcePath  string
 	BuiltinName string
 	BuiltinArgs []string
+	// literalPrefix is text that begins every match. An empty prefix means
+	// the engine has to run the regex. A miss skips the regex; the regex
+	// still decides a hit, so anchors and groups stay exact.
+	literalPrefix string
 }
 
 type sourceRow struct {
@@ -519,6 +523,7 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Line %d: Invalid regex '%s': %v", lineNumber, lhs, err)
 	}
+	literalPrefix := literalPrefixOf(lhs)
 	builtinName := ""
 	var builtinArgs []string
 	if op == Builtin {
@@ -532,7 +537,7 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 			return nil, err
 		}
 	}
-	return &Rule{LHS: lhs, Pattern: re, Mids: mids, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
+	return &Rule{LHS: lhs, Pattern: re, Mids: mids, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs, literalPrefix: literalPrefix}, nil
 }
 
 func (i *Interpreter) ApplyInputOverride(value string) error {
@@ -1319,11 +1324,39 @@ func findMatch(rule Rule, state string) (matchInfo, bool) {
 	return findMatchFrom(rule, state, 0)
 }
 
+// literalPrefixOf is the literal text that begins every match of lhs.
+// The runner compiles lhs under (?m). A leading ^ is zero-width, so Go's
+// LiteralPrefix stops before the text the match actually starts with.
+// Skipping that ^ recovers the prefix. A miss is not a match. A hit still
+// goes through the original regexp, so anchors and captures stay put.
+func literalPrefixOf(lhs string) string {
+	// (?i) would make a case-sensitive Contains reject a match. No prefix then.
+	if strings.Contains(lhs, "(?i") {
+		return ""
+	}
+	body := lhs
+	if strings.HasPrefix(body, "^") {
+		body = body[1:]
+	}
+	re, err := regexp.Compile(body)
+	if err != nil {
+		return ""
+	}
+	prefix, _ := re.LiteralPrefix()
+	return prefix
+}
+
 func findMatchFrom(rule Rule, state string, pos int) (matchInfo, bool) {
 	if pos > len(state) {
 		return matchInfo{}, false
 	}
 	suffix := state[pos:]
+	// Most probes miss. A literal prefix is decided with a byte search, which
+	// is cheaper than the regexp interpreter, and a miss cannot be a match.
+	// The regexp still runs on a possible hit so ^, $, and captures do not move.
+	if rule.literalPrefix != "" && !strings.Contains(suffix, rule.literalPrefix) {
+		return matchInfo{}, false
+	}
 	idx := rule.Pattern.FindStringSubmatchIndex(suffix)
 	if idx == nil {
 		return matchInfo{}, false
