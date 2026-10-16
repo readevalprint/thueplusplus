@@ -29,7 +29,7 @@ function current(path: string): 'page' | undefined {
 </script>
 
 <template>
-  <header class="bg-void border-line sticky top-0 z-30 flex h-[52px] items-center gap-3 border-b px-4 font-mono text-[13px] sm:px-6">
+  <header data-test="site-header" class="bg-void border-line sticky top-0 z-30 flex h-[52px] items-center gap-3 border-b px-4 font-mono text-[13px] sm:px-6">
     <RouterLink to="/" class="flex items-center gap-2 text-bone" :aria-current="route.path === '/' ? 'page' : undefined">
       <Mark />
       <span class="font-display font-semibold tracking-[-0.03em] max-[640px]:sr-only">Thue++</span>

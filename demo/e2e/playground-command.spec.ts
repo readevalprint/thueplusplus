@@ -5,7 +5,7 @@ async function openExamples(page: Page): Promise<void> {
 }
 
 async function showOutput(page: Page): Promise<void> {
-  await page.getByTestId('playground-tab-output').click()
+  await page.getByTestId('playground-tab-resources').click()
 }
 
 async function fillRules(page: Page, value: string): Promise<void> {

@@ -15,11 +15,20 @@ function missingOperatorCommentPattern(): RegExp {
   throw new Error('missing inert-row comment tokenizer rule')
 }
 
+function readRulePattern(): RegExp {
+  for (const rule of stateRules('root')) {
+    if (!Array.isArray(rule)) continue
+    const [pattern, action] = rule
+    if (pattern instanceof RegExp && Array.isArray(action) && action[2] === 'operator' && pattern.test('baz ::< 30 qux')) return pattern
+  }
+  throw new Error('missing read-rule tokenizer rule')
+}
+
 function rulePrefixPattern(): RegExp {
   for (const rule of stateRules('root')) {
     if (!Array.isArray(rule)) continue
     const [pattern, action] = rule
-    if (pattern instanceof RegExp && Array.isArray(action) && action[0] === 'source') return pattern
+    if (pattern instanceof RegExp && Array.isArray(action) && action[0] === 'source' && pattern.test('B ::= C ::= D3')) return pattern
   }
   throw new Error('missing rule prefix tokenizer rule')
 }
@@ -148,6 +157,17 @@ describe('thue++ Monarch tokenizer', () => {
     expect(rulePrefixPattern().test(ruleRow)).toBe(false)
     expect(match?.[3]).toBe('name')
     expect(action).toEqual(['@brackets', 'regexp', 'variable', 'regexp'])
+  })
+
+  it('highlights a read timeout and the resource name from ::< timeout name', () => {
+    const pattern = readRulePattern()
+    const match = pattern.exec('baz ::< 30 qux')
+
+    expect(match?.[3]).toBe('::<')
+    expect(match?.[5]).toBe('30')
+    expect(match?.[7]).toBe('qux')
+    expect(pattern.test('baz ::< qux')).toBe(false)
+    expect(pattern.test('@IN@ ::< 5 input')).toBe(true)
   })
 
   it('does not treat alias operators as angle brackets', () => {
