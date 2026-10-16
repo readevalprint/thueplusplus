@@ -5,7 +5,7 @@ async function openExamples(page: Page): Promise<void> {
 }
 
 async function showOutput(page: Page): Promise<void> {
-  await page.getByTestId('playground-tab-resources').click()
+  await expect(page.getByTestId('playground-panel-resources')).toBeVisible()
 }
 
 async function fillRules(page: Page, value: string): Promise<void> {
@@ -38,7 +38,6 @@ test('a tiny program runs and the status bar shows steps, probes, and state', as
 test('a step limit stops a looping program', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await fillRules(page, '^a$ ::= a\n\n::=\na\n')
-  await page.getByTestId('playground-tab-state').click()
   await page.getByTestId('playground-state').fill('a')
   await page.getByTestId('playground-settings-trigger').click()
   await page.getByTestId('playground-max-steps-1000').click()
@@ -54,7 +53,6 @@ test('one guest example loads without running it', async ({ page }) => {
   await page.getByTestId('test-case-menu-trigger').filter({ hasText: 'Lisp' }).click()
   await page.getByTestId('test-case-menu-case').filter({ hasText: 'Closure call' }).click()
   await expect(page.getByTestId('playground-selected-case')).toContainText('closure_binding_flattening.toml')
-  await page.getByTestId('playground-tab-state').click()
   await expect(page.getByTestId('playground-state')).toHaveValue('((fn () 7))')
   await expect(page.getByTestId('playground-status')).toContainText('idle')
 })
