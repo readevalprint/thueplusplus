@@ -27,8 +27,10 @@ const isMobile = useMediaQuery("(max-width: 1279px)")
 const openMobile = ref(false)
 const cookieOpen = !defaultDocument?.cookie.includes(`${props.cookieName}=false`)
 const vnodeProps = getCurrentInstance()?.vnode.props ?? {}
-const controlled = "open" in vnodeProps || "onUpdate:open" in vnodeProps
-const open = ref(controlled ? Boolean(props.open) : (props.defaultOpen ?? cookieOpen))
+const controlled = vnodeProps.open !== undefined || "onUpdate:open" in vnodeProps
+const open = ref(controlled
+  ? Boolean(props.open)
+  : (typeof vnodeProps.defaultOpen === "boolean" ? vnodeProps.defaultOpen : cookieOpen))
 
 watch(() => props.open, (value) => {
   if (controlled && value !== undefined) open.value = value

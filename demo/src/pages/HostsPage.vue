@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Package } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
@@ -9,6 +10,9 @@ const page = pages.hosts
 
 <template>
   <DocPage :kicker="page.kicker" :title="page.title">
+    <template #mark>
+      <Package />
+    </template>
     <template #actions>
       <Button as-child>
         <RouterLink to="/playground">Run the JavaScript host</RouterLink>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Regex } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
@@ -25,6 +26,9 @@ const limits = [
 
 <template>
   <DocPage :kicker="page.kicker" :title="page.title">
+    <template #mark>
+      <Regex />
+    </template>
     <template #actions>
       <Button as-child>
         <RouterLink to="/playground">Run a rule</RouterLink>
