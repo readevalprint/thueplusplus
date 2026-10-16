@@ -105,8 +105,8 @@ export function rankGuests(guests: CatalogGuest[]): CatalogGuest[] {
   })
 }
 
-export function statusVariant(status: CatalogStatus): 'default' | 'secondary' | 'destructive' {
-  if (status === 'pass') return 'default'
+export function statusVariant(status: CatalogStatus): 'outline' | 'secondary' | 'destructive' {
+  if (status === 'pass') return 'outline'
   if (status === 'fail') return 'destructive'
   return 'secondary'
 }

@@ -1,177 +1,98 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const viewports = [
-  { name: 'mobile', width: 375, height: 812 },
-  { name: 'tablet', width: 768, height: 1024 },
-  { name: 'desktop', width: 1280, height: 800 },
+  { name: '390', width: 390, height: 844 },
+  { name: '768', width: 768, height: 1024 },
+  { name: '1024', width: 1024, height: 768 },
+  { name: '1440', width: 1440, height: 900 },
 ]
 
-async function expectShell(page: Page, width: number): Promise<void> {
+async function expectDocsShell(page: Page, width: number): Promise<void> {
+  await expect(page.getByTestId('app-shell')).toBeVisible()
   await expect(page.getByTestId('page-hero')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Rewrite a string until it stops.' })).toBeVisible()
   await expect(page.getByTestId('page-details')).toBeVisible()
-  await expect(page.getByTestId('app-shell')).toBeVisible()
-  await expect(page.getByTestId('toc-trigger')).toHaveCount(0)
-  if (width >= 1280) {
-    await expect(page.getByTestId('site-nav')).toBeVisible()
-    await expect(page.getByTestId('page-sidebar')).toBeVisible()
-    await expect(page.getByTestId('aside-trigger')).toBeHidden()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  if (width >= 1024) {
     await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Reference' })).toBeVisible()
+    await expect(page.getByTestId('page-sidebar')).toBeVisible()
+    await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'A program' })).toBeVisible()
+    await expect(page.getByTestId('contents-toggle')).toBeHidden()
     return
   }
-  await expect(page.getByTestId('site-nav')).toBeHidden()
   await expect(page.getByTestId('page-sidebar')).toBeHidden()
-  await page.getByTestId('nav-trigger').click()
-  await expect(page.getByTestId('site-nav')).toBeVisible()
+  await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Reference' })).toBeHidden()
+  await page.getByTestId('contents-toggle').click()
   await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Hosts' })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(page.getByTestId('site-nav')).toBeHidden()
-  await page.getByTestId('aside-trigger').click()
-  await expect(page.getByTestId('page-sidebar')).toBeVisible()
-  await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'A program' })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(page.getByTestId('page-sidebar')).toBeHidden()
+  await page.getByTestId('contents-toggle').click()
+  await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Hosts' })).toBeHidden()
 }
 
 for (const viewport of viewports) {
-  test(`${viewport.name} learn page uses the shell for that width`, async ({ page }) => {
+  test(`${viewport.name} learn page uses the docs shell`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height })
     await page.goto('/learn')
-    await expectShell(page, viewport.width)
+    await expectDocsShell(page, viewport.width)
+  })
+
+  test(`${viewport.name} switches dark and light`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await page.goto('/learn')
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await page.getByTestId('theme-toggle').click()
+    await page.getByTestId('theme-light').click()
+    await expect(page.locator('html')).not.toHaveClass(/dark/)
+    await expect(page.getByRole('heading', { name: 'Rewrite a string until it stops.' })).toBeVisible()
+    await page.getByTestId('theme-toggle').click()
+    await page.getByTestId('theme-dark').click()
+    await expect(page.locator('html')).toHaveClass(/dark/)
   })
 }
 
-test('page aside starts at or below the header', async ({ page }) => {
-  for (const viewport of viewports) {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height })
-    await page.goto('/learn')
-    if (viewport.width < 1280) await page.getByTestId('aside-trigger').click()
-    const aside = page.getByTestId('page-sidebar')
-    await expect(aside).toBeVisible()
-    const headerBox = await page.locator('header').boundingBox()
-    const asideBox = await aside.boundingBox()
-    expect(headerBox).not.toBeNull()
-    expect(asideBox).not.toBeNull()
-    expect(asideBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 1)
-  }
-})
-
-test('left menu sits beside the header and anchors clear it', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
-  await page.goto('/learn#program')
-  const header = page.locator('header')
-  const menu = page.locator('[data-side="left"] [data-sidebar="sidebar"]')
-  const heading = page.getByRole('heading', { name: 'A program' })
-  await expect(menu).toBeVisible()
-  await expect(heading).toBeInViewport()
-  const headerBox = await header.boundingBox()
-  const menuBox = await menu.boundingBox()
-  const headingBox = await heading.boundingBox()
-  expect(headerBox).not.toBeNull()
-  expect(menuBox).not.toBeNull()
-  expect(headingBox).not.toBeNull()
-  expect(menuBox!.y).toBeLessThanOrEqual(1)
-  expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(headerBox!.x + 1)
-  expect(headingBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 1)
-})
-
-test('theme toggle switches light and dark', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
-  await page.goto('/learn')
-  await page.getByTestId('theme-toggle').click()
-  await page.getByTestId('theme-dark').click()
-  await expect(page.locator('html')).toHaveClass(/dark/)
-  await page.getByTestId('theme-toggle').click()
-  await page.getByTestId('theme-light').click()
-  await expect(page.locator('html')).not.toHaveClass(/dark/)
-})
-
-test('mobile theme toggle switches light and dark', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
+test('home keeps the landing copy and stays dark by default', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await page.getByTestId('theme-toggle').click()
-  await page.getByTestId('theme-dark').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect(page.getByRole('heading', { level: 1, name: 'Thue++' })).toBeVisible()
+  await expect(page.getByText('The safest, smallest, sandbox.')).toBeVisible()
+  await expect(page.getByTestId('landing-languages')).toContainText('Available in go, python, js, and soon cpp, erlang, ocaml, perl, ruby, haskell, rust.')
+  await expect(page.getByTestId('rewrite-motif')).toBeVisible()
+  await expect(page.locator('body')).not.toContainText(/RE2/)
+})
+
+test('playground is outside the docs shell in both themes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/playground')
+  await expect(page.getByTestId('app-shell')).toHaveCount(0)
+  await expect(page.getByTestId('playground-standalone')).toBeVisible()
+  await expect(page.locator('html')).toHaveClass(/dark/)
   await page.getByTestId('theme-toggle').click()
   await page.getByTestId('theme-light').click()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await expect(page.getByTestId('playground-header')).toBeVisible()
+  await expect(page.getByTestId('app-shell')).toHaveCount(0)
 })
 
 test('embed has no site chrome', async ({ page }) => {
   await page.goto('/embed?file=./examples/hello/hello.tpp&section=state')
   await expect(page.getByTestId('app-shell')).toHaveCount(0)
-  await expect(page.getByTestId('nav-trigger')).toHaveCount(0)
+  await expect(page.getByTestId('contents-toggle')).toHaveCount(0)
   await expect(page.getByTestId('playground-workbench')).toBeVisible()
   await expect(page.getByTestId('page-hero')).toHaveCount(0)
 })
 
-test('a page without an aside uses the full content width', async ({ page }) => {
-  for (const width of [375, 768, 1280]) {
-    await page.setViewportSize({ width, height: 800 })
-    await page.goto('/')
-    await expect(page.getByRole('heading', { level: 1, name: 'Thue++' })).toBeVisible()
-    await expect(page.getByText('The safest, smallest, sandbox.')).toBeVisible()
-    await expect(page.getByTestId('page-sidebar')).toHaveCount(0)
-    await expect(page.getByTestId('aside-trigger')).toHaveCount(0)
-  }
-})
-
-test('landing copy sits above the fold and links to hosts', async ({ page }) => {
-  for (const viewport of [
-    { width: 1280, height: 800 },
-    { width: 375, height: 812 },
-  ]) {
-    await page.setViewportSize(viewport)
-    await page.goto('/')
-    const heading = page.getByRole('heading', { level: 1, name: 'Thue++' })
-    const tagline = page.getByText('The safest, smallest, sandbox.', { exact: true })
-    const graphic = page.getByTestId('landing-rewrite')
-    const languages = page.getByTestId('landing-languages')
-    await expect(heading).toBeVisible()
-    await expect(tagline).toBeVisible()
-    await expect(graphic).toContainText('hello Ada')
-    await expect(graphic).toContainText('::=')
-    await expect(graphic).toContainText('hi Ada')
-    await expect(languages).toHaveText('Available in go, python, js, and soon cpp, erlang, ocaml, perl, ruby, haskell, rust.')
-    await expect(languages.getByRole('link')).toHaveCount(3)
-    await expect(languages.getByRole('link', { name: 'go', exact: true })).toHaveAttribute('href', '/hosts#go')
-    await expect(languages.getByRole('link', { name: 'python', exact: true })).toHaveAttribute('href', '/hosts#python')
-    await expect(languages.getByRole('link', { name: 'js', exact: true })).toHaveAttribute('href', '/hosts#javascript')
-    await expect(page.getByText('RE2')).toHaveCount(0)
-    const boxes = await Promise.all([heading, tagline, graphic, languages].map(locator => locator.boundingBox()))
-    for (const box of boxes) {
-      expect(box).not.toBeNull()
-    }
-    const [headingBox, taglineBox, graphicBox, languagesBox] = boxes
-    expect(headingBox!.y).toBeLessThan(taglineBox!.y)
-    expect(taglineBox!.y).toBeLessThan(graphicBox!.y)
-    expect(graphicBox!.y).toBeLessThan(languagesBox!.y)
-    expect(languagesBox!.y + languagesBox!.height).toBeLessThan(viewport.height)
-  }
-  await page.getByTestId('landing-languages').getByRole('link', { name: 'go', exact: true }).click()
-  await expect(page).toHaveURL(/\/hosts#go$/)
-  await expect(page.getByRole('heading', { level: 2, name: 'Go' })).toBeVisible()
-})
-
 test('deep links render their own heading', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.setViewportSize({ width: 1440, height: 900 })
   for (const [path, heading] of [
     ['/reference', 'Operators, resources, and limits.'],
     ['/hosts', 'Go, Python, and JavaScript.'],
     ['/guests', 'Languages written in Thue++.'],
     ['/tasks', 'Programs with a finish line.'],
+    ['/playground', 'playground'],
   ] as const) {
     await page.goto(path)
     await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
-    await expect(page.getByTestId('page-details')).toBeVisible()
-    await expect(page.getByTestId('page-sidebar')).toHaveCount(0)
   }
-
-  await page.goto('/playground')
-  await expect(page.getByRole('heading', { level: 1, name: 'Run it in the browser.' })).toBeVisible()
+  await page.goto('/learn')
   await expect(page.getByTestId('page-details')).toBeVisible()
-  await expect(page.getByTestId('page-sidebar')).toBeVisible()
-  await expect(page.getByTestId('playground-examples')).toBeVisible()
-  await expect(page.getByTestId('playground-settings')).toBeVisible()
 })

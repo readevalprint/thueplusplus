@@ -5,7 +5,7 @@ const storageKey = 'theme'
 export function readTheme(): ThemeChoice {
   const stored = localStorage.getItem(storageKey)
   if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
-  return 'system'
+  return 'dark'
 }
 
 export function applyTheme(theme: ThemeChoice): void {

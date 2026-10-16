@@ -25,7 +25,6 @@ const shell = [
   { page: pages.home, component: HomePage },
   { page: pages.learn, component: LearnPage },
   { page: pages.reference, component: ReferencePage },
-  { page: pages.playground, component: PlaygroundPage },
   { page: pages.hosts, component: HostsPage },
   { page: pages.guests, component: GuestsPage },
   { page: pages.tasks, component: TasksPage },
@@ -42,6 +41,17 @@ export const routes: RouteRecordRaw[] = [
       robots: page.robots,
     },
   })),
+  {
+    path: pages.playground.path,
+    component: PlaygroundPage,
+    meta: {
+      layout: 'bare',
+      documentTitle: pages.playground.documentTitle,
+      description: pages.playground.description,
+      canonical: pages.playground.canonical,
+      robots: pages.playground.robots,
+    },
+  },
   {
     path: '/embed',
     component: EmbedPage,

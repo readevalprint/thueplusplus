@@ -26,16 +26,15 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Changed
 
+- The demo site follows the distance-field layout (Apache-2.0, LukyVj / GSS) without that project's mark or name. Dark is the default, with a matching light theme. Docs use a 52px header and a 260 | 1fr | 220 grid that collapses to a Contents toggle below 1024px. `/playground` is a full-screen route outside that shell: examples, limits, and share in the header, a resizable editor and output, and a status bar for steps, probes, and state bytes. The landing copy is Thue++ / The safest, smallest, sandbox.
 - **Breaking:** a matched rule that fails before replacement records a trace event and then returns. Python used to raise that error with an empty trace.
 - **Breaking:** a state-limit stop records the trace event and then returns 12. The state is left unchanged. Go used to return 12 with an empty trace. The host does not install the oversized state, and it does not return 12 without the event.
-- The playground page is the hero, then the editor, run controls, output, and trace. Every run sends an explicit step limit, probe limit, and state limit through the `thuepp` package. Examples and settings are in that page's `PageAside`, open on desktop and a sheet below 1280px. `/embed` is the same surface without the site chrome.
 - Lisp numeric calls whose nearest binding is still the original primitive skip the generic call walker. Shadowed bindings still use ordinary application. Existing numeric Lisp tasks take fewer applied steps.
 - Lisp rules that match on every numeric call (`STREQ`, the numeric fast path, `ARGENV`, `ARG`, `LOOK`, `BNUM2`, `emit`, `finish`, `if`, `SEQ`, `while`, `set`) are first in the rule table. Applied step counts stay the same. Go and wasm finish FizzBuzz and 99 bottles inside the task time budgets.
 - **Breaking:** the Go library path is `github.com/readevalprint/thueplusplus/go/thuepp`. `go/internal/thuepp` is gone.
 - **Breaking:** the Python CLI is `uv run thuepp` / `python -m thuepp`. `python/thuepp.py` is gone.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.
 - **Breaking:** a manifest that passes `unlimited` without `allow_unlimited` on that one case fails before the program runs.
-- The site is a stock shadcn-vue shell: neutral theme, light and dark. The shell is the left menu plus the page. A page may render `PageAside` for a right column (a sheet below 1280px); pages without one use the full content width. Learn, Reference, Playground, Hosts, Guests, and Tasks each prerender to their own path. `/` is the landing page. `/embed` has no chrome.
 - Learn, Reference, and Hosts no longer name the regex implementation. Hosts calls it the regex engine.
 - Nav, hero, and card marks are rewrite and regex glyphs: a rewrite arrow, `Regex`, `Replace`, `Package`, `Boxes`, and a finish line. Generic book, library, play, server, and checklist icons are gone.
 - A host is a Thue++ implementation (Go, Python, JavaScript). A guest is a language implemented in Thue++.

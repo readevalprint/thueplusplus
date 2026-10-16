@@ -7,31 +7,47 @@ export function registerThueppMonacoLanguage(monaco: typeof Monaco): void {
   }
   monaco.languages.setMonarchTokensProvider('thuepp', thueppMonarchLanguage)
   monaco.languages.setLanguageConfiguration('thuepp', thueppLanguageConfiguration)
+  const rules = [
+    { token: 'operator.alias.thuepp', foreground: 'ffb86b', fontStyle: 'bold' },
+    { token: 'type.identifier.alias.thuepp', foreground: 'ffb86b', fontStyle: 'bold' },
+    { token: 'operator.thuepp', foreground: 'd29bff' },
+    { token: 'keyword.separator.thuepp', foreground: 'ff7aa8', fontStyle: 'bold' },
+    { token: 'type.identifier.thuepp', foreground: '7cb4ff' },
+    { token: 'variable.thuepp', foreground: 'ffb86b' },
+    { token: 'regexp.thuepp', foreground: 'c3e88d' },
+    { token: 'regexp.escape.thuepp', foreground: '6fe0cf' },
+    { token: 'constant.thuepp', foreground: 'ff9a80' },
+    { token: 'number.thuepp', foreground: 'ffb86b' },
+    { token: 'invalid.thuepp', foreground: 'ff5a36', fontStyle: 'bold' },
+  ]
   monaco.editor.defineTheme('thuepp-dark', {
     base: 'vs-dark',
     inherit: true,
-    rules: [
-      { token: 'operator.alias.thuepp', foreground: 'fbbf24', fontStyle: 'bold' },
-      { token: 'type.identifier.alias.thuepp', foreground: 'fde68a', fontStyle: 'bold' },
-      { token: 'operator.thuepp', foreground: 'c4b5fd' },
-      { token: 'keyword.separator.thuepp', foreground: 'f9a8d4', fontStyle: 'bold' },
-      { token: 'type.identifier.thuepp', foreground: '93c5fd' },
-      { token: 'variable.thuepp', foreground: 'fbbf24' },
-      { token: 'regexp.thuepp', foreground: '86efac' },
-      { token: 'regexp.escape.thuepp', foreground: '67e8f9' },
-      { token: 'constant.thuepp', foreground: 'fca5a5' },
-      { token: 'number.thuepp', foreground: 'fdba74' },
-      { token: 'invalid.thuepp', foreground: 'ff7a90', fontStyle: 'bold' },
-    ],
+    rules,
     colors: {
-      'editor.background': '#070708',
-      'editor.foreground': '#f5f5f6',
-      'editorLineNumber.foreground': '#74747e',
-      'editorLineNumber.activeForeground': '#f5f5f6',
-      'editorCursor.foreground': '#f5f5f6',
-      'editor.selectionBackground': '#3a3a42',
-      'editor.inactiveSelectionBackground': '#26262a',
-      'editorGutter.background': '#070708',
+      'editor.background': '#111114',
+      'editor.foreground': '#e8e6e1',
+      'editorLineNumber.foreground': '#807f88',
+      'editorLineNumber.activeForeground': '#e8e6e1',
+      'editorCursor.foreground': '#ff5a36',
+      'editor.selectionBackground': '#2a2a31',
+      'editor.inactiveSelectionBackground': '#202026',
+      'editorGutter.background': '#111114',
+    },
+  })
+  monaco.editor.defineTheme('thuepp-light', {
+    base: 'vs',
+    inherit: true,
+    rules,
+    colors: {
+      'editor.background': '#fffcf8',
+      'editor.foreground': '#1a1916',
+      'editorLineNumber.foreground': '#7a776f',
+      'editorLineNumber.activeForeground': '#1a1916',
+      'editorCursor.foreground': '#ff5a36',
+      'editor.selectionBackground': '#e8e6e0',
+      'editor.inactiveSelectionBackground': '#ddd9d2',
+      'editorGutter.background': '#fffcf8',
     },
   })
 }
