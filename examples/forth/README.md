@@ -1,57 +1,51 @@
 # Forth example
 
-`forth.tpp` is a compact Forth-style stack machine implemented entirely as Thue++ rewrite rules. It is intended as a serious target-language example, like the Lisp evaluator, but with a much smaller stack-oriented execution model.
-
-## Running it
-
-From the repository root:
+`forth.tpp` is a Forth-style stack machine implemented as Thue++ rewrite rules. Tokens are whitespace-delimited. The program comes from `--input`. A line of standard input is read only by `input` or `accept`.
 
 ```bash
 uv run thuepp examples/forth/forth.tpp --input '1 2 + 3 *'
 ```
 
-Expected output:
+prints:
 
 ```text
 9
 ```
 
-The interpreter reads the Forth program from `--input`. Tokens are whitespace-delimited. The final data stack is rendered top-first, with one space between values:
+A program that never prints leaves its data stack, top first, followed by a newline. `1 2 3` prints `3 2 1`. An empty stack prints a newline. `halt` stops without that final picture, which is how a program that already printed keeps its exact output.
 
-```bash
-uv run thuepp examples/forth/forth.tpp --input '1 2 3'
-```
+## Words
 
-prints:
+Literals: integers (`0`, `42`, `-7`) and booleans (`true`, `false`).
 
-```text
-3 2 1
-```
+Arithmetic and comparison, second item then top: `+`, `-`, `*`, `/`, `mod`, `=`, `<`, `>`. `/` and `mod` by zero are `division_by_zero`. Comparisons return `true` or `false`. `=` also compares two strings.
 
-## Supported words
+Stack: `dup`, `drop`, `swap`, `over`.
 
-Literals:
+Output:
 
-- integers, for example `0`, `42`, `-7`
-- booleans: `true`, `false`
+- `.` prints the top number with no newline
+- `." text"` prints the text between the quotes with no newline. The space after `."` is the delimiter, not part of the text
+- `cr` prints a newline
+- a program that is only `." text"` prints that text and a newline
 
-Arithmetic and comparison words:
+Input:
 
-- `+`, `-`, `*`, `/`
-- `=`, `<`, `>`
+- `input` reads one line and pushes an integer
+- `accept` reads one line and pushes a string
 
-Binary numeric words pop the top item as `b`, then the next item as `a`, and compute `a word b`. For example, `7 2 -` prints `5`.
+Strings: `rev` reverses a string. `rot13` rotates letters by 13 and leaves every other character in place.
 
-Stack words:
+Control:
 
-- `dup` duplicates the top item
-- `drop` removes the top item
-- `swap` swaps the top two items
-- `over` copies the second item to the top
+- `begin` ... `until` repeats the body while the top boolean is `false`
+- `if` ... `else` ... `then`, with `else` optional. Branches may nest. Loops do not nest
 
-## Error behavior
+`halt` exits before the final stack picture.
 
-The example is fail-loud. Invalid programs exit with code 2 and a typed error on stderr, including:
+## Errors
+
+Invalid programs exit 2 with one word on stderr:
 
 - `stack_underflow`
 - `type_error`
@@ -59,14 +53,12 @@ The example is fail-loud. Invalid programs exit with code 2 and a typed error on
 - `unknown_word`
 - `unsupported_form`
 
-Unsupported Forth features such as colon definitions, comments, strings, variables, conditionals, loops, and output word `.` are intentionally not claimed by this core example.
+A multiline program is `unsupported_form`. Colon definitions, comments, and variables are not words.
 
-## Tests and coverage
-
-The executable manifest is:
+## Tests
 
 ```bash
-uv run python tools/example_runner.py examples/forth/tests/core.toml
+uv run python tools/example_runner.py examples/forth/tests/core.toml examples/forth/tests/words.toml
 ```
 
-It checks Python/Go parity and full rule coverage for `examples/forth/forth.tpp`.
+The manifests check Python, Go, and wasm, and they cover every rule in `forth.tpp`.
