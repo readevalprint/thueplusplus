@@ -68,6 +68,9 @@ e2e:
     - export PATH="/usr/local/go/bin:$PATH"
     - npm --prefix demo run test:e2e
 
+# Publishes the demo as the thuelang.org site. Known routes are real
+# index.html files. Unknown paths use 404.html, a copy of the SPA shell.
+# vercel.json stays the preview config and is not used here.
 pages:
   image: node:22-bookworm
   stage: pages
@@ -93,6 +96,20 @@ pages:
     - make demo-build
     - rm -rf public
     - cp -R demo/dist public
+    - |
+      for path in \
+        public/index.html \
+        public/404.html \
+        public/playground/index.html \
+        public/embed/index.html \
+        public/embed/demo/index.html \
+        public/thuepp.wasm
+      do
+        test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
+      done
+      cmp -s public/404.html public/index.html || { echo "public/404.html must match public/index.html" >&2; exit 1; }
+      grep -q 'https://thuelang.org/playground' public/playground/index.html
+      grep -q 'src="/assets/' public/playground/index.html
   artifacts:
     paths:
       - public
