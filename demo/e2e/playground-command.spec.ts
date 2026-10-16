@@ -47,7 +47,7 @@ test('a step limit stops a looping program', async ({ page }) => {
   await expect(page.getByTestId('playground-applied-limits')).toContainText('steps 1000/1000')
 })
 
-test('one guest example loads without running it', async ({ page }) => {
+test('one lisp example loads without running it', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
   await openExamples(page)
   await page.getByTestId('test-case-menu-trigger').filter({ hasText: 'Lisp' }).click()

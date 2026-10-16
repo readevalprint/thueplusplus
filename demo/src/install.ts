@@ -1,34 +1,38 @@
-<script setup lang="ts">
-import { Package } from '@lucide/vue'
-import { RouterLink } from 'vue-router'
-import { Button } from '@/components/ui/button'
-import DocPage from '@/components/DocPage.vue'
-import { repositoryUrl, shippedHosts, siteHosts } from '@/hosts'
-import { pages } from '@/site'
+import { repositoryUrl, siteHosts, type SiteHost } from './hosts'
 
-const page = pages.hosts
 const blob = `${repositoryUrl}/blob/main`
+const hostApi = { href: `${blob}/docs/host-api.md`, label: 'docs/host-api.md' }
 
-interface HostSection {
+export interface InstallBlock {
+  lead: string
+  body: string
+}
+
+export interface InstallApiLink {
+  href: string
+  label: string
+}
+
+export interface InstallSection {
   prose: string
   installLead: string
   install: string
   installAfter?: string
   installAfterBody?: string
-  moreInstall?: { lead: string; body: string }[]
+  moreInstall: InstallBlock[]
   libraryLead: string
   library: string
   cliLead: string
   cli: string
-  readmeHref: string
-  readmeLabel: string
+  api: InstallApiLink[]
 }
 
-const copy: Record<string, HostSection> = {
+const copy: Record<string, InstallSection> = {
   go: {
     prose: 'The Go interpreter is the host behind go/cmd/thuepp and behind the WebAssembly module. A new interpreter binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits.',
     installLead: 'The module is not a released tag. This tracks main:',
     install: 'go get github.com/readevalprint/thueplusplus/go@main',
+    moreInstall: [],
     libraryLead: 'Import github.com/readevalprint/thueplusplus/go/thuepp.',
     library: `import "github.com/readevalprint/thueplusplus/go/thuepp"
 
@@ -43,13 +47,13 @@ if err != nil {
 _ = code`,
     cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',
     cli: '(cd go && go run ./cmd/thuepp ../program.tpp --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608)',
-    readmeHref: `${blob}/docs/host-api.md`,
-    readmeLabel: 'docs/host-api.md',
+    api: [hostApi],
   },
   python: {
     prose: 'The Python host is a native implementation. It uses the regex engine and the same default limits. Process bindings stay opt-in, the same way they do in Go.',
     installLead: 'The distribution is not on PyPI. From a checkout of this repository:',
     install: 'uv run thuepp program.tpp',
+    moreInstall: [],
     libraryLead: 'The package name is thuepp.',
     library: `from thuepp import ThueppInterpreter
 
@@ -58,13 +62,13 @@ interp.load_program("hello.tpp")
 code = interp.run()`,
     cliLead: 'The console script is thuepp. Omitted limits use the defaults.',
     cli: 'uv run thuepp program.tpp --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608',
-    readmeHref: `${blob}/docs/host-api.md`,
-    readmeLabel: 'docs/host-api.md',
+    api: [hostApi],
   },
   wasm: {
     prose: 'The JavaScript host is the Go interpreter compiled to WebAssembly, not a second language written in JavaScript. This site\'s playground loads that module. It rejects process bindings. Runs from the page pass a step limit.',
     installLead: 'The package is not on npm. A checkout depends on the js/ directory:',
     install: '"thuepp": "file:../js"',
+    moreInstall: [],
     libraryLead: 'The npm package name is thuepp. sourceText is the program.',
     library: `import { initThuePP } from 'thuepp'
 
@@ -75,8 +79,7 @@ const result = await engine.run({
 })`,
     cliLead: 'Build the WebAssembly module with make wasm first, or set THUEPP_WASM. From a checkout:',
     cli: 'node js/src/cli.js program.tpp --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608',
-    readmeHref: `${blob}/js/README.md`,
-    readmeLabel: 'js/README.md',
+    api: [hostApi, { href: `${blob}/js/README.md`, label: 'js/README.md' }],
   },
   rust: {
     prose: 'The Rust host is a native implementation. The library crate and the command are both named thuepp. It uses the regex engine and the same default limits. Process bindings stay opt-in.',
@@ -84,6 +87,7 @@ const result = await engine.run({
     install: `cargo add thuepp --git ${repositoryUrl}`,
     installAfter: 'That records:',
     installAfterBody: `thuepp = { git = "${repositoryUrl}", version = "0.5.0" }`,
+    moreInstall: [],
     libraryLead: 'Interpreter::new binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. None clears one.',
     library: `use thuepp::Interpreter;
 
@@ -95,8 +99,7 @@ let code = interp.run()?;`,
 
 cargo build --release --manifest-path rust/Cargo.toml
 ./rust/target/release/thuepp program.tpp`,
-    readmeHref: `${blob}/rust/README.md`,
-    readmeLabel: 'rust/README.md',
+    api: [hostApi, { href: `${blob}/rust/README.md`, label: 'rust/README.md' }],
   },
   cpp: {
     prose: 'The C++ host is a native implementation. The CMake target is thuepp and the command is thuepp. It uses the regex engine and the same default limits. Process bindings stay opt-in. The library is not published.',
@@ -136,48 +139,21 @@ int code = interp.Run();`,
 
 make cpp
 build/cpp/thuepp program.tpp`,
-    readmeHref: `${blob}/cpp/README.md`,
-    readmeLabel: 'cpp/README.md',
+    api: [hostApi, { href: `${blob}/cpp/README.md`, label: 'cpp/README.md' }],
   },
 }
 
-const sections = siteHosts.map(host => {
-  const body = copy[host.id]
-  if (!body) throw new Error(`hosts page has no copy for ${host.id}`)
-  return { ...host, ...body }
-})
-</script>
+export interface InstallPageModel extends SiteHost, InstallSection {}
 
-<template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <Package />
-    </template>
-    <template #actions>
-      <Button as-child>
-        <RouterLink to="/playground">Run the JavaScript host</RouterLink>
-      </Button>
-    </template>
-    <p class="leading-7">A host is an implementation of Thue++. The same rules should get the same answer. This repository ships {{ shippedHosts }}. No host is published to a registry yet.</p>
-    <section v-for="host in sections" :id="host.anchor" :key="host.id" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">{{ host.title }}</h2>
-      <p class="leading-7">{{ host.prose }}</p>
-      <h3 :id="`${host.anchor}-install`" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Install</h3>
-      <p class="leading-7">{{ host.installLead }}</p>
-      <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ host.install }}</pre>
-      <p v-if="host.installAfter" class="leading-7">{{ host.installAfter }}</p>
-      <pre v-if="host.installAfterBody" class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ host.installAfterBody }}</pre>
-      <template v-for="block in host.moreInstall ?? []" :key="block.lead">
-        <p class="leading-7">{{ block.lead }}</p>
-        <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ block.body }}</pre>
-      </template>
-      <h3 :id="`${host.anchor}-library`" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Library</h3>
-      <p class="leading-7">{{ host.libraryLead }}</p>
-      <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ host.library }}</pre>
-      <h3 :id="`${host.anchor}-cli`" class="font-display text-[18px] font-semibold tracking-[-0.03em]">CLI</h3>
-      <p class="leading-7">{{ host.cliLead }}</p>
-      <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ host.cli }}</pre>
-      <p class="leading-7"><a class="underline underline-offset-4" :href="host.readmeHref" rel="noreferrer">{{ host.readmeLabel }}</a></p>
-    </section>
-  </DocPage>
-</template>
+export function installPage(path: string): InstallPageModel {
+  const host = siteHosts.find(item => item.href === path)
+  if (!host) throw new Error(`no install page for ${path}`)
+  const body = copy[host.id]
+  if (!body) throw new Error(`install page has no copy for ${host.id}`)
+  if (body.api.length === 0) throw new Error(`install page ${host.id} has no API link`)
+  return { ...host, ...body }
+}
+
+for (const host of siteHosts) {
+  installPage(host.href)
+}

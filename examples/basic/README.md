@@ -1,4 +1,4 @@
-# BASIC guest
+# BASIC
 
 `basic.tpp` is a small line-oriented BASIC interpreter written as Thue++ rewrite rules. The task runner passes a `.bas` program as `--input`.
 

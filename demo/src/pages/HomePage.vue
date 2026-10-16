@@ -10,7 +10,7 @@ const soon = soonLanguages
 const pillars = [
   {
     title: 'smallest',
-    body: 'A program is an ordered list of rules and one state string. The host rewrites that string until it stops.',
+    body: 'A program is an ordered list of rules and one state string. The engine rewrites that string until it stops.',
   },
   {
     title: 'safest',
@@ -40,7 +40,7 @@ const pillars = [
             <RouterLink to="/playground">playground</RouterLink>
           </Button>
           <Button as-child size="lg" variant="outline">
-            <RouterLink to="/learn">learn</RouterLink>
+            <RouterLink to="/docs/guides">guides</RouterLink>
           </Button>
         </div>
       </div>
@@ -58,12 +58,13 @@ const pillars = [
 
     <footer class="border-line flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-4 py-6 font-mono text-[13px] sm:px-6 lg:px-14">
       <nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Site">
-        <RouterLink to="/learn" class="text-ash hover:text-bone lowercase">Learn</RouterLink>
-        <RouterLink to="/reference" class="text-ash hover:text-bone lowercase">Reference</RouterLink>
-        <RouterLink to="/playground" class="text-ash hover:text-bone lowercase">Playground</RouterLink>
-        <RouterLink to="/hosts" class="text-ash hover:text-bone lowercase">Hosts</RouterLink>
-        <RouterLink to="/guests" class="text-ash hover:text-bone lowercase">Guests</RouterLink>
+        <RouterLink to="/docs/guides" class="text-ash hover:text-bone lowercase">Guides</RouterLink>
+        <RouterLink to="/docs/language" class="text-ash hover:text-bone lowercase">Language</RouterLink>
+        <RouterLink to="/install" class="text-ash hover:text-bone lowercase">Install</RouterLink>
+        <RouterLink to="/projects" class="text-ash hover:text-bone lowercase">Projects</RouterLink>
+        <RouterLink to="/metrics" class="text-ash hover:text-bone lowercase">Metrics</RouterLink>
         <RouterLink to="/tasks" class="text-ash hover:text-bone lowercase">Tasks</RouterLink>
+        <RouterLink to="/playground" class="text-ash hover:text-bone lowercase">Playground</RouterLink>
       </nav>
       <a class="text-ash hover:text-bone ml-auto lowercase" href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">gitlab</a>
     </footer>

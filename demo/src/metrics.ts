@@ -16,7 +16,7 @@ const WORKLOAD_LABELS: Record<string, string> = {
   'state-rewrite': 'State rewrite',
   regex: 'Regex',
   io: 'I/O',
-  guest: 'Guest',
+  guest: 'Forth',
   rewrite: 'Rewrite',
 }
 const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'guests', 'tasks', 'benchmarks']

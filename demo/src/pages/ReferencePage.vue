@@ -6,7 +6,7 @@ import DocPage from '@/components/DocPage.vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { pages } from '@/site'
 
-const page = pages.reference
+const page = pages.language
 
 const operators = [
   ['::=', 'Replace the matched text in the state.'],
@@ -54,7 +54,7 @@ const limits = [
     </section>
     <section id="resources" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Resources</h2>
-      <p class="leading-7">A new interpreter binds <code>stdin</code>, <code>stdout</code>, and <code>stderr</code>. Guest rules cannot open files, sockets, or processes. A host may bind more resources by name. The WebAssembly host rejects process bindings. A <code>::&lt;</code> read that passes its timeout exits 13.</p>
+      <p class="leading-7">A new interpreter binds <code>stdin</code>, <code>stdout</code>, and <code>stderr</code>. A program cannot open files, sockets, or processes. A host may bind more resources by name. The WebAssembly host rejects process bindings. A <code>::&lt;</code> read that passes its timeout exits 13.</p>
     </section>
     <section id="limits" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Limits</h2>
@@ -75,7 +75,7 @@ const limits = [
           </TableRow>
         </TableBody>
       </Table>
-      <p class="text-muted-foreground leading-7">Exit 0 is quiescence, or the integer from <code>::-</code>. Exit 1 is any other runtime error. Exit 2 is CLI usage. The <RouterLink to="/hosts" class="underline underline-offset-4">hosts</RouterLink> share this contract.</p>
+      <p class="text-muted-foreground leading-7">Exit 0 is quiescence, or the integer from <code>::-</code>. Exit 1 is any other runtime error. Exit 2 is CLI usage. The <RouterLink to="/install" class="underline underline-offset-4">hosts</RouterLink> share this contract.</p>
     </section>
   </DocPage>
 </template>
