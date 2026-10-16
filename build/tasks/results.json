@@ -1,0 +1,2210 @@
+{
+  "schema_version": 1,
+  "spec_version": "v0.5",
+  "commit": "2a6798367cdfcbd16a75be919d5b84996ad387cb",
+  "commit_dirty": false,
+  "author": "Cursor Agent <cursoragent@cursor.com>",
+  "timestamp": "2026-10-16T15:29:34Z",
+  "duration_ms": 190875,
+  "output": "build/tasks/results.json",
+  "safety": {
+    "max_steps_ceiling": 1000000,
+    "max_evals_ceiling": 5000000,
+    "max_state_bytes_ceiling": 8388608,
+    "timeout_seconds_ceiling": 120,
+    "memory_cap_bytes": 268435456,
+    "memory_cap": "rss",
+    "os_timeout": "timeout(1)",
+    "wasm_timeout_scale": 8,
+    "wasm_timeout_floor_seconds": 30
+  },
+  "hosts": [
+    "python",
+    "go",
+    "wasm"
+  ],
+  "guests": [
+    {
+      "id": "forth",
+      "program": "examples/forth/forth.tpp",
+      "rule_count": 86
+    },
+    {
+      "id": "lisp",
+      "program": "examples/lisp/lisp.tpp",
+      "rule_count": 394
+    }
+  ],
+  "tasks": [
+    {
+      "id": "hello-world",
+      "title": "Hello world",
+      "cases": 1
+    },
+    {
+      "id": "fibonacci",
+      "title": "Fibonacci",
+      "cases": 1
+    },
+    {
+      "id": "fizzbuzz",
+      "title": "FizzBuzz",
+      "cases": 1
+    },
+    {
+      "id": "factorial",
+      "title": "Factorial",
+      "cases": 1
+    },
+    {
+      "id": "reverse-string",
+      "title": "Reverse a string",
+      "cases": 1
+    },
+    {
+      "id": "99-bottles",
+      "title": "99 bottles of beer",
+      "cases": 1
+    },
+    {
+      "id": "guess-the-number",
+      "title": "Guess the number",
+      "cases": 1
+    },
+    {
+      "id": "sum-numbers",
+      "title": "Sum of input numbers",
+      "cases": 3
+    },
+    {
+      "id": "palindrome",
+      "title": "Palindrome check",
+      "cases": 4
+    },
+    {
+      "id": "rot13",
+      "title": "ROT13",
+      "cases": 1
+    }
+  ],
+  "grid": {
+    "hello-world": {
+      "forth": {
+        "status": "pass",
+        "step_count": 1
+      },
+      "lisp": {
+        "status": "unsupported",
+        "step_count": null
+      }
+    },
+    "fibonacci": {
+      "forth": {
+        "status": "pass",
+        "step_count": 42
+      },
+      "lisp": {
+        "status": "pass",
+        "step_count": 3071
+      }
+    },
+    "fizzbuzz": {
+      "forth": {
+        "status": "pass",
+        "step_count": 201
+      },
+      "lisp": {
+        "status": "unsupported",
+        "step_count": null
+      }
+    },
+    "factorial": {
+      "forth": {
+        "status": "pass",
+        "step_count": 30
+      },
+      "lisp": {
+        "status": "pass",
+        "step_count": 1836
+      }
+    },
+    "reverse-string": {
+      "forth": {
+        "status": "pass",
+        "step_count": 15
+      },
+      "lisp": {
+        "status": "unsupported",
+        "step_count": null
+      }
+    },
+    "99-bottles": {
+      "forth": {
+        "status": "pass",
+        "step_count": 500
+      },
+      "lisp": {
+        "status": "unsupported",
+        "step_count": null
+      }
+    },
+    "guess-the-number": {
+      "forth": {
+        "status": "pass",
+        "step_count": 108
+      },
+      "lisp": {
+        "status": "unsupported",
+        "step_count": null
+      }
+    },
+    "sum-numbers": {
+      "forth": {
+        "status": "pass",
+        "step_count": 158
+      },
+      "lisp": {
+        "status": "pass",
+        "step_count": 1826
+      }
+    },
+    "palindrome": {
+      "forth": {
+        "status": "pass",
+        "step_count": 47
+      },
+      "lisp": {
+        "status": "pass",
+        "step_count": 6528
+      }
+    },
+    "rot13": {
+      "forth": {
+        "status": "pass",
+        "step_count": 20
+      },
+      "lisp": {
+        "status": "unsupported",
+        "step_count": null
+      }
+    }
+  },
+  "summary": {
+    "pass": 42,
+    "fail": 0,
+    "unsupported": 18
+  },
+  "errors": [],
+  "results": [
+    {
+      "task": "hello-world",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 1,
+      "probe_count": 101,
+      "guest_rule_count": 86,
+      "solution_bytes": 18,
+      "solution_lines": 1,
+      "solution_path": "tasks/hello-world/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 103,
+      "cases": [
+        {
+          "name": "hello-world",
+          "status": "pass",
+          "step_count": 1,
+          "probe_count": 101,
+          "exit_code": 0,
+          "duration_ms": 103,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "hello-world",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 1,
+      "probe_count": 101,
+      "guest_rule_count": 86,
+      "solution_bytes": 18,
+      "solution_lines": 1,
+      "solution_path": "tasks/hello-world/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 102,
+      "cases": [
+        {
+          "name": "hello-world",
+          "status": "pass",
+          "step_count": 1,
+          "probe_count": 101,
+          "exit_code": 0,
+          "duration_ms": 102,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "hello-world",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 1,
+      "probe_count": 101,
+      "guest_rule_count": 86,
+      "solution_bytes": 18,
+      "solution_lines": 1,
+      "solution_path": "tasks/hello-world/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 202,
+      "cases": [
+        {
+          "name": "hello-world",
+          "status": "pass",
+          "step_count": 1,
+          "probe_count": 101,
+          "exit_code": 0,
+          "duration_ms": 202,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "hello-world",
+      "guest": "lisp",
+      "host": "python",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "A successful Lisp program renders its final value after any write. A string renders with quotes, and write appends (). Neither result is Hello, World!.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "hello-world",
+      "guest": "lisp",
+      "host": "go",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "A successful Lisp program renders its final value after any write. A string renders with quotes, and write appends (). Neither result is Hello, World!.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "hello-world",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "A successful Lisp program renders its final value after any write. A string renders with quotes, and write appends (). Neither result is Hello, World!.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "fibonacci",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 42,
+      "probe_count": 1390,
+      "guest_rule_count": 86,
+      "solution_bytes": 122,
+      "solution_lines": 1,
+      "solution_path": "tasks/fibonacci/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 103,
+      "cases": [
+        {
+          "name": "fibonacci",
+          "status": "pass",
+          "step_count": 42,
+          "probe_count": 1390,
+          "exit_code": 0,
+          "duration_ms": 103,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fibonacci",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 42,
+      "probe_count": 1390,
+      "guest_rule_count": 86,
+      "solution_bytes": 122,
+      "solution_lines": 1,
+      "solution_path": "tasks/fibonacci/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 102,
+      "cases": [
+        {
+          "name": "fibonacci",
+          "status": "pass",
+          "step_count": 42,
+          "probe_count": 1390,
+          "exit_code": 0,
+          "duration_ms": 102,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fibonacci",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 42,
+      "probe_count": 1390,
+      "guest_rule_count": 86,
+      "solution_bytes": 122,
+      "solution_lines": 1,
+      "solution_path": "tasks/fibonacci/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 203,
+      "cases": [
+        {
+          "name": "fibonacci",
+          "status": "pass",
+          "step_count": 42,
+          "probe_count": 1390,
+          "exit_code": 0,
+          "duration_ms": 203,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fibonacci",
+      "guest": "lisp",
+      "host": "python",
+      "status": "pass",
+      "step_count": 3071,
+      "probe_count": 193148,
+      "guest_rule_count": 394,
+      "solution_bytes": 140,
+      "solution_lines": 7,
+      "solution_path": "tasks/fibonacci/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 1809,
+      "cases": [
+        {
+          "name": "fibonacci",
+          "status": "pass",
+          "step_count": 3071,
+          "probe_count": 193148,
+          "exit_code": 0,
+          "duration_ms": 1809,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fibonacci",
+      "guest": "lisp",
+      "host": "go",
+      "status": "pass",
+      "step_count": 3071,
+      "probe_count": 193148,
+      "guest_rule_count": 394,
+      "solution_bytes": 140,
+      "solution_lines": 7,
+      "solution_path": "tasks/fibonacci/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 7430,
+      "cases": [
+        {
+          "name": "fibonacci",
+          "status": "pass",
+          "step_count": 3071,
+          "probe_count": 193148,
+          "exit_code": 0,
+          "duration_ms": 7430,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fibonacci",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 3071,
+      "probe_count": 193148,
+      "guest_rule_count": 394,
+      "solution_bytes": 140,
+      "solution_lines": 7,
+      "solution_path": "tasks/fibonacci/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 34613,
+      "cases": [
+        {
+          "name": "fibonacci",
+          "status": "pass",
+          "step_count": 3071,
+          "probe_count": 193148,
+          "exit_code": 0,
+          "duration_ms": 34613,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fizzbuzz",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 201,
+      "probe_count": 9163,
+      "guest_rule_count": 86,
+      "solution_bytes": 1118,
+      "solution_lines": 1,
+      "solution_path": "tasks/fizzbuzz/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 205,
+      "cases": [
+        {
+          "name": "fizzbuzz",
+          "status": "pass",
+          "step_count": 201,
+          "probe_count": 9163,
+          "exit_code": 0,
+          "duration_ms": 205,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fizzbuzz",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 201,
+      "probe_count": 9163,
+      "guest_rule_count": 86,
+      "solution_bytes": 1118,
+      "solution_lines": 1,
+      "solution_path": "tasks/fizzbuzz/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 105,
+      "cases": [
+        {
+          "name": "fizzbuzz",
+          "status": "pass",
+          "step_count": 201,
+          "probe_count": 9163,
+          "exit_code": 0,
+          "duration_ms": 105,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fizzbuzz",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 201,
+      "probe_count": 9163,
+      "guest_rule_count": 86,
+      "solution_bytes": 1118,
+      "solution_lines": 1,
+      "solution_path": "tasks/fizzbuzz/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 404,
+      "cases": [
+        {
+          "name": "fizzbuzz",
+          "status": "pass",
+          "step_count": 201,
+          "probe_count": 9163,
+          "exit_code": 0,
+          "duration_ms": 404,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "fizzbuzz",
+      "guest": "lisp",
+      "host": "python",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can compute the sequence, but every successful program appends a rendered final value, so the stdout cannot be the plain FizzBuzz text.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "fizzbuzz",
+      "guest": "lisp",
+      "host": "go",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can compute the sequence, but every successful program appends a rendered final value, so the stdout cannot be the plain FizzBuzz text.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "fizzbuzz",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can compute the sequence, but every successful program appends a rendered final value, so the stdout cannot be the plain FizzBuzz text.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "factorial",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 30,
+      "probe_count": 794,
+      "guest_rule_count": 86,
+      "solution_bytes": 39,
+      "solution_lines": 1,
+      "solution_path": "tasks/factorial/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 105,
+      "cases": [
+        {
+          "name": "factorial",
+          "status": "pass",
+          "step_count": 30,
+          "probe_count": 794,
+          "exit_code": 0,
+          "duration_ms": 105,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "factorial",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 30,
+      "probe_count": 794,
+      "guest_rule_count": 86,
+      "solution_bytes": 39,
+      "solution_lines": 1,
+      "solution_path": "tasks/factorial/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 102,
+      "cases": [
+        {
+          "name": "factorial",
+          "status": "pass",
+          "step_count": 30,
+          "probe_count": 794,
+          "exit_code": 0,
+          "duration_ms": 102,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "factorial",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 30,
+      "probe_count": 794,
+      "guest_rule_count": 86,
+      "solution_bytes": 39,
+      "solution_lines": 1,
+      "solution_path": "tasks/factorial/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 205,
+      "cases": [
+        {
+          "name": "factorial",
+          "status": "pass",
+          "step_count": 30,
+          "probe_count": 794,
+          "exit_code": 0,
+          "duration_ms": 205,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "factorial",
+      "guest": "lisp",
+      "host": "python",
+      "status": "pass",
+      "step_count": 1836,
+      "probe_count": 133655,
+      "guest_rule_count": 394,
+      "solution_bytes": 96,
+      "solution_lines": 5,
+      "solution_path": "tasks/factorial/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 1311,
+      "cases": [
+        {
+          "name": "factorial",
+          "status": "pass",
+          "step_count": 1836,
+          "probe_count": 133655,
+          "exit_code": 0,
+          "duration_ms": 1311,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "factorial",
+      "guest": "lisp",
+      "host": "go",
+      "status": "pass",
+      "step_count": 1836,
+      "probe_count": 133655,
+      "guest_rule_count": 394,
+      "solution_bytes": 96,
+      "solution_lines": 5,
+      "solution_path": "tasks/factorial/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 4625,
+      "cases": [
+        {
+          "name": "factorial",
+          "status": "pass",
+          "step_count": 1836,
+          "probe_count": 133655,
+          "exit_code": 0,
+          "duration_ms": 4625,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "factorial",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 1836,
+      "probe_count": 133655,
+      "guest_rule_count": 394,
+      "solution_bytes": 96,
+      "solution_lines": 5,
+      "solution_path": "tasks/factorial/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 22480,
+      "cases": [
+        {
+          "name": "factorial",
+          "status": "pass",
+          "step_count": 1836,
+          "probe_count": 133655,
+          "exit_code": 0,
+          "duration_ms": 22480,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "reverse-string",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 15,
+      "probe_count": 505,
+      "guest_rule_count": 86,
+      "solution_bytes": 11,
+      "solution_lines": 1,
+      "solution_path": "tasks/reverse-string/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 105,
+      "cases": [
+        {
+          "name": "reverse-string",
+          "status": "pass",
+          "step_count": 15,
+          "probe_count": 505,
+          "exit_code": 0,
+          "duration_ms": 105,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "reverse-string",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 15,
+      "probe_count": 505,
+      "guest_rule_count": 86,
+      "solution_bytes": 11,
+      "solution_lines": 1,
+      "solution_path": "tasks/reverse-string/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 104,
+      "cases": [
+        {
+          "name": "reverse-string",
+          "status": "pass",
+          "step_count": 15,
+          "probe_count": 505,
+          "exit_code": 0,
+          "duration_ms": 104,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "reverse-string",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 15,
+      "probe_count": 505,
+      "guest_rule_count": 86,
+      "solution_bytes": 11,
+      "solution_lines": 1,
+      "solution_path": "tasks/reverse-string/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 208,
+      "cases": [
+        {
+          "name": "reverse-string",
+          "status": "pass",
+          "step_count": 15,
+          "probe_count": 505,
+          "exit_code": 0,
+          "duration_ms": 208,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "reverse-string",
+      "guest": "lisp",
+      "host": "python",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp strings cannot be indexed or split, so a line of text cannot be reversed.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "reverse-string",
+      "guest": "lisp",
+      "host": "go",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp strings cannot be indexed or split, so a line of text cannot be reversed.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "reverse-string",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp strings cannot be indexed or split, so a line of text cannot be reversed.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "99-bottles",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 500,
+      "probe_count": 22817,
+      "guest_rule_count": 86,
+      "solution_bytes": 13488,
+      "solution_lines": 1,
+      "solution_path": "tasks/99-bottles/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 407,
+      "cases": [
+        {
+          "name": "99-bottles",
+          "status": "pass",
+          "step_count": 500,
+          "probe_count": 22817,
+          "exit_code": 0,
+          "duration_ms": 407,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "99-bottles",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 500,
+      "probe_count": 22817,
+      "guest_rule_count": 86,
+      "solution_bytes": 13488,
+      "solution_lines": 1,
+      "solution_path": "tasks/99-bottles/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 1309,
+      "cases": [
+        {
+          "name": "99-bottles",
+          "status": "pass",
+          "step_count": 500,
+          "probe_count": 22817,
+          "exit_code": 0,
+          "duration_ms": 1309,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "99-bottles",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 500,
+      "probe_count": 22817,
+      "guest_rule_count": 86,
+      "solution_bytes": 13488,
+      "solution_lines": 1,
+      "solution_path": "tasks/99-bottles/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 6725,
+      "cases": [
+        {
+          "name": "99-bottles",
+          "status": "pass",
+          "step_count": 500,
+          "probe_count": 22817,
+          "exit_code": 0,
+          "duration_ms": 6725,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "99-bottles",
+      "guest": "lisp",
+      "host": "python",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can count, but it cannot emit the song as exact stdout: a successful program always renders a final value after any writes.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "99-bottles",
+      "guest": "lisp",
+      "host": "go",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can count, but it cannot emit the song as exact stdout: a successful program always renders a final value after any writes.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "99-bottles",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can count, but it cannot emit the song as exact stdout: a successful program always renders a final value after any writes.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "guess-the-number",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 108,
+      "probe_count": 4669,
+      "guest_rule_count": 86,
+      "solution_bytes": 224,
+      "solution_lines": 1,
+      "solution_path": "tasks/guess-the-number/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 101,
+      "cases": [
+        {
+          "name": "guess-the-number",
+          "status": "pass",
+          "step_count": 108,
+          "probe_count": 4669,
+          "exit_code": 0,
+          "duration_ms": 101,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "guess-the-number",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 108,
+      "probe_count": 4669,
+      "guest_rule_count": 86,
+      "solution_bytes": 224,
+      "solution_lines": 1,
+      "solution_path": "tasks/guess-the-number/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 105,
+      "cases": [
+        {
+          "name": "guess-the-number",
+          "status": "pass",
+          "step_count": 108,
+          "probe_count": 4669,
+          "exit_code": 0,
+          "duration_ms": 105,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "guess-the-number",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 108,
+      "probe_count": 4669,
+      "guest_rule_count": 86,
+      "solution_bytes": 224,
+      "solution_lines": 1,
+      "solution_path": "tasks/guess-the-number/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 203,
+      "cases": [
+        {
+          "name": "guess-the-number",
+          "status": "pass",
+          "step_count": 108,
+          "probe_count": 4669,
+          "exit_code": 0,
+          "duration_ms": 203,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "guess-the-number",
+      "guest": "lisp",
+      "host": "python",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can read lines and write prompts, but the rendered final value is appended to stdout, so it cannot match this transcript.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "guess-the-number",
+      "guest": "lisp",
+      "host": "go",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can read lines and write prompts, but the rendered final value is appended to stdout, so it cannot match this transcript.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "guess-the-number",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp can read lines and write prompts, but the rendered final value is appended to stdout, so it cannot match this transcript.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "sum-numbers",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 158,
+      "probe_count": 6556,
+      "guest_rule_count": 86,
+      "solution_bytes": 85,
+      "solution_lines": 1,
+      "solution_path": "tasks/sum-numbers/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 335,
+      "cases": [
+        {
+          "name": "three",
+          "status": "pass",
+          "step_count": 86,
+          "probe_count": 3357,
+          "exit_code": 0,
+          "duration_ms": 108,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "none",
+          "status": "pass",
+          "step_count": 26,
+          "probe_count": 1248,
+          "exit_code": 0,
+          "duration_ms": 124,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one",
+          "status": "pass",
+          "step_count": 46,
+          "probe_count": 1951,
+          "exit_code": 0,
+          "duration_ms": 103,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "sum-numbers",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 158,
+      "probe_count": 6556,
+      "guest_rule_count": 86,
+      "solution_bytes": 85,
+      "solution_lines": 1,
+      "solution_path": "tasks/sum-numbers/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 315,
+      "cases": [
+        {
+          "name": "three",
+          "status": "pass",
+          "step_count": 86,
+          "probe_count": 3357,
+          "exit_code": 0,
+          "duration_ms": 107,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "none",
+          "status": "pass",
+          "step_count": 26,
+          "probe_count": 1248,
+          "exit_code": 0,
+          "duration_ms": 107,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one",
+          "status": "pass",
+          "step_count": 46,
+          "probe_count": 1951,
+          "exit_code": 0,
+          "duration_ms": 101,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "sum-numbers",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 158,
+      "probe_count": 6556,
+      "guest_rule_count": 86,
+      "solution_bytes": 85,
+      "solution_lines": 1,
+      "solution_path": "tasks/sum-numbers/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 605,
+      "cases": [
+        {
+          "name": "three",
+          "status": "pass",
+          "step_count": 86,
+          "probe_count": 3357,
+          "exit_code": 0,
+          "duration_ms": 202,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "none",
+          "status": "pass",
+          "step_count": 26,
+          "probe_count": 1248,
+          "exit_code": 0,
+          "duration_ms": 202,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "one",
+          "status": "pass",
+          "step_count": 46,
+          "probe_count": 1951,
+          "exit_code": 0,
+          "duration_ms": 201,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "sum-numbers",
+      "guest": "lisp",
+      "host": "python",
+      "status": "pass",
+      "step_count": 1826,
+      "probe_count": 122198,
+      "guest_rule_count": 394,
+      "solution_bytes": 135,
+      "solution_lines": 5,
+      "solution_path": "tasks/sum-numbers/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 1410,
+      "cases": [
+        {
+          "name": "three",
+          "status": "pass",
+          "step_count": 1082,
+          "probe_count": 70671,
+          "exit_code": 0,
+          "duration_ms": 808,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "none",
+          "status": "pass",
+          "step_count": 230,
+          "probe_count": 16782,
+          "exit_code": 0,
+          "duration_ms": 201,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one",
+          "status": "pass",
+          "step_count": 514,
+          "probe_count": 34745,
+          "exit_code": 0,
+          "duration_ms": 401,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "sum-numbers",
+      "guest": "lisp",
+      "host": "go",
+      "status": "pass",
+      "step_count": 1826,
+      "probe_count": 122198,
+      "guest_rule_count": 394,
+      "solution_bytes": 135,
+      "solution_lines": 5,
+      "solution_path": "tasks/sum-numbers/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 4219,
+      "cases": [
+        {
+          "name": "three",
+          "status": "pass",
+          "step_count": 1082,
+          "probe_count": 70671,
+          "exit_code": 0,
+          "duration_ms": 2713,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "none",
+          "status": "pass",
+          "step_count": 230,
+          "probe_count": 16782,
+          "exit_code": 0,
+          "duration_ms": 302,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one",
+          "status": "pass",
+          "step_count": 514,
+          "probe_count": 34745,
+          "exit_code": 0,
+          "duration_ms": 1204,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "sum-numbers",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 1826,
+      "probe_count": 122198,
+      "guest_rule_count": 394,
+      "solution_bytes": 135,
+      "solution_lines": 5,
+      "solution_path": "tasks/sum-numbers/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 19465,
+      "cases": [
+        {
+          "name": "three",
+          "status": "pass",
+          "step_count": 1082,
+          "probe_count": 70671,
+          "exit_code": 0,
+          "duration_ms": 12841,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "none",
+          "status": "pass",
+          "step_count": 230,
+          "probe_count": 16782,
+          "exit_code": 0,
+          "duration_ms": 1505,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "one",
+          "status": "pass",
+          "step_count": 514,
+          "probe_count": 34745,
+          "exit_code": 0,
+          "duration_ms": 5119,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "palindrome",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 47,
+      "probe_count": 1898,
+      "guest_rule_count": 86,
+      "solution_bytes": 17,
+      "solution_lines": 1,
+      "solution_path": "tasks/palindrome/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 418,
+      "cases": [
+        {
+          "name": "zero",
+          "status": "pass",
+          "step_count": 11,
+          "probe_count": 460,
+          "exit_code": 0,
+          "duration_ms": 102,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "seven",
+          "status": "pass",
+          "step_count": 11,
+          "probe_count": 460,
+          "exit_code": 0,
+          "duration_ms": 115,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "ten",
+          "status": "pass",
+          "step_count": 12,
+          "probe_count": 480,
+          "exit_code": 0,
+          "duration_ms": 100,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one-two-one",
+          "status": "pass",
+          "step_count": 13,
+          "probe_count": 498,
+          "exit_code": 0,
+          "duration_ms": 101,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "palindrome",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 47,
+      "probe_count": 1898,
+      "guest_rule_count": 86,
+      "solution_bytes": 17,
+      "solution_lines": 1,
+      "solution_path": "tasks/palindrome/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 413,
+      "cases": [
+        {
+          "name": "zero",
+          "status": "pass",
+          "step_count": 11,
+          "probe_count": 460,
+          "exit_code": 0,
+          "duration_ms": 102,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "seven",
+          "status": "pass",
+          "step_count": 11,
+          "probe_count": 460,
+          "exit_code": 0,
+          "duration_ms": 105,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "ten",
+          "status": "pass",
+          "step_count": 12,
+          "probe_count": 480,
+          "exit_code": 0,
+          "duration_ms": 101,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one-two-one",
+          "status": "pass",
+          "step_count": 13,
+          "probe_count": 498,
+          "exit_code": 0,
+          "duration_ms": 105,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "palindrome",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 47,
+      "probe_count": 1898,
+      "guest_rule_count": 86,
+      "solution_bytes": 17,
+      "solution_lines": 1,
+      "solution_path": "tasks/palindrome/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 810,
+      "cases": [
+        {
+          "name": "zero",
+          "status": "pass",
+          "step_count": 11,
+          "probe_count": 460,
+          "exit_code": 0,
+          "duration_ms": 202,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "seven",
+          "status": "pass",
+          "step_count": 11,
+          "probe_count": 460,
+          "exit_code": 0,
+          "duration_ms": 202,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "ten",
+          "status": "pass",
+          "step_count": 12,
+          "probe_count": 480,
+          "exit_code": 0,
+          "duration_ms": 204,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "one-two-one",
+          "status": "pass",
+          "step_count": 13,
+          "probe_count": 498,
+          "exit_code": 0,
+          "duration_ms": 202,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "palindrome",
+      "guest": "lisp",
+      "host": "python",
+      "status": "pass",
+      "step_count": 6528,
+      "probe_count": 427429,
+      "guest_rule_count": 394,
+      "solution_bytes": 295,
+      "solution_lines": 11,
+      "solution_path": "tasks/palindrome/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 5228,
+      "cases": [
+        {
+          "name": "zero",
+          "status": "pass",
+          "step_count": 387,
+          "probe_count": 26404,
+          "exit_code": 0,
+          "duration_ms": 407,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "seven",
+          "status": "pass",
+          "step_count": 755,
+          "probe_count": 49279,
+          "exit_code": 0,
+          "duration_ms": 502,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "ten",
+          "status": "pass",
+          "step_count": 1321,
+          "probe_count": 85338,
+          "exit_code": 0,
+          "duration_ms": 905,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one-two-one",
+          "status": "pass",
+          "step_count": 4065,
+          "probe_count": 266408,
+          "exit_code": 0,
+          "duration_ms": 3414,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "palindrome",
+      "guest": "lisp",
+      "host": "go",
+      "status": "pass",
+      "step_count": 6528,
+      "probe_count": 427429,
+      "guest_rule_count": 394,
+      "solution_bytes": 295,
+      "solution_lines": 11,
+      "solution_path": "tasks/palindrome/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 21085,
+      "cases": [
+        {
+          "name": "zero",
+          "status": "pass",
+          "step_count": 387,
+          "probe_count": 26404,
+          "exit_code": 0,
+          "duration_ms": 509,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "seven",
+          "status": "pass",
+          "step_count": 755,
+          "probe_count": 49279,
+          "exit_code": 0,
+          "duration_ms": 1711,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "ten",
+          "status": "pass",
+          "step_count": 1321,
+          "probe_count": 85338,
+          "exit_code": 0,
+          "duration_ms": 3723,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        },
+        {
+          "name": "one-two-one",
+          "status": "pass",
+          "step_count": 4065,
+          "probe_count": 266408,
+          "exit_code": 0,
+          "duration_ms": 15142,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "palindrome",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 6528,
+      "probe_count": 427429,
+      "guest_rule_count": 394,
+      "solution_bytes": 295,
+      "solution_lines": 11,
+      "solution_path": "tasks/palindrome/solutions/lisp.lisp",
+      "reason": null,
+      "duration_ms": 101048,
+      "cases": [
+        {
+          "name": "zero",
+          "status": "pass",
+          "step_count": 387,
+          "probe_count": 26404,
+          "exit_code": 0,
+          "duration_ms": 2621,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "seven",
+          "status": "pass",
+          "step_count": 755,
+          "probe_count": 49279,
+          "exit_code": 0,
+          "duration_ms": 7826,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "ten",
+          "status": "pass",
+          "step_count": 1321,
+          "probe_count": 85338,
+          "exit_code": 0,
+          "duration_ms": 17454,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        },
+        {
+          "name": "one-two-one",
+          "status": "pass",
+          "step_count": 4065,
+          "probe_count": 266408,
+          "exit_code": 0,
+          "duration_ms": 73147,
+          "error": null,
+          "max_steps": 50000,
+          "max_evals": 3000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "rot13",
+      "guest": "forth",
+      "host": "python",
+      "status": "pass",
+      "step_count": 20,
+      "probe_count": 633,
+      "guest_rule_count": 86,
+      "solution_bytes": 13,
+      "solution_lines": 1,
+      "solution_path": "tasks/rot13/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 104,
+      "cases": [
+        {
+          "name": "rot13",
+          "status": "pass",
+          "step_count": 20,
+          "probe_count": 633,
+          "exit_code": 0,
+          "duration_ms": 104,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "rot13",
+      "guest": "forth",
+      "host": "go",
+      "status": "pass",
+      "step_count": 20,
+      "probe_count": 633,
+      "guest_rule_count": 86,
+      "solution_bytes": 13,
+      "solution_lines": 1,
+      "solution_path": "tasks/rot13/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 108,
+      "cases": [
+        {
+          "name": "rot13",
+          "status": "pass",
+          "step_count": 20,
+          "probe_count": 633,
+          "exit_code": 0,
+          "duration_ms": 108,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 30.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "rot13",
+      "guest": "forth",
+      "host": "wasm",
+      "status": "pass",
+      "step_count": 20,
+      "probe_count": 633,
+      "guest_rule_count": 86,
+      "solution_bytes": 13,
+      "solution_lines": 1,
+      "solution_path": "tasks/rot13/solutions/forth.fth",
+      "reason": null,
+      "duration_ms": 204,
+      "cases": [
+        {
+          "name": "rot13",
+          "status": "pass",
+          "step_count": 20,
+          "probe_count": 633,
+          "exit_code": 0,
+          "duration_ms": 204,
+          "error": null,
+          "max_steps": 200000,
+          "max_evals": 2000000,
+          "max_state_bytes": 2097152,
+          "timeout_seconds": 30.0,
+          "host_timeout_seconds": 240.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "task": "rot13",
+      "guest": "lisp",
+      "host": "python",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp strings cannot be indexed, so ROT13 cannot be applied to the line.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "rot13",
+      "guest": "lisp",
+      "host": "go",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp strings cannot be indexed, so ROT13 cannot be applied to the line.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    },
+    {
+      "task": "rot13",
+      "guest": "lisp",
+      "host": "wasm",
+      "status": "unsupported",
+      "step_count": null,
+      "probe_count": null,
+      "guest_rule_count": 394,
+      "solution_bytes": null,
+      "solution_lines": null,
+      "solution_path": null,
+      "reason": "Lisp strings cannot be indexed, so ROT13 cannot be applied to the line.",
+      "duration_ms": 0,
+      "cases": [],
+      "error": null
+    }
+  ]
+}

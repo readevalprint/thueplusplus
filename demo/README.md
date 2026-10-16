@@ -28,7 +28,7 @@ npm run build        # compile WASM, type-check, build, and smoke-check dist
 
 The production page uses origin-root asset URLs (`/assets/...`, `/thuepp.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
 
-`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. It does require `build/tasks/results.json` from `make tasks`; the Guests and Tasks pages are generated from that file.
+`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. It reads the committed `build/tasks/results.json`. Run `make tasks` and commit that file when the suite changes. The Guests and Tasks pages are generated from it.
 
 ## Vercel
 

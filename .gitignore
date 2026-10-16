@@ -1,7 +1,10 @@
 __pycache__/
 *.pyc
 *.egg-info/
-build/
+build/*
+!build/tasks/
+build/tasks/*
+!build/tasks/results.json
 .coverage*
 .docker-home/
 .cache/
