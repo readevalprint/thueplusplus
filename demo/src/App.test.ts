@@ -223,7 +223,12 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="resource-input-stdin"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="resource-output-stdout"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.find('[data-test="resource-output-stderr"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="playground-tab-resources"]').text()).toBe('resources')
+    expect(wrapper.get('[data-test="playground-column"]').attributes('data-orientation')).toBe('vertical')
+    expect(wrapper.get('[data-test="playground-panel-resources"]').text()).toContain('resources')
+    expect(wrapper.get('[data-test="playground-panel-state"]').text()).toContain('state')
+    expect(wrapper.get('[data-test="playground-panel-trace"]').text()).toContain('trace')
+    expect(wrapper.get('[data-test="playground-resize-resources"]').attributes('aria-label')).toBe('Resize resources and state')
+    expect(wrapper.get('[data-test="playground-resize-trace"]').attributes('aria-label')).toBe('Resize state and trace')
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
     expect(loadedSource).toContain('Hello, World')
     expect(loadedSource).not.toContain('\n::=\nSTART\n')
@@ -304,12 +309,31 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="resource-input-custom"]').exists()).toBe(false)
   })
 
+  it('sizes the resources, state, and trace panels equally, then restores a saved layout', async () => {
+    localStorage.removeItem('reka:thuepp-playground-column')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const fresh = await mountApp()
+    const grow = (wrapper: Awaited<ReturnType<typeof mountApp>>, name: string) => {
+      const panel = wrapper.get(`[data-test="playground-panel-${name}"]`).element.parentElement as HTMLElement
+      return panel.style.flexGrow
+    }
+    const initial = ['resources', 'state', 'trace'].map(name => grow(fresh, name))
+    expect(initial.every(size => size === initial[0] && Number(size) > 0)).toBe(true)
+
+    localStorage.setItem('reka:thuepp-playground-column', JSON.stringify({
+      'resources,state,trace': { expandToSizes: {}, layout: [60, 25, 15] },
+    }))
+    const restored = await mountApp()
+    expect(['resources', 'state', 'trace'].map(name => Number(grow(restored, name)))).toEqual([60, 25, 15])
+    localStorage.removeItem('reka:thuepp-playground-column')
+  })
+
   it('shows only bar and the Go error for a read rule without a timeout', async () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('foo ::> bar\nbaz ::< qux\n')
 
-    expect(wrapper.get('[data-test="playground-tab-resources"]').text()).toBe('resources')
+    expect(wrapper.get('[data-test="playground-panel-resources"]').text()).toContain('resources')
     expect(wrapper.get('[data-test="resource-section-bar"]').text()).toContain('bar')
     expect(wrapper.get('[data-test="resource-output-bar"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.find('[data-test="resource-input-bar"]').exists()).toBe(false)

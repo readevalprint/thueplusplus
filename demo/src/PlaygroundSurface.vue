@@ -46,39 +46,56 @@
           </div>
         </template>
         <template #output>
-          <Tabs v-model="outputTab" class="flex h-full min-h-0 flex-col gap-0">
-            <TabsList class="bg-raised h-[34px] w-full justify-start rounded-none p-[3px]">
-              <TabsTrigger value="resources" data-test="playground-tab-resources" class="data-[state=active]:bg-isoline h-full rounded-[2px] px-3 font-mono text-[13px] lowercase data-[state=active]:shadow-none">resources</TabsTrigger>
-              <TabsTrigger value="state" data-test="playground-tab-state" class="data-[state=active]:bg-isoline h-full rounded-[2px] px-3 font-mono text-[13px] lowercase data-[state=active]:shadow-none">state</TabsTrigger>
-              <TabsTrigger value="trace" data-test="playground-tab-trace" class="data-[state=active]:bg-isoline h-full rounded-[2px] px-3 font-mono text-[13px] lowercase data-[state=active]:shadow-none">trace</TabsTrigger>
-            </TabsList>
-            <TabsContent value="resources" force-mount class="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden">
-              <div id="resources" data-test="resource-sections" class="flex flex-col gap-4 p-4">
-                <ResourceSection
-                  v-for="resource in resourceSections"
-                  :key="resource.name"
-                  :resource="resource"
-                  :input="resourceInputs[resource.name] ?? ''"
-                  :output="resourceOutputText(resource.name)"
-                  :attention="resourceAttention[resource.name]"
-                  :running="isBusy"
-                  :can-submit="requestedResourceName === resource.name"
-                  :show-input="showResourceInput(resource)"
-                  :show-output="showResourceOutput(resource)"
-                  @update:input="setResourceInput(resource.name, $event)"
-                  @submit="submitResource(resource.name)"
-                />
-              </div>
-            </TabsContent>
-            <TabsContent value="state" force-mount class="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden">
-              <Textarea v-model="stateText" class="border-line bg-surface h-full min-h-32 rounded-none border-0 font-mono text-[13px]" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
-            </TabsContent>
-            <TabsContent value="trace" force-mount class="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden">
-              <div id="trace" class="p-2">
-                <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <ResizablePanelGroup
+            direction="vertical"
+            auto-save-id="thuepp-playground-column"
+            data-test="playground-column"
+            class="h-full min-h-0"
+          >
+            <ResizablePanel id="resources" :order="1" :default-size="100 / 3" :min-size="8" class="flex min-h-0 flex-col">
+              <section data-test="playground-panel-resources" class="bg-surface flex h-full min-h-0 flex-col">
+                <h2 class="border-line bg-raised text-ash flex h-7 shrink-0 items-center border-b px-3 font-mono text-[13px] lowercase">resources</h2>
+                <div data-test="resource-sections" class="min-h-0 flex-1 overflow-auto">
+                  <div class="flex flex-col gap-4 p-4">
+                    <ResourceSection
+                      v-for="resource in resourceSections"
+                      :key="resource.name"
+                      :resource="resource"
+                      :input="resourceInputs[resource.name] ?? ''"
+                      :output="resourceOutputText(resource.name)"
+                      :attention="resourceAttention[resource.name]"
+                      :running="isBusy"
+                      :can-submit="requestedResourceName === resource.name"
+                      :show-input="showResourceInput(resource)"
+                      :show-output="showResourceOutput(resource)"
+                      @update:input="setResourceInput(resource.name, $event)"
+                      @submit="submitResource(resource.name)"
+                    />
+                  </div>
+                </div>
+              </section>
+            </ResizablePanel>
+            <ResizableHandle with-handle aria-label="Resize resources and state" data-test="playground-resize-resources" />
+            <ResizablePanel id="state" :order="2" :default-size="100 / 3" :min-size="8" class="flex min-h-0 flex-col">
+              <section data-test="playground-panel-state" class="bg-surface flex h-full min-h-0 flex-col">
+                <h2 class="border-line bg-raised text-ash flex h-7 shrink-0 items-center border-b px-3 font-mono text-[13px] lowercase">state</h2>
+                <div class="min-h-0 flex-1 overflow-hidden">
+                  <Textarea v-model="stateText" class="border-line bg-surface field-sizing-fixed h-full min-h-0 resize-none rounded-none border-0 font-mono text-[13px] shadow-none focus-visible:ring-0" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
+                </div>
+              </section>
+            </ResizablePanel>
+            <ResizableHandle with-handle aria-label="Resize state and trace" data-test="playground-resize-trace" />
+            <ResizablePanel id="trace" :order="3" :default-size="100 / 3" :min-size="8" class="flex min-h-0 flex-col">
+              <section data-test="playground-panel-trace" class="bg-surface flex h-full min-h-0 flex-col">
+                <h2 class="border-line bg-raised text-ash flex h-7 shrink-0 items-center border-b px-3 font-mono text-[13px] lowercase">trace</h2>
+                <div data-test="playground-trace" class="min-h-0 flex-1 overflow-auto">
+                  <div class="p-2">
+                    <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+                  </div>
+                </div>
+              </section>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </template>
       </PlaygroundSplit>
     </div>
@@ -97,7 +114,7 @@ import { useMediaQuery } from '@vueuse/core'
 import { diffChars } from 'diff'
 import { computed, nextTick, ref } from 'vue'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Textarea } from '@/components/ui/textarea'
 import SiteHeader from '@/components/SiteHeader.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
@@ -130,7 +147,6 @@ const props = withDefaults(defineProps<{
 const stacked = useMediaQuery('(max-width: 719px)')
 const examplesOpen = ref(false)
 const settingsOpen = ref(false)
-const outputTab = ref('resources')
 const shareState = ref('')
 const appliedSteps = ref(0)
 const probeCount = ref(0)
@@ -277,9 +293,9 @@ function isResourceReady(name: string): boolean {
 }
 
 async function focusResourceInput(name: string): Promise<void> {
-  outputTab.value = 'resources'
   await nextTick()
   const input = document.querySelector(`[data-test="resource-input-${name}"]`) as HTMLTextAreaElement | null
+  input?.scrollIntoView({ block: 'nearest' })
   input?.focus()
 }
 
