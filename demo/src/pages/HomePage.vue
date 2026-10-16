@@ -33,7 +33,7 @@ const pillars = [
           Available in
           <template v-for="(language, index) in ready" :key="language.id">
             <RouterLink :to="language.href" class="text-bone hover:text-signal transition-colors duration-150">{{ language.landing }}</RouterLink><span v-if="index < ready.length - 1">, </span>
-          </template>, and soon {{ soon.join(', ') }}.
+          </template>, and soon {{ soon.join(', ') }}
         </p>
         <div class="mt-8 flex flex-wrap gap-2">
           <Button as-child size="lg">

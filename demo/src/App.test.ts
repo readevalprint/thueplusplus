@@ -81,7 +81,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('h1').text()).toBe('Thue++')
     expect(wrapper.text()).toContain('The safest, smallest, sandbox.')
     const languages = wrapper.get('[data-test="landing-languages"]')
-    expect(languages.text()).toBe('Available in go, python, js, rust, cpp, and soon erlang, ocaml, perl, ruby, haskell.')
+    expect(languages.text()).toBe('Available in go, python, js, rust, cpp, and soon erlang, ocaml, perl, ruby, haskell')
     expect(languages.get('a[href="/hosts#go"]').text()).toBe('go')
     expect(languages.get('a[href="/hosts#python"]').text()).toBe('python')
     expect(languages.get('a[href="/hosts#javascript"]').text()).toBe('js')
