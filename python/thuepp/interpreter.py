@@ -4,6 +4,7 @@ Thue++ interpreter.
 
 import base64
 import binascii
+import json
 import math
 import re as py_re
 import re2 as re
@@ -27,6 +28,34 @@ EXIT_STEP_LIMIT = 10
 EXIT_EVAL_LIMIT = 11
 EXIT_STATE_LIMIT = 12
 EXIT_READ_TIMEOUT = 13
+
+
+def format_trace(events: list[dict[str, Any]]) -> str:
+    """One JSON object per trace event, in the conformance key order.
+
+    ``error`` is an empty string when unset. ``exitCode`` is JSON null except
+    for ``::-``. Each object is one line, and the result ends with a newline
+    when it is not empty.
+    """
+    if not events:
+        return ""
+    lines: list[str] = []
+    for event in events:
+        payload = {
+            "step": event["step"],
+            "ruleIndex": event["ruleIndex"],
+            "lineNumber": event["lineNumber"],
+            "operator": event["operator"],
+            "matchStart": event["matchStart"],
+            "matchEnd": event["matchEnd"],
+            "error": event.get("error") or "",
+            "stateBefore": event["stateBefore"],
+            "replacement": event.get("replacement") or "",
+            "stateAfter": event["stateAfter"],
+            "exitCode": event.get("exitCode"),
+        }
+        lines.append(json.dumps(payload, ensure_ascii=True, separators=(",", ":")))
+    return "\n".join(lines) + "\n"
 
 
 class LimitExceeded(RuntimeError):
@@ -1041,12 +1070,16 @@ class ThueppInterpreter:
                 if not match:
                     continue
 
+                state_before = self.state
                 lhs_groups = match.groupdict()
-                groups, mid_ok = self._apply_mids(rule, lhs_groups)
+                try:
+                    groups, mid_ok = self._apply_mids(rule, lhs_groups)
+                except RuntimeError as exc:
+                    self._record_trace(rule, rule_index, match, state_before, "", error=str(exc))
+                    raise
                 if not mid_ok:
                     continue
                 applied = True
-                state_before = self.state
 
                 if self.debug:
                     escaped_state = self.state.replace("\n", "\\n")
@@ -1071,89 +1104,81 @@ class ThueppInterpreter:
 
                 replacement: Optional[str] = None
                 magic_vars = {"rule_index": str(rule_index)}
-
-                if rule.operator == Operator.SUBSTITUTE:
-                    replacement = self._expand_template(rule.rhs, groups, magic_vars)
-                    self._record_rule_coverage(rule)
-
-                elif rule.operator == Operator.READ:
-                    parts = rule.rhs.strip().split()
-                    if len(parts) != 2:
-                        raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
-                    read_spec, resource = parts
-                    try:
-                        read_timeout = float(read_spec)
-                    except ValueError as exc:
-                        raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
-                    if not math.isfinite(read_timeout) or read_timeout <= 0:
-                        raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'")
-                    if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
-                        raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
-                    binding = self.bindings.get(resource)
-                    if not binding:
-                        raise RuntimeError(f"Unknown resource '{resource}'")
-                    content, error = self._read_line(binding, read_timeout)
-                    if error:
-                        if error.startswith("ERR:resource:") and error.endswith(":timeout"):
-                            raise LimitExceeded("timeout", EXIT_READ_TIMEOUT, error)
-                        raise RuntimeError(error)
-                    replacement = self._pct_encode(content)
-                    self._record_rule_coverage(rule)
-
-                elif rule.operator == Operator.WRITE:
-                    expanded = self._expand_template(rule.rhs, groups, magic_vars)
-                    space_idx = -1
-                    for pos, ch in enumerate(expanded):
-                        if ch in " \t":
-                            space_idx = pos
-                            break
-                    if space_idx >= 0:
-                        resource = expanded[:space_idx]
-                        content = expanded[space_idx + 1:]
-                    else:
-                        resource = expanded
-                        content = ""
-
-                    binding = self.bindings.get(resource)
-                    write_error = None
-                    if not binding:
-                        replacement = f"ERR:resource:{resource}"
-                    else:
-                        write_error = self._write_string(binding, content)
-                        replacement = write_error or ""
-                    if binding and not write_error:
-                        self._record_rule_coverage(rule)
-
-                elif rule.operator == Operator.BUILTIN:
-                    values = []
-                    for arg in rule.builtin_args:
-                        if arg not in groups:
-                            raise RuntimeError(
-                                f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
-                            )
-                        values.append(groups[arg])
-                    replacement = self._eval_builtin(rule.builtin_name, values)
-                    self._record_rule_coverage(rule)
-
-                elif rule.operator == Operator.EXIT:
-                    code_str = rule.rhs.strip()
-                    if code_str.startswith("{") and code_str.endswith("}"):
-                        code_str = code_str[1:-1]
-                    try:
-                        exit_code = int(code_str)
-                    except ValueError:
-                        self._record_rule_coverage(rule)
-                        self._record_trace(rule, rule_index, match, state_before, "")
-                        return 1
-                    self._record_rule_coverage(rule)
-                    self._record_trace(rule, rule_index, match, state_before, "", exit_code=exit_code)
-                    return exit_code
-
-                if replacement is None:
-                    raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
-
                 try:
-                    self._set_state(self.state[:match.start()] + replacement + self.state[match.end():])
+                    if rule.operator == Operator.SUBSTITUTE:
+                        replacement = self._expand_template(rule.rhs, groups, magic_vars)
+                        self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.READ:
+                        parts = rule.rhs.strip().split()
+                        if len(parts) != 2:
+                            raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
+                        read_spec, resource = parts
+                        try:
+                            read_timeout = float(read_spec)
+                        except ValueError as exc:
+                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
+                        if not math.isfinite(read_timeout) or read_timeout <= 0:
+                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'")
+                        if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
+                            raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
+                        binding = self.bindings.get(resource)
+                        if not binding:
+                            raise RuntimeError(f"Unknown resource '{resource}'")
+                        content, error = self._read_line(binding, read_timeout)
+                        if error:
+                            if error.startswith("ERR:resource:") and error.endswith(":timeout"):
+                                raise LimitExceeded("timeout", EXIT_READ_TIMEOUT, error)
+                            raise RuntimeError(error)
+                        replacement = self._pct_encode(content)
+                        self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.WRITE:
+                        expanded = self._expand_template(rule.rhs, groups, magic_vars)
+                        space_idx = -1
+                        for pos, ch in enumerate(expanded):
+                            if ch in " \t":
+                                space_idx = pos
+                                break
+                        if space_idx >= 0:
+                            resource = expanded[:space_idx]
+                            content = expanded[space_idx + 1:]
+                        else:
+                            resource = expanded
+                            content = ""
+                        binding = self.bindings.get(resource)
+                        write_error = None
+                        if not binding:
+                            replacement = f"ERR:resource:{resource}"
+                        else:
+                            write_error = self._write_string(binding, content)
+                            replacement = write_error or ""
+                        if binding and not write_error:
+                            self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.BUILTIN:
+                        values = []
+                        for arg in rule.builtin_args:
+                            if arg not in groups:
+                                raise RuntimeError(
+                                    f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
+                                )
+                            values.append(groups[arg])
+                        replacement = self._eval_builtin(rule.builtin_name, values)
+                        self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.EXIT:
+                        code_str = rule.rhs.strip()
+                        if code_str.startswith("{") and code_str.endswith("}"):
+                            code_str = code_str[1:-1]
+                        try:
+                            exit_code = int(code_str)
+                        except ValueError:
+                            self._record_rule_coverage(rule)
+                            self._record_trace(rule, rule_index, match, state_before, "")
+                            return 1
+                        self._record_rule_coverage(rule)
+                        self._record_trace(rule, rule_index, match, state_before, "", exit_code=exit_code)
+                        return exit_code
+                    else:
+                        raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
+                    self._set_state(self.state[:match.start()] + (replacement or "") + self.state[match.end():])
                 except RuntimeError as exc:
                     self._record_trace(rule, rule_index, match, state_before, replacement or "", error=str(exc))
                     raise

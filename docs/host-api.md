@@ -57,7 +57,9 @@ The reason is part of the host API:
 | Python | `LimitExceeded`, a `RuntimeError` with `.kind`, `.code`, and the message as the exception text. |
 | wasm | result field `limit` (`steps`, `evals`, `state`, or `timeout`) and `exitCode`. `limit` is omitted when the run did not stop for a limit. `error` is the message without the `Error: ` prefix. |
 
-Rate limiting across runs, and wall-clock limits other than a `::<` timeout written in the program, are the host's job. The interpreter bounds one run's probes, applied steps, and state size. It does not bound how many runs a host starts. Go's `stdin` resource does not enforce the `::<` timeout; process reads and the Python `stdin` resource do.
+Rate limiting across runs, and wall-clock limits other than a `::<` timeout written in the program, are the host's job. The interpreter bounds one run's probes, applied steps, and state size. It does not bound how many runs a host starts.
+
+A `::<` read waits for one newline-terminated line. The Go `stdin` resource and every process read return `ERR:resource:NAME:timeout` when that line has not arrived at the deadline. A line that arrives after a timeout stays available for a later read of the same resource. The Python `stdin` resource returns the same timeout when `stdin` is not readable within the deadline, then reads one line. A stream that is already at EOF, with no newline, is `EOF before newline`, not a timeout. The wasm module passes the timeout, in seconds, to the host `readLine` callback. The Node CLI's stdin callback enforces that deadline and returns the same timeout error.
 
 Repository runners do not clear these limits. Conformance passes explicit `--max-evals`, `--max-steps`, and `--max-state-bytes`, wraps the process in `timeout(1)`, and kills it if resident memory passes 256 MiB. A manifest may pass `unlimited` only by setting `allow_unlimited = true` on a single case. See [conformance.md](conformance.md).
 
@@ -72,20 +74,24 @@ Repository runners do not clear these limits. Conformance passes explicit `--max
 
 `Run` resets the applied-step count and the trace log. Eval count accumulates for the lifetime of the interpreter.
 
-Trace is off unless the host enables it. Each event is one applied rewrite, one `::-` exit, or a replacement rejected by the state limit:
+Trace is off unless the host enables it. Every host records an event and then returns. A matched rule that fails is one event: a bad `::|` step, a bad read, a bad builtin, a template error, or a replacement rejected by the state limit. An applied rewrite and a `::-` exit are events too. A probe-limit or step-limit stop is not an event; those stops happen before the rule applies.
 
 | Field | Meaning |
 | --- | --- |
-| `step` | `EvalCount` when the rule applied |
+| `step` | `EvalCount` for that probe |
 | `ruleIndex` | index in the rule list |
 | `sourcePath`, `lineNumber`, `lhs` | the rule |
 | `operator` | `::=`, `::<`, `::>`, `::-`, or `::!` |
 | `matchStart`, `matchEnd`, `groups` | the match |
-| `stateBefore`, `replacement`, `stateAfter` | the edit |
+| `stateBefore` | state before the rule ran |
+| `replacement` | replacement text. Empty when the operator fails before a replacement exists. On a state-limit rejection, the text that was not written |
+| `stateAfter` | state after a successful rewrite. On a failure, the unchanged state |
 | `exitCode` | set for `::-` |
-| `error` | set when the replacement is rejected |
+| `error` | the failure message. Empty on success |
 
-Go also records a trace event when a matched rule fails before replacement (bad read, bad builtin). Python raises that error without a trace event. Hosts that need those failures can catch the error; the counts still move only when a rule is probed (`eval_count`) or applied (`applied_steps`).
+A failure before a replacement exists leaves the state unchanged, does not increment the applied-step count, and then returns 1, or 13 when the failure is a `::<` timeout. A state-limit rejection does the same and then returns 12: the event is recorded first, with `error` set to `State size (N bytes) exceeds maximum (M bytes)`, and the oversized state is not installed. The host does not return 12 with an empty trace, and it does not change the state before recording the event.
+
+`--trace` prints that log to stderr as one JSON object per event, before any `Error:` line. Keys, in order, with no extra whitespace: `step`, `ruleIndex`, `lineNumber`, `operator`, `matchStart`, `matchEnd`, `error`, `stateBefore`, `replacement`, `stateAfter`, `exitCode`. `error` is `""` when unset. `exitCode` is JSON `null` except for `::-`. `examples/trace` locks this text.
 
 ## Packages
 

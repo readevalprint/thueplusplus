@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"runtime/debug"
@@ -425,5 +426,119 @@ func TestReadTimeoutLimit(t *testing.T) {
 	}
 	if limit.Message != "ERR:resource:sleepy:timeout" {
 		t.Fatalf("message = %q", limit.Message)
+	}
+}
+
+func TestStdinResourceReadsReadyLinesAndEOF(t *testing.T) {
+	resource := newStdinResource("stdin", strings.NewReader("Ada\r\nBob\n"))
+	line, err := resource.ReadLine(time.Second)
+	if err != nil || line != "Ada" {
+		t.Fatalf("line = %q err = %v", line, err)
+	}
+	line, err = resource.ReadLine(time.Second)
+	if err != nil || line != "Bob" {
+		t.Fatalf("line = %q err = %v", line, err)
+	}
+	if _, err = resource.ReadLine(time.Second); err == nil || err.Error() != "EOF before newline" {
+		t.Fatalf("err = %v, want EOF before newline", err)
+	}
+}
+
+func TestStdinResourceTimesOutThenKeepsALateLine(t *testing.T) {
+	pr, pw := io.Pipe()
+	defer pw.Close()
+	resource := newStdinResource("stdin", pr)
+	start := time.Now()
+	_, err := resource.ReadLine(100 * time.Millisecond)
+	if err == nil || err.Error() != "timeout" {
+		t.Fatalf("err = %v, want timeout", err)
+	}
+	if time.Since(start) < 50*time.Millisecond {
+		t.Fatalf("returned before the deadline: %s", time.Since(start))
+	}
+	if _, err := pw.Write([]byte("Ada\n")); err != nil {
+		t.Fatal(err)
+	}
+	line, err := resource.ReadLine(time.Second)
+	if err != nil || line != "Ada" {
+		t.Fatalf("line = %q err = %v", line, err)
+	}
+}
+
+func TestStdinReadTimeoutIsALimitAndTraces(t *testing.T) {
+	pr, pw := io.Pipe()
+	defer pw.Close()
+	interp := NewWithHostResources(HostResources{
+		Stdin:  pr,
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+	})
+	evals, steps := 10, 2
+	interp.MaxEvals = &evals
+	interp.MaxSteps = &steps
+	interp.TraceEnabled = true
+	if err := interp.LoadProgramText("stdin-timeout.tpp", "^start$ ::< 0.1 stdin\n::=\nstart"); err != nil {
+		t.Fatal(err)
+	}
+	type runResult struct {
+		code int
+		err  error
+	}
+	done := make(chan runResult, 1)
+	go func() {
+		code, err := interp.Run()
+		done <- runResult{code, err}
+	}()
+	var result runResult
+	select {
+	case result = <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("stdin read ignored the timeout")
+	}
+	var limit *LimitError
+	if result.code != ExitReadTimeout || !errors.As(result.err, &limit) || limit.Kind != LimitTimeout {
+		t.Fatalf("code=%d err=%v", result.code, result.err)
+	}
+	if limit.Message != "ERR:resource:stdin:timeout" {
+		t.Fatalf("message = %q", limit.Message)
+	}
+	if interp.State != "start" || interp.AppliedSteps != 0 || len(interp.Trace) != 1 {
+		t.Fatalf("state=%q steps=%d trace=%d", interp.State, interp.AppliedSteps, len(interp.Trace))
+	}
+	event := interp.Trace[0]
+	if event.Error != limit.Message || event.Replacement != "" || event.StateAfter != "start" {
+		t.Fatalf("event = %#v", event)
+	}
+}
+
+func TestStateLimitRecordsTraceThenReturns(t *testing.T) {
+	interp := New()
+	evals, steps, stateBytes := 10, 2, 1
+	interp.MaxEvals = &evals
+	interp.MaxSteps = &steps
+	interp.MaxStateBytes = &stateBytes
+	interp.TraceEnabled = true
+	if err := interp.LoadProgramText("state-limit.tpp", "^a$ ::= bb\n::=\na"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	var limit *LimitError
+	if code != ExitStateLimit || !errors.As(err, &limit) || limit.Kind != LimitState {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	if interp.State != "a" || interp.AppliedSteps != 0 || len(interp.Trace) != 1 {
+		t.Fatalf("state=%q steps=%d trace=%d", interp.State, interp.AppliedSteps, len(interp.Trace))
+	}
+	event := interp.Trace[0]
+	if event.Replacement != "bb" || event.StateBefore != "a" || event.StateAfter != "a" || event.Error != limit.Message {
+		t.Fatalf("event = %#v", event)
+	}
+	text, err := FormatTrace(interp.Trace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"step":1,"ruleIndex":0,"lineNumber":1,"operator":"::=","matchStart":0,"matchEnd":1,"error":"State size (2 bytes) exceeds maximum (1 bytes)","stateBefore":"a","replacement":"bb","stateAfter":"a","exitCode":null}` + "\n"
+	if text != want {
+		t.Fatalf("trace = %q, want %q", text, want)
 	}
 }

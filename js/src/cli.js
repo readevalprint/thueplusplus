@@ -2,7 +2,7 @@
 // Thin Node host. It speaks the same argv contract as the Go and Python CLIs.
 // Process bindings are opt-in: the wasm module never spawns a process itself.
 
-import { writeFileSync, readFileSync, writeSync, readSync } from 'node:fs'
+import { writeFileSync, readFileSync, writeSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { fileURLToPath } from 'node:url'
@@ -14,9 +14,12 @@ const MAX_PAYLOAD = 1024 * 1024
 const sab = new SharedArrayBuffer(HEADER_BYTES + MAX_PAYLOAD)
 const header = new Int32Array(sab, 0, 3)
 const ioWorker = new Worker(new URL('./proc-host.cjs', import.meta.url))
-
-let stdinBuffer = ''
-let stdinEOF = false
+const STDIN_HEADER_BYTES = 16
+const STDIN_MAX_PAYLOAD = 1024 * 1024
+const stdinSab = new SharedArrayBuffer(STDIN_HEADER_BYTES + STDIN_MAX_PAYLOAD)
+const stdinHeader = new Int32Array(stdinSab, 0, 4)
+const stdinWorker = new Worker(new URL('./stdin-host.cjs', import.meta.url))
+stdinWorker.postMessage({ sab: stdinSab })
 
 async function main() {
   try {
@@ -25,7 +28,7 @@ async function main() {
     const sourceText = readProgram(options.program)
     const thuepp = await initThuePP({ wasmPath })
     const resources = {
-      stdin: { readLine: () => readStdinLine() },
+      stdin: { readLine: (timeoutSeconds) => readStdinLine(timeoutSeconds) },
       stdout: { write: (content) => { writeSync(1, String(content)); return '' } },
       stderr: { write: (content) => { writeSync(2, String(content)); return '' } },
     }
@@ -43,6 +46,7 @@ async function main() {
       maxStateBytes: options.maxStateBytes,
       maxSteps: options.maxSteps,
       debug: options.debug,
+      trace: options.trace,
       listRules: options.listRules,
       coverage: Boolean(options.ruleCoverage),
       resources,
@@ -52,6 +56,7 @@ async function main() {
     if (options.ruleCoverage) writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
     process.stdout.write(result.stdout || '')
     process.stderr.write(result.stderr || '')
+    if (options.trace) process.stderr.write(formatTrace(result.trace))
     if (result.error) process.stderr.write(`Error: ${result.error}\n`)
     await cleanup()
     process.exit(result.exitCode ?? 1)
@@ -72,6 +77,9 @@ function parseArgs(argv) {
     const arg = argv[index]
     if (arg === '--debug') {
       options.debug = true
+      index += 1
+    } else if (arg === '--trace') {
+      options.trace = true
       index += 1
     } else if (arg === '--list-rules') {
       options.listRules = true
@@ -140,22 +148,41 @@ function readProgram(program) {
   }
 }
 
-function readStdinLine() {
-  while (!stdinBuffer.includes('\n') && !stdinEOF) {
-    const chunk = Buffer.alloc(4096)
-    const n = readSync(0, chunk, 0, chunk.length, null)
-    if (n === 0) {
-      stdinEOF = true
-      break
-    }
-    stdinBuffer += chunk.subarray(0, n).toString('utf8')
+function readStdinLine(timeoutSeconds) {
+  const timeoutMs = Number(timeoutSeconds) * 1000
+  const deadline = Date.now() + timeoutMs
+  while (Atomics.load(stdinHeader, 0) === 0) {
+    const remaining = deadline - Date.now()
+    if (!(remaining > 0)) return { error: 'timeout' }
+    Atomics.wait(stdinHeader, 0, 0, remaining)
   }
-  const newline = stdinBuffer.indexOf('\n')
-  if (newline < 0) return { error: 'EOF before newline' }
-  let line = stdinBuffer.slice(0, newline)
-  stdinBuffer = stdinBuffer.slice(newline + 1)
-  if (line.endsWith('\r')) line = line.slice(0, -1)
-  return line
+  const kind = Atomics.load(stdinHeader, 2)
+  const length = Atomics.load(stdinHeader, 1)
+  const text = Buffer.from(new Uint8Array(stdinSab, STDIN_HEADER_BYTES, length)).toString('utf8')
+  if (kind === 1) {
+    Atomics.store(stdinHeader, 0, 0)
+    Atomics.notify(stdinHeader, 0, 1)
+    return text
+  }
+  return { error: text || 'EOF before newline' }
+}
+
+function formatTrace(events) {
+  if (!events || !events.length) return ''
+  const lines = events.map((event) => JSON.stringify({
+    step: event.step,
+    ruleIndex: event.ruleIndex,
+    lineNumber: event.lineNumber,
+    operator: event.operator,
+    matchStart: event.matchStart,
+    matchEnd: event.matchEnd,
+    error: event.error || '',
+    stateBefore: event.stateBefore,
+    replacement: event.replacement || '',
+    stateAfter: event.stateAfter,
+    exitCode: event.exitCode == null ? null : event.exitCode,
+  }))
+  return lines.join('\n') + '\n'
 }
 
 function callProc(op, proc, extra) {
@@ -174,7 +201,7 @@ function cleanup() {
   Atomics.store(header, 0, 0)
   ioWorker.postMessage({ op: 'cleanup', sab })
   Atomics.wait(header, 0, 0, 1000)
-  return ioWorker.terminate()
+  return Promise.all([ioWorker.terminate(), stdinWorker.terminate()])
 }
 
 main()

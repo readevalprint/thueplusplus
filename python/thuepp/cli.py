@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from thuepp import LimitExceeded, ThueppInterpreter
+from thuepp.interpreter import format_trace
 
 
 class _Unset:
@@ -54,6 +55,11 @@ def main() -> None:
     parser.add_argument("--input", type=str, help="Override initial state with this value")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging of rule evaluation")
     parser.add_argument(
+        "--trace",
+        action="store_true",
+        help="Write one JSON object per trace event to stderr, before any Error line",
+    )
+    parser.add_argument(
         "--rule-coverage",
         type=str,
         help="Write successful rule application counts as TSV to this path",
@@ -74,6 +80,7 @@ def main() -> None:
         limits["max_steps"] = args.max_steps
     interpreter = ThueppInterpreter(
         debug=args.debug,
+        trace_enabled=args.trace,
         rule_coverage_path=args.rule_coverage,
         **limits,
     )
@@ -93,6 +100,8 @@ def main() -> None:
             sys.exit(1)
 
     exit_code = 0
+    error_message = None
+    interrupted = False
     try:
         interpreter.load_program(args.program)
         if args.list_rules:
@@ -108,13 +117,13 @@ def main() -> None:
                 interpreter.apply_input_override(args.input)
             exit_code = interpreter.run()
     except LimitExceeded as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        error_message = str(exc)
         exit_code = exc.code
     except RuntimeError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        error_message = str(exc)
         exit_code = 1
     except KeyboardInterrupt:
-        print("\nInterrupted", file=sys.stderr)
+        interrupted = True
         exit_code = 130
     finally:
         coverage_error = None
@@ -124,6 +133,12 @@ def main() -> None:
             coverage_error = exc
         interpreter.cleanup()
 
+    if args.trace:
+        sys.stderr.write(format_trace(interpreter.trace))
+    if error_message is not None:
+        print(f"Error: {error_message}", file=sys.stderr)
+    if interrupted:
+        print("\nInterrupted", file=sys.stderr)
     if coverage_error is not None:
         print(f"Error: failed to write rule coverage: {coverage_error}", file=sys.stderr)
         exit_code = 1

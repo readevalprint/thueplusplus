@@ -126,16 +126,23 @@ loop:
     captures = named groups from that match
     for step in rule.mids:
       regex = fill step from captures, inserting each value as regex source
-      if regex is invalid: error
+      if regex is invalid: record a trace event with that error, then return 1
       search whole state
       if none: continue to the next rule
       add the step's participating named groups to captures
     if applied rewrites already equal the step limit and operator does not exit: return 10
-    if operator exits: return its code
+    if operator exits: record a trace event, then return its code
     result = apply operator using captures
+    if the operator fails before a replacement exists:
+      record a trace event with that error and an empty replacement
+      return 1, or 13 when the failure is a ::< timeout
     candidate = state before the LHS match + result + state after the LHS match
-    if candidate byte length exceeds the state limit: return 12
+    if candidate byte length exceeds the state limit:
+      record a trace event with the limit error and the rejected replacement
+      leave the state unchanged
+      return 12
     state = candidate
+    record a trace event for the applied rewrite
     count one applied rewrite
     if applied rewrites equal the step limit: return 10
     restart loop
@@ -145,6 +152,8 @@ loop:
 Only one span is replaced per action, and that span is the LHS match. A `::|` step does not move the replacement span. The LHS search does not retry a later match when a step misses; the rule does not apply. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries.
 
 A new interpreter limits a run to 1000000 rule probes, 1000000 applied rewrites, and 8388608 bytes of state. A host may raise, lower, or clear each limit. `0` is a real limit. Clearing a limit means no bound. The Nth applied rewrite returns 10 and the run does not scan further. A run that quiesces before that many rewrites returns 0. `::-` does not count as an applied rewrite, and it runs only when the step limit has not already been reached. The eval limit is checked before the probe. The state limit is the UTF-8 length after replacement. A `::<` timeout returns 13.
+
+When tracing is on, the host records the event and then returns. A state-limit stop records the rejection and then returns 12. The state stays as it was, and `stateAfter` is that same text. The host does not return 12 with an empty trace, and it does not install the oversized candidate. A matched rule that fails before replacement does the same: the event is recorded, the state stays unchanged, and then the run returns. A probe limit or an applied-step limit does not record an event. The `--trace` JSON object is in [host-api.md](host-api.md).
 
 | Code | Meaning | Message |
 | --- | --- | --- |
@@ -202,7 +211,7 @@ Split `RHS` on whitespace. First token is builtin name; remaining tokens are cap
 
 `RHS` must be exactly two tokens: `TIMEOUT RESOURCE`. `TIMEOUT` is a finite positive number of seconds; zero, negative, NaN, infinity, and non-numeric values are errors. `RESOURCE` matches `[A-Za-z_][A-Za-z0-9_]*` and must be readable.
 
-Read exactly one newline-delimited message. Strip `\n`; if preceded by `\r`, strip that too. EOF before newline is an error. Bulk reads are unsupported. Replacement is canonical PCT encoding of the line payload.
+Read exactly one newline-delimited message. Strip `\n`; if preceded by `\r`, strip that too. The host waits at most `TIMEOUT` seconds for that newline. If it does not arrive, the read fails with `ERR:resource:RESOURCE:timeout` and the run returns 13. That deadline applies to `stdin` and to a process read. EOF before newline is a different error. Bulk reads are unsupported. Replacement is canonical PCT encoding of the line payload.
 
 ### `::>` write
 
