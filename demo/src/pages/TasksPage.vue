@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import DocPage from '@/components/DocPage.vue'
+import FinishLine from '@/components/marks/FinishLine.vue'
 import { pages } from '@/site'
 
 const page = pages.tasks
@@ -7,6 +8,9 @@ const page = pages.tasks
 
 <template>
   <DocPage :kicker="page.kicker" :title="page.title">
+    <template #mark>
+      <FinishLine />
+    </template>
     <section id="what-a-task-is" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">What a task is</h2>
       <p class="leading-7">A task is a small Thue++ program with a result you can check. You get the rules, or a gap in them, and a state to start from.</p>

@@ -2,6 +2,7 @@
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
+import RewriteArrow from '@/components/marks/RewriteArrow.vue'
 import { pages } from '@/site'
 
 const page = pages.home
@@ -9,6 +10,9 @@ const page = pages.home
 
 <template>
   <DocPage :kicker="page.kicker" :title="page.title">
+    <template #mark>
+      <RewriteArrow />
+    </template>
     <template #actions>
       <Button as-child>
         <RouterLink to="/playground">Playground</RouterLink>

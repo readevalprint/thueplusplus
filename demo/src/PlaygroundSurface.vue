@@ -40,6 +40,9 @@
       </div>
 
       <PageHero v-if="showHero" :kicker="page.kicker" :title="page.title">
+        <template #mark>
+          <Replace />
+        </template>
         <template #actions>
           <Button type="button" data-test="playground-cta" @click="scrollToEditor">Edit the program</Button>
         </template>
@@ -51,7 +54,7 @@
 
           <Card id="editor">
             <CardHeader>
-              <CardTitle>Rules</CardTitle>
+              <CardTitle><Glyph>::=</Glyph>Rules</CardTitle>
               <CardDescription v-if="selectedTestCase" data-test="playground-selected-case">
                 <span>{{ selectedTestCase.caseName }}</span>
                 <span class="block">{{ selectedTestCase.manifestPath }}</span>
@@ -93,7 +96,7 @@
 
           <Card id="output" data-test="resource-sections">
             <CardHeader>
-              <CardTitle>Output</CardTitle>
+              <CardTitle><Glyph>::&gt;</Glyph>Output</CardTitle>
             </CardHeader>
             <CardContent class="flex flex-col gap-4">
               <ResourceSection
@@ -139,6 +142,7 @@
 </template>
 
 <script setup lang="ts">
+import { Replace } from '@lucide/vue'
 import { diffChars } from 'diff'
 import { useMediaQuery } from '@vueuse/core'
 import { computed, nextTick, ref } from 'vue'
@@ -147,6 +151,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import Glyph from '@/components/marks/Glyph.vue'
 import PageHero from '@/components/PageHero.vue'
 import PlaygroundSettings from '@/playground/PlaygroundSettings.vue'
 import ResourceSection from './ResourceSection.vue'
