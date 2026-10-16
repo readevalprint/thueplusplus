@@ -23,7 +23,7 @@ if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
   throw new Error('demo production index must use origin-root asset URLs so nested static routes load assets from the site root')
 }
 if (!index.includes(pages.home.title) || !index.includes(pages.home.canonical)) {
-  throw new Error('demo production index must include the placeholder landing heading and canonical URL')
+  throw new Error('demo production index must include the landing heading and canonical URL')
 }
 if (index.includes('modulepreload" crossorigin href="/assets/editor-monaco-')) {
   throw new Error('demo production index must not eagerly modulepreload the Monaco editor chunk')

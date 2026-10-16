@@ -2,21 +2,18 @@
   "home": {
     "path": "/",
     "kicker": "Thue++",
-    "title": "A rewrite language built on RE2.",
-    "description": "Thue++ is a rewrite language. This landing page is a placeholder.",
-    "documentTitle": "Thue++ — A rewrite language built on RE2",
+    "title": "Thue++",
+    "description": "The safest, smallest, sandbox.",
+    "documentTitle": "Thue++ — The safest, smallest, sandbox.",
     "canonical": "https://thuelang.org/",
     "robots": "index,follow",
-    "links": [
-      { "title": "Placeholder", "href": "#placeholder" },
-      { "title": "Start", "href": "#start" }
-    ]
+    "links": []
   },
   "learn": {
     "path": "/learn",
     "kicker": "Learn",
     "title": "Rewrite a string until it stops.",
-    "description": "A short tour of Thue++: ordered RE2 rules, a state string, and a host that repeats them.",
+    "description": "A short tour of Thue++: ordered rules, a state string, and a host that repeats them.",
     "documentTitle": "Learn Thue++ — Rewrite a string until it stops",
     "canonical": "https://thuelang.org/learn",
     "robots": "index,follow",

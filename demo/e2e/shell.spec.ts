@@ -92,7 +92,7 @@ test('mobile theme toggle switches light and dark', async ({ page }) => {
   await page.getByTestId('theme-toggle').click()
   await page.getByTestId('theme-dark').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await expect(page.getByRole('heading', { name: 'A rewrite language built on RE2.' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Thue++' })).toBeVisible()
   await page.getByTestId('theme-toggle').click()
   await page.getByTestId('theme-light').click()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
@@ -110,10 +110,48 @@ test('a page without an aside uses the full content width', async ({ page }) => 
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 800 })
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'A rewrite language built on RE2.' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Thue++' })).toBeVisible()
+    await expect(page.getByText('The safest, smallest, sandbox.')).toBeVisible()
     await expect(page.getByTestId('page-sidebar')).toHaveCount(0)
     await expect(page.getByTestId('aside-trigger')).toHaveCount(0)
   }
+})
+
+test('landing copy sits above the fold and links to hosts', async ({ page }) => {
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 375, height: 812 },
+  ]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/')
+    const heading = page.getByRole('heading', { level: 1, name: 'Thue++' })
+    const tagline = page.getByText('The safest, smallest, sandbox.', { exact: true })
+    const graphic = page.getByTestId('landing-rewrite')
+    const languages = page.getByTestId('landing-languages')
+    await expect(heading).toBeVisible()
+    await expect(tagline).toBeVisible()
+    await expect(graphic).toContainText('hello Ada')
+    await expect(graphic).toContainText('::=')
+    await expect(graphic).toContainText('hi Ada')
+    await expect(languages).toHaveText('Available in go, python, js, and soon cpp, erlang, ocaml, perl, ruby, haskell, rust.')
+    await expect(languages.getByRole('link')).toHaveCount(3)
+    await expect(languages.getByRole('link', { name: 'go', exact: true })).toHaveAttribute('href', '/hosts#go')
+    await expect(languages.getByRole('link', { name: 'python', exact: true })).toHaveAttribute('href', '/hosts#python')
+    await expect(languages.getByRole('link', { name: 'js', exact: true })).toHaveAttribute('href', '/hosts#javascript')
+    await expect(page.getByText('RE2')).toHaveCount(0)
+    const boxes = await Promise.all([heading, tagline, graphic, languages].map(locator => locator.boundingBox()))
+    for (const box of boxes) {
+      expect(box).not.toBeNull()
+    }
+    const [headingBox, taglineBox, graphicBox, languagesBox] = boxes
+    expect(headingBox!.y).toBeLessThan(taglineBox!.y)
+    expect(taglineBox!.y).toBeLessThan(graphicBox!.y)
+    expect(graphicBox!.y).toBeLessThan(languagesBox!.y)
+    expect(languagesBox!.y + languagesBox!.height).toBeLessThan(viewport.height)
+  }
+  await page.getByTestId('landing-languages').getByRole('link', { name: 'go', exact: true }).click()
+  await expect(page).toHaveURL(/\/hosts#go$/)
+  await expect(page.getByRole('heading', { level: 2, name: 'Go' })).toBeVisible()
 })
 
 test('deep links render their own heading', async ({ page }) => {

@@ -569,7 +569,7 @@ uv run python tools/check_contract.py --update-readme
 
 - v0.5 semantics checked by executable manifests
 - ordered rewrite rules over text state
-- [RE2-compatible](https://github.com/google/re2/wiki/Syntax) regex subset
+- regex subset for the regex engine
 - pattern aliases with `$NAME` references
 - named captures and `{{group}}` templates
 - operators: `::|`, `::=`, `::<`, `::>`, `::-`, `::!`
@@ -643,7 +643,6 @@ External context:
 - [Rewriting](https://grokipedia.com/page/Rewriting) — broader rewriting-system context
 - [Axel Thue](https://mathshistory.st-andrews.ac.uk/Biographies/Thue/) — historical background from MacTutor
 - [Thue esolang](https://github.com/jcolag/Thue) — John Colagioia's original language
-- [RE2 syntax](https://github.com/google/re2/wiki/Syntax) — regex syntax family targeted by the reference implementations
 - [RFC 3986 percent-encoding](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1) — background for PCT payloads
 - [The Floating-Point Guide](https://floating-point-gui.de/) — why exact rationals avoid decimal/binary float surprises
 
