@@ -58,7 +58,7 @@ Every supported case goes through `tools/run_limits.bounded_run`:
 
 A case that exceeds a limit, the clock, or the memory cap is a failure. The suite does not retry it.
 
-Applied steps are the host's rewrite count. `::-` does not count. The runner asks every host for `--rule-coverage` and sums the counts, skipping rules whose source line contains `::-`. Passing hosts for one task and guest must report the same total. The total for a task with several cases is the sum of the cases.
+Applied steps are the host's rewrite count. `::-` does not count. The runner asks every host for `--rule-coverage` and sums the counts, skipping rules whose source line contains `::-`. It also passes `--counts`. `probe_count` is the `probes` field from that file, summed across the task's cases. The coverage total must equal `applied_steps` in the counts file. Passing hosts for one task and guest must report the same applied-step total. The total for a task with several cases is the sum of the cases.
 
 `guest_rule_count` is the number of rewrite rules in the guest interpreter, from Python `--list-rules`. It does not depend on the task. `solution_bytes` is the UTF-8 size of the solution file, including its trailing newline. `solution_lines` is the number of lines.
 
@@ -93,6 +93,7 @@ A `results` row:
 | `task`, `guest`, `host` | the triple |
 | `status` | `pass`, `fail`, or `unsupported` |
 | `step_count` | applied rewrites, or null |
+| `probe_count` | rule probes (eval count), or null |
 | `guest_rule_count` | guest interpreter rules |
 | `solution_bytes`, `solution_lines`, `solution_path` | null when unsupported |
 | `reason` | unsupported marker text, else null |
@@ -100,7 +101,7 @@ A `results` row:
 | `error` | failure text, else null |
 | `cases` | one object per transcript |
 
-A case object repeats the status, step count, exit code, duration, and the limits that were enforced (`max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `host_timeout_seconds`).
+A case object repeats the status, step count, probe count, exit code, duration, and the limits that were enforced (`max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `host_timeout_seconds`).
 
 ```json
 {
@@ -123,6 +124,7 @@ A case object repeats the status, step count, exit code, duration, and the limit
       "host": "python",
       "status": "pass",
       "step_count": 1800,
+      "probe_count": 9000,
       "guest_rule_count": 394,
       "solution_bytes": 120,
       "solution_lines": 6,

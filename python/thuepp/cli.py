@@ -1,6 +1,7 @@
 """Command-line host. It uses only the public interpreter API."""
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -22,6 +23,13 @@ def parse_limit(text: str):
         return int(text)
     except ValueError as exc:
         raise argparse.ArgumentTypeError(f"invalid integer {text!r}") from exc
+
+
+def _write_counts(path: str, applied_steps: int, probes: int) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"applied_steps": applied_steps, "probes": probes}
+    target.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
 
 
 def main() -> None:
@@ -69,6 +77,11 @@ def main() -> None:
         action="store_true",
         help="List compiled rule source IDs and source text as TSV, then exit",
     )
+    parser.add_argument(
+        "--counts",
+        type=str,
+        help='After a run, write {"applied_steps": N, "probes": N} JSON to this path',
+    )
     args, remaining = parser.parse_known_args()
 
     limits = {}
@@ -100,6 +113,7 @@ def main() -> None:
             sys.exit(1)
 
     exit_code = 0
+    ran = False
     error_message = None
     interrupted = False
     try:
@@ -115,6 +129,7 @@ def main() -> None:
         else:
             if args.input is not None:
                 interpreter.apply_input_override(args.input)
+            ran = True
             exit_code = interpreter.run()
     except LimitExceeded as exc:
         error_message = str(exc)
@@ -127,10 +142,16 @@ def main() -> None:
         exit_code = 130
     finally:
         coverage_error = None
+        counts_error = None
         try:
             interpreter.write_rule_coverage()
         except OSError as exc:
             coverage_error = exc
+        if ran and args.counts:
+            try:
+                _write_counts(args.counts, interpreter.applied_steps, interpreter.eval_count)
+            except OSError as exc:
+                counts_error = exc
         interpreter.cleanup()
 
     if args.trace:
@@ -141,5 +162,8 @@ def main() -> None:
         print("\nInterrupted", file=sys.stderr)
     if coverage_error is not None:
         print(f"Error: failed to write rule coverage: {coverage_error}", file=sys.stderr)
+        exit_code = 1
+    if counts_error is not None:
+        print(f"Error: failed to write counts: {counts_error}", file=sys.stderr)
         exit_code = 1
     sys.exit(exit_code)

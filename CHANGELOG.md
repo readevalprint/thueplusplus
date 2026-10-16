@@ -9,6 +9,8 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Added
 
+- Per-commit metrics history at `metrics/history.json`. The schema is `metrics/SCHEMA.md`. `metrics/record.py` appends the current commit: SHA, author, commit timestamp, guest rule-line counts, task pass / applied steps / probes from `make tasks`, and benchmark wall-clock time for each host. `metrics/backfill.py` fills older commits with rule-line counts where the current Python host can list rules. GitHub Actions commits a new `main` measurement. GitLab CI runs the same recorder. The static site fetches `/metrics/history.json`.
+- Host CLI `--counts PATH`. After a run it writes `{"applied_steps": N, "probes": N}`. `make tasks` records `probe_count` from that file on every task, guest, and host.
 - Landing page at `/`: the header Thue++, the tagline "The safest, smallest, sandbox.", a small animated rewrite graphic, then the language line. Go, Python, and JavaScript link to their Hosts sections. cpp, erlang, ocaml, perl, ruby, haskell, and rust are plain text.
 - Forth guest words for loops (`begin`/`until`), `if`/`else`/`then`, strings (`."`, `cr`, `.`, `rev`, `rot13`), and stdin (`input`, `accept`). The golden tasks now have Forth solutions for hello world, Fibonacci, FizzBuzz, factorial, reverse, 99 bottles, guess the number, sum of input, palindrome, and ROT13.
 - `--trace` writes one JSON object per trace event to stderr, before any `Error:` line. `examples/trace` locks that text for a state-limit rejection and for a matched rule that fails before replacement.

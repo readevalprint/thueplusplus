@@ -331,6 +331,24 @@ def exit_rule_lines(program: Path, rules: dict[str, str]) -> set[int]:
     return found
 
 
+def read_counts(path: Path) -> tuple[int, int]:
+    if not path.is_file():
+        raise SuiteError(f"counts file was not written: {path}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SuiteError(f"{path}: malformed counts JSON: {exc}") from exc
+    if not isinstance(data, dict) or set(data) != {"applied_steps", "probes"}:
+        raise SuiteError(f"{path}: counts JSON must contain applied_steps and probes")
+    applied = data["applied_steps"]
+    probes = data["probes"]
+    if isinstance(applied, bool) or not isinstance(applied, int) or applied < 0:
+        raise SuiteError(f"{path}: applied_steps must be a non-negative integer")
+    if isinstance(probes, bool) or not isinstance(probes, int) or probes < 0:
+        raise SuiteError(f"{path}: probes must be a non-negative integer")
+    return applied, probes
+
+
 def applied_steps(coverage: Path, exit_lines: set[int]) -> int:
     if not coverage.is_file():
         raise SuiteError(f"rule coverage was not written: {coverage}")
@@ -376,6 +394,7 @@ def run_host_case(
     case_dir = tmp / f"{task['id']}-{guest_id}-{scope}-{host}"
     case_dir.mkdir(parents=True)
     coverage = case_dir / "rule-coverage.tsv"
+    counts_path = case_dir / "counts.json"
     bound = dict(case)
     bound["program"] = os.path.relpath(ROOT / guest_program_rel, task["transcript"].parent)
     bound["input"] = solution_text
@@ -386,7 +405,7 @@ def run_host_case(
             task["transcript"],
             bound,
             case_dir,
-            extra_args=["--rule-coverage", str(coverage)],
+            extra_args=["--rule-coverage", str(coverage), "--counts", str(counts_path)],
             check_expect=False,
         )
     except RuntimeError as exc:
@@ -394,6 +413,7 @@ def run_host_case(
             "name": scope,
             "status": "fail",
             "step_count": None,
+            "probe_count": None,
             "exit_code": None,
             "duration_ms": int((time.perf_counter() - started) * 1000),
             "error": str(exc),
@@ -419,10 +439,23 @@ def run_host_case(
         steps = None
         status = "fail"
         error = str(exc) if error is None else f"{error}; {exc}"
+    try:
+        counted_steps, probes = read_counts(counts_path)
+    except SuiteError as exc:
+        counted_steps, probes = None, None
+        status = "fail"
+        error = str(exc) if error is None else f"{error}; {exc}"
+    else:
+        if steps is not None and counted_steps != steps:
+            status = "fail"
+            mismatch = f"counts applied_steps {counted_steps} != coverage {steps}"
+            error = mismatch if error is None else f"{error}; {mismatch}"
+            probes = None
     return {
         "name": scope,
         "status": status,
         "step_count": steps,
+        "probe_count": probes,
         "exit_code": result.exit_code,
         "duration_ms": duration_ms,
         "error": error,
@@ -437,6 +470,7 @@ def unsupported_row(task: dict, guest: dict, host: str, reason: str, rule_count:
         "host": host,
         "status": "unsupported",
         "step_count": None,
+        "probe_count": None,
         "guest_rule_count": rule_count,
         "solution_bytes": None,
         "solution_lines": None,
@@ -470,6 +504,8 @@ def run_supported(
         status = "pass" if statuses and all(item == "pass" for item in statuses) else "fail"
         steps = [row["step_count"] for row in case_rows]
         step_count = sum(steps) if all(isinstance(item, int) for item in steps) else None
+        probes = [row["probe_count"] for row in case_rows]
+        probe_count = sum(probes) if all(isinstance(item, int) for item in probes) else None
         errors = [row["error"] for row in case_rows if row["error"]]
         return {
             "task": task["id"],
@@ -477,6 +513,7 @@ def run_supported(
             "host": interpreter.name,
             "status": status,
             "step_count": step_count,
+            "probe_count": probe_count,
             "guest_rule_count": rule_count,
             "solution_bytes": size,
             "solution_lines": lines,
@@ -703,7 +740,7 @@ def _run_selected(tasks, guests, args, started: float) -> int:
                 rows.extend(produced)
                 for row in produced:
                     print(
-                        f"  {row['host']}: {row['status']} steps={row['step_count']} {row['duration_ms']}ms",
+                        f"  {row['host']}: {row['status']} steps={row['step_count']} probes={row['probe_count']} {row['duration_ms']}ms",
                         file=sys.stderr,
                     )
         document = build_document(

@@ -72,6 +72,8 @@ Repository runners do not clear these limits. Conformance passes explicit `--max
 | trace switch | `TraceEnabled` | `trace_enabled` | `trace: true` |
 | trace log | `Trace` | `trace` | `trace` |
 
+The CLI flag `--counts PATH` writes those two numbers as JSON: `applied_steps` and `probes` (`probes` is the eval count). The file is written after a run, including a limit stop. `--list-rules` does not write it.
+
 `Run` resets the applied-step count and the trace log. Eval count accumulates for the lifetime of the interpreter.
 
 Trace is off unless the host enables it. Every host records an event and then returns. A matched rule that fails is one event: a bad `::|` step, a bad read, a bad builtin, a template error, or a replacement rejected by the state limit. An applied rewrite and a `::-` exit are events too. A probe-limit or step-limit stop is not an event; those stops happen before the rule applies.
