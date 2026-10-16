@@ -102,6 +102,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="aside-trigger"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rewrite-motif"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="https://github.com/readevalprint/thueplusplus"]').exists()).toBe(true)
     expect(wrapper.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
   })

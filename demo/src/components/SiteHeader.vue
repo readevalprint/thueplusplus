@@ -1,24 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { Menu } from '@lucide/vue'
+import { ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import Mark from './Mark.vue'
 import ThemeToggle from './ThemeToggle.vue'
 
 const route = useRoute()
+const menuOpen = ref(false)
 
 const links = [
   { title: 'Learn', path: '/learn' },
   { title: 'Reference', path: '/reference' },
+  { title: 'Playground', path: '/playground' },
   { title: 'Hosts', path: '/hosts' },
   { title: 'Guests', path: '/guests' },
   { title: 'Tasks', path: '/tasks' },
 ]
 
-const crumb = computed(() => {
-  if (route.path === '/') return 'home'
-  return links.find(link => link.path === route.path)?.title.toLowerCase() ?? 'docs'
+watch(() => route.path, () => {
+  menuOpen.value = false
 })
+
+function current(path: string): 'page' | undefined {
+  return route.path === path ? 'page' : undefined
+}
 </script>
 
 <template>
@@ -27,28 +34,46 @@ const crumb = computed(() => {
       <Mark />
       <span class="font-display font-semibold tracking-[-0.03em] max-[640px]:sr-only">Thue++</span>
     </RouterLink>
-    <span class="text-dim" aria-hidden="true">/</span>
-    <span class="text-ash lowercase">{{ crumb }}</span>
-    <nav class="ml-3 hidden items-center gap-4 md:flex" aria-label="Site">
+    <nav class="ml-3 hidden items-center gap-4 lg:flex" data-test="site-nav" aria-label="Site">
       <RouterLink
         v-for="link in links"
         :key="link.path"
         :to="link.path"
         class="text-ash hover:text-bone lowercase transition-colors duration-150"
-        :class="route.path === link.path ? 'text-bone' : undefined"
-        :aria-current="route.path === link.path ? 'page' : undefined"
+        :class="current(link.path) ? 'text-bone' : undefined"
+        :aria-current="current(link.path)"
       >
         {{ link.title }}
       </RouterLink>
     </nav>
     <div class="flex-1" />
     <ThemeToggle />
-    <a class="text-ash hover:text-bone lowercase transition-colors duration-150" href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">
-      <span class="max-[800px]:sr-only">gitlab</span>
-      <span class="hidden max-[800px]:inline" aria-hidden="true">gl</span>
-    </a>
-    <Button v-if="route.path !== '/'" as-child variant="outline" class="border-signal text-signal hover:bg-signal hover:text-[#0a0a0c]">
-      <RouterLink to="/playground">playground →</RouterLink>
-    </Button>
+    <a class="text-ash hover:text-bone lowercase transition-colors duration-150" data-test="github-link" href="https://github.com/readevalprint/thueplusplus" rel="noreferrer">github</a>
+    <Sheet v-model:open="menuOpen">
+      <SheetTrigger as-child>
+        <Button variant="ghost" size="icon" class="lg:hidden" data-test="menu-toggle" aria-label="Open menu" :aria-expanded="menuOpen">
+          <Menu />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" class="bg-void border-line w-72">
+        <SheetHeader>
+          <SheetTitle class="font-mono text-[13px] lowercase">Menu</SheetTitle>
+          <SheetDescription class="sr-only">Learn, Reference, Playground, Hosts, Guests, and Tasks.</SheetDescription>
+        </SheetHeader>
+        <nav class="flex flex-col px-2 font-mono text-[13px]" data-test="site-menu" aria-label="Site">
+          <RouterLink
+            v-for="link in links"
+            :key="link.path"
+            :to="link.path"
+            class="text-ash hover:text-bone px-3 py-3 lowercase transition-colors duration-150"
+            :class="current(link.path) ? 'text-bone' : undefined"
+            :aria-current="current(link.path)"
+            @click="menuOpen = false"
+          >
+            {{ link.title }}
+          </RouterLink>
+        </nav>
+      </SheetContent>
+    </Sheet>
   </header>
 </template>

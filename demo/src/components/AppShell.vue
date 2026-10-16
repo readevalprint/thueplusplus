@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import DocsContents from './DocsContents.vue'
 import OnThisPage from './OnThisPage.vue'
 import SiteHeader from './SiteHeader.vue'
 
@@ -20,30 +19,30 @@ watch(() => route.path, () => {
     <div v-if="home">
       <RouterView />
     </div>
-    <div v-else class="mx-auto w-full max-w-[1320px] lg:grid lg:grid-cols-[260px_minmax(0,1fr)_220px]">
-      <aside data-test="site-nav" class="border-line lg:border-r max-lg:px-4 max-lg:pt-4">
-        <div class="border-line bg-surface max-lg:border lg:bg-transparent">
-          <button
-            type="button"
-            class="text-ash flex h-11 w-full items-center justify-between px-4 font-mono text-[13px] lowercase lg:hidden"
-            data-test="contents-toggle"
-            :aria-expanded="contentsOpen"
-            @click="contentsOpen = !contentsOpen"
-          >
-            <span>contents</span>
-            <span aria-hidden="true">{{ contentsOpen ? '▴' : '▾' }}</span>
-          </button>
-          <div :class="contentsOpen ? 'border-line block border-t lg:border-0' : 'hidden lg:block'">
-            <DocsContents />
-          </div>
-        </div>
-      </aside>
-      <div class="min-w-0">
-        <RouterView />
+    <div v-else class="mx-auto flex w-full max-w-[calc(65ch+13.5rem)] flex-col items-center px-4 sm:px-6 lg:flex-row lg:items-start lg:justify-center lg:gap-10">
+      <div class="w-full max-w-[65ch] pt-4 lg:hidden">
+        <button
+          type="button"
+          class="border-line bg-surface text-ash flex h-11 w-full items-center justify-between border px-4 font-mono text-[13px]"
+          data-test="contents-toggle"
+          :aria-expanded="contentsOpen"
+          aria-controls="on-this-page"
+          @click="contentsOpen = !contentsOpen"
+        >
+          <span>Contents</span>
+          <span aria-hidden="true">{{ contentsOpen ? '▴' : '▾' }}</span>
+        </button>
       </div>
-      <aside data-test="page-sidebar" class="border-line hidden lg:block lg:border-l">
+      <aside
+        data-test="page-sidebar"
+        class="w-full max-w-[65ch] lg:sticky lg:top-[68px] lg:max-h-[calc(100svh-84px)] lg:w-44 lg:max-w-none lg:shrink-0 lg:self-start lg:overflow-auto lg:pt-10"
+        :class="contentsOpen ? 'block' : 'hidden lg:block'"
+      >
         <OnThisPage />
       </aside>
+      <div class="w-full min-w-0 max-w-[65ch]">
+        <RouterView />
+      </div>
     </div>
   </div>
 </template>

@@ -61,7 +61,7 @@ const pillars = [
     </section>
 
     <footer class="border-line flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-4 py-6 font-mono text-[13px] sm:px-6 lg:px-14">
-      <nav data-test="site-nav" class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Site">
+      <nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Site">
         <RouterLink to="/learn" class="text-ash hover:text-bone lowercase">Learn</RouterLink>
         <RouterLink to="/reference" class="text-ash hover:text-bone lowercase">Reference</RouterLink>
         <RouterLink to="/playground" class="text-ash hover:text-bone lowercase">Playground</RouterLink>

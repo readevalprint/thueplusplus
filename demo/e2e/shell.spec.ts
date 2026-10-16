@@ -13,19 +13,26 @@ async function expectDocsShell(page: Page, width: number): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Rewrite a string until it stops.' })).toBeVisible()
   await expect(page.getByTestId('page-details')).toBeVisible()
   await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect(page.getByTestId('github-link')).toBeVisible()
   if (width >= 1024) {
+    await expect(page.getByTestId('menu-toggle')).toBeHidden()
     await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Reference' })).toBeVisible()
+    await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Playground' })).toBeVisible()
     await expect(page.getByTestId('page-sidebar')).toBeVisible()
-    await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'A program' })).toBeVisible()
+    await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'A program' })).toHaveAttribute('aria-current', 'location')
     await expect(page.getByTestId('contents-toggle')).toBeHidden()
     return
   }
-  await expect(page.getByTestId('page-sidebar')).toBeHidden()
   await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Reference' })).toBeHidden()
+  await expect(page.getByTestId('page-sidebar')).toBeHidden()
+  await page.getByTestId('menu-toggle').click()
+  await expect(page.getByTestId('site-menu').getByRole('link', { name: 'Hosts' })).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+  await expect(page.getByTestId('site-menu').getByRole('link', { name: 'Hosts' })).toBeHidden()
   await page.getByTestId('contents-toggle').click()
-  await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Hosts' })).toBeVisible()
+  await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'A program' })).toBeVisible()
   await page.getByTestId('contents-toggle').click()
-  await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Hosts' })).toBeHidden()
+  await expect(page.getByTestId('page-sidebar')).toBeHidden()
 }
 
 for (const viewport of viewports) {
@@ -79,6 +86,21 @@ test('embed has no site chrome', async ({ page }) => {
   await expect(page.getByTestId('contents-toggle')).toHaveCount(0)
   await expect(page.getByTestId('playground-workbench')).toBeVisible()
   await expect(page.getByTestId('page-hero')).toHaveCount(0)
+})
+
+test('scroll spy highlights the section in view', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 640 })
+  await page.goto('/learn')
+  const sidebar = page.getByTestId('page-sidebar')
+  await expect(sidebar.getByRole('link', { name: 'A program' })).toHaveAttribute('aria-current', 'location')
+  await page.evaluate(() => {
+    const heading = document.getElementById('operators')
+    if (!heading) throw new Error('missing operators')
+    const top = heading.getBoundingClientRect().top + window.scrollY
+    window.scrollTo(0, Math.max(0, top - 80))
+  })
+  await expect(sidebar.getByRole('link', { name: 'Operators' })).toHaveAttribute('aria-current', 'location')
+  await expect(sidebar.getByRole('link', { name: 'A program' })).not.toHaveAttribute('aria-current', 'location')
 })
 
 test('deep links render their own heading', async ({ page }) => {

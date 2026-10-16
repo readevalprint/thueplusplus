@@ -60,7 +60,7 @@ The state history below the State editor is a raw chronological shadcn-vue/TanSt
 
 ## Page layout
 
-The docs shell is a 52px sticky header, then a 260 | 1fr | 220 grid. The left column is Contents. Below 1024px it collapses behind a Contents toggle. The right column is On this page and hides below 1024px. Article text is 65ch. `/playground` is outside that shell.
+The docs shell is a 52px sticky header. Learn, Reference, Playground, Hosts, Guests, and Tasks sit in that header, with the theme toggle and a GitHub link. Below 1024px those links move into a menu button. The left column is the sticky On this page list: the page's h2 and h3 headings, a vertical rail, and a brighter segment on the section in view. Below 1024px that list collapses behind a Contents toggle at the top of the article. The article is one centered column at about 65ch. There is no right column. `/playground` is outside that shell.
 
 ## Embeddable playground routes
 

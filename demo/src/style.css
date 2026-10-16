@@ -232,6 +232,45 @@ html:not(.dark) {
   background: var(--signal);
 }
 
+.doc-page :is(h1, h2, h3, [id]) {
+  scroll-margin-top: 5rem;
+}
+
+.page-toc {
+  padding: 1rem 0;
+  color: var(--ash);
+  font-size: 0.9rem;
+}
+
+.page-toc p {
+  margin: 0 0 0.75rem;
+  color: var(--bone);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-toc a {
+  display: block;
+  border-left: 2px solid var(--line);
+  padding: 0.32rem 0 0.32rem 0.75rem;
+  color: var(--ash);
+  text-decoration: none;
+}
+
+.page-toc a[data-level="3"] {
+  padding-left: 1.5rem;
+  font-size: 0.8rem;
+}
+
+.page-toc a:hover,
+.page-toc a.active {
+  border-left-color: var(--bone);
+  color: var(--bone);
+}
+
 *,
 *::before,
 *::after {

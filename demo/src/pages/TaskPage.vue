@@ -14,6 +14,11 @@ const taskId = computed(() => typeof route.params.taskId === 'string' ? route.pa
 const task = computed(() => taskById(taskId.value))
 const graphic = computed(() => task.value ? previewLine(task.value.cases[0]?.stdout ?? '') : 'missing')
 
+function caseAnchor(name: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return `case-${slug}`
+}
+
 </script>
 
 <template>
@@ -37,7 +42,7 @@ const graphic = computed(() => task.value ? previewLine(task.value.cases[0]?.std
       <h2 class="text-xl font-semibold tracking-tight">Input and output</h2>
       <div v-for="(item, index) in task.cases" :key="item.name" data-test="task-case" class="flex flex-col gap-3">
         <Separator v-if="index > 0" />
-        <h3 v-if="task.cases.length > 1" class="font-medium">{{ item.name }}</h3>
+        <h3 v-if="task.cases.length > 1" :id="caseAnchor(item.name)" class="font-medium">{{ item.name }}</h3>
         <p class="text-sm font-medium">stdin</p>
         <pre v-if="item.stdin.length > 0" class="border-line bg-surface overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ item.stdin }}</pre>
         <p v-else class="text-muted-foreground text-sm">empty</p>

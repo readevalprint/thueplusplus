@@ -7,7 +7,7 @@ defineProps<{
 </script>
 
 <template>
-  <article class="doc-page px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+  <article class="doc-page py-8 lg:py-10">
     <header data-test="page-hero">
       <div class="flex items-center gap-3">
         <span v-if="$slots.mark" class="text-signal inline-flex size-5 items-center justify-center">
