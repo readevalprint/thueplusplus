@@ -23,23 +23,8 @@ vi.mock('./RulesMonacoEditor.vue', async () => {
   }
 })
 
-vi.mock('./ReadmeCodeEditor.vue', async () => {
-  const { defineComponent, h } = await import('vue')
-  return {
-    default: defineComponent({
-      props: { code: { type: String, default: '' }, language: { type: String, default: 'thuepp' }, lineNumberStart: { type: Number, default: 1 } },
-      setup(props, { attrs }) {
-        return () => h('pre', {
-          ...attrs,
-          'data-language': props.language,
-          'data-line-start': props.lineNumberStart,
-        }, props.code)
-      },
-    }),
-  }
-})
-
 import App from './App.vue'
+import { createAppRouter } from './router'
 
 vi.mock('./wasm', async () => {
   return {
@@ -54,8 +39,20 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
+let active: ReturnType<typeof mount> | undefined
+
 async function mountApp(options?: Parameters<typeof mount>[1]): Promise<ReturnType<typeof mount>> {
-  const wrapper = mount(App, options)
+  active?.unmount()
+  const router = createAppRouter()
+  const wrapper = mount(App, {
+    ...options,
+    global: {
+      ...options?.global,
+      plugins: [router, ...(options?.global?.plugins ?? [])],
+    },
+  })
+  await router.isReady()
+  active = wrapper
   await flush()
   await flush()
   return wrapper
@@ -63,8 +60,11 @@ async function mountApp(options?: Parameters<typeof mount>[1]): Promise<ReturnTy
 
 describe('Go-WASM demo UI', () => {
   beforeEach(() => {
+    active?.unmount()
+    active = undefined
     window.history.pushState({}, '', '/')
     document.body.innerHTML = ''
+    document.documentElement.classList.remove('dark')
     mockedRunWithWorker.mockReset()
     if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
     Object.assign(navigator, {
@@ -74,36 +74,59 @@ describe('Go-WASM demo UI', () => {
     })
   })
 
-  it('renders the repository README as the site index with Monaco-backed thue fences', async () => {
+  it('renders the placeholder landing inside the three-column shell', async () => {
     const wrapper = await mountApp()
 
-    expect(wrapper.get('[data-test="readme-index"]').text()).toContain('Thue++')
-    const topbar = wrapper.get('[data-test="site-topbar"]')
-    expect(topbar.text()).toContain('Docs')
-    expect(topbar.text()).toContain('Playground')
-    expect(topbar.text()).toContain('GitLab')
-    expect(topbar.text()).toContain('Twitter')
-    expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBe('page')
-    expect(topbar.get('nav a[href="/playground"]').attributes('aria-current')).toBeUndefined()
-    expect(topbar.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
-    expect(topbar.find('a[href="https://x.com/thuelang"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Start with a string and rules that rewrite it')
-    const thueBlocks = wrapper.findAll('[data-test="readme-thue-code"]')
-    expect(thueBlocks.length).toBeGreaterThan(5)
-    expect(thueBlocks[0].text()).toContain('^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}')
-    expect(thueBlocks[0].attributes('data-language')).toBe('thuepp')
-    expect(thueBlocks[0].attributes('data-line-start')).toBe('1')
-    const lispBlocks = wrapper.findAll('[data-test="readme-lisp-code"]')
-    expect(lispBlocks.length).toBeGreaterThan(5)
-    expect(lispBlocks[0].attributes('data-language')).toBe('clojure')
-    expect(lispBlocks[0].text()).toContain('(add (mul 2 3) 4)')
-    expect(wrapper.find('[data-test="run-demo"]').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('thuepp-readme-example')
-    const toc = wrapper.get('[data-test="readme-toc"]')
-    expect(toc.text()).toContain('Rules')
-    expect(toc.text()).toContain('Lisp eval: explicit scope as sandbox')
-    expect(toc.get('a[aria-current="location"]').attributes('href')).toBe('#thue')
-    expect(getComputedStyle(wrapper.get('[data-test="readme-index"]').element).paddingBottom).toBeTruthy()
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="page-hero"]').text()).toContain('A rewrite language built on RE2.')
+    expect(wrapper.get('[data-test="page-details"]').text()).toContain('Placeholder')
+    const nav = wrapper.get('[data-test="site-nav"]')
+    expect(nav.text()).toContain('Learn')
+    expect(nav.text()).toContain('Reference')
+    expect(nav.text()).toContain('Playground')
+    expect(nav.text()).toContain('Hosts')
+    expect(nav.text()).toContain('Guests')
+    expect(nav.text()).toContain('Tasks')
+    expect(wrapper.findAll('a[href="/"]').some(link => link.attributes('aria-current') === 'page')).toBe(true)
+    expect(nav.get('a[href="/playground"]').attributes('aria-current')).toBeUndefined()
+    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Placeholder')
+    expect(wrapper.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
+  })
+
+  it('renders each section as its own page and leaves embed without chrome', async () => {
+    window.history.pushState({}, '', '/learn')
+    let wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Rewrite a string until it stops.')
+    expect(wrapper.text()).toContain('A program')
+    expect(wrapper.get('[data-test="site-nav"]').get('a[href="/learn"]').attributes('aria-current')).toBe('page')
+
+    window.history.pushState({}, '', '/reference')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Operators, resources, and limits.')
+    expect(wrapper.text()).toContain('::=')
+
+    window.history.pushState({}, '', '/hosts')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Go, Python, and JavaScript.')
+    expect(wrapper.text()).toContain('JavaScript')
+
+    window.history.pushState({}, '', '/guests')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Languages written in Thue++.')
+    expect(wrapper.text()).toContain('What a guest is')
+    expect(wrapper.text()).toContain('Lisp')
+    expect(wrapper.text()).toContain('Forth')
+
+    window.history.pushState({}, '', '/tasks')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Programs with a finish line.')
+    expect(wrapper.text()).toContain('What a task is')
+
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp')
+    wrapper = await mountApp()
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
   })
 
   it('serves a resizable playground route with pinned stdio resources and no reset action', async () => {
@@ -111,10 +134,11 @@ describe('Go-WASM demo UI', () => {
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
-    const topbar = wrapper.get('[data-test="site-topbar"]')
-    expect(topbar.get('nav a[href="/playground"]').attributes('aria-current')).toBe('page')
-    expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBeUndefined()
-    expect(topbar.get('a[href="https://x.com/thuelang"]').text()).toBe('Twitter')
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(true)
+    expect(wrapper.get('h1').text()).toBe('Run it in the browser.')
+    const nav = wrapper.get('[data-test="site-nav"]')
+    expect(nav.get('a[href="/playground"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.get('header a[href="/"]').attributes('aria-current')).toBeUndefined()
     expect(wrapper.text()).toContain('state')
     expect(wrapper.get('[data-test="playground-rules"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('wrap')).toBe('off')
@@ -896,12 +920,4 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello from embed!\n')
   })
 
-  it('shows the embed demo route with preset examples and explanations', async () => {
-    window.history.pushState({}, '', '/embed/demo')
-    const wrapper = await mountApp({ attachTo: document.body })
-
-    expect(wrapper.text()).toContain('Compact Thue++ playground embeds')
-    expect(wrapper.text()).toContain('Output-focused runnable snippet')
-    expect(wrapper.findAll('[data-test="playground-compact-surface"]').length).toBeGreaterThanOrEqual(3)
-  })
 })

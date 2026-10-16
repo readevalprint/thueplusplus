@@ -5,7 +5,27 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://thuelang.org/learn</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/reference</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thuelang.org/playground</loc>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/hosts</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/guests</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/tasks</loc>
+    <priority>0.6</priority>
   </url>
 </urlset>

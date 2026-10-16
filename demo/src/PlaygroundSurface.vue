@@ -1,5 +1,5 @@
 <template>
-  <main ref="surfaceRoot" class="playground-route playground-surface" :class="[`playground-chrome-${props.chrome}`, { 'playground-compact-layout': isCompactLayout }]" :data-mode="props.mode" :data-compact="isCompactLayout ? 'true' : 'false'">
+  <div ref="surfaceRoot" class="playground-route playground-surface" :class="[`playground-chrome-${props.chrome}`, { 'playground-compact-layout': isCompactLayout }]" :data-mode="props.mode" :data-compact="isCompactLayout ? 'true' : 'false'">
     <header v-if="showHeader" class="playground-route-header" data-test="playground-header">
       <h1>{{ props.title }}</h1>
     </header>
@@ -138,7 +138,7 @@
       <ResizableHandle />
       <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
     </ResizablePanelGroup>
-  </main>
+  </div>
 </template>
 
 <script setup lang="ts">

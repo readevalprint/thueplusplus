@@ -235,11 +235,3 @@ test('embed run executes through the shared worker path and writes stdout', asyn
   await page.getByTestId('embed-run').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Hello, World!\n', { timeout: 5000 })
 })
-
-test('embed demo lists preset embed examples', async ({ page }) => {
-  await page.goto('/embed/demo')
-
-  await expect(page.getByRole('heading', { name: 'Compact Thue++ playground embeds' })).toBeVisible()
-  await expect(page.getByText('Output-focused runnable snippet')).toBeVisible()
-  await expect(page.getByTestId('playground-compact-surface')).toHaveCount(3)
-})

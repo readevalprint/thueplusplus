@@ -122,9 +122,13 @@ pages:
       for path in \
         public/index.html \
         public/404.html \
+        public/learn/index.html \
+        public/reference/index.html \
         public/playground/index.html \
+        public/hosts/index.html \
+        public/guests/index.html \
+        public/tasks/index.html \
         public/embed/index.html \
-        public/embed/demo/index.html \
         public/thuepp.wasm
       do
         test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
