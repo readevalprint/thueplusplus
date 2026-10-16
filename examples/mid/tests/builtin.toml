@@ -1,0 +1,7 @@
+name = "mid capture is a builtin argument"
+program = "../builtin.tpp"
+
+[expect]
+stdout = "1\n"
+stderr = ""
+exit_code = 0

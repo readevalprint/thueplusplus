@@ -48,7 +48,8 @@ Row        <- Rule / Alias / Comment
 Sep        <- trimmed source row exactly '::='
 StateText  <- remaining source text after Sep, preserving newlines
 Alias    <- Name '<-' Regex
-Rule     <- LHS Op RHS
+Rule     <- LHS Mid* Op RHS
+Mid      <- '::|' Regex
 Comment  <- text
 
 Op       <- '::=' / '::<' / '::>' / '::-' / '::!'
@@ -62,17 +63,25 @@ A host input override replaces the entire initial state string. The replacement 
 
 ## 3. Aliases
 
-Aliases are `NAME <- regex-fragment`, where `NAME` matches `[A-Z][A-Z0-9_]*`. `$NAME` may appear in later aliases and rule patterns. References are backward-only; duplicate/unknown aliases, named captures in aliases, and `<|NAME|>` are errors. Expansion wraps fragments as `(?:fragment)` and is limited to 10,000 substitutions/row and 1,000,000 UTF-8 bytes/row.
+Aliases are `NAME <- regex-fragment`, where `NAME` matches `[A-Z][A-Z0-9_]*`. `$NAME` may appear in later aliases, in rule patterns, and in `::|` steps. References are backward-only; duplicate/unknown aliases, named captures in aliases, and `<|NAME|>` are errors. Expansion wraps fragments as `(?:fragment)` and is limited to 10,000 substitutions and 1,000,000 UTF-8 bytes per expanded pattern.
 
 ## 4. Rule syntax
 
-Valid operators are `::=` replace, `::<` read, `::>` write, `::-` exit, and `::!` builtin. `Op` is the first valid operator not immediately preceded by `\`. Trim spaces/tabs from the right of `LHS` and left of `RHS`. Empty `LHS` means the row is not a rule. An unescaped `::` with any other operator is an error.
+A rule is `LHS`, then zero or more `::|` steps, then one terminal operator and `RHS`:
+
+```text
+LHS ::| regex ::| regex ... Op RHS
+```
+
+Terminal operators are `::=` replace, `::<` read, `::>` write, `::-` exit, and `::!` builtin. `::|` starts a step. It is not terminal. The terminal operator is the first unescaped `::=`, `::<`, `::>`, `::-`, or `::!`. Each earlier unescaped `::|` starts one step. Trim spaces and tabs around each step. An empty step is an error. A `::|` with no terminal operator is an error. Trim spaces and tabs from the right of `LHS` and the left of `RHS`. Empty `LHS` means the row is not a rule. A `::` immediately preceded by `\` is not an operator. An unescaped `::` with any other operator is an error.
 
 ## 5. Patterns
 
 `LHS` is an RE2-compatible regex evaluated against the entire current state string as if prefixed by `(?m)`.
 
-Required behavior: state is one mutable string and may contain newlines. `^`/`$` match line boundaries within that string; `.` does not match newline unless dotall is explicitly enabled. Patterns may match across newlines when they explicitly allow newline, for example with `\n` or a character class that includes newline. Named captures use `(?<name>...)`; capture names match `[A-Za-z_][A-Za-z0-9_]*`. Programs must not depend on backreferences, lookaround, recursive regex, or host-specific regex features.
+Required behavior: state is one mutable string and may contain newlines. `^`/`$` match line boundaries within that string; `.` does not match newline unless dotall is explicitly enabled. Patterns may match across newlines when they explicitly allow newline, for example with `\n` or a character class that includes newline. Named captures use `(?<name>...)`; capture names match `[A-Za-z_][A-Za-z0-9_]*`.
+
+One regex must not use backreferences, lookaround, recursive patterns, or other host-specific features. To require that text captured earlier occur again, including elsewhere in the state, use a `::|` step. The step is a separate regex. It is not a backreference and not a recursive pattern. See `::|` below.
 
 For example, this source has initial state `a\nb`:
 
@@ -99,6 +108,8 @@ b
 
 Templates in `::=`/`::>` contain `{{name}}`, `{{name|pctenc}}`, `{{name|pctdec}}`, and `{{rule_index}}`; `name` matches `[A-Za-z_][A-Za-z0-9_]*`. Unfiltered missing captures expand to empty. Filtered missing captures, unknown filters, and malformed filtered variables are errors. Malformed unfiltered `{{...}}` spans remain literal. Literal escapes are `\n`, `\t`, `\r`, `\\`.
 
+`::|` steps use the same `{{name}}`, `{{name|pctenc}}`, and `{{name|pctdec}}` holes. `{{rule_index}}` is not bound in a step. Step filling quotes values and does not decode replacement escapes. Those rules are under `::|`.
+
 ## 7. Execution
 
 Algorithm:
@@ -107,18 +118,52 @@ Algorithm:
 loop:
   for rule in rules:
     count one rule probe
-    find first allowed match of rule.LHS in state
+    find first match of rule.LHS in state
     if none: continue
-    result = apply operator
+    captures = named groups from that match
+    for step in rule.mids:
+      regex = fill step from captures, quoting each value as a literal
+      if regex is invalid: error
+      search whole state
+      if none: continue to the next rule
+      add the step's participating named groups to captures
+    result = apply operator using captures
     if operator exits: return its code
-    state = state before match + result + state after match
+    state = state before the LHS match + result + state after the LHS match
     restart loop
   return 0
 ```
 
-Only one span is replaced per action. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set a maximum evaluation step limit; every examined rule counts as one step. A host may set max state bytes; check it after replacement.
+Only one span is replaced per action, and that span is the LHS match. A `::|` step does not move the replacement span. The LHS search does not retry a later match when a step misses; the rule does not apply. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set a maximum evaluation step limit; every examined rule counts as one step. A host may set max state bytes; check it after replacement.
 
 ## 8. Operators
+
+### `::|` mid
+
+Zero or more `::|` steps sit between `LHS` and the terminal operator. After the LHS matches, steps run in order. For each step:
+
+1. Fill `{{name}}` and `{{name|pctenc}}` / `{{name|pctdec}}` from captures bound so far. Unfiltered missing names expand to empty. Filtered missing names, unknown filters, and malformed filters are errors. `{{rule_index}}` is not bound here.
+2. Insert each substituted value as a regex literal. Quote it the way RE2 `QuoteMeta` does: escape `\ . + * ? ( ) | [ ] { } ^ $`. Do not interpret the value as regex syntax. A captured `.` matches a dot. A captured `(` matches a parenthesis and does not open a group. A captured `\` matches a backslash.
+3. Leave the rest of the step as regex source. Do not decode `\n`, `\t`, `\r`, or `\\` as replacement-string escapes. `\n` in the step is the regex newline escape.
+4. Compile the filled text as an RE2 regex with `(?m)`. If it does not compile, abort. The error names the filled pattern and does not include host-library text.
+5. Search the whole state, not only the LHS span. The first match wins. If nothing matches, the rule does not apply and scanning continues at the next rule. Do not try a later LHS match.
+6. Add named groups that participated in that match. A later step, or the RHS, sees them. A repeated name overwrites the earlier value when the new group participates. An optional group that did not participate leaves the earlier value in place.
+
+`$NAME` aliases expand in the LHS and in each step before template filling. A `::!` argument may name a capture from the LHS or a `(?<name>...)` written in a step. Names are the groups written in the source, not groups assembled by placing a placeholder inside `(?<...>)`. Write placeholders where a literal belongs.
+
+The replacement span stays the LHS match. This lookup replaces only the `KEY=...` span with the value found elsewhere in the state:
+
+```thuepp
+^KEY=(?<k>[^\n]+)\n.*$ ::| {{k}}=(?<v>[^,\n]*) ::= {{v}}
+^hello$ ::- 0
+^KEY= ::- 3
+
+::=
+KEY=a
+a=hello,b=world
+```
+
+The step `{{k}}=(?<v>[^,\n]*)` becomes `a=(?<v>[^,\n]*)`, binds `v` as `hello`, and the RHS rewrites the LHS match to `hello`. If the key is absent, the step misses, the rule does not apply, and `^KEY=` exits `3`.
 
 ### `::=` replace
 
@@ -126,7 +171,7 @@ Expand `RHS` as a normal template and replace the match with the result.
 
 ### `::!` builtin
 
-Split `RHS` on whitespace. First token is builtin name; remaining tokens are capture names, not templates. Missing/unknown builtin, wrong arity, non-capture argument, or argument not present in `LHS` are errors. The builtin receives exact capture strings and replaces the match with its result.
+Split `RHS` on whitespace. First token is builtin name; remaining tokens are capture names, not templates. Missing/unknown builtin, wrong arity, non-capture argument, or argument not present in the `LHS` or in a `(?<name>...)` written in a `::|` step are errors. The builtin receives exact capture strings and replaces the match with its result. A name that was not actually captured, including an optional group that did not participate, is an error at runtime.
 
 ### `::<` read
 

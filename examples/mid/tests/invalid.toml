@@ -1,0 +1,29 @@
+name = "mid invalid expanded regex"
+program = "../invalid.tpp"
+
+[[case]]
+name = "newline escape matches"
+input = "k=n\n"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "step miss falls through"
+input = "k=n"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 3
+
+[[case]]
+name = "bad escape is an invalid regex"
+input = "k=q\n"
+
+[case.expect]
+stdout = ""
+exit_code = 1
+stderr_contains = ["Invalid ::| regex '\\q'"]

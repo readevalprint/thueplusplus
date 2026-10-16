@@ -1,0 +1,7 @@
+name = "mid chain"
+program = "../chain.tpp"
+
+[expect]
+stdout = "1-2\n"
+stderr = ""
+exit_code = 0

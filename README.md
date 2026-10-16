@@ -20,7 +20,7 @@ A rule matches the current state. If it applies, it rewrites with the template. 
 
 Optional context links are included where they help. You do not need a formal-language background to read this README, and the links are there for whichever terms you want to chase further.
 
-This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](examples/forth/README.md), and [Lisp](examples/lisp/README.md).
+This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [mid](#mid), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](examples/forth/README.md), and [Lisp](examples/lisp/README.md).
 
 ## Use cases
 
@@ -72,6 +72,46 @@ NAME_ALIAS <- [A-Za-z_][A-Za-z0-9_]*
 ```
 
 The rule uses `$NAME_ALIAS` where the full regex would otherwise go.
+
+## Mid
+
+A rule can look at the rest of the state before it rewrites. `::|` steps sit between the pattern and the terminal operator:
+
+```text
+LHS ::| regex ::| regex ... ::= RHS
+```
+
+The left pattern matches first. Each step then fills `{{name}}` from the captures so far and searches the whole state, not just the left match. Named groups in a step bind for later steps and for the right-hand side. If any step misses, the rule does not apply. The text that gets replaced is still the left match.
+
+Filled values are literals. A captured `.` matches a dot, and a captured `(` matches a parenthesis. It is not a regex backreference, and it is not pasted in as regex syntax. The rest of the step is still a regex. `{{name|pctenc}}` and `{{name|pctdec}}` run before that quoting. An unfiltered name that is not captured yet expands to empty. `{{rule_index}}` is not available in a step.
+
+This program reads `a` and `b` out of one map line:
+
+<!-- thuepp-readme-example: source=examples/mid/chain.tpp expected-output=examples/mid/tests/chain.toml -->
+<!-- thuepp-readme-example:start -->
+Example source (`examples/mid/chain.tpp`):
+
+Run it now in the browser playground:
+https://thuelang.org/playground?file=./examples/mid/chain.tpp
+
+See the source: [examples/mid/chain.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/mid/chain.tpp)
+
+```thuepp
+^MAP:.*$ ::| a=(?<ak>[^,]*) ::| b=(?<bv>[^,]*) ::= {{ak}}-{{bv}}
+^1-2$ ::> stdout 1-2\n
+
+::=
+MAP:a=1,b=2
+```
+
+Expected output:
+
+```text
+1-2
+```
+<!-- thuepp-readme-example:end -->
+
+`examples/mid/lookup.tpp` uses the same operator to find `KEY`'s value anywhere in the state. `examples/mid/literal.tpp` shows that metacharacters in a capture stay literal.
 
 ## IO, resources, and builtins
 
@@ -529,7 +569,9 @@ uv run python tools/check_contract.py --update-readme
 - [RE2-compatible](https://github.com/google/re2/wiki/Syntax) regex subset
 - pattern aliases with `$NAME` references
 - named captures and `{{group}}` templates
-- operators: `::=`, `::<`, `::>`, `::-`, `::!`
+- operators: `::|`, `::=`, `::<`, `::>`, `::-`, `::!`
+- `::|` steps search the whole state and bind captures for the rest of the rule
+- values substituted into a `::|` step are regex literals (`QuoteMeta`), not raw regex
 - default resources: `stdin`, `stdout`, `stderr`
 - runner-provided resource bindings
 - source rules parse once; execution rewrites only state

@@ -1,0 +1,7 @@
+name = "mid searches the whole state"
+program = "../search.tpp"
+
+[expect]
+stdout = "ok\n"
+stderr = ""
+exit_code = 0
