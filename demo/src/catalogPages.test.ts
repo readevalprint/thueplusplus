@@ -67,6 +67,7 @@ describe('catalog pages', () => {
     const names = wrapper.findAll('[data-test="guest-row"]').map(row => row.attributes('data-guest'))
     expect(names).toEqual(rankGuests(catalog.guests).map(guest => guest.id))
     expect(wrapper.get('[data-test="guest-improve"]').text().toLowerCase()).toContain('autoresearch')
+    expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Placeholder')
   })
 
@@ -76,6 +77,7 @@ describe('catalog pages', () => {
     expect(index.get('[data-test="page-hero-graphic"]').text()).toContain('stdin')
     const statuses = index.findAll('[data-test="task-status"]')
     expect(statuses).toHaveLength(catalog.tasks.length * catalog.guests.length)
+    expect(index.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(index.text()).not.toContain('Placeholder')
 
     const task = catalog.tasks[0]
@@ -85,6 +87,8 @@ describe('catalog pages', () => {
     expect(page.get('[data-test="task-io"]').text()).toContain('stdin')
     expect(page.get('[data-test="task-io"]').text()).toContain('stdout')
     expect(page.get('[data-test="task-io"]').text()).toContain(String(task.cases[0].exitCode))
+    expect(page.get('[data-test="page-sidebar"]').text()).toContain('Description')
+    expect(page.get('[data-test="page-sidebar"]').text()).toContain('Input and output')
     expect(page.findAll('[data-test="task-guest"]')).toHaveLength(catalog.guests.length)
     for (const guest of task.guests) {
       const section = page.get(`[data-test="task-guest"][data-guest="${guest.id}"]`)

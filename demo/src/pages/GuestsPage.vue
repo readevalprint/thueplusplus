@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import DocPage from '@/components/DocPage.vue'
-import PageAside from '@/components/PageAside.vue'
 import RewriteLine from '@/components/RewriteLine.vue'
 import { catalog, rankGuests, sourceUrl } from '@/catalog'
 import { pages } from '@/site'
@@ -16,8 +15,7 @@ const shortCommit = catalog.commit.slice(0, 12)
 </script>
 
 <template>
-  <PageAside :links="page.links">
-    <DocPage :kicker="page.kicker" :title="page.title">
+  <DocPage :kicker="page.kicker" :title="page.title">
       <template #mark>
         <Boxes />
       </template>
@@ -68,7 +66,6 @@ const shortCommit = catalog.commit.slice(0, 12)
             <Badge variant="secondary" class="ml-2">{{ guest.ruleCount }} rules</Badge>
           </li>
         </ul>
-      </section>
-    </DocPage>
-  </PageAside>
+    </section>
+  </DocPage>
 </template>

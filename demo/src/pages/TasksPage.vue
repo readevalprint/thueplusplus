@@ -5,17 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import DocPage from '@/components/DocPage.vue'
 import FinishLine from '@/components/marks/FinishLine.vue'
-import PageAside from '@/components/PageAside.vue'
 import RewriteLine from '@/components/RewriteLine.vue'
 import { catalog, statusVariant } from '@/catalog'
-import { pageLinks, pages } from '@/site'
+import { pages } from '@/site'
 
 const page = pages.tasks
 </script>
 
 <template>
-  <PageAside :links="pageLinks(page.path)">
-    <DocPage wide :kicker="page.kicker" :title="page.title">
+  <DocPage wide :kicker="page.kicker" :title="page.title">
       <template #mark>
         <FinishLine />
       </template>
@@ -51,7 +49,6 @@ const page = pages.tasks
             </TableRow>
           </TableBody>
         </Table>
-      </section>
-    </DocPage>
-  </PageAside>
+    </section>
+  </DocPage>
 </template>
