@@ -1,7 +1,0 @@
-PRINT "Player 1, enter the secret:"
-PRINT "Player 2, enter a guess:"
-PRINT "Too low."
-PRINT "Player 2, enter a guess:"
-PRINT "Too high."
-PRINT "Player 2, enter a guess:"
-PRINT "Correct."
