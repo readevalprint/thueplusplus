@@ -1,6 +1,6 @@
 # Metrics history
 
-`metrics/history.json` is the per-commit series for guest size, task cost, and host speed. The chart page is a separate change. This file is the data that page fetches.
+`metrics/history.json` is the per-commit series for guest size, task cost, and host speed. `/guests` imports this file at build time and charts it. The same bytes are published at `/metrics/history.json`.
 
 | Path | Role |
 | --- | --- |

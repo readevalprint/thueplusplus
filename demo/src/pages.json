@@ -74,12 +74,19 @@
     "path": "/guests",
     "kicker": "Guests",
     "title": "Languages written in Thue++.",
-    "description": "Languages implemented in Thue++. The leaderboard counts passes, interpreter rule lines, and applied steps across the task suite.",
+    "description": "Languages implemented in Thue++. The leaderboard counts passes, interpreter rule lines, and applied steps. Charts show each count per commit.",
     "documentTitle": "Thue++ Guests — Languages written in Thue++",
     "canonical": "https://thuelang.org/guests",
     "robots": "index,follow",
     "links": [
       { "title": "Leaderboard", "href": "#leaderboard" },
+      { "title": "Rule lines", "href": "#rule-lines" },
+      { "title": "Tasks", "href": "#tasks" },
+      { "title": "Passes", "href": "#passes" },
+      { "title": "Steps", "href": "#task-steps" },
+      { "title": "Benchmarks", "href": "#benchmarks" },
+      { "title": "Steps and probes", "href": "#steps-and-probes" },
+      { "title": "Host time", "href": "#host-time" },
       { "title": "Improve a guest", "href": "#improve" }
     ]
   },
