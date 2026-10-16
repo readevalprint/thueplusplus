@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import { installMonacoEnvironment } from './monacoEnvironment'
 import { registerThueppMonacoLanguage } from './thueppMonacoSetup'
 
 const props = withDefaults(defineProps<{
@@ -35,6 +36,7 @@ onMounted(async () => {
   await Promise.all([
     import('monaco-editor/min/vs/editor/editor.main.css'),
     import('monaco-editor/esm/vs/basic-languages/clojure/clojure.contribution.js'),
+    installMonacoEnvironment(),
   ])
   monaco = await import('monaco-editor/esm/vs/editor/editor.api.js')
   registerThueppMonacoLanguage(monaco)

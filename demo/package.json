@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "npm run wasm && vite --host 0.0.0.0",
+    "wasm": "node scripts/build-wasm.mjs",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
-    "build": "npm run brand:assets && vue-tsc --noEmit && vite build && node scripts/prepare-dist.mjs && node scripts/check-dist.mjs",
+    "build": "npm run wasm && npm run brand:assets && vue-tsc --noEmit && vite build && node scripts/prepare-dist.mjs && node scripts/check-dist.mjs",
     "test": "vue-tsc --noEmit && vitest run",
     "test:ui": "vitest run",
     "test:e2e": "playwright test",

@@ -11,10 +11,8 @@ test:
 	uv run python tools/example_runner.py
 
 wasm:
-	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to build WASM" >&2; exit 127; }
-	mkdir -p build
-	cd go && GOOS=js GOARCH=wasm go build -o ../build/thuepp.wasm ./cmd/thuepp-wasm
-	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" build/wasm_exec.js
+	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to build WASM" >&2; exit 127; }
+	node demo/scripts/build-wasm.mjs
 
 wasm-smoke: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM smoke tests" >&2; exit 127; }
@@ -30,7 +28,7 @@ demo-test:
 	npm --prefix demo test
 	node demo/wasm/browser_adapter_unit_test.cjs
 
-demo-build: wasm
+demo-build:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to build the browser demo" >&2; exit 127; }
 	npm --prefix demo ci
 	npm --prefix demo run build
