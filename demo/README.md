@@ -18,13 +18,31 @@ Or from this directory:
 
 ```bash
 npm install
-npm run dev          # start the Vite dev server
+npm run dev          # compile WASM, then start the Vite dev server
 npm test             # vue-tsc plus focused demo UI tests
 npm run test:ui      # focused Vitest UI tests only
-npm run build        # production build
+npm run build        # compile WASM, type-check, build, and smoke-check dist
 ```
 
-Before serving the demo, run `make demo-build` from the repository root. That target builds both browser-served runtime assets into the ignored `build/` directory (`build/thuepp.wasm` and `build/wasm_exec.js`), runs the Vite production build, and verifies that `demo/dist/` contains non-empty runtime assets with base-relative URLs. Vite serves the generated runtime assets as the demo public asset root, so the worker loads `thuepp.wasm` and `wasm_exec.js` relative to the deployed demo page instead of assuming origin-root hosting. `make demo-build` is still an additive browser integration check; it does not execute the full examples manifest suite.
+`npm run build` and `npm run dev` compile the Go interpreter with `scripts/build-wasm.mjs`. That script requires Go 1.24 or newer. When the `go` on `PATH` is older, and the host is linux, it downloads Go 1.24.6 into the ignored `demo/.cache/` directory. It writes `build/thuepp.wasm` and `build/wasm_exec.js` for the repo WASM checks, then copies only those two files to `demo/.wasm-public/`, which is Vite's `publicDir`. The repo `build/` directory is not the public directory: other build outputs must not be published.
+
+The production page uses origin-root asset URLs (`/assets/...`, `/thuepp.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
+
+`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite.
+
+## Vercel
+
+Import this repository. The root `vercel.json` is the project to use:
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `.` (repository root) |
+| Framework Preset | Other |
+| Install Command | `npm ci --prefix demo` |
+| Build Command | `npm --prefix demo run build` |
+| Output Directory | `demo/dist` |
+
+`demo/vercel.json` is the matching config when the Vercel root directory is `demo`. That only works when the build step can still read `go/`, `examples/`, and `README.md` outside `demo/` (Vercel's "Include source files outside of the Root Directory in the Build Step" option). The build fails if those files are missing. Vercel does not serve files outside the project root; the published site is `dist/` only.
 
 ## What the demo tests cover
 
