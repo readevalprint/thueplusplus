@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
 import RewriteArrow from '@/components/marks/RewriteArrow.vue'
+import { hostProseList } from '@/hosts'
 import { pages } from '@/site'
 
 const page = pages.learn
@@ -36,7 +37,7 @@ hello Ada`
     </section>
     <section id="hosts-and-guests" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Hosts and guests</h2>
-      <p class="leading-7">A <RouterLink to="/hosts" class="underline underline-offset-4">host</RouterLink> is Thue++ implemented in another language: Go, Python, or JavaScript. A <RouterLink to="/guests" class="underline underline-offset-4">guest</RouterLink> is a language implemented in Thue++. The host decides which resources exist. A new interpreter binds stdin, stdout, and stderr, and it starts with limits so a run cannot go on forever.</p>
+      <p class="leading-7">A <RouterLink to="/hosts" class="underline underline-offset-4">host</RouterLink> is Thue++ implemented in another language: {{ hostProseList }}. A <RouterLink to="/guests" class="underline underline-offset-4">guest</RouterLink> is a language implemented in Thue++. The host decides which resources exist. A new interpreter binds stdin, stdout, and stderr, and it starts with limits so a run cannot go on forever.</p>
     </section>
     <section id="try-it" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Try it</h2>

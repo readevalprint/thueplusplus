@@ -57,21 +57,22 @@ The reason is part of the host API:
 | Go | `*LimitError` with `Kind`, `ExitCode`, and `Message`. `Error()` is `Message`. Use `errors.As`. |
 | Python | `LimitExceeded`, a `RuntimeError` with `.kind`, `.code`, and the message as the exception text. |
 | wasm | result field `limit` (`steps`, `evals`, `state`, or `timeout`) and `exitCode`. `limit` is omitted when the run did not stop for a limit. `error` is the message without the `Error: ` prefix. |
+| Rust | `RunFailure::Limit` carries `LimitError` (`kind`, `exit_code`, `message`). `limit()` returns it. `RunFailure::Message` is any other failure. |
 
 Rate limiting across runs, and wall-clock limits other than a `::<` timeout written in the program, are the host's job. The interpreter bounds one run's probes, applied steps, and state size. It does not bound how many runs a host starts.
 
-A `::<` read waits for one newline-terminated line. The Go `stdin` resource and every process read return `ERR:resource:NAME:timeout` when that line has not arrived at the deadline. A line that arrives after a timeout stays available for a later read of the same resource. The Python `stdin` resource returns the same timeout when `stdin` is not readable within the deadline, then reads one line. A stream that is already at EOF, with no newline, is `EOF before newline`, not a timeout. The wasm module passes the timeout, in seconds, to the host `readLine` callback. The Node CLI's stdin callback enforces that deadline and returns the same timeout error.
+A `::<` read waits for one newline-terminated line. The Go `stdin` resource and every process read return `ERR:resource:NAME:timeout` when that line has not arrived at the deadline. A line that arrives after a timeout stays available for a later read of the same resource. The Python `stdin` resource returns the same timeout when `stdin` is not readable within the deadline, then reads one line. A stream that is already at EOF, with no newline, is `EOF before newline`, not a timeout. The wasm module passes the timeout, in seconds, to the host `readLine` callback. The Node CLI's stdin callback enforces that deadline and returns the same timeout error. The Rust `stdin` resource returns that same timeout, and a closed stdin with no newline is `EOF before newline`.
 
 Repository runners do not clear these limits. Conformance passes explicit `--max-evals`, `--max-steps`, and `--max-state-bytes`, wraps the process in `timeout(1)`, and kills it if resident memory passes 256 MiB. A manifest may pass `unlimited` only by setting `allow_unlimited = true` on a single case. See [conformance.md](conformance.md).
 
 ## Metering
 
-| | Go | Python | wasm result |
-| --- | --- | --- | --- |
-| rule probes | `EvalCount` | `eval_count` | `evalCount` |
-| applied rewrites | `AppliedSteps` | `applied_steps` | `appliedSteps` |
-| trace switch | `TraceEnabled` | `trace_enabled` | `trace: true` |
-| trace log | `Trace` | `trace` | `trace` |
+| | Go | Python | wasm result | Rust |
+| --- | --- | --- | --- | --- |
+| rule probes | `EvalCount` | `eval_count` | `evalCount` | `eval_count` |
+| applied rewrites | `AppliedSteps` | `applied_steps` | `appliedSteps` | `applied_steps` |
+| trace switch | `TraceEnabled` | `trace_enabled` | `trace: true` | `trace_enabled` |
+| trace log | `Trace` | `trace` | `trace` | `trace` |
 
 The CLI flag `--counts PATH` writes those two numbers as JSON: `applied_steps` and `probes` (`probes` is the eval count). The file is written after a run, including a limit stop. `--list-rules` does not write it.
 
