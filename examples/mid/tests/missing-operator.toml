@@ -1,0 +1,6 @@
+name = "mid without a terminal operator"
+program = "../missing-operator.tpp"
+
+[expect]
+exit_code = 1
+stderr_contains = ["::| requires a terminal operator"]

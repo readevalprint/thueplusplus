@@ -1,0 +1,6 @@
+name = "empty mid step"
+program = "../empty-mid.tpp"
+
+[expect]
+exit_code = 1
+stderr_contains = ["::| requires a regex"]

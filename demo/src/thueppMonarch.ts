@@ -31,8 +31,9 @@ export const thueppMonarchLanguage: monaco.languages.IMonarchLanguage = {
 
     source: [
       [/\\::/, 'regexp.escape'],
+      [/::\|/, 'operator'],
       [/::[=<>!-]/, 'operator'],
-      [/::(?![=<>!-])\S*/, 'invalid'],
+      [/::(?![=<>!|-])\S*/, 'invalid'],
       { include: '@common' },
     ],
 

@@ -1,0 +1,20 @@
+name = "mid uses the first lhs match"
+program = "../first-match.tpp"
+
+[[case]]
+name = "failed step does not retry a later lhs match"
+input = "ab a=1"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 4
+
+[[case]]
+name = "first lhs match can satisfy the step"
+input = "aa a=1"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 0

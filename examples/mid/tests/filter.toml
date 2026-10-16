@@ -1,0 +1,20 @@
+name = "mid filter before quote"
+program = "../filter.tpp"
+
+[[case]]
+name = "pctenc value is matched literally"
+input = "pre=a b\na%20b"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "unencoded text does not match"
+input = "pre=a b\nab"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2

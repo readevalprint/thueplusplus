@@ -23,11 +23,99 @@ from typing import Any, Optional
 MAX_NUMERIC_LITERAL_CHARS = 4096
 MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE = 10000
 MAX_EXPANDED_PATTERN_BYTES = 1000000
-RULE_RE = py_re.compile(r"^(?P<lhs>.*?)(?<!\\)::(?P<op>[=<>!-])(?P<rhs>.*)$")
 ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
 ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
 INVALID_ALIAS_TOKEN_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
 NAMED_CAPTURE_RE = py_re.compile(r"\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>")
+_RE_META = set("\\.+*?()|[]{}^$")
+_TERMINAL_OPS = set("=<>!-")
+
+
+class _RuleSplit:
+    def __init__(self, lhs: str, mids: list[str], op: str, rhs: str):
+        self.lhs = lhs
+        self.mids = mids
+        self.op = op
+        self.rhs = rhs
+
+
+def _structural_op_at(line: str, index: int) -> str | None:
+    if index + 2 >= len(line) or line[index] != ":" or line[index + 1] != ":":
+        return None
+    if index > 0 and line[index - 1] == "\\":
+        return None
+    op = line[index + 2]
+    if op == "|" or op in _TERMINAL_OPS:
+        return op
+    return None
+
+
+def _has_terminal_operator(line: str) -> bool:
+    index = 0
+    while index + 2 < len(line):
+        op = _structural_op_at(line, index)
+        if op is not None and op != "|":
+            return True
+        index += 1
+    return False
+
+
+def _split_rule_line(line: str) -> _RuleSplit | None:
+    """Split a row into LHS, ::| steps, a terminal operator, and RHS.
+
+    A '::' sequence is structural only when it is not immediately preceded by
+    '\\'. '|' starts a step. '=', '<', '>', '-', and '!' end the rule. A step
+    with no terminal operator is an error. Other '::' sequences stay in the
+    surrounding text. Returns None when the row is not a rule.
+    """
+    saw_mid = False
+    lhs = ""
+    mids: list[str] = []
+    index = 0
+    while index + 2 < len(line):
+        op = _structural_op_at(line, index)
+        if op is None:
+            index += 1
+            continue
+        if op == "|":
+            if not saw_mid:
+                lhs = line[:index]
+                saw_mid = True
+            next_at = index + 3
+            found = False
+            while next_at + 2 < len(line):
+                next_op = _structural_op_at(line, next_at)
+                if next_op is not None:
+                    found = True
+                    break
+                next_at += 1
+            if not found:
+                raise RuntimeError("::| requires a terminal operator")
+            mids.append(line[index + 3:next_at])
+            if next_op == "|":
+                index = next_at
+                continue
+            return _RuleSplit(lhs, mids, next_op, line[next_at + 3:])
+        if not saw_mid:
+            lhs = line[:index]
+        return _RuleSplit(lhs, mids, op, line[index + 3:])
+    if saw_mid:
+        raise RuntimeError("::| requires a terminal operator")
+    return None
+
+
+def _quote_meta(value: str) -> str:
+    """Quote a string the way Go's regexp.QuoteMeta does.
+
+    Substituted ::| values match as literals. Only RE2 metacharacters are
+    escaped, so a captured '.' does not mean 'any character'.
+    """
+    out: list[str] = []
+    for ch in value:
+        if ch in _RE_META:
+            out.append("\\")
+        out.append(ch)
+    return "".join(out)
 
 
 class Operator(Enum):
@@ -45,6 +133,12 @@ class SourceRow:
     source_line: int
 
 
+@dataclass(frozen=True)
+class Mid:
+    """One ::| step. Pattern may contain {{name}} holes."""
+    pattern: str
+
+
 @dataclass
 class Rule:
     """A single thue++ rule."""
@@ -56,6 +150,7 @@ class Rule:
     source_path: str
     builtin_name: str = ""
     builtin_args: tuple[str, ...] = ()
+    mids: tuple[Mid, ...] = ()
 
 
 @dataclass
@@ -199,7 +294,7 @@ class ThueppInterpreter:
                 continue
 
             alias_match = ALIAS_DEF_RE.match(line)
-            if alias_match and not RULE_RE.match(line):
+            if alias_match and not _has_terminal_operator(line):
                 name = alias_match.group(1)
                 pattern = alias_match.group(2).strip()
                 if name in aliases:
@@ -210,11 +305,18 @@ class ThueppInterpreter:
                 aliases[name] = f"(?:{expanded})"
                 continue
 
-            match = RULE_RE.match(line)
-            if match:
-                lhs = match.group("lhs")
-                expanded_lhs = self._expand_alias_refs(lhs, aliases, effective_line)
-                result_lines.append(f'{expanded_lhs}::{match.group("op")}{match.group("rhs")}')
+            try:
+                split = _split_rule_line(line)
+            except RuntimeError as exc:
+                raise RuntimeError(f"Line {effective_line}: {exc}") from exc
+            if split is not None:
+                expanded_lhs = self._expand_alias_refs(split.lhs, aliases, effective_line)
+                pieces = [expanded_lhs]
+                for mid in split.mids:
+                    pieces.append("::|")
+                    pieces.append(self._expand_alias_refs(mid, aliases, effective_line))
+                pieces.append(f"::{split.op}{split.rhs}")
+                result_lines.append("".join(pieces))
                 continue
 
             result_lines.append(line)
@@ -274,24 +376,34 @@ class ThueppInterpreter:
         if not stripped or stripped == "::=":
             return None
 
-        match = RULE_RE.match(line)
-        if not match:
+        try:
+            split = _split_rule_line(line)
+        except RuntimeError as exc:
+            raise RuntimeError(f"Line {line_number}: {exc}") from exc
+        if split is None:
             if py_re.search(r"(?<!\\)::[^\s\w=<>!-]", line):
                 raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
             return None
 
-        lhs = match.group("lhs").rstrip()
-        rhs = (match.group("rhs") or "").lstrip(" \t")
+        lhs = split.lhs.rstrip(" \t")
+        rhs = split.rhs.lstrip(" \t")
         op = {
             "=": Operator.SUBSTITUTE,
             "<": Operator.READ,
             ">": Operator.WRITE,
             "-": Operator.EXIT,
             "!": Operator.BUILTIN,
-        }[match.group("op")]
+        }[split.op]
 
         if not lhs:
             return None
+
+        mids: list[Mid] = []
+        for text in split.mids:
+            pattern_text = text.strip(" \t")
+            if not pattern_text:
+                raise RuntimeError(f"Line {line_number}: ::| requires a regex")
+            mids.append(Mid(pattern_text))
 
         try:
             pattern_lhs = self._translate_lhs(lhs)
@@ -306,11 +418,16 @@ class ThueppInterpreter:
         builtin_name = ""
         builtin_args: tuple[str, ...] = ()
         if op == Operator.BUILTIN:
+            capture_names = set(pattern.groupindex.keys())
+            for mid in mids:
+                capture_names.update(NAMED_CAPTURE_RE.findall(mid.pattern))
             builtin_name, builtin_args = self._parse_builtin_call(
-                rhs, line_number, set(pattern.groupindex.keys())
+                rhs, line_number, capture_names
             )
 
-        return Rule(lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args)
+        return Rule(
+            lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args, tuple(mids)
+        )
 
     def _parse_builtin_call(
         self,
@@ -581,6 +698,67 @@ class ThueppInterpreter:
             pos = match.end()
         pieces.append(self._decode_replacement_escapes(template[pos:]))
         return "".join(pieces)
+
+    def _expand_mid_pattern(self, pattern: str, groups: dict) -> str:
+        """Fill {{name}} holes in a ::| step.
+
+        Each substituted value is quoted as a literal. Filters run before
+        quoting. Unfiltered missing names expand to empty, same as a ::=
+        template. {{rule_index}} is not bound in a step. Literal step text
+        stays regex source and is not decoded as a replacement string.
+        """
+        pieces: list[str] = []
+        pos = 0
+        for match in py_re.finditer(r"{{([^}]*)}}", pattern):
+            pieces.append(pattern[pos:match.start()])
+            inner = match.group(1)
+            if "|" in inner:
+                name, filt = inner.split("|", 1)
+                if not py_re.fullmatch(r"[A-Za-z_]\w*", name) or not py_re.fullmatch(r"[A-Za-z_]\w*", filt):
+                    raise RuntimeError(f"Malformed template filter '{{{{{inner}}}}}'")
+                if name not in groups:
+                    raise RuntimeError(f"Missing template capture '{name}'")
+                value = str(groups[name])
+                if filt == "pctenc":
+                    rendered = self._pct_encode(value)
+                elif filt == "pctdec":
+                    rendered = self._pct_decode(value)
+                else:
+                    raise RuntimeError(f"Unknown template filter '{filt}'")
+                pieces.append(_quote_meta(rendered))
+            elif py_re.fullmatch(r"\w+", inner):
+                raw = groups.get(inner, "")
+                pieces.append(_quote_meta("" if raw is None else str(raw)))
+            else:
+                pieces.append(match.group(0))
+            pos = match.end()
+        pieces.append(pattern[pos:])
+        return "".join(pieces)
+
+    def _apply_mids(self, rule: Rule, groups: dict) -> tuple[dict, bool]:
+        if not rule.mids:
+            return groups, True
+        out = {key: value for key, value in groups.items() if isinstance(value, str)}
+        for mid in rule.mids:
+            try:
+                expanded = self._expand_mid_pattern(mid.pattern, out)
+            except RuntimeError as exc:
+                raise RuntimeError(f"Line {rule.line_number}: {exc}") from exc
+            options = re.Options()
+            options.log_errors = False
+            try:
+                compiled = re.compile("(?m)" + self._translate_lhs(expanded), options=options)
+            except re.error:
+                raise RuntimeError(f"Line {rule.line_number}: Invalid ::| regex '{expanded}'")
+            found = compiled.search(self.state)
+            if not found:
+                return groups, False
+            for name in compiled.groupindex:
+                value = found.group(name)
+                if value is not None:
+                    out[name] = value
+        return out, True
+
     def _decode_replacement_escapes(self, text: str) -> str:
         placeholder = "\x00BACKSLASH\x00"
         text = text.replace("\\\\", placeholder)
@@ -751,7 +929,10 @@ class ThueppInterpreter:
                 if not match:
                     continue
 
-                groups = match.groupdict()
+                lhs_groups = match.groupdict()
+                groups, mid_ok = self._apply_mids(rule, lhs_groups)
+                if not mid_ok:
+                    continue
                 applied = True
 
                 if self.debug:

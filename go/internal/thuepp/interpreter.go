@@ -30,7 +30,6 @@ const (
 
 var (
 	numericLiteralPattern    = regexp.MustCompile(`^-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)$`)
-	rulePattern              = regexp.MustCompile(`^(.*?)(^|[^\\])::([=<>!-])(.*)$`)
 	zeroDenominatorPattern   = regexp.MustCompile(`^-?[0-9]+/0+$`)
 	aliasDefPattern          = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$`)
 	invalidAliasTokenPattern = regexp.MustCompile(`<\|([A-Z][A-Z0-9_]*)\|>`)
@@ -44,6 +43,7 @@ const MaxExpandedPatternBytes = 1000000
 type Rule struct {
 	LHS         string
 	Pattern     *regexp.Regexp
+	Mids        []Mid
 	Operator    Operator
 	RHS         string
 	LineNumber  int
@@ -300,7 +300,7 @@ func expandPatterns(content string) (string, error) {
 			out = append(out, line)
 			continue
 		}
-		if aliasMatch := aliasDefPattern.FindStringSubmatch(line); aliasMatch != nil && rulePattern.FindStringSubmatch(line) == nil {
+		if aliasMatch := aliasDefPattern.FindStringSubmatch(line); aliasMatch != nil && !hasTerminalOperator(line) {
 			name := aliasMatch[1]
 			pat := strings.TrimSpace(aliasMatch[2])
 			if _, exists := aliases[name]; exists {
@@ -316,13 +316,29 @@ func expandPatterns(content string) (string, error) {
 			aliases[name] = "(?:" + expanded + ")"
 			continue
 		}
-		if ruleMatch := rulePattern.FindStringSubmatch(line); ruleMatch != nil {
-			lhs := ruleMatch[1] + ruleMatch[2]
+		lhs, mids, op, rhs, ok, err := splitRuleLine(line)
+		if err != nil {
+			return "", fmt.Errorf("Line %d: %v", effectiveLine, err)
+		}
+		if ok {
 			expandedLHS, err := expandAliasRefs(lhs, aliases, effectiveLine)
 			if err != nil {
 				return "", err
 			}
-			out = append(out, expandedLHS+"::"+ruleMatch[3]+ruleMatch[4])
+			var rebuilt strings.Builder
+			rebuilt.WriteString(expandedLHS)
+			for _, mid := range mids {
+				expandedMid, err := expandAliasRefs(mid, aliases, effectiveLine)
+				if err != nil {
+					return "", err
+				}
+				rebuilt.WriteString("::|")
+				rebuilt.WriteString(expandedMid)
+			}
+			rebuilt.WriteString("::")
+			rebuilt.WriteByte(op)
+			rebuilt.WriteString(rhs)
+			out = append(out, rebuilt.String())
 			continue
 		}
 		out = append(out, line)
@@ -392,32 +408,43 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	if trimmed == "" || trimmed == "::=" {
 		return nil, nil
 	}
-	matches := rulePattern.FindStringSubmatch(line)
-	if matches == nil {
+	lhs, midTexts, opChar, rhs, ok, err := splitRuleLine(line)
+	if err != nil {
+		return nil, fmt.Errorf("Line %d: %v", lineNumber, err)
+	}
+	if !ok {
 		if regexp.MustCompile(`(?:^|[^\\])::[^\s\w=<>!-]`).FindStringIndex(line) != nil {
 			return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 		}
 		return nil, nil
 	}
-	lhs := strings.TrimRight(matches[1]+matches[2], " \t")
-	rhs := strings.TrimLeft(matches[4], " \t")
+	lhs = strings.TrimRight(lhs, " \t")
+	rhs = strings.TrimLeft(rhs, " \t")
+	if lhs == "" {
+		return nil, nil
+	}
 	var op Operator
-	switch matches[3] {
-	case "=":
+	switch opChar {
+	case '=':
 		op = Substitute
-	case "<":
+	case '<':
 		op = Read
-	case ">":
+	case '>':
 		op = Write
-	case "-":
+	case '-':
 		op = Exit
-	case "!":
+	case '!':
 		op = Builtin
 	default:
 		return nil, fmt.Errorf("Line %d: Invalid rule syntax: %s", lineNumber, line)
 	}
-	if lhs == "" {
-		return nil, nil
+	mids := make([]Mid, 0, len(midTexts))
+	for _, text := range midTexts {
+		mid, err := parseMid(text, lineNumber)
+		if err != nil {
+			return nil, err
+		}
+		mids = append(mids, mid)
 	}
 	re, err := regexp.Compile("(?m)" + lhs)
 	if err != nil {
@@ -426,13 +453,17 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 	builtinName := ""
 	var builtinArgs []string
 	if op == Builtin {
+		names := captureNames(re)
+		for name := range midCaptureNames(mids) {
+			names[name] = true
+		}
 		var err error
-		builtinName, builtinArgs, err = parseBuiltinCall(rhs, lineNumber, captureNames(re))
+		builtinName, builtinArgs, err = parseBuiltinCall(rhs, lineNumber, names)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return &Rule{LHS: lhs, Pattern: re, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
+	return &Rule{LHS: lhs, Pattern: re, Mids: mids, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs}, nil
 }
 
 func (i *Interpreter) ApplyInputOverride(value string) error {
@@ -1025,9 +1056,17 @@ func (i *Interpreter) Run() (int, error) {
 			if !ok {
 				continue
 			}
-			applied = true
 			stateBefore := i.State
-			groups := match.groups
+			groups, midOK, err := i.applyMids(rule, match.groups)
+			if err != nil {
+				i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
+				return 1, err
+			}
+			if !midOK {
+				continue
+			}
+			match.groups = groups
+			applied = true
 			magicVars := map[string]string{"rule_index": strconv.Itoa(ruleIndex)}
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] STATE: %s\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))

@@ -130,6 +130,7 @@ describe('thue++ Monarch tokenizer', () => {
     expect(invalid.test('::>')).toBe(false)
     expect(invalid.test('::-')).toBe(false)
     expect(invalid.test('::!')).toBe(false)
+    expect(invalid.test('::|')).toBe(false)
   })
 
   it('keeps regex group opening parens visible to bracket matching', () => {

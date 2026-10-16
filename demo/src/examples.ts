@@ -19,6 +19,22 @@ export interface DemoExample {
 
 export const examples: DemoExample[] = [
   {
+    id: 'mid',
+    name: 'Mid lookup',
+    description: 'Uses ::| to fill a captured key and replace the KEY line with the value found elsewhere in the state.',
+    sourcePath: 'mid-lookup.tpp',
+    sourceText: `^KEY=(?<k>[^\\n]+)\\n.*$ ::| {{k}}=(?<v>[^,\\n]*) ::= {{v}}
+^hello$ ::- 0
+^KEY= ::- 3
+
+::=
+KEY=a
+a=hello,b=world
+`,
+    input: '',
+    resources: [],
+  },
+  {
     id: 'hello',
     name: 'Hello stdout',
     description: 'Writes a greeting through the WASM stdout resource.',

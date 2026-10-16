@@ -1,0 +1,20 @@
+name = "mid lookup"
+program = "../lookup.tpp"
+
+[[case]]
+name = "hit binds value"
+input = "KEY=a\na=hello,b=world"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "miss skips to fallback"
+input = "KEY=z\na=hello"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 3

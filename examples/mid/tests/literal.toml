@@ -1,0 +1,38 @@
+name = "mid literal insertion"
+program = "../literal.tpp"
+
+[[case]]
+name = "dot does not match a different character"
+input = "pre=.\naxc"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "dot matches a literal dot"
+input = "pre=.\n."
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "parenthesis is a literal"
+input = "pre=(\n("
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "backslash is a literal"
+input = "pre=\\\n\\"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0

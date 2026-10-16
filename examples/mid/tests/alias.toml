@@ -1,0 +1,7 @@
+name = "mid step expands pattern aliases"
+program = "../alias.tpp"
+
+[expect]
+stdout = "7\n"
+stderr = ""
+exit_code = 0

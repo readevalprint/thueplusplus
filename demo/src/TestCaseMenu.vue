@@ -94,6 +94,12 @@ const curatedGroups: CuratedGroup[] = [
         label: 'Pattern order',
         description: 'Illustrates first-match rule ordering when more than one rule could apply.',
       },
+      {
+        manifestPath: 'examples/mid/tests/lookup.toml',
+        caseName: 'hit binds value',
+        label: 'Mid lookup',
+        description: 'Uses ::| to fill a captured key and read its value from anywhere in the state.',
+      },
     ],
   },
   {
