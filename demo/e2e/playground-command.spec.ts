@@ -207,39 +207,67 @@ test('resource sections are derived from rules and stdio is pinned', async ({ pa
   await expect(page.getByTestId('resource-input-random')).toHaveValue('')
 })
 
-test('embed route starts on requested section and opens full playground with current file', async ({ page }) => {
-  await page.goto('/embed?file=./examples/hello/hello.tpp&section=state&tab=stderr&editable=0')
+test('embed route shows the shared workbench and opens the full playground', async ({ page }) => {
+  await page.goto('/embed?file=./examples/hello/hello.tpp&editable=0')
 
-  await expect(page.getByTestId('playground-header')).toHaveCount(0)
-  await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
-  await expect(page.getByTestId('embed-section-panel')).toContainText('state')
+  await expect(page.getByTestId('app-shell')).toHaveCount(0)
+  await expect(page.getByTestId('playground-workbench')).toBeVisible()
   await expect(page.getByTestId('playground-state')).toHaveValue('START')
+  await expect(page.getByTestId('playground-examples')).toBeVisible()
+  await expect(page.getByTestId('playground-settings')).toBeVisible()
   await expect(page.getByTestId('embed-open-full')).toHaveAttribute('href', /\/playground\?file=.*hello\.tpp/)
 })
 
-test('playground compact mode hides the page header and embed header=1 shows it', async ({ page }) => {
-  await page.goto('/playground?file=./examples/hello/hello.tpp&mode=compact&section=trace')
-  await expect(page.getByTestId('playground-header')).toHaveCount(0)
-  await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
-  await expect(page.getByTestId('embed-section-panel')).toContainText('trace')
-
-  await page.goto('/embed?file=./examples/hello/hello.tpp&header=1')
-  await expect(page.getByTestId('playground-header')).toBeVisible()
-  await expect(page.getByTestId('test-case-menu')).toHaveCount(0)
-  await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
+test('playground hero sits above the editor, with limits on the run', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await expect(page.getByRole('heading', { level: 1, name: 'Run it in the browser.' })).toBeVisible()
+  await expect(page.getByTestId('page-hero-graphic')).toBeVisible()
+  await expect(page.getByTestId('playground-cta')).toBeVisible()
+  await expect(page.getByTestId('playground-workbench')).toBeVisible()
+  await expect(page.getByTestId('playground-applied-limits')).toContainText('steps 1000000')
+  await expect(page.getByTestId('playground-applied-limits')).toContainText('probes 1000000')
+  await expect(page.getByTestId('playground-applied-limits')).toContainText('state 8388608')
+  await page.getByTestId('playground-cta').click()
+  await expect(page.getByTestId('playground-rules')).toBeInViewport()
 })
+
+const viewports = [
+  { name: 'mobile', width: 375, height: 812 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1280, height: 800 },
+]
+
+for (const viewport of viewports) {
+  test(`${viewport.name} playground keeps examples and settings in columns or sheets`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await page.goto('/playground?file=./examples/hello/hello.tpp')
+    await expect(page.getByRole('heading', { level: 1, name: 'Run it in the browser.' })).toBeVisible()
+    await expect(page.getByTestId('playground-rules')).toBeVisible()
+    if (viewport.width >= 1280) {
+      await expect(page.getByTestId('playground-examples')).toBeVisible()
+      await expect(page.getByTestId('playground-settings')).toBeVisible()
+      await expect(page.getByTestId('playground-examples-trigger')).toHaveCount(0)
+      await expect(page.getByTestId('test-case-menu-trigger').filter({ hasText: 'Basic rules' })).toBeVisible()
+      return
+    }
+    await expect(page.getByTestId('playground-examples')).toBeHidden()
+    await expect(page.getByTestId('playground-settings')).toBeHidden()
+    await page.getByTestId('playground-examples-trigger').click()
+    await expect(page.getByTestId('playground-examples')).toBeVisible()
+    await expect(page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Hello rewrite' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('playground-examples')).toBeHidden()
+    await page.getByTestId('playground-settings-trigger').click()
+    await expect(page.getByTestId('playground-settings')).toBeVisible()
+    await expect(page.getByTestId('playground-max-steps-1000000')).toBeVisible()
+    await expect(page.getByTestId('playground-max-probes-1000000')).toBeVisible()
+    await expect(page.getByTestId('playground-max-state-8388608')).toBeVisible()
+  })
+}
 
 test('embed run executes through the shared worker path and writes stdout', async ({ page }) => {
-  await page.goto('/embed?file=./examples/hello/hello.tpp&section=output&tab=stdout&controls=run')
+  await page.goto('/embed?file=./examples/hello/hello.tpp')
 
-  await page.getByTestId('embed-run').click()
+  await page.getByTestId('playground-end').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Hello, World!\n', { timeout: 5000 })
-})
-
-test('embed demo lists preset embed examples', async ({ page }) => {
-  await page.goto('/embed/demo')
-
-  await expect(page.getByRole('heading', { name: 'Compact Thue++ playground embeds' })).toBeVisible()
-  await expect(page.getByText('Output-focused runnable snippet')).toBeVisible()
-  await expect(page.getByTestId('playground-compact-surface')).toHaveCount(3)
 })

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -28,22 +29,51 @@ func unnamedResourceError(message string) error {
 type stdinResource struct {
 	name   string
 	reader *bufio.Reader
+	once   sync.Once
+	lines  chan string
 }
 
 func newStdinResource(name string, input io.Reader) *stdinResource {
 	return &stdinResource{name: name, reader: bufio.NewReader(input)}
 }
 
+// start reads lines on one goroutine so ReadLine can stop waiting when the
+// deadline passes. A line that arrives later stays in the channel.
+func (r *stdinResource) start() {
+	r.once.Do(func() {
+		r.lines = make(chan string)
+		go func() {
+			defer close(r.lines)
+			for {
+				line, err := r.reader.ReadString('\n')
+				if line != "" {
+					r.lines <- line
+				}
+				if err != nil {
+					return
+				}
+			}
+		}()
+	})
+}
+
 func (r *stdinResource) ReadLine(timeout time.Duration) (string, error) {
-	line, err := r.reader.ReadString('\n')
-	if err != nil {
-		return "", fmt.Errorf("EOF before newline")
+	r.start()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case line, ok := <-r.lines:
+		if !ok {
+			return "", fmt.Errorf("EOF before newline")
+		}
+		stripped, complete := stripLineTerminator(line)
+		if !complete {
+			return "", fmt.Errorf("EOF before newline")
+		}
+		return stripped, nil
+	case <-timer.C:
+		return "", fmt.Errorf("timeout")
 	}
-	stripped, ok := stripLineTerminator(line)
-	if !ok {
-		return "", fmt.Errorf("EOF before newline")
-	}
-	return stripped, nil
 }
 
 func (r *stdinResource) WriteString(content string) error {

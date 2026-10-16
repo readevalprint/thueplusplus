@@ -23,23 +23,8 @@ vi.mock('./RulesMonacoEditor.vue', async () => {
   }
 })
 
-vi.mock('./ReadmeCodeEditor.vue', async () => {
-  const { defineComponent, h } = await import('vue')
-  return {
-    default: defineComponent({
-      props: { code: { type: String, default: '' }, language: { type: String, default: 'thuepp' }, lineNumberStart: { type: Number, default: 1 } },
-      setup(props, { attrs }) {
-        return () => h('pre', {
-          ...attrs,
-          'data-language': props.language,
-          'data-line-start': props.lineNumberStart,
-        }, props.code)
-      },
-    }),
-  }
-})
-
 import App from './App.vue'
+import { createAppRouter } from './router'
 
 vi.mock('./wasm', async () => {
   return {
@@ -54,8 +39,20 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
+let active: ReturnType<typeof mount> | undefined
+
 async function mountApp(options?: Parameters<typeof mount>[1]): Promise<ReturnType<typeof mount>> {
-  const wrapper = mount(App, options)
+  active?.unmount()
+  const router = createAppRouter()
+  const wrapper = mount(App, {
+    ...options,
+    global: {
+      ...options?.global,
+      plugins: [router, ...(options?.global?.plugins ?? [])],
+    },
+  })
+  await router.isReady()
+  active = wrapper
   await flush()
   await flush()
   return wrapper
@@ -63,8 +60,11 @@ async function mountApp(options?: Parameters<typeof mount>[1]): Promise<ReturnTy
 
 describe('Go-WASM demo UI', () => {
   beforeEach(() => {
+    active?.unmount()
+    active = undefined
     window.history.pushState({}, '', '/')
     document.body.innerHTML = ''
+    document.documentElement.classList.remove('dark')
     mockedRunWithWorker.mockReset()
     if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
     Object.assign(navigator, {
@@ -74,36 +74,64 @@ describe('Go-WASM demo UI', () => {
     })
   })
 
-  it('renders the repository README as the site index with Monaco-backed thue fences', async () => {
+  it('renders the placeholder landing inside the shell', async () => {
     const wrapper = await mountApp()
 
-    expect(wrapper.get('[data-test="readme-index"]').text()).toContain('Thue++')
-    const topbar = wrapper.get('[data-test="site-topbar"]')
-    expect(topbar.text()).toContain('Docs')
-    expect(topbar.text()).toContain('Playground')
-    expect(topbar.text()).toContain('GitLab')
-    expect(topbar.text()).toContain('Twitter')
-    expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBe('page')
-    expect(topbar.get('nav a[href="/playground"]').attributes('aria-current')).toBeUndefined()
-    expect(topbar.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
-    expect(topbar.find('a[href="https://x.com/thuelang"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Start with a string and rules that rewrite it')
-    const thueBlocks = wrapper.findAll('[data-test="readme-thue-code"]')
-    expect(thueBlocks.length).toBeGreaterThan(5)
-    expect(thueBlocks[0].text()).toContain('^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}')
-    expect(thueBlocks[0].attributes('data-language')).toBe('thuepp')
-    expect(thueBlocks[0].attributes('data-line-start')).toBe('1')
-    const lispBlocks = wrapper.findAll('[data-test="readme-lisp-code"]')
-    expect(lispBlocks.length).toBeGreaterThan(5)
-    expect(lispBlocks[0].attributes('data-language')).toBe('clojure')
-    expect(lispBlocks[0].text()).toContain('(add (mul 2 3) 4)')
-    expect(wrapper.find('[data-test="run-demo"]').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('thuepp-readme-example')
-    const toc = wrapper.get('[data-test="readme-toc"]')
-    expect(toc.text()).toContain('Rules')
-    expect(toc.text()).toContain('Lisp eval: explicit scope as sandbox')
-    expect(toc.get('a[aria-current="location"]').attributes('href')).toBe('#thue')
-    expect(getComputedStyle(wrapper.get('[data-test="readme-index"]').element).paddingBottom).toBeTruthy()
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="page-hero"]').text()).toContain('A rewrite language built on RE2.')
+    expect(wrapper.get('[data-test="page-details"]').text()).toContain('Placeholder')
+    const nav = wrapper.get('[data-test="site-nav"]')
+    expect(nav.text()).toContain('Learn')
+    expect(nav.text()).toContain('Reference')
+    expect(nav.text()).toContain('Playground')
+    expect(nav.text()).toContain('Hosts')
+    expect(nav.text()).toContain('Guests')
+    expect(nav.text()).toContain('Tasks')
+    expect(wrapper.findAll('a[href="/"]').some(link => link.attributes('aria-current') === 'page')).toBe(true)
+    expect(nav.get('a[href="/playground"]').attributes('aria-current')).toBeUndefined()
+    expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="aside-trigger"]').exists()).toBe(false)
+    expect(wrapper.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
+  })
+
+  it('renders each section as its own page and leaves embed without chrome', async () => {
+    window.history.pushState({}, '', '/learn')
+    let wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Rewrite a string until it stops.')
+    expect(wrapper.text()).toContain('A program')
+    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('A program')
+    expect(wrapper.get('[data-test="site-nav"]').get('a[href="/learn"]').attributes('aria-current')).toBe('page')
+
+    window.history.pushState({}, '', '/reference')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Operators, resources, and limits.')
+    expect(wrapper.text()).toContain('::=')
+    expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
+
+    window.history.pushState({}, '', '/hosts')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Go, Python, and JavaScript.')
+    expect(wrapper.text()).toContain('JavaScript')
+
+    window.history.pushState({}, '', '/guests')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Languages written in Thue++.')
+    expect(wrapper.text()).toContain('What a guest is')
+    expect(wrapper.text()).toContain('Lisp')
+    expect(wrapper.text()).toContain('Forth')
+
+    window.history.pushState({}, '', '/tasks')
+    wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('Programs with a finish line.')
+    expect(wrapper.text()).toContain('What a task is')
+
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp')
+    wrapper = await mountApp()
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="playground-workbench"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="playground-examples"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="playground-settings"]').exists()).toBe(true)
   })
 
   it('serves a resizable playground route with pinned stdio resources and no reset action', async () => {
@@ -111,11 +139,15 @@ describe('Go-WASM demo UI', () => {
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
-    const topbar = wrapper.get('[data-test="site-topbar"]')
-    expect(topbar.get('nav a[href="/playground"]').attributes('aria-current')).toBe('page')
-    expect(topbar.get('nav a[href="/"]').attributes('aria-current')).toBeUndefined()
-    expect(topbar.get('a[href="https://x.com/thuelang"]').text()).toBe('Twitter')
-    expect(wrapper.text()).toContain('state')
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(true)
+    expect(wrapper.get('h1').text()).toBe('Run it in the browser.')
+    expect(wrapper.find('[data-test="page-hero-graphic"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="playground-cta"]').text()).toBe('Edit the program')
+    const nav = wrapper.get('[data-test="site-nav"]')
+    expect(nav.get('a[href="/playground"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.get('header a[href="/"]').attributes('aria-current')).toBeUndefined()
+    expect(wrapper.get('[data-test="playground-examples"]').text()).toContain('Lisp')
+    expect(wrapper.get('[data-test="playground-settings"]').text()).toContain('Probe limit')
     expect(wrapper.get('[data-test="playground-rules"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('wrap')).toBe('off')
     expect(wrapper.get('[data-test="playground-state"]').element.tagName).toBe('TEXTAREA')
@@ -123,17 +155,19 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-step"]').attributes('aria-label')).toBe('Step forward')
     expect(wrapper.get('[data-test="resource-sections"]').attributes('data-slot')).toBe('card')
     expect(wrapper.get('[data-test="playground-status"]').attributes('data-slot')).toBe('badge')
-    expect(wrapper.get('[data-test="playground-status"]').element.closest('.playground-state-pane')).not.toBeNull()
-    expect(wrapper.get('[data-test="playground-status"]').element.closest('.playground-resources-pane')).toBeNull()
-    expect(wrapper.get('[data-test="playground-state-stack"]').element.tagName).toBe('DIV')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('idle')
+    expect(wrapper.get('[data-test="playground-applied-limits"]').text()).toContain('steps 1000000')
+    expect(wrapper.get('[data-test="playground-applied-limits"]').text()).toContain('probes 1000000')
+    expect(wrapper.get('[data-test="playground-applied-limits"]').text()).toContain('state 8388608')
     expect(wrapper.get('[data-test="playground-reset"]').attributes('aria-label')).toBe('Reset to first state')
     expect((wrapper.get('[data-test="playground-reset"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.find('[data-test="playground-run"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-auto"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-undo"]').attributes('aria-label')).toBe('Step back')
-    expect(wrapper.get('[data-test="playground-step"]').text()).toBe('')
+    expect(wrapper.get('[data-test="playground-step"]').text()).toBe('Step')
     expect(wrapper.get('[data-test="playground-continue"]').attributes('aria-label')).toBe('Play')
-    expect(wrapper.get('[data-test="playground-end"]').text()).toBe('')
+    expect(wrapper.get('[data-test="playground-continue"]').text()).toBe('Play')
+    expect(wrapper.get('[data-test="playground-end"]').text()).toBe('End')
     expect(wrapper.get('[data-test="playground-pause"]').attributes('aria-label')).toBe('Pause')
     expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(true)
     expect(wrapper.find('[data-test="playground-continue-speed"]').exists()).toBe(false)
@@ -141,14 +175,15 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-speed-10"]').text()).toBe('10/s')
     expect(wrapper.get('[data-test="playground-speed-100"]').text()).toBe('100/s')
     expect(wrapper.get('[data-test="playground-speed-10"]').attributes('data-selected')).toBe('true')
-    expect(wrapper.get('[data-test="playground-max-steps"]').text()).toContain('max steps:')
+    expect(wrapper.get('[data-test="playground-max-steps"]').text()).toContain('Step limit')
     expect(wrapper.get('[data-test="playground-max-steps-1000"]').text()).toBe('1000')
     expect(wrapper.get('[data-test="playground-max-steps-10000"]').text()).toBe('10000')
     expect(wrapper.get('[data-test="playground-max-steps-100000"]').text()).toBe('100000')
-    expect(wrapper.get('[data-test="playground-max-steps-10000"]').attributes('data-selected')).toBe('true')
+    expect(wrapper.get('[data-test="playground-max-steps-1000000"]').attributes('data-selected')).toBe('true')
+    expect(wrapper.get('[data-test="playground-max-probes-1000000"]').attributes('data-selected')).toBe('true')
+    expect(wrapper.get('[data-test="playground-max-state-8388608"]').attributes('data-selected')).toBe('true')
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
-    expect(wrapper.findAll('[data-slot="resizable-panel"]').length).toBeGreaterThanOrEqual(5)
-    expect(wrapper.findAll('[data-slot="resizable-handle"]').length).toBeGreaterThanOrEqual(3)
+    expect(wrapper.find('[data-slot="resizable-panel"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="resource-section-stdin"]').text()).toContain('stdin')
     expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
     expect(wrapper.get('[data-test="resource-section-stderr"]').text()).toContain('stderr')
@@ -252,6 +287,8 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[0][0].maxSteps).toBe(1)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxEvals).toBe(1_000_000)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxStateBytes).toBe(8_388_608)
     expect(mockedRunWithWorker.mock.calls[0][0].trace).toBe(true)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'middle')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('data-current-match-line')).toBe('1')
@@ -298,7 +335,7 @@ describe('Go-WASM demo UI', () => {
     expect((wrapper.get('[data-test="playground-undo"]').element as HTMLButtonElement).disabled).toBe(false)
     expect(wrapper.get('[data-test="playground-step"]').attributes('title')).toBe('Step forward')
     expect(wrapper.get('[data-test="playground-continue"]').attributes('title')).toBe('Play')
-    expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toBe('End without rendering intermediate states (max 10000 steps)')
+    expect(wrapper.get('[data-test="playground-end"]').attributes('title')).toBe('End without rendering intermediate states (max 1000000 steps)')
 
     await wrapper.get('[data-test="playground-state"]').setValue('div:2,1')
     expect((wrapper.get('[data-test="playground-step"]').element as HTMLButtonElement).disabled).toBe(false)
@@ -441,7 +478,8 @@ describe('Go-WASM demo UI', () => {
 
     const request = mockedRunWithWorker.mock.calls[0][0]
     expect(request.maxSteps).toBe(100000)
-    expect(request.maxEvals).toBe(100000)
+    expect(request.maxEvals).toBe(1_000_000)
+    expect(request.maxStateBytes).toBe(8_388_608)
     expect(request.trace).toBe(false)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'done')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 0')
@@ -474,7 +512,7 @@ describe('Go-WASM demo UI', () => {
       await wrapper.get('[data-test="playground-continue"]').trigger('click')
       await flush()
 
-      expect(wrapper.get('[data-test="playground-continue"]').text()).toBe('')
+      expect(wrapper.get('[data-test="playground-continue"]').text()).toBe('Play')
       expect(wrapper.get('[data-test="playground-continue"]').attributes('aria-label')).toBe('Play')
       expect((wrapper.get('[data-test="playground-continue"]').element as HTMLButtonElement).disabled).toBe(true)
       expect((wrapper.get('[data-test="playground-pause"]').element as HTMLButtonElement).disabled).toBe(false)
@@ -853,55 +891,44 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
 
-  it('renders /playground in compact mode without the old playground-specific header', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp&mode=compact&section=trace')
+  it('renders the playground workbench under the hero with examples and settings beside it', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="embed-section-panel"]').text()).toContain('trace')
+    expect(wrapper.find('[data-test="page-hero"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="page-details"]').find('[data-test="playground-workbench"]').text()).toContain('Rules')
+    expect(wrapper.find('[data-test="playground-diffs"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="playground-examples-trigger"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="playground-settings-trigger"]').exists()).toBe(false)
   })
 
-  it('renders /embed without the page header and starts on the requested section/tab', async () => {
-    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&section=state&tab=stderr&editable=0')
+  it('renders /embed as the same workbench without site chrome', async () => {
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&editable=0')
     const wrapper = await mountApp({ attachTo: document.body })
 
-    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="embed-section-panel"]').text()).toContain('state')
+    expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="page-hero"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="playground-workbench"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'START')
+    expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).readOnly).toBe(true)
     expect(wrapper.get('[data-test="embed-open-full"]').attributes('href')).toContain('/playground?file=.%2Fexamples%2Fhello%2Fhello.tpp')
   })
 
-  it('honors header=1 for embed routes without showing the picker by default', async () => {
-    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&header=1')
-    const wrapper = await mountApp({ attachTo: document.body })
-
-    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="test-selector"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="playground-compact-surface"]').exists()).toBe(true)
-  })
-
-  it('runs an output-focused embed through the shared Go-WASM path', async () => {
-    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&section=output&tab=stdout&controls=run')
+  it('runs an embed through the shared Go-WASM path with explicit limits', async () => {
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
 
     mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: 'Hello from embed!\n', stderr: '', state: '', resourceLogs: [] })
-    await wrapper.get('[data-test="embed-run"]').trigger('click')
+    await wrapper.get('[data-test="playground-end"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
     expect(mockedRunWithWorker.mock.calls[0][0].sourcePath).toBe('examples/hello/hello.tpp')
-    expect(mockedRunWithWorker.mock.calls[0][0].maxSteps).toBe(10000)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxSteps).toBe(1_000_000)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxEvals).toBe(1_000_000)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxStateBytes).toBe(8_388_608)
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello from embed!\n')
   })
 
-  it('shows the embed demo route with preset examples and explanations', async () => {
-    window.history.pushState({}, '', '/embed/demo')
-    const wrapper = await mountApp({ attachTo: document.body })
-
-    expect(wrapper.text()).toContain('Compact Thue++ playground embeds')
-    expect(wrapper.text()).toContain('Output-focused runnable snippet')
-    expect(wrapper.findAll('[data-test="playground-compact-surface"]').length).toBeGreaterThanOrEqual(3)
-  })
 })

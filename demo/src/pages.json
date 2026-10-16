@@ -1,0 +1,101 @@
+{
+  "home": {
+    "path": "/",
+    "kicker": "Thue++",
+    "title": "A rewrite language built on RE2.",
+    "description": "Thue++ is a rewrite language. This landing page is a placeholder.",
+    "documentTitle": "Thue++ — A rewrite language built on RE2",
+    "canonical": "https://thuelang.org/",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Placeholder", "href": "#placeholder" },
+      { "title": "Start", "href": "#start" }
+    ]
+  },
+  "learn": {
+    "path": "/learn",
+    "kicker": "Learn",
+    "title": "Rewrite a string until it stops.",
+    "description": "A short tour of Thue++: ordered RE2 rules, a state string, and a host that repeats them.",
+    "documentTitle": "Learn Thue++ — Rewrite a string until it stops",
+    "canonical": "https://thuelang.org/learn",
+    "robots": "index,follow",
+    "links": [
+      { "title": "A program", "href": "#program" },
+      { "title": "Operators", "href": "#operators" },
+      { "title": "Hosts and guests", "href": "#hosts-and-guests" },
+      { "title": "Try it", "href": "#try-it" }
+    ]
+  },
+  "reference": {
+    "path": "/reference",
+    "kicker": "Reference",
+    "title": "Operators, resources, and limits.",
+    "description": "The Thue++ rule operators, the resources a host binds, and the limits a new interpreter starts with.",
+    "documentTitle": "Thue++ Reference — Operators, resources, and limits",
+    "canonical": "https://thuelang.org/reference",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Operators", "href": "#operators" },
+      { "title": "Resources", "href": "#resources" },
+      { "title": "Limits", "href": "#limits" }
+    ]
+  },
+  "playground": {
+    "path": "/playground",
+    "kicker": "Playground",
+    "title": "Run it in the browser.",
+    "description": "Run Thue++ in the browser. The page loads the Go host compiled to WebAssembly, and every run has a step limit.",
+    "documentTitle": "Thue++ Playground — Run it in the browser",
+    "canonical": "https://thuelang.org/playground",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Editor", "href": "#editor" },
+      { "title": "Output", "href": "#output" },
+      { "title": "Trace", "href": "#trace" }
+    ]
+  },
+  "hosts": {
+    "path": "/hosts",
+    "kicker": "Hosts",
+    "title": "Go, Python, and JavaScript.",
+    "description": "A host is a Thue++ implementation. This site ships Go, Python, and the Go interpreter compiled to WebAssembly.",
+    "documentTitle": "Thue++ Hosts — Go, Python, and JavaScript",
+    "canonical": "https://thuelang.org/hosts",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Go", "href": "#go" },
+      { "title": "Python", "href": "#python" },
+      { "title": "JavaScript", "href": "#javascript" }
+    ]
+  },
+  "guests": {
+    "path": "/guests",
+    "kicker": "Guests",
+    "title": "Languages written in Thue++.",
+    "description": "A guest is a language implemented as Thue++ rules. The catalog on this page is a placeholder.",
+    "documentTitle": "Thue++ Guests — Languages written in Thue++",
+    "canonical": "https://thuelang.org/guests",
+    "robots": "index,follow",
+    "links": [
+      { "title": "What a guest is", "href": "#what-a-guest-is" },
+      { "title": "Lisp", "href": "#lisp" },
+      { "title": "Forth", "href": "#forth" },
+      { "title": "Catalog", "href": "#catalog" }
+    ]
+  },
+  "tasks": {
+    "path": "/tasks",
+    "kicker": "Tasks",
+    "title": "Programs with a finish line.",
+    "description": "A task is a small Thue++ program with an expected result. The list on this page is a placeholder.",
+    "documentTitle": "Thue++ Tasks — Programs with a finish line",
+    "canonical": "https://thuelang.org/tasks",
+    "robots": "index,follow",
+    "links": [
+      { "title": "What a task is", "href": "#what-a-task-is" },
+      { "title": "Finish line", "href": "#finish-line" },
+      { "title": "List", "href": "#list" }
+    ]
+  }
+}

@@ -11,7 +11,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 - Per-commit metrics history at `metrics/history.json`. The schema is `metrics/SCHEMA.md`. `metrics/record.py` appends the current commit: SHA, author, commit timestamp, guest rule-line counts, task pass / applied steps / probes from `make tasks`, and benchmark wall-clock time for each host. `metrics/backfill.py` fills older commits with rule-line counts where the current Python host can list rules. GitHub Actions commits a new `main` measurement. GitLab CI runs the same recorder. The static site fetches `/metrics/history.json`.
 - Host CLI `--counts PATH`. After a run it writes `{"applied_steps": N, "probes": N}`. `make tasks` records `probe_count` from that file on every task, guest, and host.
-
+- `--trace` writes one JSON object per trace event to stderr, before any `Error:` line. `examples/trace` locks that text for a state-limit rejection and for a matched rule that fails before replacement.
 - Golden-program task suite in `tasks/`. Each task is an I/O transcript. Forth and Lisp solutions run on every host under the shared step, state, probe, `timeout(1)`, and 256 MiB caps. `make tasks` writes `build/tasks/results.json` with pass/fail, applied steps, guest rule count, solution size, commit, author, and timestamp. GitLab CI archives that file from the `tasks` job.
 - Three importable hosts. Go module `github.com/readevalprint/thueplusplus/go`, package `thuepp`, CLI `go/cmd/thuepp`. Python distribution `thuepp` 0.5.0 with console script `thuepp`. npm package `thuepp` 0.5.0 (`js/`) with a Node CLI, ESM entry points, and TypeScript types. The playground depends on that package. Release steps are in `docs/releasing.md`. Nothing is published to a registry.
 - The manifest runner passes explicit `--max-steps 1000000` and `--max-state-bytes 8388608` when a case omits them, matching the probe flag it already passed. A `bindings.tpp` child gets the same three flags.
@@ -20,14 +20,25 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Changed
 
+- **Breaking:** a matched rule that fails before replacement records a trace event and then returns. Python used to raise that error with an empty trace.
+- **Breaking:** a state-limit stop records the trace event and then returns 12. The state is left unchanged. Go used to return 12 with an empty trace. The host does not install the oversized state, and it does not return 12 without the event.
+- The playground is the shell's center column: the hero, then the editor, run controls, output, and trace. Every run sends an explicit step limit, probe limit, and state limit through the `thuepp` package. Examples and settings are the side columns, and they open as sheets below 1280px. `/embed` is that same surface without the site chrome.
 - **Breaking:** the Go library path is `github.com/readevalprint/thueplusplus/go/thuepp`. `go/internal/thuepp` is gone.
 - **Breaking:** the Python CLI is `uv run thuepp` / `python -m thuepp`. `python/thuepp.py` is gone.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.
 - **Breaking:** a manifest that passes `unlimited` without `allow_unlimited` on that one case fails before the program runs.
+- The site is a stock shadcn-vue shell: neutral theme, light and dark. The shell is the left menu plus the page. A page may render `PageAside` for a right column (a sheet below 1280px); pages without one use the full content width. Learn, Reference, Playground, Hosts, Guests, and Tasks each prerender to their own path. `/` is a placeholder. `/embed` has no chrome.
+- A host is a Thue++ implementation (Go, Python, JavaScript). A guest is a language implemented in Thue++.
+
+### Fixed
+
+- Go's `stdin` resource enforces the `::<` read timeout. A newline that does not arrive in time exits 13 with `ERR:resource:stdin:timeout`. A closed stdin with no newline is still EOF. The Node CLI's stdin callback enforces the same deadline.
 
 ### Removed
 
+- The compact playground layout, the resizable three-pane editor, and the playground rules in `demo/src/style.css`.
 - The old in-tree entry points: `go/internal/thuepp`, `python/thuepp.py`, `demo/wasm`, `go/wasm/cli.cjs`, and `go/wasm/proc_host.cjs`.
+- The README landing page, `/embed/demo`, and the custom dark theme.
 
 ## [v0.5] - 2026-10-16
 

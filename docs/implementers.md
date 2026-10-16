@@ -23,6 +23,7 @@ Required flags, including the `--flag=value` form:
 | `--max-state-bytes N` | Stop when state UTF-8 length exceeds `N`. |
 | `--max-steps N` | Allow at most `N` applied rewrites. The Nth rewrite exits 10 and the run stops. |
 | `--debug` | Optional diagnostic logging. Manifests do not compare debug text. |
+| `--trace` | Write one JSON object per trace event to stderr, before any `Error:` line. The object is specified in [host-api.md](host-api.md). |
 | `--proc:NAME COMMAND` | Bind resource `NAME` to a host process. The next argument is the command. This is the only subprocess opt-in. |
 | `--rule-coverage PATH` | Write TSV `source.tpp:line<TAB>count` for applied rules. Required of the Python coverage oracle. |
 | `--counts PATH` | After a run, write `{"applied_steps": N, "probes": N}` JSON. `probes` is the eval count. `--list-rules` does not write it. |

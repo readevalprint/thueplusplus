@@ -1,0 +1,22 @@
+program = "../rule-failure.tpp"
+
+[[case]]
+name = "division result is written"
+input = "div:4,2"
+
+[case.expect]
+exit_code = 0
+stdout = "2\n"
+stderr = ""
+
+[[case]]
+name = "matched builtin failure records a trace event then returns 1"
+args = ["--trace"]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr = """
+{"step":1,"ruleIndex":0,"lineNumber":1,"operator":"::!","matchStart":0,"matchEnd":7,"error":"Builtin 'div' division by zero","stateBefore":"div:1,0","replacement":"","stateAfter":"div:1,0","exitCode":null}
+Error: Builtin 'div' division by zero
+"""

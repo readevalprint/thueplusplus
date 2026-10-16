@@ -3,6 +3,7 @@ package thuepp
 import (
 	"bufio"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -1058,6 +1059,51 @@ func (i *Interpreter) recordTraceWithError(rule Rule, ruleIndex int, match match
 	})
 }
 
+// traceWire is the --trace JSON object. Key order is the conformance contract.
+type traceWire struct {
+	Step        int    `json:"step"`
+	RuleIndex   int    `json:"ruleIndex"`
+	LineNumber  int    `json:"lineNumber"`
+	Operator    string `json:"operator"`
+	MatchStart  int    `json:"matchStart"`
+	MatchEnd    int    `json:"matchEnd"`
+	Error       string `json:"error"`
+	StateBefore string `json:"stateBefore"`
+	Replacement string `json:"replacement"`
+	StateAfter  string `json:"stateAfter"`
+	ExitCode    *int   `json:"exitCode"`
+}
+
+// FormatTrace writes one JSON object per event, each terminated by a newline.
+// An empty log is an empty string. exitCode is null when the event is not ::-.
+func FormatTrace(events []TraceEvent) (string, error) {
+	if len(events) == 0 {
+		return "", nil
+	}
+	var b strings.Builder
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	for _, event := range events {
+		wire := traceWire{
+			Step:        event.Step,
+			RuleIndex:   event.RuleIndex,
+			LineNumber:  event.LineNumber,
+			Operator:    string(event.Operator),
+			MatchStart:  event.MatchStart,
+			MatchEnd:    event.MatchEnd,
+			Error:       event.Error,
+			StateBefore: event.StateBefore,
+			Replacement: event.Replacement,
+			StateAfter:  event.StateAfter,
+			ExitCode:    event.ExitCode,
+		}
+		if err := enc.Encode(wire); err != nil {
+			return "", err
+		}
+	}
+	return b.String(), nil
+}
+
 // RuleCoverageTSV returns applied rule coverage as sorted TSV rows in the same
 // format written by --rule-coverage: rule-id<TAB>count<LF>.
 func (i *Interpreter) RuleCoverageTSV() string {
@@ -1246,6 +1292,7 @@ func (i *Interpreter) Run() (int, error) {
 				return code, nil
 			}
 			if err := i.setState(i.State[:match.start] + repl + i.State[match.end:]); err != nil {
+				i.recordTraceWithError(rule, ruleIndex, match, stateBefore, repl, nil, err.Error())
 				var limit *LimitError
 				if errors.As(err, &limit) {
 					return limit.ExitCode, limit

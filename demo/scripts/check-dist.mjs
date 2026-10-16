@@ -2,8 +2,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const dist = new URL('../dist/', import.meta.url).pathname
+const pages = JSON.parse(readFileSync(new URL('../src/pages.json', import.meta.url), 'utf8'))
 const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
-const staticRoutes = ['playground', 'embed', 'embed/demo']
+const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {
   const path = join(dist, asset)
@@ -18,6 +19,16 @@ const fallback = readFileSync(join(dist, '404.html'), 'utf8')
 if (fallback !== index) {
   throw new Error('demo production dist 404.html must match index.html for unknown direct SPA route fallback on GitLab Pages')
 }
+if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
+  throw new Error('demo production index must use origin-root asset URLs so nested static routes load assets from the site root')
+}
+if (!index.includes(pages.home.title) || !index.includes(pages.home.canonical)) {
+  throw new Error('demo production index must include the placeholder landing heading and canonical URL')
+}
+if (index.includes('modulepreload" crossorigin href="/assets/editor-monaco-')) {
+  throw new Error('demo production index must not eagerly modulepreload the Monaco editor chunk')
+}
+
 for (const route of staticRoutes) {
   const routePath = join(dist, route, 'index.html')
   if (!existsSync(routePath)) {
@@ -28,18 +39,7 @@ for (const route of staticRoutes) {
     throw new Error(`demo production dist ${route}/index.html must use origin-root asset URLs so nested static routes load assets from the site root`)
   }
 }
-if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
-  throw new Error('demo production index must use origin-root asset URLs so nested static routes load assets from the site root')
-}
-if (!index.includes('semi-Thue system') || !index.includes('Hello world') || !index.includes('data-prerendered="true"')) {
-  throw new Error('demo production index must include prerendered README content for crawlers')
-}
-if (!index.includes('<nav class="readme-toc"') || index.indexOf('<nav class="readme-toc"') > index.indexOf('<article class="readme-document"')) {
-  throw new Error('demo production index must prerender the README TOC before the article to avoid docs layout shift')
-}
-if (index.includes('modulepreload" crossorigin href="/assets/editor-monaco-')) {
-  throw new Error('demo production index must not eagerly modulepreload the Monaco editor chunk')
-}
+
 const playgroundIndex = readFileSync(join(dist, 'playground', 'index.html'), 'utf8')
 if (!playgroundIndex.includes('Thue++ Playground') || !playgroundIndex.includes('https://thuelang.org/playground')) {
   throw new Error('playground route index must include route-specific SEO metadata')
@@ -47,6 +47,13 @@ if (!playgroundIndex.includes('Thue++ Playground') || !playgroundIndex.includes(
 const embedIndex = readFileSync(join(dist, 'embed', 'index.html'), 'utf8')
 if (!embedIndex.includes('noindex,follow')) {
   throw new Error('embed route index must be noindexed')
+}
+for (const page of Object.values(pages)) {
+  if (page.path === '/') continue
+  const routeIndex = readFileSync(join(dist, page.path.replace(/^\//, ''), 'index.html'), 'utf8')
+  if (!routeIndex.includes(page.title) || !routeIndex.includes(page.canonical)) {
+    throw new Error(`${page.path} index must include its heading and canonical URL`)
+  }
 }
 
 const jsFiles = readdirSync(join(dist, 'assets')).filter(name => name.endsWith('.js'))

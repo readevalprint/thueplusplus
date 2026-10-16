@@ -48,9 +48,7 @@ Import this repository. The root `vercel.json` is the project to use:
 
 The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/browser-adapter.test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker. The playground imports that client from the `thuepp` package.
 
-`DESIGN.md` records the demo's project-owned visual direction: a dark formal interpreter workbench with tokenized colors, code-first panels, visible Go-WASM/Worker status, and explicit guardrails against implying a JavaScript rule evaluator or subprocess emulation.
-
-These tests intentionally do not run `examples/**/tests/*.toml`. The semantic conformance suite remains `make test` at the repository root.
+The site uses stock shadcn-vue (neutral, light and dark). Custom CSS is limited to the Monaco editor and the existing playground panes. These tests intentionally do not run `examples/**/tests/*.toml`. The semantic conformance suite remains `make test` at the repository root.
 
 ## Playground source and state
 
@@ -60,13 +58,19 @@ The state textarea is derived from an explicit first bare `::=` separator and pr
 
 The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row still restores that checkpoint, and rows after the selected checkpoint remain marked as future/stale until the next step prunes them.
 
+## Page layout
+
+The shell is the left menu plus the page. At 1280px and up that menu stays open. Below that it collapses into a sheet, opened from the header.
+
+A page that wants a right column wraps its body in `PageAside` (`demo/src/components/PageAside.vue`). Pass `links` for an "On this page" list, or use the `aside` slot for custom content. The column uses the same collapse as the menu: visible at 1280px and up, and a sheet below that, opened by the button at the top right of the page. Learn is the example. Pages that do not render `PageAside` use the full content width.
+
 ## Embeddable playground routes
 
-The same shared playground surface powers the full workbench and the embeddable route:
+The same shared playground surface powers the playground page and the embeddable route:
 
-- `/playground` keeps the full page shell, test selector, and debugger controls. On narrow containers or `mode=compact`, it switches to the compact tabbed layout.
-- `/embed` renders the compact/mobile-style surface without the page header by default. It is intended for iframe embeds and docs slots.
-- `/embed/demo` shows several embed presets with short explanations so the section/tab behavior can be reviewed visually.
+- `/playground` sits in the site shell, with the test selector and debugger controls. On narrow containers or `mode=compact`, the surface switches to the compact tabbed layout.
+- `/embed` renders that compact surface with no site chrome. It is for iframe embeds.
+- `/`, `/learn`, `/reference`, `/hosts`, `/guests`, and `/tasks` are the other prerendered pages. Guests and Tasks are placeholders.
 
 Supported embed query parameters:
 
