@@ -1,6 +1,6 @@
 import raw from './generated/catalog.json'
 
-export type CatalogStatus = 'pass' | 'fail' | 'unsupported'
+export type CatalogStatus = 'pass' | 'fail' | 'unsupported' | 'unmeasured'
 
 export interface CatalogGuest {
   id: string

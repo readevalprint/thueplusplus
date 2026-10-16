@@ -1,0 +1,6 @@
+{
+  "python": "python",
+  "go": "go native",
+  "wasm": "wasm (node)",
+  "rust": "rust"
+}

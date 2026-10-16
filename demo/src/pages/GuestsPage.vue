@@ -198,7 +198,7 @@ function last(count: number): number {
           <span class="text-ash"> · {{ selectedBench.author }} · {{ selectedBench.timestamp }}</span>
         </p>
         <p class="font-mono text-[13px] tabular-nums">steps {{ selectedBench.appliedSteps }} · probes {{ selectedBench.probes }}</p>
-        <p v-for="host in selectedBench.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ host.id }} · {{ host.durationMs }} ms · exit {{ host.exitCode }}</p>
+        <p v-for="host in selectedBench.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ host.environment }} · {{ host.durationMs }} ms · exit {{ host.exitCode }}</p>
         <p class="text-ash font-mono text-[13px] leading-6 tabular-nums">max steps {{ selectedBench.maxSteps }} · max probes {{ selectedBench.maxEvals }} · state {{ selectedBench.maxStateBytes }} bytes · timeout {{ selectedBench.timeoutSeconds }} s · memory {{ selectedBench.memoryCapBytes }} bytes</p>
       </div>
     </section>

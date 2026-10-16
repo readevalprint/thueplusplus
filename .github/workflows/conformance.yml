@@ -1,0 +1,152 @@
+name: conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      go: ${{ steps.filter.outputs.go }}
+      wasm: ${{ steps.filter.outputs.wasm }}
+      rust: ${{ steps.filter.outputs.rust }}
+      cpp: ${{ steps.filter.outputs.cpp }}
+      guests: ${{ steps.filter.outputs.guests }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            BASE="HEAD^"
+          else
+            BASE=""
+          fi
+          if [ -z "$BASE" ]; then
+            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nguests=true\n' >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only "$BASE" HEAD | python3 tools/ci_paths.py >> "$GITHUB_OUTPUT"
+          fi
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: make test-static
+
+  python:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: make test-core HOST=python
+
+  go:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: build/go-thuepp
+          key: go-native-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
+      - run: make test-core HOST=go
+
+  wasm:
+    needs: changes
+    if: needs.changes.outputs.wasm == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: build/thuepp.wasm
+          key: wasm-node-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
+      - run: make test-core HOST=wasm
+
+  rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: make test-core HOST=rust
+
+  cpp:
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: build/cpp
+          key: cpp-re2-${{ hashFiles('cpp/**') }}
+      - name: Install the C++ toolchain and RE2
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
+      - run: make test-core HOST=cpp
+
+  guests:
+    needs: changes
+    if: needs.changes.outputs.guests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: build/go-thuepp
+          key: go-native-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
+      - run: make test-guests

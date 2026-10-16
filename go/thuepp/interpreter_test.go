@@ -542,3 +542,40 @@ func TestStateLimitRecordsTraceThenReturns(t *testing.T) {
 		t.Fatalf("trace = %q, want %q", text, want)
 	}
 }
+
+func TestLiteralPrefixDoesNotChangeMatch(t *testing.T) {
+	interp := New()
+	interp.ProgramPath = "prefix.tpp"
+	program := "" +
+		"STREQ<(?<a>[A-Za-z]+),(?<b>[A-Za-z]+)> ::= EQ<{{a}}|{{b}}>\n" +
+		"^LINE<(?<n>[0-9]+)>$ ::= N<{{n}}>\n" +
+		"PREFIX<(?<x>[0-9]+)> ::= V<{{x}}>\n" +
+		"ABSENT<(?<x>.)> ::= BAD\n" +
+		"::=\n" +
+		"keep STREQ<ab,cd> and\nLINE<7>\nnope PREFIX<no>\n"
+	if err := interp.parseProgram(program); err != nil {
+		t.Fatal(err)
+	}
+	if interp.Rules[0].literalPrefix != "STREQ<" {
+		t.Fatalf("prefix = %q", interp.Rules[0].literalPrefix)
+	}
+	if interp.Rules[1].literalPrefix != "LINE<" {
+		t.Fatalf("anchored prefix = %q", interp.Rules[1].literalPrefix)
+	}
+	code, err := interp.Run()
+	if err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v state=%q", code, err, interp.State)
+	}
+	if !strings.Contains(interp.State, "EQ<ab|cd>") || !strings.Contains(interp.State, "N<7>") {
+		t.Fatalf("state = %q", interp.State)
+	}
+	if strings.Contains(interp.State, "V<") {
+		t.Fatalf("non-match was rewritten: %q", interp.State)
+	}
+}
+
+func TestLiteralPrefixSkipsCaseFold(t *testing.T) {
+	if literalPrefixOf("(?i)ABC") != "" {
+		t.Fatal("case-insensitive pattern must not use a case-sensitive prefix")
+	}
+}

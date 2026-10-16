@@ -186,7 +186,12 @@ def bounded_run(
 
     reason: str | None = None
     deadline = time.monotonic() + timeout
-    while proc.poll() is None:
+    while True:
+        try:
+            proc.wait(timeout=POLL_SECONDS)
+            break
+        except subprocess.TimeoutExpired:
+            pass
         rss = _process_tree_rss(proc.pid)
         if rss > memory_cap:
             reason = f"memory cap ({memory_cap} bytes) exceeded (rss {rss} bytes)"
@@ -196,7 +201,6 @@ def bounded_run(
             reason = f"timed out after {timeout}s"
             _kill_group(proc.pid)
             break
-        time.sleep(POLL_SECONDS)
     proc.wait(timeout=5)
     for reader in readers:
         reader.join(timeout=5)

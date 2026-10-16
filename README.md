@@ -542,7 +542,15 @@ Before review, run the root check:
 make test
 ```
 
-`make test` runs the conformance check and shared manifest runner. The runner invokes Python, Go, and the wasm host, and `make test` adds the Rust release binary with `--impl`. It checks parity, reports per-program rule counts, and enforces rule coverage for manifest-declared examples. Spec version v0.5 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
+`make test` is the per-PR check. It has two tiers.
+
+Host conformance runs a small core suite on every host: Python, native Go, wasm (node), and the Rust release binary (`--impl rust=./rust/target/release/thuepp`). When `cpp/CMakeLists.txt` is present, that host is included too. The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
+
+Guest programs (Forth, Lisp, BASIC, and Brainfuck) and `make tasks` run on the native Go host. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of the guest suite. `make tasks-full` runs the task suite on every host in `hosts.toml`.
+
+`make test-full` runs every manifest on every host, checks parity, and enforces rule coverage. A nightly workflow runs that command. Timings name the runtime: `python`, `go native`, `wasm (node)`, and `rust`. A wasm time is not a Go time.
+
+Spec version v0.5 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
 
 For focused debugging, pass manifest paths directly:
 

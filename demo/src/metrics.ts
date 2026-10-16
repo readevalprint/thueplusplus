@@ -1,21 +1,52 @@
 import { parse as parseToml } from 'smol-toml'
 import rawHistory from '../../metrics/history.json'
 import hostsToml from '../../hosts.toml?raw'
+import environments from '../../metrics/environments.json'
 
 export const HOST_IDS = readHostIds(hostsToml)
+const REQUIRED_ENVIRONMENTS = {
+  python: 'python',
+  go: 'go native',
+  wasm: 'wasm (node)',
+  rust: 'rust',
+} as const
 const TASK_STATUSES = ['pass', 'fail', 'unsupported'] as const
 const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'guests', 'tasks', 'benchmarks']
 const GUEST_KEYS = ['program', 'rule_lines', 'error']
 const TASK_KEYS = ['source', 'results']
-const TASK_ROW_KEYS = ['task', 'guest', 'host', 'pass', 'status', 'applied_steps', 'probes']
+const TASK_ROW_KEYS = ['task', 'guest', 'host', 'environment', 'pass', 'status', 'applied_steps', 'probes']
 const BENCHMARK_KEYS = ['program', 'max_steps', 'max_evals', 'max_state_bytes', 'timeout_seconds', 'memory_cap_bytes', 'hosts']
-const BENCHMARK_HOST_KEYS = ['duration_ms', 'exit_code', 'applied_steps', 'probes', 'host_timeout_seconds']
+const BENCHMARK_HOST_KEYS = ['duration_ms', 'exit_code', 'applied_steps', 'probes', 'host_timeout_seconds', 'environment']
 
 export class HistoryError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'HistoryError'
   }
+}
+
+function assertEnvironmentMap(): void {
+  const keys = Object.keys(REQUIRED_ENVIRONMENTS)
+  const loadedKeys = Object.keys(environments)
+  if (loadedKeys.length !== keys.length || keys.some(key => environments[key as keyof typeof environments] !== REQUIRED_ENVIRONMENTS[key as keyof typeof REQUIRED_ENVIRONMENTS])) {
+    throw new HistoryError('metrics/environments.json does not match the host labels')
+  }
+  const labels = new Set(Object.values(REQUIRED_ENVIRONMENTS))
+  if (labels.size !== keys.length) throw new HistoryError('environment labels must be unique')
+  if (REQUIRED_ENVIRONMENTS.go.includes('wasm')) {
+    throw new HistoryError('go native label must not say wasm')
+  }
+}
+
+assertEnvironmentMap()
+
+export function assertEnvironment(host: string, environment: string): void {
+  const expected = REQUIRED_ENVIRONMENTS[host as keyof typeof REQUIRED_ENVIRONMENTS]
+  if (expected === undefined || environment !== expected) {
+    throw new HistoryError(`host ${host} is ${expected ?? 'unlabeled'}, not ${environment}`)
+  }
+  if (host === 'go' && environment.includes('wasm')) throw new HistoryError('go native timing labeled as wasm')
+  if (host === 'wasm' && environment === REQUIRED_ENVIRONMENTS.go) throw new HistoryError('wasm timing labeled as go native')
 }
 
 export interface CommitRef {
@@ -56,6 +87,7 @@ export interface TaskCommit extends CommitRef {
 
 export interface BenchmarkHost {
   id: string
+  environment: string
   durationMs: number
   exitCode: number
 }
@@ -183,15 +215,20 @@ export function taskCommits(history: History, order: readonly string[], names: R
 
 export function hostDurationSeries(commits: readonly BenchmarkCommit[]): NamedSeries[] {
   const present = new Set(commits.flatMap(commit => commit.hosts.map(host => host.id)))
-  return HOST_IDS.filter(id => present.has(id)).map(id => ({
-    id,
-    label: id,
-    points: commits.flatMap(commit => {
-      const row = commit.hosts.find(host => host.id === id)
-      if (!row) return []
-      return [{ commit: commit.commit, value: row.durationMs }]
-    }),
-  }))
+  return HOST_IDS.filter(id => present.has(id)).map(id => {
+    const sample = commits.flatMap(commit => commit.hosts).find(host => host.id === id)
+    if (!sample) throw new HistoryError(`host ${id} has no duration`)
+    assertEnvironment(id, sample.environment)
+    return {
+      id,
+      label: sample.environment,
+      points: commits.flatMap(commit => {
+        const row = commit.hosts.find(host => host.id === id)
+        if (!row) return []
+        return [{ commit: commit.commit, value: row.durationMs }]
+      }),
+    }
+  })
 }
 
 export function benchmarkCommits(history: History): BenchmarkCommit[] {
@@ -378,6 +415,7 @@ function loadTaskRow(commit: string, value: unknown, seen: Set<string>): TaskRow
   const guest = requireText(value.guest, `${commit}: guest`)
   const host = requireText(value.host, `${commit}: host`)
   if (!HOST_IDS.includes(host)) throw new HistoryError(`${commit}: unknown host ${host}`)
+  assertEnvironment(host, requireText(value.environment, `${commit}: environment`))
   if (!TASK_STATUSES.includes(value.status as typeof TASK_STATUSES[number])) {
     throw new HistoryError(`${commit}: status ${String(value.status)}`)
   }
@@ -420,8 +458,11 @@ function loadBenchmarks(commit: string, value: unknown): HistoryEntry['benchmark
     if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout <= 0) {
       throw new HistoryError(`${commit} ${id}: host_timeout_seconds must be a positive number`)
     }
+    const environment = requireText(row.environment, `${commit} ${id} environment`)
+    assertEnvironment(id, environment)
     return {
       id,
+      environment,
       durationMs: nonNegativeInt(row.duration_ms, `${commit} ${id} duration_ms`),
       exitCode: anyInt(row.exit_code, `${commit} ${id} exit_code`),
       appliedSteps: nonNegativeInt(row.applied_steps, `${commit} ${id} applied_steps`),
@@ -441,7 +482,7 @@ function loadBenchmarks(commit: string, value: unknown): HistoryEntry['benchmark
     maxStateBytes: positiveInt(value.max_state_bytes, `${commit} benchmarks.max_state_bytes`),
     timeoutSeconds: positiveInt(value.timeout_seconds, `${commit} benchmarks.timeout_seconds`),
     memoryCapBytes: positiveInt(value.memory_cap_bytes, `${commit} benchmarks.memory_cap_bytes`),
-    hosts: loaded.map(host => ({ id: host.id, durationMs: host.durationMs, exitCode: host.exitCode })),
+    hosts: loaded.map(host => ({ id: host.id, environment: host.environment, durationMs: host.durationMs, exitCode: host.exitCode })),
   }
 }
 

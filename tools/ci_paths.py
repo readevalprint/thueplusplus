@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Decide which conformance jobs a diff must run.
+
+Prints GitHub Actions output lines: name=true|false.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+GUEST_DIRS = frozenset({"forth", "lisp", "basic", "brainfuck"})
+HOST_JOBS = ("python", "go", "wasm", "rust", "cpp", "guests")
+
+
+def classify(paths: list[str], *, cpp_present: bool) -> dict[str, bool]:
+    jobs = {name: False for name in HOST_JOBS}
+    shared = False
+    for raw in paths:
+        path = raw.strip().replace("\\", "/")
+        if not path or path.endswith("/"):
+            continue
+        if _shared(path):
+            shared = True
+            continue
+        if path.startswith("go/"):
+            jobs["go"] = True
+            jobs["wasm"] = True
+            jobs["guests"] = True
+            continue
+        if path.startswith("js/"):
+            jobs["wasm"] = True
+            continue
+        if path.startswith("python/"):
+            jobs["python"] = True
+            continue
+        if path.startswith("rust/"):
+            jobs["rust"] = True
+            continue
+        if path.startswith("cpp/"):
+            jobs["cpp"] = True
+            continue
+        if path.startswith("examples/"):
+            parts = path.split("/")
+            if len(parts) > 1 and parts[1] in GUEST_DIRS:
+                jobs["guests"] = True
+            else:
+                shared = True
+            continue
+        if path.startswith("tasks/"):
+            jobs["guests"] = True
+    if shared:
+        jobs["python"] = True
+        jobs["go"] = True
+        jobs["wasm"] = True
+        jobs["rust"] = True
+        jobs["guests"] = True
+        if cpp_present:
+            jobs["cpp"] = True
+    if jobs["cpp"] and not cpp_present:
+        jobs["cpp"] = False
+    return jobs
+
+
+def _shared(path: str) -> bool:
+    if path in {"Makefile", "pyproject.toml", "uv.lock", "tpp.peg", "SPEC_VERSION"}:
+        return True
+    return path.startswith("tools/") or path.startswith(".github/workflows/")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    cpp_present = (Path(__file__).resolve().parents[1] / "cpp" / "CMakeLists.txt").is_file()
+    if args == ["--stdin"] or not args:
+        text = sys.stdin.read()
+        paths = [line for line in text.splitlines() if line.strip()]
+    else:
+        paths = args
+    jobs = classify(paths, cpp_present=cpp_present)
+    for name in HOST_JOBS:
+        print(f"{name}={'true' if jobs[name] else 'false'}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

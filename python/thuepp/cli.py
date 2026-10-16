@@ -19,10 +19,11 @@ UNSET = _Unset()
 def parse_limit(text: str):
     if text == "unlimited":
         return None
-    try:
+    digits = text[1:] if text.startswith("-") else text
+    if digits and digits.isascii() and digits.isdigit():
         return int(text)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"invalid integer {text!r}") from exc
+    print(f'strconv.Atoi: parsing "{text}": invalid syntax', file=sys.stderr)
+    raise SystemExit(2)
 
 
 def _write_counts(path: str, applied_steps: int, probes: int) -> None:
