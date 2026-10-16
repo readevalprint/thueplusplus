@@ -208,6 +208,10 @@ def validate_history(document: dict, *, require_measurement: bool) -> None:
 
 
 def save_history(path: Path, document: dict) -> None:
+    document = {
+        "schema_version": document["schema_version"],
+        "entries": sorted(document["entries"], key=sort_key),
+    }
     validate_history(document, require_measurement=False)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
