@@ -27191,6 +27191,2084 @@
           }
         }
       }
+    },
+    {
+      "commit": "40596158d97effdd5c709ffa1b7a3ebb13681f65",
+      "author": "cursor[bot] <206951365+cursor[bot]@users.noreply.github.com>",
+      "timestamp": "2026-10-16T18:37:21Z",
+      "guests": {
+        "forth": {
+          "program": "examples/forth/forth.tpp",
+          "rule_lines": 86
+        },
+        "lisp": {
+          "program": "examples/lisp/lisp.tpp",
+          "rule_lines": 441
+        },
+        "brainfuck": {
+          "program": "examples/brainfuck/brainfuck.tpp",
+          "rule_lines": 68
+        },
+        "basic": {
+          "program": "examples/basic/basic.tpp",
+          "rule_lines": 62
+        }
+      },
+      "tasks": {
+        "source": "make tasks",
+        "results": [
+          {
+            "task": "hello-world",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1,
+            "probes": 101
+          },
+          {
+            "task": "hello-world",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1,
+            "probes": 101
+          },
+          {
+            "task": "hello-world",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1,
+            "probes": 101
+          },
+          {
+            "task": "hello-world",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1,
+            "probes": 101
+          },
+          {
+            "task": "hello-world",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1,
+            "probes": 101
+          },
+          {
+            "task": "hello-world",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 24,
+            "probes": 2548
+          },
+          {
+            "task": "hello-world",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 24,
+            "probes": 2548
+          },
+          {
+            "task": "hello-world",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 24,
+            "probes": 2548
+          },
+          {
+            "task": "hello-world",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 24,
+            "probes": 2548
+          },
+          {
+            "task": "hello-world",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 24,
+            "probes": 2548
+          },
+          {
+            "task": "hello-world",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 83,
+            "probes": 2235
+          },
+          {
+            "task": "hello-world",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 83,
+            "probes": 2235
+          },
+          {
+            "task": "hello-world",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 83,
+            "probes": 2235
+          },
+          {
+            "task": "hello-world",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 83,
+            "probes": 2235
+          },
+          {
+            "task": "hello-world",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 83,
+            "probes": 2235
+          },
+          {
+            "task": "hello-world",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 311
+          },
+          {
+            "task": "hello-world",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 311
+          },
+          {
+            "task": "hello-world",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 311
+          },
+          {
+            "task": "hello-world",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 311
+          },
+          {
+            "task": "hello-world",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 311
+          },
+          {
+            "task": "fibonacci",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 42,
+            "probes": 1390
+          },
+          {
+            "task": "fibonacci",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 42,
+            "probes": 1390
+          },
+          {
+            "task": "fibonacci",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 42,
+            "probes": 1390
+          },
+          {
+            "task": "fibonacci",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 42,
+            "probes": 1390
+          },
+          {
+            "task": "fibonacci",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 42,
+            "probes": 1390
+          },
+          {
+            "task": "fibonacci",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 2644,
+            "probes": 73892
+          },
+          {
+            "task": "fibonacci",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 2644,
+            "probes": 73892
+          },
+          {
+            "task": "fibonacci",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 2644,
+            "probes": 73892
+          },
+          {
+            "task": "fibonacci",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 2644,
+            "probes": 73892
+          },
+          {
+            "task": "fibonacci",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 2644,
+            "probes": 73892
+          },
+          {
+            "task": "fibonacci",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 17,
+            "probes": 558
+          },
+          {
+            "task": "fibonacci",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 17,
+            "probes": 558
+          },
+          {
+            "task": "fibonacci",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 17,
+            "probes": 558
+          },
+          {
+            "task": "fibonacci",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 17,
+            "probes": 558
+          },
+          {
+            "task": "fibonacci",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 17,
+            "probes": 558
+          },
+          {
+            "task": "fibonacci",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 314
+          },
+          {
+            "task": "fibonacci",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 314
+          },
+          {
+            "task": "fibonacci",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 314
+          },
+          {
+            "task": "fibonacci",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 314
+          },
+          {
+            "task": "fibonacci",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5,
+            "probes": 314
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 201,
+            "probes": 9163
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 201,
+            "probes": 9163
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 201,
+            "probes": 9163
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 201,
+            "probes": 9163
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 201,
+            "probes": 9163
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 22679,
+            "probes": 392360
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 22679,
+            "probes": 392360
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 22679,
+            "probes": 392360
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 22679,
+            "probes": 392360
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 22679,
+            "probes": 392360
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "fizzbuzz",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 30,
+            "probes": 794
+          },
+          {
+            "task": "factorial",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 30,
+            "probes": 794
+          },
+          {
+            "task": "factorial",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 30,
+            "probes": 794
+          },
+          {
+            "task": "factorial",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 30,
+            "probes": 794
+          },
+          {
+            "task": "factorial",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 30,
+            "probes": 794
+          },
+          {
+            "task": "factorial",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1472,
+            "probes": 35376
+          },
+          {
+            "task": "factorial",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1472,
+            "probes": 35376
+          },
+          {
+            "task": "factorial",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1472,
+            "probes": 35376
+          },
+          {
+            "task": "factorial",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1472,
+            "probes": 35376
+          },
+          {
+            "task": "factorial",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1472,
+            "probes": 35376
+          },
+          {
+            "task": "factorial",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "factorial",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 15,
+            "probes": 505
+          },
+          {
+            "task": "reverse-string",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 15,
+            "probes": 505
+          },
+          {
+            "task": "reverse-string",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 15,
+            "probes": 505
+          },
+          {
+            "task": "reverse-string",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 15,
+            "probes": 505
+          },
+          {
+            "task": "reverse-string",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 15,
+            "probes": 505
+          },
+          {
+            "task": "reverse-string",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 181,
+            "probes": 9320
+          },
+          {
+            "task": "reverse-string",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 181,
+            "probes": 9320
+          },
+          {
+            "task": "reverse-string",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 181,
+            "probes": 9320
+          },
+          {
+            "task": "reverse-string",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 181,
+            "probes": 9320
+          },
+          {
+            "task": "reverse-string",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 181,
+            "probes": 9320
+          },
+          {
+            "task": "reverse-string",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "reverse-string",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 500,
+            "probes": 22817
+          },
+          {
+            "task": "99-bottles",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 500,
+            "probes": 22817
+          },
+          {
+            "task": "99-bottles",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 500,
+            "probes": 22817
+          },
+          {
+            "task": "99-bottles",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 500,
+            "probes": 22817
+          },
+          {
+            "task": "99-bottles",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 500,
+            "probes": 22817
+          },
+          {
+            "task": "99-bottles",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 13467,
+            "probes": 383115
+          },
+          {
+            "task": "99-bottles",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 13467,
+            "probes": 383115
+          },
+          {
+            "task": "99-bottles",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 13467,
+            "probes": 383115
+          },
+          {
+            "task": "99-bottles",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 13467,
+            "probes": 383115
+          },
+          {
+            "task": "99-bottles",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 13467,
+            "probes": 383115
+          },
+          {
+            "task": "99-bottles",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "99-bottles",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 108,
+            "probes": 4669
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 108,
+            "probes": 4669
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 108,
+            "probes": 4669
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 108,
+            "probes": 4669
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 108,
+            "probes": 4669
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1043,
+            "probes": 49423
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1043,
+            "probes": 49423
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1043,
+            "probes": 49423
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1043,
+            "probes": 49423
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1043,
+            "probes": 49423
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "guess-the-number",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 158,
+            "probes": 6556
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 158,
+            "probes": 6556
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 158,
+            "probes": 6556
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 158,
+            "probes": 6556
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 158,
+            "probes": 6556
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1641,
+            "probes": 78712
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1641,
+            "probes": 78712
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1641,
+            "probes": 78712
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1641,
+            "probes": 78712
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1641,
+            "probes": 78712
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "sum-numbers",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 47,
+            "probes": 1898
+          },
+          {
+            "task": "palindrome",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 47,
+            "probes": 1898
+          },
+          {
+            "task": "palindrome",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 47,
+            "probes": 1898
+          },
+          {
+            "task": "palindrome",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 47,
+            "probes": 1898
+          },
+          {
+            "task": "palindrome",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 47,
+            "probes": 1898
+          },
+          {
+            "task": "palindrome",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5428,
+            "probes": 167161
+          },
+          {
+            "task": "palindrome",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5428,
+            "probes": 167161
+          },
+          {
+            "task": "palindrome",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5428,
+            "probes": 167161
+          },
+          {
+            "task": "palindrome",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5428,
+            "probes": 167161
+          },
+          {
+            "task": "palindrome",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 5428,
+            "probes": 167161
+          },
+          {
+            "task": "palindrome",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "palindrome",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "forth",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 20,
+            "probes": 633
+          },
+          {
+            "task": "rot13",
+            "guest": "forth",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 20,
+            "probes": 633
+          },
+          {
+            "task": "rot13",
+            "guest": "forth",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 20,
+            "probes": 633
+          },
+          {
+            "task": "rot13",
+            "guest": "forth",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 20,
+            "probes": 633
+          },
+          {
+            "task": "rot13",
+            "guest": "forth",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 20,
+            "probes": 633
+          },
+          {
+            "task": "rot13",
+            "guest": "lisp",
+            "host": "python",
+            "environment": "python",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1675,
+            "probes": 238963
+          },
+          {
+            "task": "rot13",
+            "guest": "lisp",
+            "host": "go",
+            "environment": "go native",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1675,
+            "probes": 238963
+          },
+          {
+            "task": "rot13",
+            "guest": "lisp",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1675,
+            "probes": 238963
+          },
+          {
+            "task": "rot13",
+            "guest": "lisp",
+            "host": "rust",
+            "environment": "rust",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1675,
+            "probes": 238963
+          },
+          {
+            "task": "rot13",
+            "guest": "lisp",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": true,
+            "status": "pass",
+            "applied_steps": 1675,
+            "probes": 238963
+          },
+          {
+            "task": "rot13",
+            "guest": "brainfuck",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "brainfuck",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "brainfuck",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "brainfuck",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "brainfuck",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "basic",
+            "host": "python",
+            "environment": "python",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "basic",
+            "host": "go",
+            "environment": "go native",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "basic",
+            "host": "wasm",
+            "environment": "wasm (node)",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "basic",
+            "host": "rust",
+            "environment": "rust",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          },
+          {
+            "task": "rot13",
+            "guest": "basic",
+            "host": "cpp",
+            "environment": "cpp",
+            "pass": false,
+            "status": "unsupported",
+            "applied_steps": null,
+            "probes": null
+          }
+        ]
+      },
+      "benchmarks": {
+        "program": "benchmark.tpp",
+        "max_steps": 15000,
+        "max_evals": 50000,
+        "max_state_bytes": 16384,
+        "timeout_seconds": 30,
+        "memory_cap_bytes": 268435456,
+        "hosts": {
+          "python": {
+            "duration_ms": 1358,
+            "exit_code": 0,
+            "applied_steps": 10000,
+            "probes": 10002,
+            "host_timeout_seconds": 30,
+            "environment": "python"
+          },
+          "go": {
+            "duration_ms": 1288,
+            "exit_code": 0,
+            "applied_steps": 10000,
+            "probes": 10002,
+            "host_timeout_seconds": 30,
+            "environment": "go native"
+          },
+          "wasm": {
+            "duration_ms": 3027,
+            "exit_code": 0,
+            "applied_steps": 10000,
+            "probes": 10002,
+            "host_timeout_seconds": 240,
+            "environment": "wasm (node)"
+          },
+          "rust": {
+            "duration_ms": 915,
+            "exit_code": 0,
+            "applied_steps": 10000,
+            "probes": 10002,
+            "host_timeout_seconds": 30,
+            "environment": "rust"
+          },
+          "cpp": {
+            "duration_ms": 1083,
+            "exit_code": 0,
+            "applied_steps": 10000,
+            "probes": 10002,
+            "host_timeout_seconds": 30,
+            "environment": "cpp"
+          }
+        }
+      }
     }
   ]
 }
