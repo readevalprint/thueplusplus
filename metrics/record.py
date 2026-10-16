@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import historylib  # noqa: E402
 import runner as task_runner  # noqa: E402
-from example_runner import build_interpreters  # noqa: E402
+from hosts import build_registered, host_ids  # noqa: E402
 from rules import count_rule_lines  # noqa: E402
 from run_limits import RUN_MEMORY_CAP_BYTES, bounded_run  # noqa: E402
 
@@ -138,9 +138,10 @@ def run_benchmarks(limits: dict) -> dict:
     program = ROOT / "metrics" / limits["program"]
     if not program.is_file():
         raise RecordError(f"benchmark program does not exist: {program}")
-    interpreters = build_interpreters(ROOT / "build")
+    interpreters = build_registered(ROOT / "build")
     by_name = {interpreter.name: interpreter for interpreter in interpreters}
-    missing = [host for host in historylib.HOSTS if host not in by_name]
+    registered = host_ids()
+    missing = [host for host in registered if host not in by_name]
     if missing:
         raise RecordError(f"missing host build: {', '.join(missing)}")
 
@@ -186,13 +187,13 @@ def run_benchmarks(limits: dict) -> dict:
             "host_timeout_seconds": int(timeout) if timeout == int(timeout) else timeout,
         }
 
-    with ThreadPoolExecutor(max_workers=len(historylib.HOSTS)) as pool:
-        rows = dict(pool.map(one, historylib.HOSTS))
+    with ThreadPoolExecutor(max_workers=len(registered)) as pool:
+        rows = dict(pool.map(one, registered))
     steps = {row["applied_steps"] for row in rows.values()}
     probes = {row["probes"] for row in rows.values()}
     if len(steps) != 1 or len(probes) != 1:
         rendered = ", ".join(
-            f"{host} steps={rows[host]['applied_steps']} probes={rows[host]['probes']}" for host in historylib.HOSTS
+            f"{host} steps={rows[host]['applied_steps']} probes={rows[host]['probes']}" for host in registered
         )
         raise RecordError(f"benchmark hosts disagree: {rendered}")
     return {
@@ -202,7 +203,7 @@ def run_benchmarks(limits: dict) -> dict:
         "max_state_bytes": limits["max_state_bytes"],
         "timeout_seconds": limits["timeout_seconds"],
         "memory_cap_bytes": limits["memory_cap_bytes"],
-        "hosts": {host: rows[host] for host in historylib.HOSTS},
+        "hosts": {host: rows[host] for host in registered},
     }
 
 

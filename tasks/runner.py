@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 import example_runner  # noqa: E402
+from hosts import build_registered, host_by_id, host_ids  # noqa: E402
 from run_limits import (  # noqa: E402
     RUN_MEMORY_CAP_BYTES,
     limit_values,
@@ -37,8 +38,6 @@ DEFAULT_OUTPUT = ROOT / "build" / "tasks" / "results.json"
 SCHEMA_VERSION = 1
 TASK_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 GUEST_ID = re.compile(r"^[a-z][a-z0-9]*$")
-HOST_ORDER = ("python", "go", "wasm")
-
 # Hard ceilings. A transcript that asks for more is rejected before it runs.
 CEILING_STEPS = 1_000_000
 CEILING_EVALS = 5_000_000
@@ -89,10 +88,11 @@ def git_output(args: list[str]) -> str:
 
 
 def host_timeout(seconds: float, host: str) -> float:
-    # Same scale as the conformance runner: a wasm case boots a fresh module.
-    if host == "wasm":
-        return max(seconds * 8, 30)
-    return seconds
+    spec = host_by_id(host)
+    scaled = seconds * spec.timeout_scale
+    if spec.timeout_floor:
+        return max(scaled, spec.timeout_floor)
+    return scaled
 
 
 def require_timeout(path: Path, scope: str, value) -> float:
@@ -550,7 +550,7 @@ def step_mismatches(rows: list[dict]) -> list[str]:
     for (task_id, guest_id), group in sorted(grouped.items()):
         counts = {row["host"]: row["step_count"] for row in group}
         if len(set(counts.values())) > 1:
-            rendered = ", ".join(f"{host} {counts[host]}" for host in HOST_ORDER if host in counts)
+            rendered = ", ".join(f"{host} {counts[host]}" for host in host_ids() if host in counts)
             errors.append(f"{task_id}/{guest_id} applied-step mismatch: {rendered}")
     return errors
 
@@ -569,7 +569,14 @@ def provenance(timestamp: str) -> dict:
     }
 
 
+def _recorded_number(value: float) -> int | float:
+    if value == int(value):
+        return int(value)
+    return value
+
+
 def safety_block() -> dict:
+    wasm = host_by_id("wasm")
     return {
         "max_steps_ceiling": CEILING_STEPS,
         "max_evals_ceiling": CEILING_EVALS,
@@ -578,8 +585,8 @@ def safety_block() -> dict:
         "memory_cap_bytes": RUN_MEMORY_CAP_BYTES,
         "memory_cap": "rss",
         "os_timeout": "timeout(1)",
-        "wasm_timeout_scale": 8,
-        "wasm_timeout_floor_seconds": 30,
+        "wasm_timeout_scale": _recorded_number(wasm.timeout_scale),
+        "wasm_timeout_floor_seconds": _recorded_number(wasm.timeout_floor),
     }
 
 
@@ -629,7 +636,7 @@ def build_document(
     for task in tasks:
         grid[task["id"]] = {}
         for guest in guests:
-            group = [by_key[(task["id"], guest["id"], host)] for host in HOST_ORDER if (task["id"], guest["id"], host) in by_key]
+            group = [by_key[(task["id"], guest["id"], host)] for host in host_ids() if (task["id"], guest["id"], host) in by_key]
             status = grid_status(group)
             steps = group[0]["step_count"] if status == "pass" else None
             grid[task["id"]][guest["id"]] = {"status": status, "step_count": steps}
@@ -642,7 +649,7 @@ def build_document(
             "duration_ms": int((time.perf_counter() - started) * 1000),
             "output": rel(output) if output.is_relative_to(ROOT) else str(output),
             "safety": safety_block(),
-            "hosts": list(HOST_ORDER),
+            "hosts": list(host_ids()),
             "guests": [
                 {
                     "id": guest["id"],
@@ -665,20 +672,21 @@ def build_document(
 
 
 def select_interpreters(built: list[example_runner.Interpreter], names: list[str]) -> list[example_runner.Interpreter]:
+    registered = host_ids()
     if not names:
-        names = list(HOST_ORDER)
-    unknown = [name for name in names if name not in HOST_ORDER]
+        names = list(registered)
+    unknown = [name for name in names if name not in registered]
     if unknown:
         raise SuiteError(f"unknown host(s): {', '.join(unknown)}")
     by_name = {interpreter.name: interpreter for interpreter in built}
-    return [by_name[name] for name in HOST_ORDER if name in names]
+    return [by_name[name] for name in registered if name in names]
 
 
 def run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run Thue++ golden-program tasks on every guest and host")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="results JSON path")
     parser.add_argument("--check", action="store_true", help="validate the suite and exit")
-    parser.add_argument("--host", action="append", default=[], help="host to run (python, go, wasm); repeatable")
+    parser.add_argument("--host", action="append", default=[], help="host id from hosts.toml; repeatable")
     parser.add_argument("--task", action="append", default=[], help="task id to run; repeatable")
     args = parser.parse_args(argv)
 
@@ -719,7 +727,7 @@ def _run_selected(tasks, guests, args, started: float) -> int:
     output = args.output if args.output.is_absolute() else ROOT / args.output
     with tempfile.TemporaryDirectory(prefix="thuepp-tasks-") as tmpname:
         tmp = Path(tmpname)
-        built = example_runner.build_interpreters(ROOT / "build")
+        built = build_registered(ROOT / "build")
         by_name = {interpreter.name: interpreter for interpreter in built}
         python = by_name["python"]
         rule_info = _guest_rules(python, guests)

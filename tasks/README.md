@@ -2,7 +2,7 @@
 
 A task is a programming problem defined only by input and output. The same transcript is the contract for every host and every guest.
 
-Hosts are the Thue++ implementations: Python, Go, and wasm. Guests are languages implemented in Thue++. The guests in this suite are [Forth](../examples/forth/forth.tpp), [Lisp](../examples/lisp/lisp.tpp), [Brainfuck](../examples/brainfuck/brainfuck.tpp), and [BASIC](../examples/basic/basic.tpp).
+Hosts are the Thue++ implementations in `hosts.toml`. Adding a host is one line in that file. Guests are languages implemented in Thue++. The guests in this suite are [Forth](../examples/forth/forth.tpp), [Lisp](../examples/lisp/lisp.tpp), [Brainfuck](../examples/brainfuck/brainfuck.tpp), and [BASIC](../examples/basic/basic.tpp).
 
 ```text
 make tasks
@@ -76,7 +76,7 @@ Schema version 1. The site grid reads `grid`. Charts read `results`, keyed by `t
 | `timestamp` | UTC start time, `YYYY-MM-DDTHH:MM:SSZ` |
 | `duration_ms` | wall time of the suite |
 | `safety` | ceilings, RSS cap, OS timeout, wasm scale |
-| `hosts` | hosts that ran, in order `python`, `go`, `wasm` |
+| `hosts` | host ids from `hosts.toml` that ran, in registry order |
 | `guests` | id, interpreter path, `rule_count` |
 | `tasks` | id, title, case count |
 | `grid` | task → guest → `status` and `step_count` |

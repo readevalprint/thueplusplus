@@ -1,0 +1,13 @@
+# One inline table per host. Adding a host is one line in this array.
+# `command` is split with shell quoting and run from the repository root.
+# `build`, when set, runs first. `cwd` is relative to the repository root.
+# `build_env` and `env` are space-separated KEY=VALUE pairs. A value that
+# contains a slash is resolved from the repository root.
+# `timeout_scale` and `timeout_floor` stretch that host's case timeout.
+
+host = [
+  { id = "python", command = "uv run thuepp" },
+  { id = "go", command = "build/go-thuepp", build = "go build -o ../build/go-thuepp ./cmd/thuepp", cwd = "go" },
+  { id = "wasm", command = "node js/src/cli.js", build = "go build -o ../build/thuepp.wasm ./cmd/thuepp-wasm", cwd = "go", build_env = "GOOS=js GOARCH=wasm CGO_ENABLED=0", env = "THUEPP_WASM=build/thuepp.wasm", timeout_scale = 8, timeout_floor = 30 },
+  { id = "rust", command = "rust/target/release/thuepp", build = "cargo build --release --manifest-path rust/Cargo.toml" },
+]

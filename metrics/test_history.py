@@ -135,6 +135,31 @@ class HistoryTests(unittest.TestCase):
         self.assertFalse(historylib.history_only(["metrics/history.json", "Makefile"]))
         self.assertFalse(historylib.history_only([]))
 
+    def test_benchmark_subset_is_valid_and_a_stranger_or_disagreement_is_not(self) -> None:
+        document = {"schema_version": 1, "entries": [entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmark("python", "go"))]}
+        historylib.validate_history(document, require_measurement=False)
+        rust_only = {"schema_version": 1, "entries": [entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmark("rust"))]}
+        historylib.validate_history(rust_only, require_measurement=False)
+        with self.assertRaises(historylib.HistoryError):
+            historylib.validate_history(
+                {"schema_version": 1, "entries": [entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmark())]},
+                require_measurement=False,
+            )
+        with self.assertRaises(historylib.HistoryError):
+            historylib.validate_history(
+                {"schema_version": 1, "entries": [entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmark("cpp"))]},
+                require_measurement=False,
+            )
+        disagreed = _benchmark("python", "go")
+        disagreed["hosts"]["go"]["applied_steps"] = 11
+        with self.assertRaises(historylib.HistoryError):
+            historylib.validate_history(
+                {"schema_version": 1, "entries": [entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=disagreed)]},
+                require_measurement=False,
+            )
+        with self.assertRaises(historylib.HistoryError):
+            historylib.task_row("factorial", "lisp", "cpp", "pass", 1, 1)
+
     def test_benchmark_toml_is_explicit(self) -> None:
         limits = historylib.load_benchmark(ROOT / "metrics" / "benchmark.toml")
         self.assertEqual(limits["memory_cap_bytes"], RUN_MEMORY_CAP_BYTES)
@@ -186,6 +211,27 @@ class HistoryTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             parsed = historylib.parse_counts(counts.read_text(encoding="utf-8"))
         self.assertEqual(parsed, (1, 3))
+
+
+def _benchmark(*hosts: str) -> dict:
+    return {
+        "program": "benchmark.tpp",
+        "max_steps": 15000,
+        "max_evals": 50000,
+        "max_state_bytes": 16384,
+        "timeout_seconds": 30,
+        "memory_cap_bytes": RUN_MEMORY_CAP_BYTES,
+        "hosts": {
+            host: {
+                "duration_ms": 10,
+                "exit_code": 0,
+                "applied_steps": 10,
+                "probes": 12,
+                "host_timeout_seconds": 30,
+            }
+            for host in hosts
+        },
+    }
 
 
 if __name__ == "__main__":

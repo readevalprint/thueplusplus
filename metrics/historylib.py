@@ -7,12 +7,17 @@ document does not describe.
 from __future__ import annotations
 
 import json
+import sys
 import tomllib
 from pathlib import Path
 
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_ROOT / "tools"))
+
+from hosts import host_ids  # noqa: E402
+
 SCHEMA_VERSION = 1
 HISTORY_REL = "metrics/history.json"
-HOSTS = ("python", "go", "wasm")
 TASK_STATUSES = frozenset({"pass", "fail", "unsupported"})
 TASK_SOURCE = "make tasks"
 ENTRY_KEYS = frozenset({"commit", "author", "timestamp", "guests", "tasks", "benchmarks"})
@@ -144,8 +149,8 @@ def task_row(
 ) -> dict:
     if status not in TASK_STATUSES:
         raise HistoryError(f"status {status!r}")
-    if host not in HOSTS:
-        raise HistoryError(f"host {host!r}")
+    if host not in host_ids():
+        raise HistoryError(f"unknown host {host!r}")
     if not task or not guest:
         raise HistoryError("task and guest must be non-empty")
     if status == "pass" and (applied_steps is None or probes is None):
@@ -304,8 +309,14 @@ def _validate_benchmarks(commit: str, benchmarks) -> None:
         _positive_int(benchmarks[key], f"{commit} benchmarks.{key}")
     _positive_int(benchmarks["timeout_seconds"], f"{commit} benchmarks.timeout_seconds")
     hosts = benchmarks["hosts"]
-    if not isinstance(hosts, dict) or set(hosts) != set(HOSTS):
-        raise HistoryError(f"{commit}: benchmark hosts must be {', '.join(HOSTS)}")
+    registered = host_ids()
+    if not isinstance(hosts, dict) or not hosts:
+        raise HistoryError(f"{commit}: benchmark hosts must be a non-empty subset of {', '.join(registered)}")
+    unknown = [name for name in hosts if name not in registered]
+    if unknown:
+        raise HistoryError(f"{commit}: unknown benchmark host(s) {', '.join(unknown)}")
+    steps = set()
+    probes = set()
     for host, row in hosts.items():
         if not isinstance(row, dict) or set(row) != BENCHMARK_HOST_KEYS:
             raise HistoryError(f"{commit} {host}: benchmark host keys must be {', '.join(sorted(BENCHMARK_HOST_KEYS))}")
@@ -317,6 +328,10 @@ def _validate_benchmarks(commit: str, benchmarks) -> None:
         timeout = row["host_timeout_seconds"]
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
             raise HistoryError(f"{commit} {host}: host_timeout_seconds must be a positive number")
+        steps.add(row["applied_steps"])
+        probes.add(row["probes"])
+    if len(steps) != 1 or len(probes) != 1:
+        raise HistoryError(f"{commit}: benchmark hosts disagree on applied_steps or probes")
 
 
 def _non_negative_int(value, label: str) -> int:

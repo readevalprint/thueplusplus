@@ -77,7 +77,21 @@ tasks:
       fi
     - uv --version
     - go version
+    - |
+      if ! command -v cargo >/dev/null 2>&1; then
+        curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
+          | sh -s -- -y --default-toolchain 1.83.0 --profile minimal
+      fi
+      export PATH="$CARGO_HOME/bin:$PATH"
+      rustc --version
+    - |
+      if ! command -v node >/dev/null 2>&1; then
+        curl -fsSL https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-x64.tar.xz -o /tmp/node.tar.xz
+        tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+      fi
+      node --version
   script:
+    - export PATH="$CARGO_HOME/bin:$PATH"
     - make tasks
   artifacts:
     when: always
@@ -103,9 +117,22 @@ metrics:
       fi
     - uv --version
     - go version
+    - |
+      if ! command -v cargo >/dev/null 2>&1; then
+        curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
+          | sh -s -- -y --default-toolchain 1.83.0 --profile minimal
+      fi
+      export PATH="$CARGO_HOME/bin:$PATH"
+      rustc --version
+    - |
+      if ! command -v node >/dev/null 2>&1; then
+        curl -fsSL https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-x64.tar.xz -o /tmp/node.tar.xz
+        tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+      fi
+      node --version
   script:
     - |
-      export PATH="/tmp/uv-bin:${PATH}"
+      export PATH="$CARGO_HOME/bin:/tmp/uv-bin:${PATH}"
       uv run python metrics/record.py --results build/tasks/results.json
   artifacts:
     when: always

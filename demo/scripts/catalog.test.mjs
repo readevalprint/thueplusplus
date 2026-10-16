@@ -143,13 +143,20 @@ describe('buildCatalog', () => {
     assert.equal(catalog.guests[0].stepCount, 0)
   })
 
-  it('rejects a partial host list and a step mismatch', () => {
-    const partial = resultsFor()
-    partial.hosts = ['python']
-    assert.throws(() => buildCatalog(partial, sourcesFor({
+  it('accepts a host subset and rejects an unknown or reordered host list', () => {
+    const sources = sourcesFor({
       forth: { kind: 'solution', text: '1\n' },
       lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
-    })), /results\.hosts/)
+    })
+    const subset = resultsFor()
+    subset.hosts = ['python']
+    assert.equal(buildCatalog(subset, sources).tasks[0].guests[0].status, 'pass')
+    const unknown = resultsFor()
+    unknown.hosts = ['python', 'cpp']
+    assert.throws(() => buildCatalog(unknown, sources), /unknown host/)
+    const unordered = resultsFor()
+    unordered.hosts = ['wasm', 'python', 'go']
+    assert.throws(() => buildCatalog(unordered, sources), /hosts\.toml order/)
     const dirty = resultsFor()
     dirty.errors = ['factorial/forth applied-step mismatch']
     assert.throws(() => buildCatalog(dirty, sourcesFor({

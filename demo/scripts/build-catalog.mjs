@@ -3,7 +3,6 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parse as parseToml } from 'smol-toml'
 
-const HOSTS = ['python', 'go', 'wasm']
 const STATUSES = new Set(['pass', 'fail', 'unsupported'])
 const demoRoot = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -132,8 +131,17 @@ function requireResults(results) {
   if (!Array.isArray(results.errors) || results.errors.length !== 0) {
     throw new CatalogError(`results.errors must be an empty array, got ${JSON.stringify(results.errors)}`)
   }
-  if (!sameList(results.hosts, HOSTS)) {
-    throw new CatalogError(`results.hosts must be ${HOSTS.join(', ')}`)
+  const registry = hostIds()
+  if (!Array.isArray(results.hosts) || results.hosts.length === 0) {
+    throw new CatalogError('results.hosts must be a non-empty array')
+  }
+  const unknown = results.hosts.filter(host => !registry.includes(host))
+  if (unknown.length > 0) {
+    throw new CatalogError(`results.hosts has unknown host(s): ${unknown.join(', ')}`)
+  }
+  const ordered = registry.filter(id => results.hosts.includes(id))
+  if (!sameList(results.hosts, ordered)) {
+    throw new CatalogError(`results.hosts must follow hosts.toml order: ${ordered.join(', ')}`)
   }
   if (typeof results.spec_version !== 'string' || results.spec_version.length === 0) {
     throw new CatalogError('results.spec_version must be a non-empty string')
@@ -161,7 +169,7 @@ function requireCoverage(results, taskIds, guestIds) {
       if (!cell || !STATUSES.has(cell.status)) {
         throw new CatalogError(`${taskId}/${guestId}: grid status is missing`)
       }
-      for (const host of HOSTS) {
+      for (const host of results.hosts) {
         const found = results.results.filter(row => row.task === taskId && row.guest === guestId && row.host === host)
         if (found.length !== 1) throw new CatalogError(`${taskId}/${guestId}/${host}: expected one results row, found ${found.length}`)
       }
@@ -287,6 +295,22 @@ function requireStringList(value, label) {
     throw new CatalogError(`${label} must be a non-empty list of strings`)
   }
   return value
+}
+
+export function hostIds() {
+  const registryPath = join(repoRoot, 'hosts.toml')
+  if (!existsSync(registryPath)) throw new CatalogError('hosts.toml is missing')
+  const parsed = parseToml(readFileSync(registryPath, 'utf8'))
+  const rows = parsed.host
+  if (!Array.isArray(rows) || rows.length === 0) throw new CatalogError('hosts.toml host must be a non-empty array')
+  const ids = rows.map((row, index) => {
+    if (typeof row?.id !== 'string' || row.id.length === 0) {
+      throw new CatalogError(`hosts.toml host #${index + 1} id is empty`)
+    }
+    return row.id
+  })
+  if (new Set(ids).size !== ids.length) throw new CatalogError('hosts.toml has a duplicate id')
+  return ids
 }
 
 function sameList(left, right) {
