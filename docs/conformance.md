@@ -101,6 +101,6 @@ Python `KeyboardInterrupt` exits 130. That is not a resource limit.
 | --- | --- | --- |
 | `--max-evals N` | Counts every rule probe, including probes that do not match. Checked before the probe. `0` probes nothing. | Exit 11. |
 | `--max-state-bytes N` | UTF-8 length of the state after a replacement. | Exit 12. |
-| `--max-steps N` | Counts applied rewrites only. Checked before a non-exit rewrite, so a run that finishes in `N` rewrites exits 0. `::-` does not count. `0` applies nothing. | Exit 10 when the next rewrite would pass `N`. |
+| `--max-steps N` | Counts applied rewrites only. The Nth rewrite exits 10 and the run does not scan further. A run that quiesces before N rewrites exits 0. `::-` does not count. `0` applies nothing. | Exit 10. |
 
 A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-bytes` uses 8388608. A host that omits `--max-steps` uses 1000000. `unlimited` clears that limit. `0` is a real limit. The shared runner always passes `--max-evals 10000` unless the manifest already did, so manifest runs use the manifest budget rather than the host default for probes. It does not override `--max-steps`. See [host-api.md](host-api.md).

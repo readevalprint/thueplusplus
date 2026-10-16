@@ -29,7 +29,7 @@ Max evals counts every rule probe, including probes that do not match. The check
 
 Max state bytes is the UTF-8 length after a replacement. Past the limit the run exits `12` with `State size (N bytes) exceeds maximum (M bytes)`.
 
-Max steps counts applied rewrites. The check happens before a non-exit operator runs, so a program that finishes in `N` rewrites exits `0`. The next rewrite exits `10` with `Applied step limit (N) exceeded`. `::-` does not consume a step and still returns the program's code when it matches. `0` is a real limit of zero for every flag, not a synonym for `unlimited`.
+Max steps counts applied rewrites. The Nth rewrite exits `10` with `Applied step limit (N) exceeded` and the run does not scan further. A run that quiesces before N rewrites exits `0`. `::-` does not consume a step. It runs only when the step limit has not already been reached. `0` is a real limit of zero for every flag, not a synonym for `unlimited`.
 
 A `::<` read that exceeds its timeout exits `13` with `ERR:resource:NAME:timeout`. The CLI prints that as `Error: ERR:resource:NAME:timeout`.
 

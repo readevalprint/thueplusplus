@@ -311,16 +311,30 @@ func TestStepLimitStopsBeforeTheNextRewrite(t *testing.T) {
 	}
 }
 
-func TestStepLimitAllowsExactCompletion(t *testing.T) {
+func TestStepLimitAllowsCompletionUnderTheCap(t *testing.T) {
 	interp := New()
-	one := 1
-	interp.MaxSteps = &one
+	two := 2
+	interp.MaxSteps = &two
 	if err := interp.LoadProgramText("steps.tpp", "^a$ ::= b\n::=\na"); err != nil {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
 	if err != nil || code != 0 || interp.State != "b" || interp.AppliedSteps != 1 {
 		t.Fatalf("code=%d err=%v state=%q steps=%d", code, err, interp.State, interp.AppliedSteps)
+	}
+}
+
+func TestStepLimitDoesNotContinueIntoExit(t *testing.T) {
+	interp := New()
+	one := 1
+	interp.MaxSteps = &one
+	if err := interp.LoadProgramText("steps.tpp", "^a$ ::= b\n^b$ ::- 7\n::=\na"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	var limit *LimitError
+	if code != ExitStepLimit || !errors.As(err, &limit) || interp.State != "b" {
+		t.Fatalf("code=%d err=%v state=%q", code, err, interp.State)
 	}
 }
 

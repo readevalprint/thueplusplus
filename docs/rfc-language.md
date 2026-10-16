@@ -130,20 +130,21 @@ loop:
       search whole state
       if none: continue to the next rule
       add the step's participating named groups to captures
+    if applied rewrites already equal the step limit and operator does not exit: return 10
     if operator exits: return its code
-    if applied rewrites already equal the step limit: return 10
     result = apply operator using captures
     candidate = state before the LHS match + result + state after the LHS match
     if candidate byte length exceeds the state limit: return 12
     state = candidate
     count one applied rewrite
+    if applied rewrites equal the step limit: return 10
     restart loop
   return 0
 ```
 
 Only one span is replaced per action, and that span is the LHS match. A `::|` step does not move the replacement span. The LHS search does not retry a later match when a step misses; the rule does not apply. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries.
 
-A new interpreter limits a run to 1000000 rule probes, 1000000 applied rewrites, and 8388608 bytes of state. A host may raise, lower, or clear each limit. `0` is a real limit. Clearing a limit means no bound. The step limit is checked before a non-exit operator runs, so a program that finishes in exactly that many rewrites returns 0. `::-` does not count as an applied rewrite. The eval limit is checked before the probe. The state limit is the UTF-8 length after replacement. A `::<` timeout returns 13.
+A new interpreter limits a run to 1000000 rule probes, 1000000 applied rewrites, and 8388608 bytes of state. A host may raise, lower, or clear each limit. `0` is a real limit. Clearing a limit means no bound. The Nth applied rewrite returns 10 and the run does not scan further. A run that quiesces before that many rewrites returns 0. `::-` does not count as an applied rewrite, and it runs only when the step limit has not already been reached. The eval limit is checked before the probe. The state limit is the UTF-8 length after replacement. A `::<` timeout returns 13.
 
 | Code | Meaning | Message |
 | --- | --- | --- |

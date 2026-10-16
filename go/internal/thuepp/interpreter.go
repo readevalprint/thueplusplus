@@ -1254,6 +1254,9 @@ func (i *Interpreter) Run() (int, error) {
 			}
 			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
 			i.AppliedSteps++
+			if i.MaxSteps != nil && i.AppliedSteps >= *i.MaxSteps {
+				return ExitStepLimit, newLimitError(LimitSteps, ExitStepLimit, "Applied step limit (%d) exceeded", *i.MaxSteps)
+			}
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
 			}

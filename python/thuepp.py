@@ -212,9 +212,10 @@ class ThueppInterpreter:
 
     ``max_evals`` counts each rule examined in ``run()``'s inner loop (every
     ordered rule probe across outer steps), including probes that do not match.
-    ``max_steps`` counts applied rewrites only. The next non-exit rewrite that
-    would pass the limit raises ``LimitExceeded``. A run that finishes in that
-    many rewrites returns 0. ``::-`` does not count as a step. ``max_state_bytes``
+    ``max_steps`` counts applied rewrites only. The rewrite that reaches the
+    limit raises ``LimitExceeded`` and the run does not scan further. A run
+    that quiesces before that many rewrites returns 0. ``::-`` does not count
+    as a step. ``max_state_bytes``
     is checked on the UTF-8 length of the state after each replacement.
 
     Omitted limits use ``DEFAULT_MAX_EVALS``, ``DEFAULT_MAX_STATE_BYTES``, and
@@ -1168,6 +1169,12 @@ class ThueppInterpreter:
                     raise
                 self._record_trace(rule, rule_index, match, state_before, replacement or "")
                 self.applied_steps += 1
+                if self.max_steps is not None and self.applied_steps >= self.max_steps:
+                    raise LimitExceeded(
+                        "steps",
+                        EXIT_STEP_LIMIT,
+                        f"Applied step limit ({self.max_steps}) exceeded",
+                    )
 
                 if self.debug:
                     escaped_result = self.state.replace("\n", "\\n")

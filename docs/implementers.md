@@ -21,7 +21,7 @@ Required flags, including the `--flag=value` form:
 | `--input TEXT` | Replace the initial state from the source file. |
 | `--max-evals N` | Stop when rule probes exceed `N`. |
 | `--max-state-bytes N` | Stop when state UTF-8 length exceeds `N`. |
-| `--max-steps N` | Allow at most `N` applied rewrites. The next non-exit rewrite exits 10. |
+| `--max-steps N` | Allow at most `N` applied rewrites. The Nth rewrite exits 10 and the run stops. |
 | `--debug` | Optional diagnostic logging. Manifests do not compare debug text. |
 | `--proc:NAME COMMAND` | Bind resource `NAME` to a host process. The next argument is the command. This is the only subprocess opt-in. |
 | `--rule-coverage PATH` | Write TSV `source.tpp:line<TAB>count` for applied rules. Required of the Python coverage oracle. |

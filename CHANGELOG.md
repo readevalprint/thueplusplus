@@ -18,7 +18,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Changed
 
-- **Breaking:** `--max-steps` / `MaxSteps` / `maxSteps` no longer exits 0. The next non-exit rewrite past the limit exits 10 with `Applied step limit (N) exceeded`. A run that finishes in exactly N rewrites still exits 0. `::-` does not consume a step. `--max-steps 0` applies nothing.
+- **Breaking:** `--max-steps` / `MaxSteps` / `maxSteps` no longer exits 0. The Nth applied rewrite exits 10 with `Applied step limit (N) exceeded`, and the run does not scan further. A run that quiesces before N rewrites exits 0. `::-` does not consume a step. `--max-steps 0` applies nothing.
 - **Breaking:** `--max-evals` exits 11. `--max-state-bytes` exits 12. A `::<` read timeout exits 13. Those stops used to exit 1. Exit 1 remains any other runtime error. Exit 2 remains CLI usage.
 - **Breaking:** omitting `--max-steps` uses 1000000. It used to mean no step limit.
 - **Breaking:** the wasm run option `stepLimit` is `maxSteps`.

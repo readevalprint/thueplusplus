@@ -28,13 +28,13 @@ stdout = ""
 stderr = "Error: Applied step limit (2) exceeded\n"
 
 [[case]]
-name = "three applied steps finish inside the limit"
+name = "three applied steps hit the limit after the write"
 args = ["--max-steps", "3"]
 
 [case.expect]
-exit_code = 0
+exit_code = 10
 stdout = "done\n"
-stderr = ""
+stderr = "Error: Applied step limit (3) exceeded\n"
 
 [[case]]
 name = "default applied-step limit runs to quiescence"
