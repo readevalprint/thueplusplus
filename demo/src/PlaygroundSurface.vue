@@ -182,7 +182,7 @@ const page = pages.playground
 const isMobile = useMediaQuery('(max-width: 1279px)')
 const showHero = computed(() => props.chrome === 'page')
 const columnClass = computed(() => showHero.value
-  ? 'bg-sidebar sticky top-0 flex max-h-[calc(100svh-3.5rem)] w-56 shrink-0 flex-col overflow-y-auto'
+  ? 'bg-sidebar sticky top-0 flex max-h-[calc(100svh-var(--header-height))] w-56 shrink-0 flex-col overflow-y-auto'
   : 'bg-sidebar sticky top-0 flex h-svh w-56 shrink-0 flex-col overflow-y-auto')
 const examplesOpen = ref(false)
 const settingsOpen = ref(false)

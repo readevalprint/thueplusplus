@@ -10,7 +10,7 @@ import ThemeToggle from './ThemeToggle.vue'
   <SidebarProvider cookie-name="sidebar_nav" class="h-svh overflow-hidden" data-test="app-shell">
     <SiteNav />
     <SidebarInset class="h-full min-h-0 overflow-hidden">
-      <header class="bg-background relative z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4">
+      <header class="bg-background relative z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b px-4">
         <SidebarTrigger data-test="nav-trigger" aria-label="Open navigation" />
         <RouterLink to="/" class="font-semibold tracking-tight">Thue++</RouterLink>
         <div class="ml-auto flex items-center gap-1">

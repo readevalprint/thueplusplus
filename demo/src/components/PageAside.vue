@@ -43,7 +43,7 @@ const AsideChrome = defineComponent({
       <SidebarTrigger data-test="aside-trigger" aria-label="Open page sidebar" class="absolute top-3 right-3 z-10 xl:hidden" />
       <slot />
     </div>
-    <Sidebar side="right" collapsible="icon">
+    <Sidebar side="right" collapsible="icon" class="top-(--header-height)! h-[calc(100svh-var(--header-height))]!">
       <SidebarContent data-test="page-sidebar">
         <SidebarGroup>
           <SidebarGroupLabel>{{ label }}</SidebarGroupLabel>

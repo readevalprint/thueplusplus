@@ -32,6 +32,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Fixed
 
+- The right column starts below the header. `--header-height` sizes the header, and a sticky aside uses that offset with `calc(100svh - var(--header-height))`, including the sheet below 1280px. The left menu stays full height beside the header. Anchor targets already clear the header because it sits outside the scroller.
 - Desktop sidebars start expanded. An omitted boolean prop was read as false, so the menu opened collapsed.
 - Go's `stdin` resource enforces the `::<` read timeout. A newline that does not arrive in time exits 13 with `ERR:resource:stdin:timeout`. A closed stdin with no newline is still EOF. The Node CLI's stdin callback enforces the same deadline.
 
