@@ -13,6 +13,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "wasm/*.js"],
+  "include": ["src/**/*.ts", "src/**/*.vue"],
   "exclude": ["src/DesignLab.vue"]
 }

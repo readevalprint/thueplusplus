@@ -1,3 +1,6 @@
+import { ThuePPWorker } from 'thuepp/worker'
+import browserWorkerURL from 'thuepp/browser-worker?url'
+
 export interface DemoResourceConfig {
   name: string
   inputText: string
@@ -58,23 +61,12 @@ export interface DemoRunResult {
   limit?: string
 }
 
-interface WorkerClient {
-  run(request: unknown): Promise<DemoRunResult>
-  terminate(): void
-}
-
-declare const ThuePPWorker: new (workerURL: string, initOptions: { wasmURL: string; wasmExecURL: string }) => WorkerClient
-
 function publicAssetURL(fileName: string): string {
   return new URL(`${import.meta.env.BASE_URL}${fileName}`, window.location.href).toString()
 }
 
 export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunResult> {
-  const { ThuePPWorker: Client } = await import('../wasm/worker-client.js') as unknown as {
-    ThuePPWorker: typeof ThuePPWorker
-  }
-
-  const client = new Client(new URL('../wasm/browser-worker.js', import.meta.url).toString(), {
+  const client = new ThuePPWorker(browserWorkerURL, {
     wasmURL: publicAssetURL('thuepp.wasm'),
     wasmExecURL: publicAssetURL('wasm_exec.js'),
   })

@@ -47,6 +47,7 @@ stderr = "Error: Applied step limit (1) exceeded\n"
 | `input` | Replaces the program's initial state. Passed as `--input`. |
 | `stdin` | Exact bytes written to the process standard input. Omitted means the runner does not supply stdin. |
 | `timeout` | Seconds before the runner kills the process. Default `10`. The wasm host uses `max(timeout * 8, 30)` because each case starts a fresh module. |
+| `allow_unlimited` | Boolean. Lets this one case pass `unlimited` for a limit flag. At most one case in a manifest may set it. |
 | `bindings.procs` | Map of resource name to a shell command. Each entry becomes `--proc:NAME COMMAND`. |
 | `bindings.tpp` | Map of resource name to `{ program = "relative.tpp" }`. The runner starts the same interpreter on that program and passes it as `--proc:NAME`. |
 | `expect` | Required. See below. |
@@ -72,10 +73,14 @@ When more than one implementation runs, every implementation must also produce t
 For each case the runner builds:
 
 ```text
-<interpreter> <program> <args...> [--max-evals 10000] [--rule-coverage <file>] [--proc:NAME <command>...] [--input <state>]
+timeout -k 1 <backstop> <interpreter> <program> <args...>
+    [--max-evals 10000] [--max-steps 1000000] [--max-state-bytes 8388608]
+    [--rule-coverage <file>] [--proc:NAME <command>...] [--input <state>]
 ```
 
-`--max-evals 10000` is added only when `args` does not already contain `--max-evals`. `--rule-coverage` is added only for the Python interpreter; that file is the rule-coverage oracle. Other implementations are not asked to write coverage, but their observable results must match Python.
+Each missing limit flag is added. A flag the manifest already set is left alone. `unlimited` is rejected unless that case sets `allow_unlimited = true`, and only one case in the manifest may do so. The same three flags are added to a `bindings.tpp` child. `--rule-coverage` is added only for the Python interpreter; that file is the rule-coverage oracle. Other implementations are not asked to write coverage, but their observable results must match Python.
+
+The runner also enforces the case timeout with `timeout(1)` and a 256 MiB RSS cap on the process tree (`tools/run_limits.py`). The cap is resident memory. `ulimit -v` is not used: the wasm host reserves about 12 GiB of virtual address space for a run whose RSS stays under 100 MiB, so an address-space cap either rejects that host or does not protect the machine. A timeout or an RSS cap is a runner failure, not the program's exit code. `GOMEMLIMIT` is set to the same cap.
 
 The working directory is the repository root.
 
@@ -103,4 +108,4 @@ Python `KeyboardInterrupt` exits 130. That is not a resource limit.
 | `--max-state-bytes N` | UTF-8 length of the state after a replacement. | Exit 12. |
 | `--max-steps N` | Counts applied rewrites only. The Nth rewrite exits 10 and the run does not scan further. A run that quiesces before N rewrites exits 0. `::-` does not count. `0` applies nothing. | Exit 10. |
 
-A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-bytes` uses 8388608. A host that omits `--max-steps` uses 1000000. `unlimited` clears that limit. `0` is a real limit. The shared runner always passes `--max-evals 10000` unless the manifest already did, so manifest runs use the manifest budget rather than the host default for probes. It does not override `--max-steps`. See [host-api.md](host-api.md).
+A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-bytes` uses 8388608. A host that omits `--max-steps` uses 1000000. `unlimited` clears that limit. `0` is a real limit. The shared runner does not leave those flags to the host default: it passes `--max-evals 10000`, `--max-steps 1000000`, and `--max-state-bytes 8388608` unless the manifest already set that flag. See [host-api.md](host-api.md).

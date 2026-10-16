@@ -1,0 +1,55 @@
+# thuepp
+
+Thue++ for Node and the browser. The engine is the Go WebAssembly build. The CLI is a thin wrapper over `initThuePP`.
+
+The shared embedder contract is [../docs/host-api.md](../docs/host-api.md). Release steps are [../docs/releasing.md](../docs/releasing.md). This package is not published yet.
+
+## Install from a checkout
+
+The playground depends on this directory with `"thuepp": "file:../js"`. A program that vendors the same tree can do the same. `npm publish` is described in the release doc and is not part of `make test`.
+
+Node 22 or newer. Build the wasm module first (`make wasm` from the repository root) or set `THUEPP_WASM` to a `thuepp.wasm` built from `go/cmd/thuepp-wasm`.
+
+## CLI
+
+```bash
+node js/src/cli.js <program.tpp> [--max-steps N] [--max-state-bytes N] [--max-evals N]
+```
+
+The flags match the Go and Python CLIs. `unlimited` clears a limit. Omitting a limit uses the interpreter default (1000000 probes, 1000000 applied steps, 8388608 bytes of state). Conformance does not omit them; see [../docs/conformance.md](../docs/conformance.md).
+
+## Node
+
+```js
+import { initThuePP } from 'thuepp'
+
+const engine = await initThuePP({ wasmPath: process.env.THUEPP_WASM })
+const result = await engine.run({
+  sourcePath: 'hello.tpp',
+  sourceText,
+  maxSteps: 1000000,
+  maxStateBytes: 8388608,
+  maxEvals: 10000,
+})
+```
+
+`result.limit` is `steps`, `evals`, `state`, or `timeout` when a limit stops the run. `result.exitCode` is the code in the host API. JSON `null` clears a limit.
+
+## Browser
+
+```js
+import { initThuePPWasm } from 'thuepp/browser'
+```
+
+`thuepp/browser-worker` is a classic script. Load it with a URL (`import workerURL from 'thuepp/browser-worker?url'`), then:
+
+```js
+import { ThuePPWorker } from 'thuepp/worker'
+
+const worker = new ThuePPWorker(workerURL, {
+  wasmURL: '/thuepp.wasm',
+  wasmExecURL: '/wasm_exec.js',
+})
+```
+
+Do not import the worker as an ES module. Go's `wasm_exec.js` needs `importScripts`.

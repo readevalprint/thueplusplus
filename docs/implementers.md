@@ -4,7 +4,7 @@ Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
-The reference implementations are Python (`python/thuepp.py`), Go (`go/cmd/thuepp`), and the Go wasm build hosted by `go/wasm/cli.cjs`. `make test` runs the manifests against all three and requires identical results.
+The reference implementations are the Python package `thuepp` (`uv run thuepp`), the Go package `github.com/readevalprint/thueplusplus/go/thuepp` (`go/cmd/thuepp`), and the npm package `thuepp` (`node js/src/cli.js`). `make test` runs the manifests against all three and requires identical results. The embedder API is [host-api.md](host-api.md).
 
 ## CLI contract
 
@@ -50,7 +50,7 @@ Error: File not found: <path>
 
 No arguments exits `2`. An unknown argument exits `1` with `Error: Unknown argument: ...`. A non-integer limit exits `2`. Usage wording beyond those lines is not compared.
 
-Default resources are only `stdin`, `stdout`, and `stderr`. There is no ambient filesystem or network binding. A `--proc` binding runs only when the host passes that flag. Omitted `--max-evals`, `--max-state-bytes`, and `--max-steps` use the defaults in [host-api.md](host-api.md). Pass `unlimited` to clear one. Embedders use that same document for the limit reason, step counts, and trace hooks.
+Default resources are only `stdin`, `stdout`, and `stderr`. There is no ambient filesystem or network binding. A `--proc` binding runs only when the host passes that flag. Omitted `--max-evals`, `--max-state-bytes`, and `--max-steps` use the defaults in [host-api.md](host-api.md). Pass `unlimited` to clear one. The conformance runner does not do that: it passes an explicit finite value for each flag unless the case already set one, and it rejects `unlimited` unless that single case sets `allow_unlimited`. Embedders use [host-api.md](host-api.md) for the limit reason, step counts, and trace hooks.
 
 ## Run the suite against your command
 

@@ -1,10 +1,7 @@
-#!/usr/bin/env -S python3 -u
 """
-thue++ Interpreter v0.5
-A Python implementation of the thue++ esoteric programming language.
+Thue++ interpreter.
 """
 
-import argparse
 import base64
 import binascii
 import math
@@ -53,13 +50,6 @@ class _OmittedLimit:
 OMITTED_LIMIT = _OmittedLimit()
 
 
-def _parse_cli_limit(text: str):
-    if text == "unlimited":
-        return None
-    try:
-        return int(text)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"invalid integer {text!r}") from exc
 MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE = 10000
 MAX_EXPANDED_PATTERN_BYTES = 1000000
 ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
@@ -1196,124 +1186,3 @@ class ThueppInterpreter:
                 except Exception:
                     pass
 
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="thue++ interpreter",
-        usage="thuepp.py <program> [--proc:<name> <command>]... [--input <state>] [options]",
-    )
-    parser.add_argument("program", help="Path to the thue++ program")
-    parser.add_argument(
-        "--max-evals",
-        type=_parse_cli_limit,
-        default=OMITTED_LIMIT,
-        help=(
-            "Maximum evaluation steps before aborting "
-            "(each rule inspected in the inner loop counts as one step, including non-matching rules). "
-            "Omit for the default. 'unlimited' clears it."
-        ),
-    )
-    parser.add_argument(
-        "--max-state-bytes",
-        type=_parse_cli_limit,
-        default=OMITTED_LIMIT,
-        help="Maximum state size in bytes before aborting. Omit for the default. 'unlimited' clears it.",
-    )
-    parser.add_argument(
-        "--max-steps",
-        type=_parse_cli_limit,
-        default=OMITTED_LIMIT,
-        help="Maximum applied rewrites. Omit for the default. 'unlimited' clears it. 0 applies nothing.",
-    )
-    parser.add_argument(
-        "--input",
-        type=str,
-        help="Override initial state with this value",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging of rule evaluation",
-    )
-    parser.add_argument(
-        "--rule-coverage",
-        type=str,
-        help="Write successful rule application counts as TSV to this path",
-    )
-    parser.add_argument(
-        "--list-rules",
-        action="store_true",
-        help="List compiled rule source IDs and source text as TSV, then exit",
-    )
-
-    # Parse known args first, then handle custom bindings
-    args, remaining = parser.parse_known_args()
-
-    interpreter = ThueppInterpreter(
-        max_evals=args.max_evals,
-        max_state_bytes=args.max_state_bytes,
-        max_steps=args.max_steps,
-        debug=args.debug,
-        rule_coverage_path=args.rule_coverage,
-    )
-
-    # Parse binding arguments
-    i = 0
-    while i < len(remaining):
-        arg = remaining[i]
-        if arg.startswith("--proc:"):
-            name = arg[7:]
-            if i + 1 >= len(remaining):
-                print(
-                    f"Error: --proc:{name} requires a command argument", file=sys.stderr)
-                sys.exit(1)
-            command = remaining[i + 1]
-            interpreter.add_proc_binding(name, command)
-            i += 2
-        else:
-            print(f"Error: Unknown argument: {arg}", file=sys.stderr)
-            sys.exit(1)
-
-    try:
-        interpreter.load_program(args.program)
-
-        if args.list_rules:
-            for rule in interpreter.rules:
-                source = Path(rule.source_path)
-                try:
-                    display = source.resolve().relative_to(Path.cwd().resolve()).as_posix()
-                except ValueError:
-                    display = source.resolve().as_posix()
-                print(f"{display}:{rule.line_number}\t{rule.lhs}")
-            exit_code = 0
-        else:
-            if args.input is not None:
-                interpreter.apply_input_override(args.input)
-
-            exit_code = interpreter.run()
-    except LimitExceeded as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        exit_code = exc.code
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        exit_code = 1
-    except KeyboardInterrupt:
-        print("\nInterrupted", file=sys.stderr)
-        exit_code = 130
-    finally:
-        coverage_error = None
-        try:
-            interpreter.write_rule_coverage()
-        except OSError as e:
-            coverage_error = e
-        interpreter.cleanup()
-
-    if coverage_error is not None:
-        print(f"Error: failed to write rule coverage: {coverage_error}", file=sys.stderr)
-        exit_code = 1
-
-    sys.exit(exit_code)
-
-
-if __name__ == "__main__":
-    main()

@@ -118,8 +118,8 @@ Modulo still rejects non-integral operands, division by zero, and negative opera
 
 The same contract applies to:
 
-- Python numeric builtins in `python/thuepp.py`
-- Go numeric builtins in `go/internal/thuepp/interpreter.go`
+- Python numeric builtins in `python/thuepp/interpreter.py`
+- Go numeric builtins in `go/thuepp/interpreter.go`
 - direct builtin examples in `examples/builtin/builtin.tpp`
 - target-language examples such as `examples/lisp/lisp.tpp`
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import subprocess, sys, pathlib, shlex
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "tools"))
+from run_limits import bounded_run
 root = pathlib.Path('/workspaces/thueplusplus')
 cases = []
 for line in pathlib.Path('/tmp/thuepp-lisp-pda/hard_acceptance_cases.tsv').read_text().splitlines():
@@ -19,13 +21,10 @@ for attempt in attempts:
     passed = 0
     for name, inp, expected in cases:
         try:
-            cp = subprocess.run(
-                ['uv','run','python','python/thuepp.py',attempt,'--input',inp,'--max-evals','60000'],
-                cwd=root,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+            cp = bounded_run(
+                ['uv','run','thuepp',attempt,'--input',inp,'--max-evals','60000','--max-steps','1000000','--max-state-bytes','8388608'],
                 timeout=8,
+                cwd=root,
             )
             out = cp.stdout.strip()
             err = cp.stderr.strip()
@@ -36,6 +35,6 @@ for attempt in attempts:
             else:
                 short = (err or out or f'exit {cp.returncode}')[:140].replace('\n','\\n')
                 print(f'  FAIL {name}: rc={cp.returncode} out={out!r} err={err!r}')
-        except subprocess.TimeoutExpired:
-            print(f'  TIMEOUT {name}')
+        except RuntimeError as exc:
+            print(f'  TIMEOUT {name}: {exc}')
     print(f'  => {passed}/{len(cases)} passed\n')

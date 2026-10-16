@@ -15,7 +15,7 @@ A process binding exists only after the host opts in:
 | Go | `AddProcBinding(name, command)` |
 | Python | `add_proc_binding(name, command)` |
 | CLI | `--proc:NAME COMMAND` |
-| wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in `go/wasm/cli.cjs` spawns a process only when it is given `--proc`. |
+| wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thuepp` package spawns a process only when it is given `--proc`. |
 
 Limits on a new interpreter:
 
@@ -59,6 +59,8 @@ The reason is part of the host API:
 
 Rate limiting across runs, and wall-clock limits other than a `::<` timeout written in the program, are the host's job. The interpreter bounds one run's probes, applied steps, and state size. It does not bound how many runs a host starts. Go's `stdin` resource does not enforce the `::<` timeout; process reads and the Python `stdin` resource do.
 
+Repository runners do not clear these limits. Conformance passes explicit `--max-evals`, `--max-steps`, and `--max-state-bytes`, wraps the process in `timeout(1)`, and kills it if resident memory passes 256 MiB. A manifest may pass `unlimited` only by setting `allow_unlimited = true` on a single case. See [conformance.md](conformance.md).
+
 ## Metering
 
 | | Go | Python | wasm result |
@@ -84,3 +86,66 @@ Trace is off unless the host enables it. Each event is one applied rewrite, one 
 | `error` | set when the replacement is rejected |
 
 Go also records a trace event when a matched rule fails before replacement (bad read, bad builtin). Python raises that error without a trace event. Hosts that need those failures can catch the error; the counts still move only when a rule is probed (`eval_count`) or applied (`applied_steps`).
+
+## Packages
+
+Each host is an importable package. The CLI in that language is a thin wrapper over this API. Release steps are in [releasing.md](releasing.md).
+
+| | Package | CLI |
+| --- | --- | --- |
+| Go | `github.com/readevalprint/thueplusplus/go/thuepp` | `go/cmd/thuepp` |
+| Python | distribution `thuepp` | console script `thuepp` |
+| JS | npm package `thuepp` | `thuepp` bin, `node js/src/cli.js` in this repo |
+
+Go:
+
+```go
+import "github.com/readevalprint/thueplusplus/go/thuepp"
+
+interp := thuepp.New()
+if err := interp.LoadProgram("hello.tpp"); err != nil {
+    panic(err)
+}
+code, err := interp.Run()
+var limit *thuepp.LimitError
+if errors.As(err, &limit) {
+    // limit.Kind is steps, evals, state, or timeout. limit.ExitCode is 10–13.
+}
+_ = code
+```
+
+`nil` clears a limit. Leave `MaxEvals`, `MaxStateBytes`, and `MaxSteps` unset only by assigning `nil` after `New`. `TraceEnabled` records `Trace`. `AddProcBinding` is the process opt-in.
+
+Python:
+
+```python
+from thuepp import LimitExceeded, ThueppInterpreter
+
+interp = ThueppInterpreter(trace_enabled=True)
+interp.load_program("hello.tpp")
+interp.add_proc_binding("echo", "cat")
+try:
+    code = interp.run()
+except LimitExceeded as exc:
+    # exc.kind is steps, evals, state, or timeout. exc.code is 10–13.
+    raise
+```
+
+Omit `max_evals`, `max_state_bytes`, or `max_steps` for the defaults. Pass `None` to clear one.
+
+JavaScript:
+
+```js
+import { initThuePP } from 'thuepp'
+
+const engine = await initThuePP()
+const result = await engine.run({
+  sourcePath: 'hello.tpp',
+  sourceText,
+  maxSteps: null,
+  trace: true,
+})
+// result.limit is "steps", "evals", "state", or "timeout" when a limit stops the run.
+```
+
+Browser code imports `initThuePPWasm` from `thuepp/browser`. A page that wants a worker imports `ThuePPWorker` from `thuepp/worker` and loads `thuepp/browser-worker` as a classic worker. JSON `null` clears a limit. Omitting the field keeps the default.

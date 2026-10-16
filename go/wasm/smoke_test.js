@@ -20,14 +20,17 @@ async function runSmoke(cases) {
 }
 
 (async () => {
+  const limits = { maxSteps: 1000, maxStateBytes: 1000000, maxEvals: 1000 };
   const [hello, emptyOverride, resource, missing, proc, callbackError] = await runSmoke([
     {
+      ...limits,
       sourcePath: 'hello.tpp',
       sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
       coverage: true,
       maxEvals: 10,
     },
     {
+      ...limits,
       sourcePath: 'empty-override.tpp',
       sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
       input: '',
@@ -35,19 +38,23 @@ async function runSmoke(cases) {
       maxEvals: 10,
     },
     {
+      ...limits,
       sourceText: '^start$ ::< 1 input\n^(?<x>[A-Za-z0-9_.-]+)$ ::> stdout {{x|pctdec}}\\n\n::=\nstart',
       resources: {
         input: { readLine: () => 'from-callback' },
       },
     },
     {
+      ...limits,
       sourceText: '^start$ ::< 5 missing\n::=\nstart',
     },
     {
+      ...limits,
       sourceText: '^start$ ::< 5 sh\n::=\nstart',
       procs: { sh: 'printf nope' },
     },
     {
+      ...limits,
       sourceText: '^start$ ::< 1 input\n::=\nstart',
       resources: {
         input: { readLine: () => ({ error: 'callback boom' }) },

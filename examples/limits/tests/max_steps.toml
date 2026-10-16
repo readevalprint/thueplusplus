@@ -46,6 +46,7 @@ stderr = ""
 
 [[case]]
 name = "unlimited applied-step limit runs to quiescence"
+allow_unlimited = true
 args = ["--max-steps", "unlimited"]
 
 [case.expect]

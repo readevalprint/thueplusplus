@@ -8,6 +8,7 @@ test:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run repository verification" >&2; exit 127; }
+	uv run python tools/test_runner_limits.py
 	uv run python tools/check_contract.py
 	uv run python tools/example_runner.py
 
@@ -27,7 +28,7 @@ demo-test:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to run the browser demo tests" >&2; exit 127; }
 	npm --prefix demo ci
 	npm --prefix demo test
-	node demo/wasm/browser_adapter_unit_test.cjs
+	node js/browser-adapter.test.cjs
 
 demo-build:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to build the browser demo" >&2; exit 127; }

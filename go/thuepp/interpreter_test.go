@@ -4,10 +4,39 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 	"time"
 )
+
+const testMemoryCap = 256 << 20
+
+func TestMain(m *testing.M) {
+	debug.SetMemoryLimit(testMemoryCap)
+	stop := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				var stats runtime.MemStats
+				runtime.ReadMemStats(&stats)
+				if stats.HeapAlloc > testMemoryCap {
+					panic(fmt.Sprintf("test memory cap exceeded: heap %d bytes", stats.HeapAlloc))
+				}
+			}
+		}
+	}()
+	code := m.Run()
+	close(stop)
+	os.Exit(code)
+}
 
 func TestRuntimeIOUsesHostResources(t *testing.T) {
 	var stdout, stderr bytes.Buffer
@@ -233,7 +262,10 @@ func TestParseLimit(t *testing.T) {
 
 func TestDefaultStateLimitRejectsGrowthPastDefault(t *testing.T) {
 	interp := New()
-	interp.MaxEvals = nil
+	evals := 10
+	steps := 2
+	interp.MaxEvals = &evals
+	interp.MaxSteps = &steps
 	source := "^(?<s>a+)$ ::= {{s}}x\n::=\n" + strings.Repeat("a", DefaultMaxStateBytes)
 	if err := interp.LoadProgramText("grow.tpp", source); err != nil {
 		t.Fatal(err)
@@ -247,7 +279,10 @@ func TestDefaultStateLimitRejectsGrowthPastDefault(t *testing.T) {
 
 func TestClearedStateLimitAllowsGrowthPastDefault(t *testing.T) {
 	interp := New()
-	interp.MaxEvals = nil
+	evals := 10
+	steps := 2
+	interp.MaxEvals = &evals
+	interp.MaxSteps = &steps
 	interp.MaxStateBytes = nil
 	source := "^(?<s>a+)$ ::= {{s}}x\n::=\n" + strings.Repeat("a", DefaultMaxStateBytes)
 	if err := interp.LoadProgramText("grow.tpp", source); err != nil {

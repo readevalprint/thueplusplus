@@ -1,0 +1,37 @@
+{
+  "name": "thuepp",
+  "version": "0.5.0",
+  "description": "Thue++ interpreter for Node and the browser, backed by the Go WebAssembly build.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "thuepp": "./src/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "browser": "./src/browser.js",
+      "node": "./src/node.js",
+      "default": "./src/node.js"
+    },
+    "./browser": {
+      "types": "./src/index.d.ts",
+      "default": "./src/browser.js"
+    },
+    "./worker": {
+      "types": "./src/index.d.ts",
+      "default": "./src/worker-client.js"
+    },
+    "./browser-worker": "./src/browser-worker.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node browser-adapter.test.cjs"
+  }
+}

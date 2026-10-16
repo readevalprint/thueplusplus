@@ -514,19 +514,20 @@ This is all with humble `lhs ::= rhs` rewrite rules.
 
 ## Current reference runners
 
-This repository has two current conformance backends:
+This repository has three current conformance backends:
 
 ```bash
-# Python backend
-uv run python python/thuepp.py <program.tpp>
+# Python package
+uv run thuepp <program.tpp>
 
-# Go backend
+# Go package github.com/readevalprint/thueplusplus/go/thuepp
 (cd go && go run ./cmd/thuepp ../<program.tpp>)
+
+# npm package thuepp
+node js/src/cli.js <program.tpp>
 ```
 
-The stable Python entry point is `python/thuepp.py`. Direct `./python/thuepp.py ...` commands assume dependencies are already installed or the command runs under `uv`.
-
-JavaScript support is Go-WASM based. Files under [`demo/wasm/`](demo/wasm/) load the WASM artifact and adapt runner resources for Node, browser, and worker environments. They are adapters, not a separate JavaScript implementation.
+`uv run thuepp` is the Python console script. The Go library import is `github.com/readevalprint/thueplusplus/go/thuepp`. The npm package name is `thuepp`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -592,7 +593,7 @@ uv run python tools/check_contract.py --update-readme
 Backends can write successful rule application counts:
 
 ```bash
-./python/thuepp.py examples/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
+uv run thuepp examples/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
 (cd go && go run ./cmd/thuepp ../examples/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.go.coverage.tsv)
 ```
 
@@ -611,10 +612,12 @@ Coverage ignores are unsupported. Every surviving rule in manifest-declared exam
 
 ```text
 examples/        Shared Thue++ programs and manifest tests
-python/          Current Python conformance backend
-go/              Current Go conformance backend and Go-WASM export package
-demo/wasm/       JavaScript adapters for loading the Go-WASM module
-docs/            Language contracts for builtins and typed values
+python/thuepp/   Python package. The thuepp console script is the CLI.
+go/thuepp/       Go package github.com/readevalprint/thueplusplus/go/thuepp
+go/cmd/thuepp/   Thin Go CLI
+js/              npm package thuepp (ESM, types, Node CLI, browser worker)
+demo/            Playground. It depends on the thuepp package.
+docs/            Language contracts, host API, and release steps
 tools/           Repository conformance checker and shared manifest runner
 learnings/       Preserved design notes and failed attempts worth not repeating
 ```
@@ -630,7 +633,9 @@ Project docs and examples:
 - [`docs/numeric-builtins.md`](docs/numeric-builtins.md) — exact numeric grammar and display policy
 - [`docs/string-escape-builtins.md`](docs/string-escape-builtins.md) — escape/unescape contract
 - [`docs/typed-values.md`](docs/typed-values.md) — readable typed value wrappers
-- [`demo/wasm/README.md`](demo/wasm/README.md) — WASM adapter API
+- [`docs/host-api.md`](docs/host-api.md) — embedder API for the three packages
+- [`docs/releasing.md`](docs/releasing.md) — how to publish the packages
+- [`js/README.md`](js/README.md) — npm package API
 
 External context:
 
@@ -644,9 +649,15 @@ External context:
 
 ## Installation
 
-There is no package to install. Use this repository as a reference for the language semantics and examples.
+The three hosts are packages. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). From a checkout:
 
-If you want Thue++ semantics in another project, give this repository to your coding agent and ask it to port only what that project needs.
+```bash
+uv run thuepp <program.tpp>
+(cd go && go run ./cmd/thuepp ../<program.tpp>)
+node js/src/cli.js <program.tpp>
+```
+
+Import `thuepp` in Python, `github.com/readevalprint/thueplusplus/go/thuepp` in Go, and `thuepp` from npm. The playground depends on the npm package.
 
 Copy-pasteable agent prompt:
 
@@ -657,8 +668,9 @@ Implement Thue++ in this project. Use this repository as the reference. Preserve
 To run this repository's current reference tooling locally:
 
 ```bash
-uv run python python/thuepp.py <program.tpp>
+uv run thuepp <program.tpp>
 (cd go && go run ./cmd/thuepp ../<program.tpp>)
+node js/src/cli.js <program.tpp>
 ```
 
 Repository development requirements:

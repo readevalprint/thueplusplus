@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"thueplusplus/go/internal/thuepp"
+	"github.com/readevalprint/thueplusplus/go/thuepp"
 )
 
 func main() {

@@ -58,21 +58,6 @@ def expected_stdout(root: Path, config_path: Path) -> str:
     raise ValueError(f"{config_path}: expected output must define expect.stdout or expect.stdout_stripped")
 
 
-def shell_single_quote_escaped(value: str) -> str:
-    escaped = value.encode("unicode_escape").decode("ascii").replace("'", "'\"'\"'")
-    return f"'{escaped}'"
-
-
-def readme_example_command(root: Path, source_path: str, expected_output_path: str) -> str:
-    config = load_toml(root / expected_output_path)
-    command = f"./python/thuepp.py {source_path}"
-    for name, proc_command in config.get("bindings", {}).get("procs", {}).items():
-        command += f" --proc:{name} {shell_single_quote_escaped(proc_command)}"
-    if "stdin" in config:
-        command = f"printf {shell_single_quote_escaped(config['stdin'])} | {command}"
-    return command
-
-
 def source_excerpt(root: Path, source_path: str, source_lines: str | None) -> tuple[str, str]:
     source = read(root / source_path)
     if source_lines is None:
@@ -218,7 +203,7 @@ def check_readme(root: Path) -> list[Failure]:
             failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/check_contract.py --update-readme"))
     except ValueError as exc:
         failures.append(Failure(path, str(exc)))
-    required = ["## Verification", "make test", "uv run", "pyproject.toml", "uv.lock", "python/thuepp.py"]
+    required = ["## Verification", "make test", "uv run thuepp", "pyproject.toml", "uv.lock", "github.com/readevalprint/thueplusplus/go/thuepp"]
     for snippet in required:
         if snippet not in text:
             failures.append(Failure(path, f"missing README verification text: {snippet}"))
@@ -247,7 +232,7 @@ def check_contract(root: Path) -> list[Failure]:
         elif isinstance(node, ast.ImportFrom) and node.module in forbidden_modules:
             failures.append(Failure(runner_path, f"shared runner must not import Python implementation module {node.module}"))
     required_runner = [
-        'Interpreter("python", ("uv", "run", "python", "python/thuepp.py"))',
+        'Interpreter("python", ("uv", "run", "thuepp"))',
         '["go", "build", "-o", str(go_artifact), "./cmd/thuepp"]',
         'DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"',
         '"--list-rules"',
@@ -271,7 +256,7 @@ def check_contract(root: Path) -> list[Failure]:
     for snippet in forbidden_runner:
         if snippet in runner_text:
             failures.append(Failure(runner_path, f"shared runner must not expose stale customization layer: {snippet}"))
-    python_path = root / "python" / "thuepp.py"
+    python_path = root / "python" / "thuepp" / "cli.py"
     python_text = read(python_path)
     if '"--list-rules"' not in python_text:
         failures.append(Failure(python_path, "Python external command must expose --list-rules for runner-owned coverage enumeration"))
@@ -304,8 +289,8 @@ def check_numeric_regex(root: Path) -> list[Failure]:
     except re.error as exc:
         failures.append(Failure(root / "docs" / "numeric-builtins.md", f"canonical numeric regex does not compile in Python: {exc}"))
     checks = [
-        (root / "python" / "thuepp.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
-        (root / "go" / "internal" / "thuepp" / "interpreter.go", 1, None),
+        (root / "python" / "thuepp" / "interpreter.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
+        (root / "go" / "thuepp" / "interpreter.go", 1, None),
         (root / "examples" / "builtin" / "builtin.tpp", 1, f"N <- {grammar}"),
         (root / "examples" / "lisp" / "lisp.tpp", 1, None),
     ]

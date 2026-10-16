@@ -19,8 +19,14 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+from run_limits import (
+    DEFAULT_TIMEOUT_SECONDS,
+    apply_explicit_limits,
+    assert_single_unlimited_opt_in,
+    bounded_run,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MAX_EVALS = 10000
 INTERNAL_JOBS = 8
 DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
 
@@ -50,8 +56,29 @@ def load_toml(path: Path) -> dict:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
-TOP_LEVEL_KEYS = {"name", "program", "input", "stdin", "args", "bindings", "expect", "timeout", "case"}
-CASE_KEYS = {"name", "program", "input", "stdin", "args", "bindings", "expect", "timeout"}
+TOP_LEVEL_KEYS = {
+    "name",
+    "program",
+    "input",
+    "stdin",
+    "args",
+    "bindings",
+    "expect",
+    "timeout",
+    "case",
+    "allow_unlimited",
+}
+CASE_KEYS = {
+    "name",
+    "program",
+    "input",
+    "stdin",
+    "args",
+    "bindings",
+    "expect",
+    "timeout",
+    "allow_unlimited",
+}
 EXPECT_KEYS = {
     "exit_code",
     "stdout",
@@ -110,6 +137,7 @@ def validate_manifest(config_path: Path, config: dict) -> None:
     cases = config.get("case")
     if cases is None:
         validate_expect(config_path, str(config.get("name") or config_path.stem), config.get("expect"))
+        assert_single_unlimited_opt_in(config_path, expand_cases_unchecked(config))
         return
     if not isinstance(cases, list) or not cases:
         raise RuntimeError(f"{config_path}: case must be a non-empty array")
@@ -129,26 +157,34 @@ def validate_manifest(config_path: Path, config: dict) -> None:
         if "bindings" in case:
             validate_bindings(config_path, scope, case["bindings"])
         validate_expect(config_path, scope, case.get("expect"))
+    if isinstance(cases, list) and config.get("allow_unlimited") is True and len(cases) != 1:
+        raise RuntimeError(f"{config_path}: allow_unlimited opts in one case, not the whole manifest")
+    assert_single_unlimited_opt_in(config_path, expand_cases_unchecked(config))
+
+
+def merge_case(config: dict, case: dict) -> dict:
+    merged = {key: value for key, value in config.items() if key != "case"}
+    for key, value in case.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            nested = dict(merged[key])
+            nested.update(value)
+            merged[key] = nested
+        else:
+            merged[key] = value
+    return merged
+
+
+def expand_cases_unchecked(config: dict) -> list[dict]:
+    cases = config.get("case") or []
+    if not cases:
+        return [config]
+    return [merge_case(config, case) for case in cases]
 
 
 def expand_cases(config: dict, config_path: Path | None = None) -> list[dict]:
     if config_path is not None:
         validate_manifest(config_path, config)
-    cases = config.get("case") or []
-    if not cases:
-        return [config]
-    expanded: list[dict] = []
-    for case in cases:
-        merged = {key: value for key, value in config.items() if key != "case"}
-        for key, value in case.items():
-            if isinstance(value, dict) and isinstance(merged.get(key), dict):
-                nested = dict(merged[key])
-                nested.update(value)
-                merged[key] = nested
-            else:
-                merged[key] = value
-        expanded.append(merged)
-    return expanded
+    return expand_cases_unchecked(config)
 
 
 def case_name(config_path: Path, case: dict) -> str:
@@ -164,10 +200,6 @@ def validate_case_metadata(config_path: Path, case: dict) -> None:
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: stdin must be a string")
 
 
-def has_max_evals_arg(args: list[str]) -> bool:
-    return any(arg == "--max-evals" or arg.startswith("--max-evals=") for arg in args)
-
-
 def build_case_args(
     config_path: Path,
     case: dict,
@@ -179,8 +211,7 @@ def build_case_args(
     program = (tests_dir / case["program"]).resolve()
     args = [str(program)]
     args.extend(case.get("args", []))
-    if not has_max_evals_arg(args):
-        args.extend(["--max-evals", str(DEFAULT_MAX_EVALS)])
+    args = apply_explicit_limits(args)
     if extra_args:
         args.extend(extra_args)
     bound_files: dict[str, str] = {}
@@ -190,7 +221,8 @@ def build_case_args(
         if interpreter is None:
             raise RuntimeError(f"{config_path} {case_name(config_path, case)}: tpp bindings require an interpreter command")
         child_program = (tests_dir / spec["program"]).resolve()
-        command = " ".join(shlex.quote(part) for part in (*interpreter.argv, str(child_program)))
+        child = apply_explicit_limits([str(child_program)])
+        command = " ".join(shlex.quote(part) for part in (*interpreter.argv, *child))
         args.extend([f"--proc:{name}", command])
     if "input" in case:
         args.extend(["--input", case["input"]])
@@ -208,7 +240,7 @@ def run_case(
 ) -> CaseResult:
     validate_case_metadata(config_path, case)
     args, bound_files = build_case_args(config_path, case, tmp, extra_args=extra_args, interpreter=interpreter)
-    timeout = float(case.get("timeout", 10))
+    timeout = float(case.get("timeout", DEFAULT_TIMEOUT_SECONDS))
     # The wasm host is the same language build, started once per case. Give it
     # the same manifest budget scaled for interpreter startup and wasm speed.
     if interpreter.name == "wasm":
@@ -216,17 +248,15 @@ def run_case(
     env = os.environ.copy()
     env.update(dict(interpreter.env))
     try:
-        result = subprocess.run(
+        result = bounded_run(
             [*interpreter.argv, *args],
-            cwd=ROOT,
-            input=case.get("stdin"),
-            capture_output=True,
-            text=True,
             timeout=timeout,
+            cwd=ROOT,
             env=env,
+            input_text=case.get("stdin"),
         )
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(f"{config_path} {case_name(config_path, case)} {interpreter.name}: timed out after {timeout}s") from exc
+    except RuntimeError as exc:
+        raise RuntimeError(f"{config_path} {case_name(config_path, case)} {interpreter.name}: {exc}") from exc
     output_files = {name: Path(path).read_text(encoding="utf-8") for name, path in bound_files.items()}
     case_result = CaseResult(
         interpreter=interpreter.name,
@@ -323,12 +353,10 @@ def read_coverage(path: Path) -> Counter[str]:
 
 def list_rules(interpreter: Interpreter, program: Path, require_success: bool) -> tuple[dict[str, str], str | None]:
     reject_coverage_ignores(program)
-    completed = subprocess.run(
-        [*interpreter.argv, str(program), "--list-rules"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
+    completed = bounded_run(
+        apply_explicit_limits([*interpreter.argv, str(program), "--list-rules"]),
         timeout=20,
+        cwd=ROOT,
     )
     if completed.returncode != 0:
         error = completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}"
@@ -483,9 +511,9 @@ def build_interpreters(build_root: Path) -> list[Interpreter]:
         )
     wasm_artifact = build_wasm(build_root)
     return [
-        Interpreter("python", ("uv", "run", "python", "python/thuepp.py")),
+        Interpreter("python", ("uv", "run", "thuepp")),
         Interpreter("go", (str(go_artifact),)),
-        Interpreter("wasm", ("node", str(ROOT / "go" / "wasm" / "cli.cjs")), (("THUEPP_WASM", str(wasm_artifact)),)),
+        Interpreter("wasm", ("node", str(ROOT / "js" / "src" / "cli.js")), (("THUEPP_WASM", str(wasm_artifact)),)),
     ]
 
 

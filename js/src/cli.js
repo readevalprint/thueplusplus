@@ -1,19 +1,19 @@
-'use strict'
+#!/usr/bin/env node
+// Thin Node host. It speaks the same argv contract as the Go and Python CLIs.
+// Process bindings are opt-in: the wasm module never spawns a process itself.
 
-// Command-line host for the Go wasm build. It speaks the same argv, stdin,
-// stdout, stderr, and exit-code contract as go/cmd/thuepp. Process bindings
-// are host opt-in: the wasm module never spawns a process itself.
+import { writeFileSync, readFileSync, writeSync, readSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { Worker } from 'node:worker_threads'
+import { fileURLToPath } from 'node:url'
+import { initThuePP } from './node.js'
 
-const fs = require('fs')
-const path = require('path')
-const { Worker } = require('worker_threads')
-const { initThuePP } = require('../../demo/wasm/node.cjs')
-
+const here = dirname(fileURLToPath(import.meta.url))
 const HEADER_BYTES = 12
 const MAX_PAYLOAD = 1024 * 1024
 const sab = new SharedArrayBuffer(HEADER_BYTES + MAX_PAYLOAD)
 const header = new Int32Array(sab, 0, 3)
-const ioWorker = new Worker(path.join(__dirname, 'proc_host.cjs'))
+const ioWorker = new Worker(new URL('./proc-host.cjs', import.meta.url))
 
 let stdinBuffer = ''
 let stdinEOF = false
@@ -21,15 +21,13 @@ let stdinEOF = false
 async function main() {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const wasmPath = process.env.THUEPP_WASM || path.join(__dirname, '..', '..', 'build', 'thuepp.wasm')
+    const wasmPath = process.env.THUEPP_WASM || resolve(here, '..', '..', 'build', 'thuepp.wasm')
     const sourceText = readProgram(options.program)
     const thuepp = await initThuePP({ wasmPath })
     const resources = {
       stdin: { readLine: () => readStdinLine() },
-      // Stream stdio as the writes happen. The wasm result buffers them only
-      // until run() returns, which is too late for a parent reading a child.
-      stdout: { write: (content) => { fs.writeSync(1, String(content)); return '' } },
-      stderr: { write: (content) => { fs.writeSync(2, String(content)); return '' } },
+      stdout: { write: (content) => { writeSync(1, String(content)); return '' } },
+      stderr: { write: (content) => { writeSync(2, String(content)); return '' } },
     }
     for (const proc of options.procs) {
       resources[proc.name] = {
@@ -51,7 +49,7 @@ async function main() {
     }
     if (Object.prototype.hasOwnProperty.call(options, 'input')) runOptions.input = options.input
     const result = await thuepp.run(runOptions)
-    if (options.ruleCoverage) fs.writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
+    if (options.ruleCoverage) writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
     process.stdout.write(result.stdout || '')
     process.stderr.write(result.stderr || '')
     if (result.error) process.stderr.write(`Error: ${result.error}\n`)
@@ -69,7 +67,7 @@ function parseArgs(argv) {
     process.stderr.write('usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options]\n')
     process.exit(2)
   }
-  const options = { program: path.resolve(argv[0]), procs: [], debug: false, listRules: false }
+  const options = { program: resolve(argv[0]), procs: [], debug: false, listRules: false }
   for (let index = 1; index < argv.length;) {
     const arg = argv[index]
     if (arg === '--debug') {
@@ -132,7 +130,7 @@ function takeLimit(argv, index, flag) {
 
 function readProgram(program) {
   try {
-    return fs.readFileSync(program, 'utf8')
+    return readFileSync(program, 'utf8')
   } catch (error) {
     if (error && error.code === 'ENOENT') {
       process.stderr.write(`Error: File not found: ${program}\n`)
@@ -145,7 +143,7 @@ function readProgram(program) {
 function readStdinLine() {
   while (!stdinBuffer.includes('\n') && !stdinEOF) {
     const chunk = Buffer.alloc(4096)
-    const n = fs.readSync(0, chunk, 0, chunk.length, null)
+    const n = readSync(0, chunk, 0, chunk.length, null)
     if (n === 0) {
       stdinEOF = true
       break

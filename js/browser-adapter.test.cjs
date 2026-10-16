@@ -4,7 +4,7 @@ const path = require('path');
 const vm = require('vm');
 
 function loadWorkerClient() {
-  const source = fs.readFileSync(path.join(__dirname, 'worker-client.js'), 'utf8')
+  const source = fs.readFileSync(path.join(__dirname, 'src', 'worker-client.js'), 'utf8')
     .replace('export class ThuePPWorker', 'class ThuePPWorker') + '\nmodule.exports = { ThuePPWorker };\n';
   const module = { exports: {} };
   const context = {
@@ -20,7 +20,7 @@ function loadWorkerClient() {
 }
 
 function loadBrowserWorkerInternals() {
-  const source = fs.readFileSync(path.join(__dirname, 'browser-worker.js'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, 'src', 'browser-worker.js'), 'utf8');
   const context = {
     console,
     setTimeout,

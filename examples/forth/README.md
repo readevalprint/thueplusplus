@@ -7,7 +7,7 @@
 From the repository root:
 
 ```bash
-uv run python python/thuepp.py examples/forth/forth.tpp --input '1 2 + 3 *'
+uv run thuepp examples/forth/forth.tpp --input '1 2 + 3 *'
 ```
 
 Expected output:
@@ -19,7 +19,7 @@ Expected output:
 The interpreter reads the Forth program from `--input`. Tokens are whitespace-delimited. The final data stack is rendered top-first, with one space between values:
 
 ```bash
-uv run python python/thuepp.py examples/forth/forth.tpp --input '1 2 3'
+uv run thuepp examples/forth/forth.tpp --input '1 2 3'
 ```
 
 prints:

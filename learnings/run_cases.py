@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import subprocess, sys, pathlib
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "tools"))
+from run_limits import bounded_run
 root = pathlib.Path('/workspaces/thueplusplus')
 case_file = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].endswith('.tsv') else pathlib.Path('/tmp/thuepp-lisp-pda/hard_acceptance_cases.tsv')
 attempts = sys.argv[2:] if len(sys.argv) > 1 and sys.argv[1].endswith('.tsv') else sys.argv[1:]
@@ -14,11 +16,11 @@ for attempt in attempts:
     passed=0
     for name, inp, expected in cases:
         try:
-            cp=subprocess.run(['uv','run','python','python/thuepp.py',attempt,'--input',inp,'--max-evals','80000'],cwd=root,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+            cp=bounded_run(['uv','run','thuepp',attempt,'--input',inp,'--max-evals','80000','--max-steps','1000000','--max-state-bytes','8388608'],timeout=8,cwd=root)
             out=cp.stdout.strip(); err=cp.stderr.strip()
             ok=cp.returncode==0 and out==expected and err==''
             print(('  PASS ' if ok else '  FAIL ')+f'{name}: rc={cp.returncode} out={out!r} err={err!r}')
             passed += int(ok)
-        except subprocess.TimeoutExpired:
-            print(f'  TIMEOUT {name}')
+        except RuntimeError as exc:
+            print(f'  TIMEOUT {name}: {exc}')
     print(f'  => {passed}/{len(cases)} passed\n')
