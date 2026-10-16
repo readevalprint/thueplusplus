@@ -1,1 +1,0 @@
-Forth prints the data stack. It has no string words and no output word, so it cannot print Hello, World!.

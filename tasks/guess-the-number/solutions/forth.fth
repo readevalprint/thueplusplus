@@ -1,0 +1,1 @@
+." Player 1, enter the secret:" cr input begin ." Player 2, enter a guess:" cr input over over > if ." Too low." cr then over over < if ." Too high." cr then over over = dup if ." Correct." cr then swap drop until drop halt

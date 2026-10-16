@@ -1,0 +1,175 @@
+program = "../forth.tpp"
+timeout = 10
+args = ["--max-steps", "100000", "--max-evals", "200000", "--max-state-bytes", "2097152"]
+
+[[case]]
+name = "whole program string prints and stops"
+input = '." Hello, World!"'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "Hello, World!\n"
+
+[[case]]
+name = "string and newline words"
+input = '." A" cr halt'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "A\n"
+
+[[case]]
+name = "dot prints a number without a final stack newline"
+input = "1 ."
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "1"
+
+[[case]]
+name = "mod"
+input = "17 5 mod"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "2\n"
+
+[[case]]
+name = "counted loop"
+input = "0 begin 1 + dup 2 = until"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "2\n"
+
+[[case]]
+name = "true branch"
+input = "1 1 = if 4 then"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "4\n"
+
+[[case]]
+name = "false branch without else"
+input = "1 0 = if 4 then 5"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "5\n"
+
+[[case]]
+name = "false branch with else"
+input = "1 0 = if 1 else 2 then"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "2\n"
+
+[[case]]
+name = "skipped string"
+input = '1 1 = if 1 else ." no" 0 then'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "1\n"
+
+[[case]]
+name = "skipped nested branch"
+input = "1 1 = if 7 else if 8 else 9 then then"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "7\n"
+
+[[case]]
+name = "bool order"
+input = "false true"
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "true false\n"
+
+[[case]]
+name = "sum two input lines"
+input = "input input +"
+stdin = """
+2
+3
+"""
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "5\n"
+
+[[case]]
+name = "non-numeric input"
+input = "input"
+stdin = """
+x
+"""
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_form"
+
+[[case]]
+name = "reverse a line"
+input = "accept rev"
+stdin = """
+ab
+"""
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "ba\n"
+
+[[case]]
+name = "rot13 a line"
+input = "accept rot13"
+stdin = """
+A!
+"""
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "N!\n"
+
+[[case]]
+name = "string equality"
+input = "accept dup rev ="
+stdin = """
+ab
+"""
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "false\n"
+
+[[case]]
+name = "multiline program"
+input = """
+1
+2
+"""
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "unsupported_form"
