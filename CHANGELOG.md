@@ -29,6 +29,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 - **Breaking:** a state-limit stop records the trace event and then returns 12. The state is left unchanged. Go used to return 12 with an empty trace. The host does not install the oversized state, and it does not return 12 without the event.
 - The playground page is the hero, then the editor, run controls, output, and trace. Every run sends an explicit step limit, probe limit, and state limit through the `thuepp` package. Examples and settings are in that page's `PageAside`, open on desktop and a sheet below 1280px. `/embed` is the same surface without the site chrome.
 - Lisp numeric calls whose nearest binding is still the original primitive skip the generic call walker. Shadowed bindings still use ordinary application. Existing numeric Lisp tasks take fewer applied steps.
+- Lisp rules that match on every numeric call (`STREQ`, the numeric fast path, `ARGENV`, `ARG`, `LOOK`, `BNUM2`, `emit`, `finish`, `if`, `SEQ`, `while`, `set`) are first in the rule table. Applied step counts stay the same. Go and wasm finish FizzBuzz and 99 bottles inside the task time budgets.
 - **Breaking:** the Go library path is `github.com/readevalprint/thueplusplus/go/thuepp`. `go/internal/thuepp` is gone.
 - **Breaking:** the Python CLI is `uv run thuepp` / `python -m thuepp`. `python/thuepp.py` is gone.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.

@@ -46,17 +46,7 @@ EXPR <- $NAME|$NODE
 READER_DATUM <- (?:\([^()]*\)|$OPSYM|$EXPR)
 
 
-Exact stdout
-emit writes a number or a string as raw text and returns an empty list. finish exits before the final value is rendered, so stdout is only earlier emit and write output. rev reverses a string. tr maps each character through a pair of strings by index and copies characters that are absent from the source alphabet.
-
-^EENV<finish\|(?<env>[^|]*)\|(?<k>.*)>$ ::- 0
-^EENV<finish (?<args>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^EENV<emit (?<arg>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{arg}}|{{env}}|KEMIT {{k}}>
-^EENV<emit(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^RET<VNUM<(?<n>$NUM)>\|KEMIT (?<k>.*)>$ ::= LWRITE<{{n|pctenc}}>RET<VLIST<>|{{k}}>
-^RET<VSTR<(?<s>$PCT)>\|KEMIT (?<k>.*)>$ ::= LWRITE<{{s}}>RET<VLIST<>|{{k}}>
-^RET<(?<bad>$VAL)\|KEMIT (?<k>.*)>$ ::= ERR<type_error>
-^LWRITE<(?<msg>$PCT)> ::> stdout {{msg|pctdec}}
+STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
 
 Numeric calls whose nearest binding is still the original primitive skip the generic call walker. A shadowed binding falls back to ordinary application. The core environment always contains these primitives, so the scan ends on a binding.
 ^EENV<(?<op>add|sub|mul|div|mod|eq|lt|lte|gt|gte) (?<a>$EXPR) (?<b>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= NFAST<{{op}}|{{a}}|{{b}}|{{env}}|{{env}}|{{k}}>
@@ -67,6 +57,35 @@ Numeric calls whose nearest binding is still the original primitive skip the gen
 ^NFASTEQ<1\|(?<op>$NAME)\|(?<a>[^|]*)\|(?<b>[^|]*)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<full>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{op}}|{{full}}|KENVCALL<{{a|pctenc}}%20{{b|pctenc}}|{{full}}> {{k}}>
 ^RET<(?<av>$VAL)\|KFAST<(?<op>add|sub|mul|div|mod|eq|lt|lte|gt|gte)\|(?<b>$PCT)\|(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{b|pctdec}}|{{env}}|KFAST2<{{op}}|{{av|pctenc}}> {{k}}>
 ^RET<(?<bv>$VAL)\|KFAST2<(?<op>add|sub|mul|div|mod|eq|lt|lte|gt|gte)\|(?<a>$PCT)> (?<k>.*)>$ ::= BNUM2<{{op}}|{{a|pctdec}}|{{bv}}|{{k}}>
+
+
+Environment aware evaluation core
+ARGENV evaluates demanded nodes in the current lexical environment. EENVKEEP normalizes plain value returns and environment carrying returns for forms that may mutate bindings.
+^ARGENV<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|{{k}}>
+^ARGENV<true\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
+^ARGENV<false\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+^ARGENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
+^ARGENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
+^EENVKEEP<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
+^EENVKEEP<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
+^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
+^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
+
+Literal demand
+ARG turns already decoded scalar nodes into typed runtime values. Lists are decoded only by environment aware evaluation so lexical scope is preserved.
+^ARG<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^ARG<true\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
+^ARG<false\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+^ARG<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
+
+Environment lookup and closures
+LOOK scans name bindings from left to right. Closures carry parameter source, body source, and the captured lexical environment in a single framed value.
+^LOOK<(?<want>$NAME)\|\|(?<k>.*)>$ ::= ERR<unbound_name>
+^LOOK<(?<want>$NAME)\|(?<got>$NAME)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQTEST<{{want}}|{{got}}|{{val}}|{{rest}}|{{k}}>
+^LOOKEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQ<STREQ<{{a}},{{b}}>|{{a}}|{{val}}|{{rest}}|{{k}}>
+
+^LOOKEQ<1\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
+^LOOKEQ<0\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{want}}|{{rest}}|{{k}}>
 
 ^BNUM2<add\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
 ^BNUM2<sub\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>
@@ -93,6 +112,51 @@ GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
 MOD<(?<a>$NUM),(?<b>$NUM)> ::! mod a b
 ^RET<VBOOL<1>\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<0>\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+
+Exact stdout
+emit writes a number or a string as raw text and returns an empty list. finish exits before the final value is rendered, so stdout is only earlier emit and write output. rev reverses a string. tr maps each character through a pair of strings by index and copies characters that are absent from the source alphabet.
+
+^EENV<finish\|(?<env>[^|]*)\|(?<k>.*)>$ ::- 0
+^EENV<finish (?<args>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<emit (?<arg>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{arg}}|{{env}}|KEMIT {{k}}>
+^EENV<emit(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^RET<VNUM<(?<n>$NUM)>\|KEMIT (?<k>.*)>$ ::= LWRITE<{{n|pctenc}}>RET<VLIST<>|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KEMIT (?<k>.*)>$ ::= LWRITE<{{s}}>RET<VLIST<>|{{k}}>
+^RET<(?<bad>$VAL)\|KEMIT (?<k>.*)>$ ::= ERR<type_error>
+^LWRITE<(?<msg>$PCT)> ::> stdout {{msg|pctdec}}
+
+Special forms before generic calls
+Control forms choose which operands to evaluate. Symbolic arithmetic syntax is deliberately unsupported; named primitive values such as add and eq dispatch through APPLY.
+^EENV<(?:\+|-|\*|/|=|<|<=|>|>=)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
+
+^EENV<if (?<cond>$EXPR) (?<then>$EXPR) (?<els>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KENIF<{{then}}|{{els}}|{{env}}> {{k}}>
+^RET<VBOOL<true>\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{then}}|{{env}}|{{k}}>
+^RET<VBOOL<false>\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{els}}|{{env}}|{{k}}>
+^RET<(?<bad>$NONBOOL)\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
+
+Internal sequencing
+SEQ evaluates body expressions in order, preserves environment updates, and returns the final expression value.
+^SEQ<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
+^SEQ<(?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KKEEPENV<{{env}}> KSEQ<{{rest|pctenc}}|{{env}}> {{k}}>
+^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KSEQ<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= SEQ<{{rest|pctdec}}|{{env}}|{{k}}>
+
+Looping and mutation
+While reevaluates one or more body expressions until the condition is false. Set updates the nearest existing lexical binding and returns the assigned value.
+^EENV<while (?<cond>$EXPR) (?<body>[^|]+)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILECOND<{{cond|pctenc}}^{{body|pctenc}}^{{env}}> {{k}}>
+^RET<VBOOL<false>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<VLIST<>|{{env}}|{{k}}>
+^RET<VBOOL<true>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SEQ<{{body|pctdec}}|{{env}}|KWHILEBODY<{{cond}}^{{body}}^{{env}}> {{k}}>
+^RET<(?<bad>$NONBOOL)\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
+^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILEBODY<(?<cond>$PCT)\^(?<body>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} {{body|pctdec}}|{{env}}|{{k}}>
+
+^EENV<set (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
+^EENV<set (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^RET<(?<v>$VAL)\|KSET<(?<name>$NAME)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SETENV<{{name}}|{{v}}|{{env}}|{{k}}|>
+^SETENV<(?<name>$NAME)\|(?<v>$VAL)\|\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= ERR<unbound_name>
+^SETENV<(?<want>$NAME)\|(?<v>$VAL)\|(?<got>$NAME)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQTEST<{{want}}|{{got}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
+^SETEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQ<STREQ<{{a}},{{b}}>|{{a}}|{{b}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
+^SETEQ<1\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= RETENV<{{v}}|{{prefix}}{{got}}={{v|pctenc}};{{rest}}|{{k}}>
+^SETEQ<0\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETENV<{{want}}|{{v}}|{{rest}}|{{k}}|{{prefix}}{{got}}={{old}};>
+
 
 ^APPLY<VPRIM<rev>\|(?<s>[^;]*);\|(?<k>.*)>$ ::= BREV<{{s|pctdec}}|{{k}}>
 ^BREV<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= REV<{{s}}||{{k}}>
@@ -172,36 +236,8 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;mod=VPRIM%3Cmod%3E;rev=VPRIM%3Crev%3E;tr=VPRIM%3Ctr%3E;|{{k}}>
 
 
-Literal demand
-ARG turns already decoded scalar nodes into typed runtime values. Lists are decoded only by environment aware evaluation so lexical scope is preserved.
-^ARG<(?<n>$NUM)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
-^ARG<true\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
-^ARG<false\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
-^ARG<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= RET<VSTR<{{s}}>|{{k}}>
-
-
-Environment lookup and closures
-LOOK scans name bindings from left to right. Closures carry parameter source, body source, and the captured lexical environment in a single framed value.
-^LOOK<(?<want>$NAME)\|\|(?<k>.*)>$ ::= ERR<unbound_name>
-^LOOK<(?<want>$NAME)\|(?<got>$NAME)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQTEST<{{want}}|{{got}}|{{val}}|{{rest}}|{{k}}>
-^LOOKEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOKEQ<STREQ<{{a}},{{b}}>|{{a}}|{{val}}|{{rest}}|{{k}}>
-STREQ<(?<a>$NAME),(?<b>$NAME)> ::! eq a b
-^LOOKEQ<1\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= RET<{{val|pctdec}}|{{k}}>
-^LOOKEQ<0\|(?<want>$NAME)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{want}}|{{rest}}|{{k}}>
-
 ^EENV<fn L<(?<params>$PCT)> (?<body>[^|]+)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VCLOS<{{params}}^{{body|pctenc}}^{{env}}>|{{k}}>
 
-Environment aware evaluation core
-ARGENV evaluates demanded nodes in the current lexical environment. EENVKEEP normalizes plain value returns and environment carrying returns for forms that may mutate bindings.
-^ARGENV<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|{{k}}>
-^ARGENV<true\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
-^ARGENV<false\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
-^ARGENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
-^ARGENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARG<{{node}}|{{k}}>
-^EENVKEEP<L<(?<payload>$PCT)>\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<{{payload|pctdec}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
-^EENVKEEP<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KKEEPENV<{{env}}> {{k}}>
-^RET<(?<v>$VAL)\|KKEEPENV<(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
-^RETENV<(?<v>$VAL)\|(?<env>[^|]*)\|KKEEPENV<(?<oldenv>[^>]*)> (?<k>.*)>$ ::= RETENV<{{v}}|{{env}}|{{k}}>
 ^EENV<list\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
 ^EENV<dict\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VLIST<>|{{k}}>
 Bare form guards
@@ -218,14 +254,6 @@ Zero operand special forms need explicit ownership before generic call lookup wo
 ^EENV<(?<name>$NAME)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LOOK<{{name}}|{{env}}|{{k}}>
 ^EENV<(?<node>$NODE)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node}}|{{env}}|{{k}}>
 
-Special forms before generic calls
-Control forms choose which operands to evaluate. Symbolic arithmetic syntax is deliberately unsupported; named primitive values such as add and eq dispatch through APPLY.
-^EENV<(?:\+|-|\*|/|=|<|<=|>|>=)(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<unsupported_form>
-
-^EENV<if (?<cond>$EXPR) (?<then>$EXPR) (?<els>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KENIF<{{then}}|{{els}}|{{env}}> {{k}}>
-^RET<VBOOL<true>\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{then}}|{{env}}|{{k}}>
-^RET<VBOOL<false>\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{els}}|{{env}}|{{k}}>
-^RET<(?<bad>$NONBOOL)\|KENIF<(?<then>[^|]*)\|(?<els>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
 ^EENV<and (?<a>$EXPR) (?<b>$EXPR) (?<rest>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENV<and L<and%20{{a|pctenc}}%20{{b|pctenc}}> {{rest}}|{{env}}|{{k}}>
 ^EENV<and false (?<rhs>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 ^EENV<and true (?<rhs>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{rhs}}|{{env}}|{{k}}>
@@ -240,28 +268,7 @@ Control forms choose which operands to evaluate. Symbolic arithmetic syntax is d
 ^RET<VBOOL<true>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
 ^RET<VBOOL<false>\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ARGENV<{{rhs}}|{{env}}|{{k}}>
 ^RET<(?<bad>$NONBOOL)\|KENOR<(?<rhs>[^|]*)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= ERR<type_error>
-Internal sequencing
-SEQ evaluates body expressions in order, preserves environment updates, and returns the final expression value.
-^SEQ<(?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= EENVKEEP<{{expr}}|{{env}}|{{k}}>
-^SEQ<(?<first>$EXPR) (?<rest>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{first}}|{{env}}|KKEEPENV<{{env}}> KSEQ<{{rest|pctenc}}|{{env}}> {{k}}>
-^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KSEQ<(?<rest>$PCT)\|(?<oldenv>[^|>]*)> (?<k>.*)>$ ::= SEQ<{{rest|pctdec}}|{{env}}|{{k}}>
 
-Looping and mutation
-While reevaluates one or more body expressions until the condition is false. Set updates the nearest existing lexical binding and returns the assigned value.
-^EENV<while (?<cond>$EXPR) (?<body>[^|]+)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{cond}}|{{env}}|KWHILECOND<{{cond|pctenc}}^{{body|pctenc}}^{{env}}> {{k}}>
-^RET<VBOOL<false>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= RETENV<VLIST<>|{{env}}|{{k}}>
-^RET<VBOOL<true>\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SEQ<{{body|pctdec}}|{{env}}|KWHILEBODY<{{cond}}^{{body}}^{{env}}> {{k}}>
-^RET<(?<bad>$NONBOOL)\|KWHILECOND<(?<cond>$PCT)\^(?<body>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ERR<type_error>
-^RETENV<(?<ignored>$VAL)\|(?<env>[^|]*)\|KWHILEBODY<(?<cond>$PCT)\^(?<body>$PCT)\^(?<oldenv>[^>]*)> (?<k>.*)>$ ::= EENV<while {{cond|pctdec}} {{body|pctdec}}|{{env}}|{{k}}>
-
-^EENV<set (?<name>$NAME) (?<expr>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{expr}}|{{env}}|KSET<{{name}}^{{env}}> {{k}}>
-^EENV<set (?<args>.*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
-^RET<(?<v>$VAL)\|KSET<(?<name>$NAME)\^(?<env>[^>]*)> (?<k>.*)>$ ::= SETENV<{{name}}|{{v}}|{{env}}|{{k}}|>
-^SETENV<(?<name>$NAME)\|(?<v>$VAL)\|\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= ERR<unbound_name>
-^SETENV<(?<want>$NAME)\|(?<v>$VAL)\|(?<got>$NAME)=(?<old>[^;]*);(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQTEST<{{want}}|{{got}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
-^SETEQTEST<(?<a>$NAME)\|(?<b>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETEQ<STREQ<{{a}},{{b}}>|{{a}}|{{b}}|{{v}}|{{old}}|{{rest}}|{{k}}|{{prefix}}>
-^SETEQ<1\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= RETENV<{{v}}|{{prefix}}{{got}}={{v|pctenc}};{{rest}}|{{k}}>
-^SETEQ<0\|(?<want>$NAME)\|(?<got>$NAME)\|(?<v>$VAL)\|(?<old>[^|]*)\|(?<rest>[^|]*)\|(?<k>.*)\|(?<prefix>(?:$NAME=[^;]*;)*)>$ ::= SETENV<{{want}}|{{v}}|{{rest}}|{{k}}|{{prefix}}{{got}}={{old}};>
 
 Quote and code as data
 Quote converts source nodes into runtime data. Symbols become VSYM values and lists become VLIST values containing pct encoded runtime items.
