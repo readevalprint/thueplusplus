@@ -49,15 +49,16 @@ func (r *jsResource) Cleanup() {
 }
 
 type wasmResult struct {
-	ExitCode    int
-	Stdout      string
-	Stderr      string
-	Error       string
-	Errors      []string
-	CoverageTSV string
-	Trace       []thuepp.TraceEvent
-	State       string
-	EvalCount   int
+	ExitCode     int
+	Stdout       string
+	Stderr       string
+	Error        string
+	Errors       []string
+	CoverageTSV  string
+	Trace        []thuepp.TraceEvent
+	State        string
+	EvalCount    int
+	AppliedSteps int
 }
 
 func main() {
@@ -157,7 +158,7 @@ func run(args []js.Value) wasmResult {
 	}
 	exitCode, runErr := interp.Run()
 	interp.Cleanup()
-	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount}
+	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount, AppliedSteps: interp.AppliedSteps}
 	if runErr != nil {
 		res.ExitCode = 1
 		res.Error = runErr.Error()
@@ -173,7 +174,7 @@ func run(args []js.Value) wasmResult {
 }
 
 func resultToJS(r wasmResult) js.Value {
-	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCount": r.EvalCount}
+	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCount": r.EvalCount, "appliedSteps": r.AppliedSteps}
 	if r.Error != "" {
 		obj["error"] = r.Error
 	}
@@ -263,7 +264,11 @@ func optionalString(obj js.Value, key, fallback string) (string, error) {
 
 func applyIntOption(obj js.Value, key string, target **int) error {
 	v := obj.Get(key)
-	if v.Type() == js.TypeUndefined || v.Type() == js.TypeNull {
+	if v.Type() == js.TypeUndefined {
+		return nil
+	}
+	if v.Type() == js.TypeNull {
+		*target = nil
 		return nil
 	}
 	var n int

@@ -89,6 +89,7 @@ type Interpreter struct {
 	MaxStateBytes      *int
 	MaxSteps           *int
 	EvalCount          int
+	AppliedSteps       int
 	Debug              bool
 	Stdout             io.Writer
 	Stderr             io.Writer
@@ -103,8 +104,38 @@ func New() *Interpreter {
 	return NewWithHostResources(NativeHostResources())
 }
 
+const (
+	// DefaultMaxEvals bounds rule probes for a host that did not set a limit.
+	// A probe is one rule examined, including rules that do not match.
+	DefaultMaxEvals = 1_000_000
+	// DefaultMaxStateBytes bounds the UTF-8 state after a replacement.
+	DefaultMaxStateBytes = 8 * 1024 * 1024
+)
+
+// ParseLimit parses a CLI limit. "unlimited" clears the limit. Any other
+// value is a decimal integer. Zero is a real limit, not a synonym for unlimited.
+func ParseLimit(text string) (*int, error) {
+	if text == "unlimited" {
+		return nil, nil
+	}
+	value, err := strconv.Atoi(text)
+	if err != nil {
+		return nil, err
+	}
+	return &value, nil
+}
+
 func NewWithHostResources(host HostResources) *Interpreter {
-	i := &Interpreter{Bindings: map[string]*Binding{}, Stdout: host.Stdout, Stderr: host.Stderr, RuleCoverageCounts: map[string]int{}}
+	evals := DefaultMaxEvals
+	stateBytes := DefaultMaxStateBytes
+	i := &Interpreter{
+		Bindings:           map[string]*Binding{},
+		Stdout:             host.Stdout,
+		Stderr:             host.Stderr,
+		RuleCoverageCounts: map[string]int{},
+		MaxEvals:           &evals,
+		MaxStateBytes:      &stateBytes,
+	}
 	i.Bindings["stdin"] = &Binding{Name: "stdin", PathOrCommand: "stdin", Resource: newStdinResource("stdin", host.Stdin)}
 	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout", Resource: &outputResource{writer: &i.Stdout}}
 	i.Bindings["stderr"] = &Binding{Name: "stderr", PathOrCommand: "stderr", Resource: &outputResource{writer: &i.Stderr}}
@@ -1034,7 +1065,8 @@ type stateRow struct {
 }
 
 func (i *Interpreter) Run() (int, error) {
-	appliedSteps := 0
+	i.AppliedSteps = 0
+	i.Trace = nil
 	for {
 		var rows []stateRow
 		parts := strings.Split(i.State, "\n")
@@ -1170,8 +1202,8 @@ func (i *Interpreter) Run() (int, error) {
 				return 1, err
 			}
 			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
-			appliedSteps++
-			if i.MaxSteps != nil && appliedSteps >= *i.MaxSteps {
+			i.AppliedSteps++
+			if i.MaxSteps != nil && i.AppliedSteps >= *i.MaxSteps {
 				return 0, nil
 			}
 			if i.Debug {

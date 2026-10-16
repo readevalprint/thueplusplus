@@ -85,13 +85,13 @@ function parseArgs(argv) {
       options.input = takeValue(argv, index, '--input')
       index += arg.startsWith('--input=') ? 1 : 2
     } else if (arg === '--max-evals' || arg.startsWith('--max-evals=')) {
-      options.maxEvals = takeInt(argv, index, '--max-evals')
+      options.maxEvals = takeLimit(argv, index, '--max-evals')
       index += arg.startsWith('--max-evals=') ? 1 : 2
     } else if (arg === '--max-state-bytes' || arg.startsWith('--max-state-bytes=')) {
-      options.maxStateBytes = takeInt(argv, index, '--max-state-bytes')
+      options.maxStateBytes = takeLimit(argv, index, '--max-state-bytes')
       index += arg.startsWith('--max-state-bytes=') ? 1 : 2
     } else if (arg === '--max-steps' || arg.startsWith('--max-steps=')) {
-      options.maxSteps = takeInt(argv, index, '--max-steps')
+      options.maxSteps = takeLimit(argv, index, '--max-steps')
       index += arg.startsWith('--max-steps=') ? 1 : 2
     } else if (arg.startsWith('--proc:')) {
       const name = arg.slice('--proc:'.length)
@@ -120,8 +120,9 @@ function takeValue(argv, index, flag) {
   return argv[index + 1]
 }
 
-function takeInt(argv, index, flag) {
+function takeLimit(argv, index, flag) {
   const text = takeValue(argv, index, flag)
+  if (text === 'unlimited') return null
   if (!/^-?\d+$/.test(text)) {
     process.stderr.write(`strconv.Atoi: parsing ${JSON.stringify(text)}: invalid syntax\n`)
     process.exit(2)

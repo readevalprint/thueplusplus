@@ -1,6 +1,6 @@
 # Implementing Thue++
 
-Spec version: **v0.3** (`SPEC_VERSION` at the repository root).
+Spec version: **v0.4** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
@@ -41,7 +41,7 @@ Error: File not found: <path>
 
 No arguments exits `2`. An unknown argument exits `1` with `Error: Unknown argument: ...`. A non-integer limit exits `2`. Usage wording beyond those lines is not compared.
 
-Default resources are only `stdin`, `stdout`, and `stderr`. There is no ambient filesystem or network binding. A `--proc` binding runs only when the host passes that flag.
+Default resources are only `stdin`, `stdout`, and `stderr`. There is no ambient filesystem or network binding. A `--proc` binding runs only when the host passes that flag. Omitted `--max-evals` and `--max-state-bytes` use the defaults in [host-api.md](host-api.md). Pass `unlimited` to clear one. Embedders use that same document for step counts and trace hooks.
 
 ## Run the suite against your command
 

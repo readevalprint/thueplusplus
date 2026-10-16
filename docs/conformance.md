@@ -1,6 +1,6 @@
 # Conformance manifests
 
-Spec version: **v0.3** (`SPEC_VERSION` at the repository root).
+Spec version: **v0.4** (`SPEC_VERSION` at the repository root).
 
 A manifest is a UTF-8 TOML file. `make test` runs every file matched by `examples/**/tests/*.toml`. The runner treats each implementation as an external command. It does not import interpreter internals.
 
@@ -81,7 +81,7 @@ The working directory is the repository root.
 
 ## Limits the manifests lock
 
-These strings are part of v0.3. A runtime failure is printed as `Error: <message>` on stderr and exits `1`, except where a limit says otherwise.
+These strings are part of v0.4. A runtime failure is printed as `Error: <message>` on stderr and exits `1`, except where a limit says otherwise.
 
 | Flag | Meaning | Failure |
 | --- | --- | --- |
@@ -89,4 +89,4 @@ These strings are part of v0.3. A runtime failure is printed as `Error: <message
 | `--max-state-bytes N` | UTF-8 length of the state after a replacement. | `State size (N bytes) exceeds maximum (M bytes)`, exit 1. |
 | `--max-steps N` | Counts applied rewrites only. Checked after the rewrite, so `0` still applies the first rewrite. | Exit 0, no error. |
 
-Absent flags do not impose that limit. v0.3 does not require a default limit.
+A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-bytes` uses 8388608. `unlimited` clears that limit. `--max-steps` stays unset unless the host sets it. The shared runner always passes `--max-evals 10000` unless the manifest already did, so manifest runs use the manifest budget rather than the host default. See [host-api.md](host-api.md).

@@ -188,6 +188,74 @@ func TestTraceRecordsAppliedRuleStateAndCaptures(t *testing.T) {
 	if event.Groups["name"] != "Ada" {
 		t.Fatalf("groups = %#v", event.Groups)
 	}
+	if interp.AppliedSteps != 1 {
+		t.Fatalf("AppliedSteps = %d, want 1", interp.AppliedSteps)
+	}
+}
+
+func TestNewAppliesSandboxDefaults(t *testing.T) {
+	interp := New()
+	if interp.MaxEvals == nil || *interp.MaxEvals != DefaultMaxEvals {
+		t.Fatalf("MaxEvals = %v, want %d", interp.MaxEvals, DefaultMaxEvals)
+	}
+	if interp.MaxStateBytes == nil || *interp.MaxStateBytes != DefaultMaxStateBytes {
+		t.Fatalf("MaxStateBytes = %v, want %d", interp.MaxStateBytes, DefaultMaxStateBytes)
+	}
+	if interp.MaxSteps != nil {
+		t.Fatalf("MaxSteps = %v, want unset", *interp.MaxSteps)
+	}
+	if len(interp.Bindings) != 3 {
+		t.Fatalf("bindings = %d, want stdin, stdout, and stderr", len(interp.Bindings))
+	}
+	for _, name := range []string{"stdin", "stdout", "stderr"} {
+		if _, ok := interp.Bindings[name]; !ok {
+			t.Fatalf("missing %s", name)
+		}
+	}
+}
+
+func TestParseLimit(t *testing.T) {
+	cleared, err := ParseLimit("unlimited")
+	if err != nil || cleared != nil {
+		t.Fatalf("unlimited = %v, %v", cleared, err)
+	}
+	zero, err := ParseLimit("0")
+	if err != nil || zero == nil || *zero != 0 {
+		t.Fatalf("zero = %v, %v", zero, err)
+	}
+	if _, err := ParseLimit("nope"); err == nil {
+		t.Fatal("expected an integer parse error")
+	}
+}
+
+func TestDefaultStateLimitRejectsGrowthPastDefault(t *testing.T) {
+	interp := New()
+	interp.MaxEvals = nil
+	source := "^(?<s>a+)$ ::= {{s}}x\n::=\n" + strings.Repeat("a", DefaultMaxStateBytes)
+	if err := interp.LoadProgramText("grow.tpp", source); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if code != 1 || err == nil || !strings.Contains(err.Error(), "State size") {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+}
+
+func TestClearedStateLimitAllowsGrowthPastDefault(t *testing.T) {
+	interp := New()
+	interp.MaxEvals = nil
+	interp.MaxStateBytes = nil
+	source := "^(?<s>a+)$ ::= {{s}}x\n::=\n" + strings.Repeat("a", DefaultMaxStateBytes)
+	if err := interp.LoadProgramText("grow.tpp", source); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	if got := len(interp.State); got != DefaultMaxStateBytes+1 {
+		t.Fatalf("state length = %d, want %d", got, DefaultMaxStateBytes+1)
+	}
 }
 
 func TestTraceRecordsMatchedRuleError(t *testing.T) {

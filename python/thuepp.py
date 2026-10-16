@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -u
 """
-thue++ Interpreter v0.3
+thue++ Interpreter v0.4
 A Python implementation of the thue++ esoteric programming language.
 """
 
@@ -20,7 +20,25 @@ from pathlib import Path
 from typing import Any, Optional
 
 
+DEFAULT_MAX_EVALS = 1_000_000
+DEFAULT_MAX_STATE_BYTES = 8 * 1024 * 1024
 MAX_NUMERIC_LITERAL_CHARS = 4096
+
+
+class _OmittedLimit:
+    """CLI sentinel: the flag was absent, so the constructor default applies."""
+
+
+OMITTED_LIMIT = _OmittedLimit()
+
+
+def _parse_cli_limit(text: str):
+    if text == "unlimited":
+        return None
+    try:
+        return int(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid integer {text!r}") from exc
 MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE = 10000
 MAX_EXPANDED_PATTERN_BYTES = 1000000
 ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
@@ -176,16 +194,25 @@ class ThueppInterpreter:
     ``max_steps`` counts applied rewrites only. Once that many rules have
     applied, ``run()`` returns 0 and does not raise. ``max_state_bytes`` is
     checked on the UTF-8 length of the state after each replacement.
+
+    Omitted ``max_evals`` and ``max_state_bytes`` use ``DEFAULT_MAX_EVALS`` and
+    ``DEFAULT_MAX_STATE_BYTES``. Explicit ``None`` means unlimited. ``max_steps``
+    stays unset unless the host sets it, because hitting it returns 0.
     """
 
     def __init__(
         self,
-        max_evals: Optional[int] = None,
-        max_state_bytes: Optional[int] = None,
+        max_evals: Any = OMITTED_LIMIT,
+        max_state_bytes: Any = OMITTED_LIMIT,
         max_steps: Optional[int] = None,
         debug: bool = False,
         rule_coverage_path: Optional[str] = None,
+        trace_enabled: bool = False,
     ):
+        if max_evals is OMITTED_LIMIT:
+            max_evals = DEFAULT_MAX_EVALS
+        if max_state_bytes is OMITTED_LIMIT:
+            max_state_bytes = DEFAULT_MAX_STATE_BYTES
         self.rules: list[Rule] = []
         self.state: str = ""
         self.bindings: dict[str, Binding] = {}
@@ -194,6 +221,8 @@ class ThueppInterpreter:
         self.max_steps = max_steps
         self.eval_count = 0
         self.applied_steps = 0
+        self.trace_enabled = trace_enabled
+        self.trace: list[dict[str, Any]] = []
         self.debug = debug
         self.rule_coverage_path = rule_coverage_path
         self.rule_coverage_counts: dict[str, int] = {}
@@ -925,9 +954,42 @@ class ThueppInterpreter:
     def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
         return rule.lhs_pattern.search(self.state)
 
+    def _record_trace(
+        self,
+        rule: Rule,
+        rule_index: int,
+        match: Any,
+        state_before: str,
+        replacement: str,
+        exit_code: Optional[int] = None,
+        error: str = "",
+    ) -> None:
+        if not self.trace_enabled:
+            return
+        groups = {key: value for key, value in match.groupdict().items() if value is not None}
+        self.trace.append(
+            {
+                "step": self.eval_count,
+                "ruleIndex": rule_index,
+                "sourcePath": rule.source_path,
+                "lineNumber": rule.line_number,
+                "operator": rule.operator.value,
+                "lhs": rule.lhs,
+                "matchStart": match.start(),
+                "matchEnd": match.end(),
+                "groups": groups,
+                "stateBefore": state_before,
+                "replacement": replacement,
+                "stateAfter": self.state,
+                "exitCode": exit_code,
+                "error": error,
+            }
+        )
+
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""
         self.applied_steps = 0
+        self.trace = []
         while True:
             state_rows = []
             offset = 0
@@ -965,6 +1027,7 @@ class ThueppInterpreter:
                 if not mid_ok:
                     continue
                 applied = True
+                state_before = self.state
 
                 if self.debug:
                     escaped_state = self.state.replace("\n", "\\n")
@@ -1045,16 +1108,24 @@ class ThueppInterpreter:
                     if code_str.startswith("{") and code_str.endswith("}"):
                         code_str = code_str[1:-1]
                     try:
-                        self._record_rule_coverage(rule)
-                        return int(code_str)
+                        exit_code = int(code_str)
                     except ValueError:
                         self._record_rule_coverage(rule)
+                        self._record_trace(rule, rule_index, match, state_before, "")
                         return 1
+                    self._record_rule_coverage(rule)
+                    self._record_trace(rule, rule_index, match, state_before, "", exit_code=exit_code)
+                    return exit_code
 
                 if replacement is None:
                     raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
 
-                self._set_state(self.state[:match.start()] + replacement + self.state[match.end():])
+                try:
+                    self._set_state(self.state[:match.start()] + replacement + self.state[match.end():])
+                except RuntimeError as exc:
+                    self._record_trace(rule, rule_index, match, state_before, replacement or "", error=str(exc))
+                    raise
+                self._record_trace(rule, rule_index, match, state_before, replacement or "")
                 self.applied_steps += 1
                 if self.max_steps is not None and self.applied_steps >= self.max_steps:
                     return 0
@@ -1088,21 +1159,25 @@ def main():
     parser.add_argument("program", help="Path to the thue++ program")
     parser.add_argument(
         "--max-evals",
-        type=int,
+        type=_parse_cli_limit,
+        default=OMITTED_LIMIT,
         help=(
             "Maximum evaluation steps before aborting "
-            "(each rule inspected in the inner loop counts as one step, including non-matching rules)"
+            "(each rule inspected in the inner loop counts as one step, including non-matching rules). "
+            "Omit for the default. 'unlimited' clears it."
         ),
     )
     parser.add_argument(
         "--max-state-bytes",
-        type=int,
-        help="Maximum state size in bytes before aborting",
+        type=_parse_cli_limit,
+        default=OMITTED_LIMIT,
+        help="Maximum state size in bytes before aborting. Omit for the default. 'unlimited' clears it.",
     )
     parser.add_argument(
         "--max-steps",
-        type=int,
-        help="Stop with exit 0 after this many applied rewrites",
+        type=_parse_cli_limit,
+        default=OMITTED_LIMIT,
+        help="Stop with exit 0 after this many applied rewrites. Omit to leave it unset. 'unlimited' clears it.",
     )
     parser.add_argument(
         "--input",
@@ -1128,10 +1203,11 @@ def main():
     # Parse known args first, then handle custom bindings
     args, remaining = parser.parse_known_args()
 
+    max_steps = None if args.max_steps is OMITTED_LIMIT else args.max_steps
     interpreter = ThueppInterpreter(
         max_evals=args.max_evals,
         max_state_bytes=args.max_state_bytes,
-        max_steps=args.max_steps,
+        max_steps=max_steps,
         debug=args.debug,
         rule_coverage_path=args.rule_coverage,
     )

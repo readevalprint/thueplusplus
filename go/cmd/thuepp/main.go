@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"thueplusplus/go/internal/thuepp"
@@ -53,60 +52,30 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Error: --max-evals requires an argument")
 				os.Exit(1)
 			}
-			v, err := strconv.Atoi(args[idx+1])
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			interp.MaxEvals = &v
+			applyLimit(args[idx+1], &interp.MaxEvals)
 			idx += 2
 		case strings.HasPrefix(arg, "--max-evals="):
-			v, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-evals="))
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			interp.MaxEvals = &v
+			applyLimit(strings.TrimPrefix(arg, "--max-evals="), &interp.MaxEvals)
 			idx++
 		case arg == "--max-state-bytes":
 			if idx+1 >= len(args) {
 				fmt.Fprintln(os.Stderr, "Error: --max-state-bytes requires an argument")
 				os.Exit(1)
 			}
-			v, err := strconv.Atoi(args[idx+1])
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			interp.MaxStateBytes = &v
+			applyLimit(args[idx+1], &interp.MaxStateBytes)
 			idx += 2
 		case strings.HasPrefix(arg, "--max-state-bytes="):
-			v, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-state-bytes="))
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			interp.MaxStateBytes = &v
+			applyLimit(strings.TrimPrefix(arg, "--max-state-bytes="), &interp.MaxStateBytes)
 			idx++
 		case arg == "--max-steps":
 			if idx+1 >= len(args) {
 				fmt.Fprintln(os.Stderr, "Error: --max-steps requires an argument")
 				os.Exit(1)
 			}
-			v, err := strconv.Atoi(args[idx+1])
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			interp.MaxSteps = &v
+			applyLimit(args[idx+1], &interp.MaxSteps)
 			idx += 2
 		case strings.HasPrefix(arg, "--max-steps="):
-			v, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-steps="))
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			interp.MaxSteps = &v
+			applyLimit(strings.TrimPrefix(arg, "--max-steps="), &interp.MaxSteps)
 			idx++
 		case strings.HasPrefix(arg, "--proc:"):
 			name := strings.TrimPrefix(arg, "--proc:")
@@ -148,4 +117,13 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options]")
+}
+
+func applyLimit(text string, target **int) {
+	value, err := thuepp.ParseLimit(text)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	*target = value
 }

@@ -538,7 +538,7 @@ Before review, run the root check:
 make test
 ```
 
-`make test` runs the conformance check and shared manifest runner. The runner invokes Python, Go, and the wasm host, checks parity, reports per-program rule counts, and enforces rule coverage for manifest-declared examples. Spec version v0.3 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
+`make test` runs the conformance check and shared manifest runner. The runner invokes Python, Go, and the wasm host, checks parity, reports per-program rule counts, and enforces rule coverage for manifest-declared examples. Spec version v0.4 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
 
 For focused debugging, pass manifest paths directly:
 
@@ -566,7 +566,7 @@ uv run python tools/check_contract.py --update-readme
 
 ## Language features
 
-- v0.3 semantics checked by executable manifests
+- v0.4 semantics checked by executable manifests
 - ordered rewrite rules over text state
 - [RE2-compatible](https://github.com/google/re2/wiki/Syntax) regex subset
 - pattern aliases with `$NAME` references
