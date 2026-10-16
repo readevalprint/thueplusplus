@@ -1,0 +1,29 @@
+name: vscode
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test and package the extension
+        run: |
+          npm --prefix editors/vscode ci
+          npm --prefix editors/vscode test
+          npm --prefix editors/vscode run package
+          test -s editors/vscode/thuepp-0.5.0.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thuepp-vsix
+          path: editors/vscode/*.vsix
+          if-no-files-found: error

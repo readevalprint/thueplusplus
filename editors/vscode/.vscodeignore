@@ -1,0 +1,7 @@
+.gitignore
+.vscode/**
+node_modules/**
+tests/**
+**/*.snap
+**/*.test.js
+package-lock.json
