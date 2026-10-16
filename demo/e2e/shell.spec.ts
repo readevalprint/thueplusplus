@@ -41,6 +41,40 @@ for (const viewport of viewports) {
   })
 }
 
+test('page aside starts at or below the header', async ({ page }) => {
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await page.goto('/learn')
+    if (viewport.width < 1280) await page.getByTestId('aside-trigger').click()
+    const aside = page.getByTestId('page-sidebar')
+    await expect(aside).toBeVisible()
+    const headerBox = await page.locator('header').boundingBox()
+    const asideBox = await aside.boundingBox()
+    expect(headerBox).not.toBeNull()
+    expect(asideBox).not.toBeNull()
+    expect(asideBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 1)
+  }
+})
+
+test('left menu sits beside the header and anchors clear it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/learn#program')
+  const header = page.locator('header')
+  const menu = page.locator('[data-side="left"] [data-sidebar="sidebar"]')
+  const heading = page.getByRole('heading', { name: 'A program' })
+  await expect(menu).toBeVisible()
+  await expect(heading).toBeInViewport()
+  const headerBox = await header.boundingBox()
+  const menuBox = await menu.boundingBox()
+  const headingBox = await heading.boundingBox()
+  expect(headerBox).not.toBeNull()
+  expect(menuBox).not.toBeNull()
+  expect(headingBox).not.toBeNull()
+  expect(menuBox!.y).toBeLessThanOrEqual(1)
+  expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(headerBox!.x + 1)
+  expect(headingBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 1)
+})
+
 test('theme toggle switches light and dark', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/learn')
