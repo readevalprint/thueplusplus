@@ -86,7 +86,7 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
     })
     return {
       ...result,
-      coverage: result.coverageTSV ?? result.coverage ?? '',
+      coverage: result.coverageTSV ?? '',
     }
   } finally {
     client.terminate()

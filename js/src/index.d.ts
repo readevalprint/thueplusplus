@@ -1,3 +1,18 @@
+export interface ResourceConfig {
+  name: string
+  inputText?: string
+  readError?: string
+}
+
+export interface ResourceLog {
+  name: string
+  reads: string[]
+  writes: string[]
+  errors: string[]
+  remainingInputText?: string
+  outputText?: string
+}
+
 export interface RunOptions {
   sourceText: string
   sourcePath?: string
@@ -10,6 +25,7 @@ export interface RunOptions {
   coverage?: boolean
   listRules?: boolean
   resources?: Record<string, ResourceCallbacks>
+  resourceConfig?: ResourceConfig[]
   procs?: Record<string, string>
 }
 
@@ -47,6 +63,7 @@ export interface RunResult {
   appliedSteps?: number
   trace?: TraceEvent[]
   coverageTSV?: string
+  resourceLogs?: ResourceLog[]
   limit?: 'steps' | 'evals' | 'state' | 'timeout'
 }
 
