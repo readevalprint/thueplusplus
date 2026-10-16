@@ -1,0 +1,360 @@
+program = "../lisp.tpp"
+timeout = 10
+args = ["--max-evals", "100000"]
+
+[[case]]
+name = "finish suppresses the rendered return value"
+input = '(finish)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = ""
+
+[[case]]
+name = "emit writes a number without quotes or a rendered return value"
+input = '(let () (emit 42) (finish))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "42"
+
+[[case]]
+name = "emit writes a decoded string"
+input = '(let () (emit "Hi\n") (finish))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+Hi
+"""
+
+[[case]]
+name = "every string escape is decoded, including escapes after an earlier string"
+input = '(let () (emit "A\n") (emit "B\n") (finish))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+A
+B
+"""
+
+[[case]]
+name = "emit requires one argument"
+input = '(emit)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity\n"
+
+[[case]]
+name = "emit rejects extra arguments"
+input = '(emit 1 2)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity\n"
+
+[[case]]
+name = "finish rejects arguments"
+input = '(finish 1)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "wrong_arity\n"
+
+[[case]]
+name = "emit rejects a non string and non number"
+input = '(let () (emit (list 1)) (finish))'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "mod returns the remainder"
+input = '(mod 10 3)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "1\n"
+
+[[case]]
+name = "mod by zero is a type error"
+input = '(mod 1 0)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "rev reverses a string"
+input = '(rev "stressed")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"desserts"
+"""
+
+[[case]]
+name = "rev of an empty string is empty"
+input = '(rev "")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+""
+"""
+
+[[case]]
+name = "rev keeps a percent encoded character"
+input = '(rev "!")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"!"
+"""
+
+[[case]]
+name = "rev rejects a non string"
+input = '(rev 1)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "tr maps characters by shared index"
+input = '(tr "AB" "AB" "XY")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"XY"
+"""
+
+[[case]]
+name = "tr of an empty string is empty"
+input = '(tr "" "AB" "XY")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+""
+"""
+
+[[case]]
+name = "tr copies a character absent from the source alphabet"
+input = '(tr "!" "AB" "XY")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"!"
+"""
+
+[[case]]
+name = "tr walks past a non matching alphabet character"
+input = '(tr "BA" "AB" "XY")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"YX"
+"""
+
+[[case]]
+name = "tr rejects a short destination alphabet"
+input = '(tr "B" "AB" "X")'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "tr rejects a non string"
+input = '(tr 1 "AB" "XY")'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "type_error\n"
+
+[[case]]
+name = "first returns the first string character"
+input = '(first "ab")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"a"
+"""
+
+[[case]]
+name = "first of an empty string is out of bounds"
+input = '(first "")'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "index_out_of_bounds\n"
+
+[[case]]
+name = "rest drops the first string character"
+input = '(rest "ab")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"b"
+"""
+
+[[case]]
+name = "rest of an empty string is empty"
+input = '(rest "")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+""
+"""
+
+[[case]]
+name = "is-empty is true for an empty string"
+input = '(is-empty "")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "true\n"
+
+[[case]]
+name = "is-empty is false for a non empty string"
+input = '(is-empty "a")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "false\n"
+
+[[case]]
+name = "count of an empty string is zero"
+input = '(count "")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "0\n"
+
+[[case]]
+name = "count walks each string character"
+input = '(count "ab")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "2\n"
+
+[[case]]
+name = "nth zero returns the first character"
+input = '(nth "ab" 0)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"a"
+"""
+
+[[case]]
+name = "nth walks to a later character"
+input = '(nth "ab" 1)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"b"
+"""
+
+[[case]]
+name = "nth past the end of a string is out of bounds"
+input = '(nth "ab" 2)'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "index_out_of_bounds\n"
+
+[[case]]
+name = "nth reads a percent encoded character"
+input = '(nth "!" 0)'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"!"
+"""
+
+[[case]]
+name = "cons concatenates two strings"
+input = '(cons "a" "bc")'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = """
+"abc"
+"""
+
+[[case]]
+name = "numeric fast path skips a nearer non matching binding"
+input = '(let ((n 1)) (add n 2))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "3\n"
+
+[[case]]
+name = "a shadowed numeric name stays an ordinary call"
+input = '(let ((add (fn (x y) 999))) (add 1 2))'
+
+[case.expect]
+exit_code = 0
+stderr = ""
+stdout = "999\n"
+
+[[case]]
+name = "a shadowed non callable numeric name fails as a call"
+input = '(let ((add 7)) (add 1 2))'
+
+[case.expect]
+exit_code = 2
+stdout = ""
+stderr = "not_function\n"

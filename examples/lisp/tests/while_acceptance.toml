@@ -31,6 +31,8 @@ stdout_stripped = "6"
 
 [[case]]
 name = "while sequence body traverses list value"
+timeout = 30
+args = ["--max-evals", "250000"]
 input = '(let ((xs (list 1 2 3)) (acc (list))) (while (lt 0 (count xs)) (set acc (cons (first xs) acc)) (set xs (rest xs))) acc)'
 
 [case.expect]

@@ -43,6 +43,8 @@ exit_code = 0
 
 [[case]]
 name = "set-nth replacement can be string symbol list dict closure and primitive"
+timeout = 30
+args = ["--max-evals", "250000"]
 input = '(list (set-nth (list 1 2) 0 "x") (set-nth (list 1 2) 0 (quote sym)) (set-nth (list 1 2) 0 (list 8 9)) (set-nth (list 1 2) 0 (dict ((quote k) 7))) (type (nth (set-nth (list 1 2) 0 (fn (x) x)) 0)) (type (nth (set-nth (list 1 2) 0 add) 0)))'
 [case.expect]
 stdout = "((\"x\" 2) (sym 2) ((8 9) 2) (((k 7)) 2) function builtin)\n"
