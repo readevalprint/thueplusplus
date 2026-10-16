@@ -12,6 +12,10 @@ async function showTrace(page: Page): Promise<void> {
   await page.getByTestId('playground-tab-trace').click()
 }
 
+async function showOutput(page: Page): Promise<void> {
+  await page.getByTestId('playground-tab-output').click()
+}
+
 async function fillRules(page: Page, value: string): Promise<void> {
   const rules = page.getByTestId('playground-rules')
   await expect.poll(async () => rules.evaluate(element => {
@@ -186,6 +190,7 @@ test('stdin submit resumes the last step command', async ({ page }) => {
   await showState(page)
   await page.getByTestId('playground-state').fill('read')
 
+  await showOutput(page)
   await page.getByTestId('resource-input-stdin').fill('Ada')
   await expect(page.getByTestId('stdin-send')).toHaveCount(0)
   await expect(page.getByTestId('stdin-queue')).toHaveCount(0)
@@ -199,6 +204,7 @@ test('stdin submit resumes the last step command', async ({ page }) => {
   await expect(page.getByTestId('playground-state')).toHaveValue(/got:@IN@/)
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
 
+  await showOutput(page)
   await page.getByTestId('resource-submit-stdin').click()
   await showState(page)
   await expect(page.getByTestId('playground-state')).toHaveValue('got:Ada')
