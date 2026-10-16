@@ -62,7 +62,8 @@ function request(worker, message) {
     sourceText: '^start$ ::< 1 sleepy\n::=\nstart',
     resources: { sleepy: { readLine: () => ({ error: 'timeout' }) } },
   });
-  assert.strictEqual(timeout.exitCode, 1, JSON.stringify(timeout));
+  assert.strictEqual(timeout.exitCode, 13, JSON.stringify(timeout));
+  assert.strictEqual(timeout.limit, 'timeout');
   assert.match(timeout.error || '', /ERR:resource:sleepy:timeout/);
 
   const inertInclude = await thuepp.run({

@@ -2,6 +2,8 @@
 
 Status: Draft
 
+Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
+
 Standalone spec for building a Thue++ runtime in another language.
 
 ## 0. Overview
@@ -117,6 +119,7 @@ Algorithm:
 ```text
 loop:
   for rule in rules:
+    if probes already equal the eval limit: return 11
     count one rule probe
     find first match of rule.LHS in state
     if none: continue
@@ -127,14 +130,31 @@ loop:
       search whole state
       if none: continue to the next rule
       add the step's participating named groups to captures
-    result = apply operator using captures
     if operator exits: return its code
-    state = state before the LHS match + result + state after the LHS match
+    if applied rewrites already equal the step limit: return 10
+    result = apply operator using captures
+    candidate = state before the LHS match + result + state after the LHS match
+    if candidate byte length exceeds the state limit: return 12
+    state = candidate
+    count one applied rewrite
     restart loop
   return 0
 ```
 
-Only one span is replaced per action, and that span is the LHS match. A `::|` step does not move the replacement span. The LHS search does not retry a later match when a step misses; the rule does not apply. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries. A host may set a maximum evaluation step limit; every examined rule counts as one step. A host may set max state bytes; check it after replacement.
+Only one span is replaced per action, and that span is the LHS match. A `::|` step does not move the replacement span. The LHS search does not retry a later match when a step misses; the rule does not apply. The match search is over the whole state string, not independently per line. Replacement uses the matched string span, so a single rule application may replace text that crosses newline boundaries.
+
+A new interpreter limits a run to 1000000 rule probes, 1000000 applied rewrites, and 8388608 bytes of state. A host may raise, lower, or clear each limit. `0` is a real limit. Clearing a limit means no bound. The step limit is checked before a non-exit operator runs, so a program that finishes in exactly that many rewrites returns 0. `::-` does not count as an applied rewrite. The eval limit is checked before the probe. The state limit is the UTF-8 length after replacement. A `::<` timeout returns 13.
+
+| Code | Meaning | Message |
+| --- | --- | --- |
+| 0 | No rule matches, or `::-` of that integer. | None from the interpreter. |
+| 1 | Any other runtime error, including a non-integer `::-`. | The error text. |
+| 10 | Applied step limit. | `Applied step limit (N) exceeded` |
+| 11 | Rule-probe limit. | `Evaluation step limit (N) exceeded` |
+| 12 | State size limit. | `State size (N bytes) exceeds maximum (M bytes)` |
+| 13 | `::<` read timeout. | `ERR:resource:NAME:timeout` |
+
+The same message is used by every host. A CLI prints `Error: ` in front of it. Embedders also expose the reason: `steps`, `evals`, `state`, or `timeout`.
 
 ## 8. Operators
 
@@ -222,4 +242,4 @@ Escapes: `escape` and `unescape` take canonical PCT and return canonical PCT. Su
 
 ## 11. Conformance
 
-Conformance means preserving all observable parsing, execution, output, error, limit, and exit-code behavior above. Malformed syntax/input and limit/resource read failures fail loudly.
+Conformance means preserving all observable parsing, execution, output, error, limit, and exit-code behavior above. Malformed syntax/input and limit/resource read failures fail loudly. Resource limits use codes 10, 11, 12, and 13. They do not return 0.

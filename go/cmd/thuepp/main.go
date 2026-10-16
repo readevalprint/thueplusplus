@@ -105,7 +105,9 @@ func main() {
 	code, err := interp.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		code = 1
+		if code == 0 {
+			code = thuepp.ExitRuntime
+		}
 	}
 	if err := interp.WriteRuleCoverage(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to write rule coverage: %v\n", err)

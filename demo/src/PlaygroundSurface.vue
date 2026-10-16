@@ -525,7 +525,7 @@ async function stepProgram(): Promise<void> {
   if (!canRun.value) return
   pauseRequested.value = false
   lastRunMode.value = 'step'
-  await executeProgram({ stepLimit: 1, status: 'stepping', collectTrace: true })
+  await executeProgram({ maxSteps: 1, status: 'stepping', collectTrace: true })
 }
 
 async function continueProgram(): Promise<void> {
@@ -536,7 +536,7 @@ async function continueProgram(): Promise<void> {
   try {
     let steps = 0
     while (!pauseRequested.value && steps < maxSteps.value) {
-      const status = await executeProgram({ stepLimit: 1, status: 'running', collectTrace: true })
+      const status = await executeProgram({ maxSteps: 1, status: 'running', collectTrace: true })
       if (status !== 'stepped') break
       steps += 1
       if (pauseRequested.value) break
@@ -553,7 +553,7 @@ async function endProgram(): Promise<void> {
   if (!canRun.value) return
   lastRunMode.value = 'end'
   pauseRequested.value = false
-  await executeProgram({ stepLimit: maxSteps.value, status: 'ending', collectTrace: false, collapsedHistory: true })
+  await executeProgram({ maxSteps: maxSteps.value, status: 'ending', collectTrace: false, collapsedHistory: true })
 }
 
 function pauseProgram(): void {
@@ -564,7 +564,7 @@ function pauseProgram(): void {
 
 type RunStatus = 'stepped' | 'exited' | 'waiting' | 'errored'
 
-async function executeProgram(options: { stepLimit?: number; status: string; collectTrace?: boolean; collapsedHistory?: boolean }): Promise<RunStatus | undefined> {
+async function executeProgram(options: { maxSteps?: number; status: string; collectTrace?: boolean; collapsedHistory?: boolean }): Promise<RunStatus | undefined> {
   if (running.value) return undefined
   if (stateDiffs.value.length === 0) {
     baseState.value = stateText.value
@@ -585,10 +585,13 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       maxStateBytes: 1_000_000,
       coverage: false,
       resources: resourceConfigs(),
-      trace: options.collectTrace ?? options.stepLimit !== undefined,
-      stepLimit: options.stepLimit,
+      trace: options.collectTrace ?? options.maxSteps !== undefined,
+      maxSteps: options.maxSteps,
     })
-    const stderr = [...new Set([result.stderr, result.error, result.errors].filter(Boolean))].join('\n')
+    const deliberateStep = options.maxSteps === 1 && result.limit === 'steps'
+    const stderr = deliberateStep
+      ? (result.stderr ?? '')
+      : [...new Set([result.stderr, result.error, result.errors].filter(Boolean))].join('\n')
     applyResourceLogs(result.resourceLogs ?? [], result.stdout ?? '', stderr)
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
@@ -604,7 +607,7 @@ async function executeProgram(options: { stepLimit?: number; status: string; col
       await focusResourceInput(pendingResource)
       return 'waiting'
     } else {
-      const stepped = options.stepLimit === 1 && trace.length > 0 && !result.exitCode && !stderr && !trace.some(event => event.exitCode !== undefined)
+      const stepped = options.maxSteps === 1 && trace.length > 0 && !trace.some(event => event.exitCode !== undefined) && (deliberateStep || (!result.exitCode && !stderr))
       if (stepped) {
         statusText.value = 'stepped'
         return 'stepped'

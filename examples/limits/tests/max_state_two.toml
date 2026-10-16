@@ -5,7 +5,7 @@ name = "one byte limit rejects a two byte replacement"
 args = ["--max-state-bytes", "1"]
 
 [case.expect]
-exit_code = 1
+exit_code = 12
 stdout = ""
 stderr_contains = ["State size (2 bytes) exceeds maximum (1 bytes)"]
 

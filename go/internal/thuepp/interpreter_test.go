@@ -2,8 +2,11 @@ package thuepp
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRuntimeIOUsesHostResources(t *testing.T) {
@@ -201,8 +204,8 @@ func TestNewAppliesSandboxDefaults(t *testing.T) {
 	if interp.MaxStateBytes == nil || *interp.MaxStateBytes != DefaultMaxStateBytes {
 		t.Fatalf("MaxStateBytes = %v, want %d", interp.MaxStateBytes, DefaultMaxStateBytes)
 	}
-	if interp.MaxSteps != nil {
-		t.Fatalf("MaxSteps = %v, want unset", *interp.MaxSteps)
+	if interp.MaxSteps == nil || *interp.MaxSteps != DefaultMaxSteps {
+		t.Fatalf("MaxSteps = %v, want %d", interp.MaxSteps, DefaultMaxSteps)
 	}
 	if len(interp.Bindings) != 3 {
 		t.Fatalf("bindings = %d, want stdin, stdout, and stderr", len(interp.Bindings))
@@ -236,7 +239,8 @@ func TestDefaultStateLimitRejectsGrowthPastDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, err := interp.Run()
-	if code != 1 || err == nil || !strings.Contains(err.Error(), "State size") {
+	var limit *LimitError
+	if code != ExitStateLimit || !errors.As(err, &limit) || limit.Kind != LimitState || !strings.Contains(err.Error(), "State size") {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
 }
@@ -284,5 +288,93 @@ func TestTraceRecordsMatchedRuleError(t *testing.T) {
 	}
 	if event.Error != "Builtin 'div' division by zero" {
 		t.Fatalf("trace error = %q", event.Error)
+	}
+}
+
+func TestStepLimitStopsBeforeTheNextRewrite(t *testing.T) {
+	interp := New()
+	one := 1
+	interp.MaxSteps = &one
+	if err := interp.LoadProgramText("steps.tpp", "^a$ ::= b\n^b$ ::= c\n::=\na"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	var limit *LimitError
+	if code != ExitStepLimit || !errors.As(err, &limit) || limit.Kind != LimitSteps {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	if limit.Message != "Applied step limit (1) exceeded" {
+		t.Fatalf("message = %q", limit.Message)
+	}
+	if interp.State != "b" || interp.AppliedSteps != 1 {
+		t.Fatalf("state=%q steps=%d", interp.State, interp.AppliedSteps)
+	}
+}
+
+func TestStepLimitAllowsExactCompletion(t *testing.T) {
+	interp := New()
+	one := 1
+	interp.MaxSteps = &one
+	if err := interp.LoadProgramText("steps.tpp", "^a$ ::= b\n::=\na"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	if err != nil || code != 0 || interp.State != "b" || interp.AppliedSteps != 1 {
+		t.Fatalf("code=%d err=%v state=%q steps=%d", code, err, interp.State, interp.AppliedSteps)
+	}
+}
+
+func TestZeroStepLimitAppliesNothing(t *testing.T) {
+	interp := New()
+	zero := 0
+	interp.MaxSteps = &zero
+	if err := interp.LoadProgramText("steps.tpp", "^a$ ::= b\n::=\na"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	var limit *LimitError
+	if code != ExitStepLimit || !errors.As(err, &limit) || limit.Message != "Applied step limit (0) exceeded" {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	if interp.State != "a" || interp.AppliedSteps != 0 {
+		t.Fatalf("state=%q steps=%d", interp.State, interp.AppliedSteps)
+	}
+}
+
+func TestEvalLimit(t *testing.T) {
+	interp := New()
+	zero := 0
+	interp.MaxEvals = &zero
+	if err := interp.LoadProgramText("evals.tpp", "^a$ ::= b\n::=\na"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	var limit *LimitError
+	if code != ExitEvalLimit || !errors.As(err, &limit) || limit.Kind != LimitEvals || limit.Message != "Evaluation step limit (0) exceeded" {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+}
+
+type timeoutResource struct{}
+
+func (timeoutResource) ReadLine(time.Duration) (string, error) {
+	return "", fmt.Errorf("timeout")
+}
+func (timeoutResource) WriteString(string) error { return nil }
+func (timeoutResource) Cleanup()                 {}
+
+func TestReadTimeoutLimit(t *testing.T) {
+	interp := New()
+	interp.AddCallbackBinding("sleepy", "sleepy", timeoutResource{})
+	if err := interp.LoadProgramText("timeout.tpp", "^start$ ::< 1 sleepy\n::=\nstart"); err != nil {
+		t.Fatal(err)
+	}
+	code, err := interp.Run()
+	var limit *LimitError
+	if code != ExitReadTimeout || !errors.As(err, &limit) || limit.Kind != LimitTimeout {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	if limit.Message != "ERR:resource:sleepy:timeout" {
+		t.Fatalf("message = %q", limit.Message)
 	}
 }

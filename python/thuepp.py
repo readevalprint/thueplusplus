@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -u
 """
-thue++ Interpreter v0.4
+thue++ Interpreter v0.5
 A Python implementation of the thue++ esoteric programming language.
 """
 
@@ -22,7 +22,28 @@ from typing import Any, Optional
 
 DEFAULT_MAX_EVALS = 1_000_000
 DEFAULT_MAX_STATE_BYTES = 8 * 1024 * 1024
+DEFAULT_MAX_STEPS = 1_000_000
 MAX_NUMERIC_LITERAL_CHARS = 4096
+
+EXIT_RUNTIME = 1
+EXIT_STEP_LIMIT = 10
+EXIT_EVAL_LIMIT = 11
+EXIT_STATE_LIMIT = 12
+EXIT_READ_TIMEOUT = 13
+
+
+class LimitExceeded(RuntimeError):
+    """A resource limit stopped the run.
+
+    ``kind`` is ``steps``, ``evals``, ``state``, or ``timeout``. ``code`` is
+    the process exit code. The exception text is the stderr message without
+    the CLI's ``Error: `` prefix.
+    """
+
+    def __init__(self, kind: str, code: int, message: str):
+        super().__init__(message)
+        self.kind = kind
+        self.code = code
 
 
 class _OmittedLimit:
@@ -191,20 +212,21 @@ class ThueppInterpreter:
 
     ``max_evals`` counts each rule examined in ``run()``'s inner loop (every
     ordered rule probe across outer steps), including probes that do not match.
-    ``max_steps`` counts applied rewrites only. Once that many rules have
-    applied, ``run()`` returns 0 and does not raise. ``max_state_bytes`` is
-    checked on the UTF-8 length of the state after each replacement.
+    ``max_steps`` counts applied rewrites only. The next non-exit rewrite that
+    would pass the limit raises ``LimitExceeded``. A run that finishes in that
+    many rewrites returns 0. ``::-`` does not count as a step. ``max_state_bytes``
+    is checked on the UTF-8 length of the state after each replacement.
 
-    Omitted ``max_evals`` and ``max_state_bytes`` use ``DEFAULT_MAX_EVALS`` and
-    ``DEFAULT_MAX_STATE_BYTES``. Explicit ``None`` means unlimited. ``max_steps``
-    stays unset unless the host sets it, because hitting it returns 0.
+    Omitted limits use ``DEFAULT_MAX_EVALS``, ``DEFAULT_MAX_STATE_BYTES``, and
+    ``DEFAULT_MAX_STEPS``. Explicit ``None`` means unlimited. ``0`` is a real
+    limit: no probe, no rewrite, or no bytes of state.
     """
 
     def __init__(
         self,
         max_evals: Any = OMITTED_LIMIT,
         max_state_bytes: Any = OMITTED_LIMIT,
-        max_steps: Optional[int] = None,
+        max_steps: Any = OMITTED_LIMIT,
         debug: bool = False,
         rule_coverage_path: Optional[str] = None,
         trace_enabled: bool = False,
@@ -213,6 +235,8 @@ class ThueppInterpreter:
             max_evals = DEFAULT_MAX_EVALS
         if max_state_bytes is OMITTED_LIMIT:
             max_state_bytes = DEFAULT_MAX_STATE_BYTES
+        if max_steps is OMITTED_LIMIT:
+            max_steps = DEFAULT_MAX_STEPS
         self.rules: list[Rule] = []
         self.state: str = ""
         self.bindings: dict[str, Binding] = {}
@@ -914,9 +938,11 @@ class ThueppInterpreter:
         if self.max_state_bytes is not None:
             n_bytes = len(new_state.encode("utf-8"))
             if n_bytes > self.max_state_bytes:
-                raise RuntimeError(
+                raise LimitExceeded(
+                    "state",
+                    EXIT_STATE_LIMIT,
                     f"State size ({n_bytes} bytes) exceeds "
-                    f"maximum ({self.max_state_bytes} bytes)"
+                    f"maximum ({self.max_state_bytes} bytes)",
                 )
         self.state = new_state
 
@@ -1013,8 +1039,10 @@ class ThueppInterpreter:
 
             for rule_index, rule in enumerate(self.rules):
                 if self.max_evals is not None and self.eval_count >= self.max_evals:
-                    raise RuntimeError(
-                        f"Evaluation step limit ({self.max_evals}) exceeded"
+                    raise LimitExceeded(
+                        "evals",
+                        EXIT_EVAL_LIMIT,
+                        f"Evaluation step limit ({self.max_evals}) exceeded",
                     )
                 self.eval_count += 1
 
@@ -1038,6 +1066,17 @@ class ThueppInterpreter:
                         file=sys.stderr,
                     )
                     print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
+
+                if (
+                    rule.operator != Operator.EXIT
+                    and self.max_steps is not None
+                    and self.applied_steps >= self.max_steps
+                ):
+                    raise LimitExceeded(
+                        "steps",
+                        EXIT_STEP_LIMIT,
+                        f"Applied step limit ({self.max_steps}) exceeded",
+                    )
 
                 replacement: Optional[str] = None
                 magic_vars = {"rule_index": str(rule_index)}
@@ -1064,6 +1103,8 @@ class ThueppInterpreter:
                         raise RuntimeError(f"Unknown resource '{resource}'")
                     content, error = self._read_line(binding, read_timeout)
                     if error:
+                        if error.startswith("ERR:resource:") and error.endswith(":timeout"):
+                            raise LimitExceeded("timeout", EXIT_READ_TIMEOUT, error)
                         raise RuntimeError(error)
                     replacement = self._pct_encode(content)
                     self._record_rule_coverage(rule)
@@ -1127,8 +1168,6 @@ class ThueppInterpreter:
                     raise
                 self._record_trace(rule, rule_index, match, state_before, replacement or "")
                 self.applied_steps += 1
-                if self.max_steps is not None and self.applied_steps >= self.max_steps:
-                    return 0
 
                 if self.debug:
                     escaped_result = self.state.replace("\n", "\\n")
@@ -1177,7 +1216,7 @@ def main():
         "--max-steps",
         type=_parse_cli_limit,
         default=OMITTED_LIMIT,
-        help="Stop with exit 0 after this many applied rewrites. Omit to leave it unset. 'unlimited' clears it.",
+        help="Maximum applied rewrites. Omit for the default. 'unlimited' clears it. 0 applies nothing.",
     )
     parser.add_argument(
         "--input",
@@ -1203,11 +1242,10 @@ def main():
     # Parse known args first, then handle custom bindings
     args, remaining = parser.parse_known_args()
 
-    max_steps = None if args.max_steps is OMITTED_LIMIT else args.max_steps
     interpreter = ThueppInterpreter(
         max_evals=args.max_evals,
         max_state_bytes=args.max_state_bytes,
-        max_steps=max_steps,
+        max_steps=args.max_steps,
         debug=args.debug,
         rule_coverage_path=args.rule_coverage,
     )
@@ -1246,6 +1284,9 @@ def main():
                 interpreter.apply_input_override(args.input)
 
             exit_code = interpreter.run()
+    except LimitExceeded as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        exit_code = exc.code
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         exit_code = 1

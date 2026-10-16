@@ -14,7 +14,7 @@ export interface DemoRunRequest {
   resources: DemoResourceConfig[]
   procs?: Record<string, string>
   trace?: boolean
-  stepLimit?: number
+  maxSteps?: number
 }
 
 export interface DemoResourceLog {
@@ -55,6 +55,7 @@ export interface DemoRunResult {
   evalCount?: number
   resourceLogs?: DemoResourceLog[]
   trace?: DemoTraceEvent[]
+  limit?: string
 }
 
 interface WorkerClient {
@@ -89,7 +90,7 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
       resourceConfig: request.resources,
       procs: request.procs,
       trace: request.trace,
-      stepLimit: request.stepLimit,
+      maxSteps: request.maxSteps,
     })
     return {
       ...result,

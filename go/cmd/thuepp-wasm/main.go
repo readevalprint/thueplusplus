@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -59,6 +60,7 @@ type wasmResult struct {
 	State        string
 	EvalCount    int
 	AppliedSteps int
+	Limit        string
 }
 
 func main() {
@@ -111,7 +113,7 @@ func run(args []js.Value) wasmResult {
 	if err := applyIntOption(opts, "maxStateBytes", &interp.MaxStateBytes); err != nil {
 		return errorResult(err.Error())
 	}
-	if err := applyIntOption(opts, "stepLimit", &interp.MaxSteps); err != nil {
+	if err := applyIntOption(opts, "maxSteps", &interp.MaxSteps); err != nil {
 		return errorResult(err.Error())
 	}
 	interp.Debug = truthy(opts.Get("debug"))
@@ -160,9 +162,16 @@ func run(args []js.Value) wasmResult {
 	interp.Cleanup()
 	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount, AppliedSteps: interp.AppliedSteps}
 	if runErr != nil {
-		res.ExitCode = 1
+		if res.ExitCode == 0 {
+			res.ExitCode = thuepp.ExitRuntime
+		}
 		res.Error = runErr.Error()
 		res.Errors = []string{runErr.Error()}
+		var limit *thuepp.LimitError
+		if errors.As(runErr, &limit) {
+			res.Limit = limit.Kind
+			res.ExitCode = limit.ExitCode
+		}
 	}
 	if truthy(opts.Get("coverage")) {
 		res.CoverageTSV = interp.RuleCoverageTSV()
@@ -177,6 +186,9 @@ func resultToJS(r wasmResult) js.Value {
 	obj := map[string]any{"exitCode": r.ExitCode, "stdout": r.Stdout, "stderr": r.Stderr, "errors": strings.Join(r.Errors, "\n"), "state": r.State, "evalCount": r.EvalCount, "appliedSteps": r.AppliedSteps}
 	if r.Error != "" {
 		obj["error"] = r.Error
+	}
+	if r.Limit != "" {
+		obj["limit"] = r.Limit
 	}
 	if r.CoverageTSV != "" {
 		obj["coverageTSV"] = r.CoverageTSV

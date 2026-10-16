@@ -1,6 +1,6 @@
 # Host API
 
-Spec version: **v0.4** (`SPEC_VERSION` at the repository root).
+Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 This is the embedder contract for the Python interpreter, the Go interpreter, and the Go wasm module. The CLI is a host that follows the same rules.
 
@@ -23,17 +23,41 @@ Limits on a new interpreter:
 | --- | --- | --- |
 | max evals | `1000000` | `nil` / `None` / JSON `null` / CLI `unlimited` |
 | max state bytes | `8388608` (8 MiB) | same |
-| max steps | unset | stays unset until the host sets it |
+| max steps | `1000000` | same |
 
-Max evals counts every rule probe, including probes that do not match. Past the limit the run exits `1` with `Evaluation step limit (N) exceeded`.
+Max evals counts every rule probe, including probes that do not match. The check happens before the probe. Past the limit the run exits `11` with `Evaluation step limit (N) exceeded`.
 
-Max state bytes is the UTF-8 length after a replacement. Past the limit the run exits `1` with `State size (N bytes) exceeds maximum (M bytes)`.
+Max state bytes is the UTF-8 length after a replacement. Past the limit the run exits `12` with `State size (N bytes) exceeds maximum (M bytes)`.
 
-Max steps counts applied rewrites and then returns exit `0` with no error. It is not a default, because that stop is silent. Set it when truncation is what you want. `0` is a real limit of zero for every flag, not a synonym for `unlimited`.
+Max steps counts applied rewrites. The check happens before a non-exit operator runs, so a program that finishes in `N` rewrites exits `0`. The next rewrite exits `10` with `Applied step limit (N) exceeded`. `::-` does not consume a step and still returns the program's code when it matches. `0` is a real limit of zero for every flag, not a synonym for `unlimited`.
 
-These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go; `max_evals`, `max_state_bytes`, and `max_steps` in Python; `maxEvals`, `maxStateBytes`, and `stepLimit` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it.
+A `::<` read that exceeds its timeout exits `13` with `ERR:resource:NAME:timeout`. The CLI prints that as `Error: ERR:resource:NAME:timeout`.
 
-Rate limiting across runs, and wall-clock limits other than a `::<` timeout written in the program, are the host's job. The interpreter bounds one run's probes and state size. It does not bound how many runs a host starts.
+These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go; `max_evals`, `max_state_bytes`, and `max_steps` in Python; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it.
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Quiescence, or the integer from `::-`. |
+| 1 | Any other runtime error. |
+| 2 | CLI usage (no arguments, or a limit that is not an integer and not `unlimited`). |
+| 10 | Applied step limit. Reason `steps`. |
+| 11 | Probe / eval limit. Reason `evals`. |
+| 12 | State size limit. Reason `state`. |
+| 13 | `::<` read timeout. Reason `timeout`. |
+
+The CLI prints `Error: ` plus the message and exits with the code from the run. It does not rewrite a limit code to 1.
+
+The reason is part of the host API:
+
+| Host | Reason |
+| --- | --- |
+| Go | `*LimitError` with `Kind`, `ExitCode`, and `Message`. `Error()` is `Message`. Use `errors.As`. |
+| Python | `LimitExceeded`, a `RuntimeError` with `.kind`, `.code`, and the message as the exception text. |
+| wasm | result field `limit` (`steps`, `evals`, `state`, or `timeout`) and `exitCode`. `limit` is omitted when the run did not stop for a limit. `error` is the message without the `Error: ` prefix. |
+
+Rate limiting across runs, and wall-clock limits other than a `::<` timeout written in the program, are the host's job. The interpreter bounds one run's probes, applied steps, and state size. It does not bound how many runs a host starts. Go's `stdin` resource does not enforce the `::<` timeout; process reads and the Python `stdin` resource do.
 
 ## Metering
 

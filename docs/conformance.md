@@ -1,6 +1,6 @@
 # Conformance manifests
 
-Spec version: **v0.4** (`SPEC_VERSION` at the repository root).
+Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 A manifest is a UTF-8 TOML file. `make test` runs every file matched by `examples/**/tests/*.toml`. The runner treats each implementation as an external command. It does not import interpreter internals.
 
@@ -28,13 +28,13 @@ Many cases share the top-level `program`. A case may override any other top-leve
 program = "../max-steps.tpp"
 
 [[case]]
-name = "stop after one applied rewrite"
+name = "stop before a second applied rewrite"
 args = ["--max-steps", "1"]
 
 [case.expect]
-exit_code = 0
+exit_code = 10
 stdout = ""
-stderr = ""
+stderr = "Error: Applied step limit (1) exceeded\n"
 ```
 
 ## Fields
@@ -79,14 +79,28 @@ For each case the runner builds:
 
 The working directory is the repository root.
 
-## Limits the manifests lock
+## Exit codes
 
-These strings are part of v0.4. A runtime failure is printed as `Error: <message>` on stderr and exits `1`, except where a limit says otherwise.
+These codes are part of v0.5. A failure is printed as `Error: <message>` on stderr. `::- N` returns `N` with no `Error:` line. Codes 10–13 are the interpreter's resource limits; a program that exits with one of those integers is distinguished by the absence of the limit message, and by the host API's limit reason.
+
+| Code | Meaning | Stderr |
+| --- | --- | --- |
+| 0 | Quiescence, or `::-` of that integer. | Program output only. |
+| 1 | Any other runtime error. | `Error: <message>` |
+| 2 | CLI usage: no arguments, or a limit that is not an integer and not `unlimited`. An unknown argument is exit 1. | Usage text, or the parser's integer error. |
+| 10 | Applied step limit. | `Error: Applied step limit (N) exceeded` |
+| 11 | Probe / eval limit. | `Error: Evaluation step limit (N) exceeded` |
+| 12 | State size limit. | `Error: State size (N bytes) exceeds maximum (M bytes)` |
+| 13 | `::<` read timeout. | `Error: ERR:resource:NAME:timeout` |
+
+Python `KeyboardInterrupt` exits 130. That is not a resource limit.
+
+## Limits the manifests lock
 
 | Flag | Meaning | Failure |
 | --- | --- | --- |
-| `--max-evals N` | Counts every rule probe, including probes that do not match. | `Evaluation step limit (N) exceeded`, exit 1. |
-| `--max-state-bytes N` | UTF-8 length of the state after a replacement. | `State size (N bytes) exceeds maximum (M bytes)`, exit 1. |
-| `--max-steps N` | Counts applied rewrites only. Checked after the rewrite, so `0` still applies the first rewrite. | Exit 0, no error. |
+| `--max-evals N` | Counts every rule probe, including probes that do not match. Checked before the probe. `0` probes nothing. | Exit 11. |
+| `--max-state-bytes N` | UTF-8 length of the state after a replacement. | Exit 12. |
+| `--max-steps N` | Counts applied rewrites only. Checked before a non-exit rewrite, so a run that finishes in `N` rewrites exits 0. `::-` does not count. `0` applies nothing. | Exit 10 when the next rewrite would pass `N`. |
 
-A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-bytes` uses 8388608. `unlimited` clears that limit. `--max-steps` stays unset unless the host sets it. The shared runner always passes `--max-evals 10000` unless the manifest already did, so manifest runs use the manifest budget rather than the host default. See [host-api.md](host-api.md).
+A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-bytes` uses 8388608. A host that omits `--max-steps` uses 1000000. `unlimited` clears that limit. `0` is a real limit. The shared runner always passes `--max-evals 10000` unless the manifest already did, so manifest runs use the manifest budget rather than the host default for probes. It does not override `--max-steps`. See [host-api.md](host-api.md).

@@ -251,7 +251,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-step"]').trigger('click')
     await flush()
 
-    expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxSteps).toBe(1)
     expect(mockedRunWithWorker.mock.calls[0][0].trace).toBe(true)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'middle')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('data-current-match-line')).toBe('1')
@@ -418,7 +418,7 @@ describe('Go-WASM demo UI', () => {
     expect(entries[0].text()).toContain('initial state')
     expect(entries[1].text()).toContain('^start$ ::= middle')
     expect(entries[2].text()).toContain('^middle$ ::= done')
-    expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(1)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxSteps).toBe(1)
   })
 
   it('ends a run in one worker call and appends only a collapsed final history row', async () => {
@@ -440,7 +440,7 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     const request = mockedRunWithWorker.mock.calls[0][0]
-    expect(request.stepLimit).toBe(100000)
+    expect(request.maxSteps).toBe(100000)
     expect(request.maxEvals).toBe(100000)
     expect(request.trace).toBe(false)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'done')
@@ -816,7 +816,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
     await flush()
 
-    expect(mockedRunWithWorker.mock.calls[1][0].stepLimit).toBe(1)
+    expect(mockedRunWithWorker.mock.calls[1][0].maxSteps).toBe(1)
     expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'Ada', readError: undefined })
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'got:Ada')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
@@ -847,7 +847,7 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
     await flush()
 
-    expect(mockedRunWithWorker.mock.calls[3][0].stepLimit).toBe(1)
+    expect(mockedRunWithWorker.mock.calls[3][0].maxSteps).toBe(1)
     expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Grace\n')
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
@@ -892,7 +892,7 @@ describe('Go-WASM demo UI', () => {
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
     expect(mockedRunWithWorker.mock.calls[0][0].sourcePath).toBe('examples/hello/hello.tpp')
-    expect(mockedRunWithWorker.mock.calls[0][0].stepLimit).toBe(10000)
+    expect(mockedRunWithWorker.mock.calls[0][0].maxSteps).toBe(10000)
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Hello from embed!\n')
   })
 

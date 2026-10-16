@@ -43,7 +43,7 @@ async function main() {
       sourceText,
       maxEvals: options.maxEvals,
       maxStateBytes: options.maxStateBytes,
-      stepLimit: options.maxSteps,
+      maxSteps: options.maxSteps,
       debug: options.debug,
       listRules: options.listRules,
       coverage: Boolean(options.ruleCoverage),

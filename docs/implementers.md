@@ -1,6 +1,6 @@
 # Implementing Thue++
 
-Spec version: **v0.4** (`SPEC_VERSION` at the repository root).
+Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
@@ -21,13 +21,22 @@ Required flags, including the `--flag=value` form:
 | `--input TEXT` | Replace the initial state from the source file. |
 | `--max-evals N` | Stop when rule probes exceed `N`. |
 | `--max-state-bytes N` | Stop when state UTF-8 length exceeds `N`. |
-| `--max-steps N` | Stop with exit 0 after `N` applied rewrites. |
+| `--max-steps N` | Allow at most `N` applied rewrites. The next non-exit rewrite exits 10. |
 | `--debug` | Optional diagnostic logging. Manifests do not compare debug text. |
 | `--proc:NAME COMMAND` | Bind resource `NAME` to a host process. The next argument is the command. This is the only subprocess opt-in. |
 | `--rule-coverage PATH` | Write TSV `source.tpp:line<TAB>count` for applied rules. Required of the Python coverage oracle. |
 | `--list-rules` | Write TSV `source.tpp:line<TAB>lhs` and do not run. Required of the Python coverage oracle. |
 
-The program path is the first argument. Standard input is the `stdin` resource. Standard output and standard error are captured and compared to `expect`. Exit `0` is success, including a `--max-steps` stop. A runtime error, including `--max-evals` and `--max-state-bytes`, exits `1` and prints:
+The program path is the first argument. Standard input is the `stdin` resource. Standard output and standard error are captured and compared to `expect`. Exit `0` is quiescence or `::-`. Every resource-limit stop prints `Error: <message>` and uses its own code:
+
+| Code | Stop | Message |
+| --- | --- | --- |
+| 10 | `--max-steps` | `Applied step limit (N) exceeded` |
+| 11 | `--max-evals` | `Evaluation step limit (N) exceeded` |
+| 12 | `--max-state-bytes` | `State size (N bytes) exceeds maximum (M bytes)` |
+| 13 | `::<` read timeout | `ERR:resource:NAME:timeout` |
+
+Any other runtime error exits `1` and prints:
 
 ```text
 Error: <message>
@@ -41,7 +50,7 @@ Error: File not found: <path>
 
 No arguments exits `2`. An unknown argument exits `1` with `Error: Unknown argument: ...`. A non-integer limit exits `2`. Usage wording beyond those lines is not compared.
 
-Default resources are only `stdin`, `stdout`, and `stderr`. There is no ambient filesystem or network binding. A `--proc` binding runs only when the host passes that flag. Omitted `--max-evals` and `--max-state-bytes` use the defaults in [host-api.md](host-api.md). Pass `unlimited` to clear one. Embedders use that same document for step counts and trace hooks.
+Default resources are only `stdin`, `stdout`, and `stderr`. There is no ambient filesystem or network binding. A `--proc` binding runs only when the host passes that flag. Omitted `--max-evals`, `--max-state-bytes`, and `--max-steps` use the defaults in [host-api.md](host-api.md). Pass `unlimited` to clear one. Embedders use that same document for the limit reason, step counts, and trace hooks.
 
 ## Run the suite against your command
 

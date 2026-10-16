@@ -13,6 +13,6 @@ name = "zero limit rejects non-empty replacement"
 args = ["--max-state-bytes", "0"]
 
 [case.expect]
-exit_code = 1
+exit_code = 12
 stdout = ""
 stderr_contains = ["State size (1 bytes) exceeds maximum (0 bytes)"]

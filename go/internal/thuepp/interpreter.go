@@ -110,7 +110,42 @@ const (
 	DefaultMaxEvals = 1_000_000
 	// DefaultMaxStateBytes bounds the UTF-8 state after a replacement.
 	DefaultMaxStateBytes = 8 * 1024 * 1024
+	// DefaultMaxSteps bounds applied rewrites. A rewrite is one rule that
+	// matched and changed state. Exit rules do not count.
+	DefaultMaxSteps = 1_000_000
+
+	// ExitRuntime is a failure that is not a resource limit.
+	ExitRuntime = 1
+	// ExitStepLimit is returned when the next applied rewrite would pass MaxSteps.
+	ExitStepLimit = 10
+	// ExitEvalLimit is returned when the next rule probe would pass MaxEvals.
+	ExitEvalLimit = 11
+	// ExitStateLimit is returned when a replacement would pass MaxStateBytes.
+	ExitStateLimit = 12
+	// ExitReadTimeout is returned when a ::< read exceeds its timeout.
+	ExitReadTimeout = 13
 )
+
+const (
+	LimitSteps   = "steps"
+	LimitEvals   = "evals"
+	LimitState   = "state"
+	LimitTimeout = "timeout"
+)
+
+// LimitError is a resource-limit stop. Error is the stderr message without
+// the CLI's "Error: " prefix. Kind is steps, evals, state, or timeout.
+type LimitError struct {
+	Kind     string
+	ExitCode int
+	Message  string
+}
+
+func (e *LimitError) Error() string { return e.Message }
+
+func newLimitError(kind string, code int, format string, args ...any) *LimitError {
+	return &LimitError{Kind: kind, ExitCode: code, Message: fmt.Sprintf(format, args...)}
+}
 
 // ParseLimit parses a CLI limit. "unlimited" clears the limit. Any other
 // value is a decimal integer. Zero is a real limit, not a synonym for unlimited.
@@ -128,6 +163,7 @@ func ParseLimit(text string) (*int, error) {
 func NewWithHostResources(host HostResources) *Interpreter {
 	evals := DefaultMaxEvals
 	stateBytes := DefaultMaxStateBytes
+	steps := DefaultMaxSteps
 	i := &Interpreter{
 		Bindings:           map[string]*Binding{},
 		Stdout:             host.Stdout,
@@ -135,6 +171,7 @@ func NewWithHostResources(host HostResources) *Interpreter {
 		RuleCoverageCounts: map[string]int{},
 		MaxEvals:           &evals,
 		MaxStateBytes:      &stateBytes,
+		MaxSteps:           &steps,
 	}
 	i.Bindings["stdin"] = &Binding{Name: "stdin", PathOrCommand: "stdin", Resource: newStdinResource("stdin", host.Stdin)}
 	i.Bindings["stdout"] = &Binding{Name: "stdout", PathOrCommand: "stdout", Resource: &outputResource{writer: &i.Stdout}}
@@ -929,15 +966,18 @@ func stripLineTerminator(line string) (string, bool) {
 	return line, true
 }
 
-func (i *Interpreter) readLine(b *Binding, timeout time.Duration) (string, string) {
+func (i *Interpreter) readLine(b *Binding, timeout time.Duration) (string, error) {
 	if b.Resource == nil {
-		return "", fmt.Sprintf("ERR:resource:%s:missing host resource", b.Name)
+		return "", fmt.Errorf("ERR:resource:%s:missing host resource", b.Name)
 	}
 	content, err := b.Resource.ReadLine(timeout)
 	if err != nil {
-		return "", formatResourceError(b.Name, err)
+		if err.Error() == "timeout" {
+			return "", newLimitError(LimitTimeout, ExitReadTimeout, "%s", formatResourceError(b.Name, err))
+		}
+		return "", fmt.Errorf("%s", formatResourceError(b.Name, err))
 	}
-	return content, ""
+	return content, nil
 }
 
 func (i *Interpreter) writeString(b *Binding, content string) string {
@@ -952,7 +992,7 @@ func (i *Interpreter) writeString(b *Binding, content string) string {
 
 func (i *Interpreter) setState(s string) error {
 	if i.MaxStateBytes != nil && len([]byte(s)) > *i.MaxStateBytes {
-		return fmt.Errorf("State size (%d bytes) exceeds maximum (%d bytes)", len([]byte(s)), *i.MaxStateBytes)
+		return newLimitError(LimitState, ExitStateLimit, "State size (%d bytes) exceeds maximum (%d bytes)", len([]byte(s)), *i.MaxStateBytes)
 	}
 	i.State = s
 	return nil
@@ -1080,7 +1120,7 @@ func (i *Interpreter) Run() (int, error) {
 		applied := false
 		for ruleIndex, rule := range i.Rules {
 			if i.MaxEvals != nil && i.EvalCount >= *i.MaxEvals {
-				return 1, fmt.Errorf("Evaluation step limit (%d) exceeded", *i.MaxEvals)
+				return ExitEvalLimit, newLimitError(LimitEvals, ExitEvalLimit, "Evaluation step limit (%d) exceeded", *i.MaxEvals)
 			}
 			i.EvalCount++
 
@@ -1092,7 +1132,7 @@ func (i *Interpreter) Run() (int, error) {
 			groups, midOK, err := i.applyMids(rule, match.groups)
 			if err != nil {
 				i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-				return 1, err
+				return ExitRuntime, err
 			}
 			if !midOK {
 				continue
@@ -1105,6 +1145,9 @@ func (i *Interpreter) Run() (int, error) {
 				fmt.Fprintf(i.Stderr, "[%d] RULE %d MATCHES STATE AT %d:%d: %s\n", i.EvalCount, rule.LineNumber, match.start, match.end, rule.LHS)
 				fmt.Fprintf(i.Stderr, "[%d] GROUPS: %s\n", i.EvalCount, formatDebugGroups(groups))
 			}
+			if rule.Operator != Exit && i.MaxSteps != nil && i.AppliedSteps >= *i.MaxSteps {
+				return ExitStepLimit, newLimitError(LimitSteps, ExitStepLimit, "Applied step limit (%d) exceeded", *i.MaxSteps)
+			}
 			repl := ""
 			switch rule.Operator {
 			case Substitute:
@@ -1112,7 +1155,7 @@ func (i *Interpreter) Run() (int, error) {
 				repl, err = i.expandTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
+					return ExitRuntime, err
 				}
 				i.recordRuleCoverage(rule)
 			case Read:
@@ -1120,7 +1163,7 @@ func (i *Interpreter) Run() (int, error) {
 				if len(parts) != 2 {
 					err := fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
+					return ExitRuntime, err
 				}
 				readSpec, resource := parts[0], parts[1]
 				var readTimeout time.Duration
@@ -1128,24 +1171,28 @@ func (i *Interpreter) Run() (int, error) {
 				if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
 					err := fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
+					return ExitRuntime, err
 				}
 				readTimeout = time.Duration(seconds * float64(time.Second))
 				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
 					err := fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
+					return ExitRuntime, err
 				}
 				b := i.Bindings[resource]
 				if b == nil {
 					err := fmt.Errorf("Unknown resource '%s'", resource)
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
+					return ExitRuntime, err
 				}
-				content, er := i.readLine(b, readTimeout)
-				if er != "" {
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, er)
-					return 1, errors.New(er)
+				content, readErr := i.readLine(b, readTimeout)
+				if readErr != nil {
+					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, readErr.Error())
+					var limit *LimitError
+					if errors.As(readErr, &limit) {
+						return limit.ExitCode, limit
+					}
+					return ExitRuntime, readErr
 				}
 				repl = pctEncode(content)
 				i.recordRuleCoverage(rule)
@@ -1153,7 +1200,7 @@ func (i *Interpreter) Run() (int, error) {
 				expanded, err := i.expandTemplate(rule.RHS, groups, magicVars)
 				if err != nil {
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
+					return ExitRuntime, err
 				}
 				resource, content := splitResource(expanded)
 				b := i.Bindings[resource]
@@ -1172,7 +1219,7 @@ func (i *Interpreter) Run() (int, error) {
 					if !ok {
 						err := fmt.Errorf("Line %d: ::! argument '%s' was not captured", rule.LineNumber, arg)
 						i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-						return 1, err
+						return ExitRuntime, err
 					}
 					values = append(values, value)
 				}
@@ -1180,7 +1227,7 @@ func (i *Interpreter) Run() (int, error) {
 				repl, err = evalBuiltin(rule.BuiltinName, values)
 				if err != nil {
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return 1, err
+					return ExitRuntime, err
 				}
 				i.recordRuleCoverage(rule)
 			case Exit:
@@ -1192,20 +1239,21 @@ func (i *Interpreter) Run() (int, error) {
 				if err != nil {
 					i.recordRuleCoverage(rule)
 					i.recordTrace(rule, ruleIndex, match, stateBefore, "", nil)
-					return 1, nil
+					return ExitRuntime, nil
 				}
 				i.recordRuleCoverage(rule)
 				i.recordTrace(rule, ruleIndex, match, stateBefore, "", &code)
 				return code, nil
 			}
 			if err := i.setState(i.State[:match.start] + repl + i.State[match.end:]); err != nil {
-				return 1, err
+				var limit *LimitError
+				if errors.As(err, &limit) {
+					return limit.ExitCode, limit
+				}
+				return ExitRuntime, err
 			}
 			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
 			i.AppliedSteps++
-			if i.MaxSteps != nil && i.AppliedSteps >= *i.MaxSteps {
-				return 0, nil
-			}
 			if i.Debug {
 				fmt.Fprintf(i.Stderr, "[%d] RESULT: %s\n\n", i.EvalCount, strings.ReplaceAll(i.State, "\n", `\n`))
 			}
