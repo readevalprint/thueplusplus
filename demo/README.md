@@ -58,6 +58,12 @@ The state textarea is derived from an explicit first bare `::=` separator and pr
 
 The state history below the State editor is a raw chronological shadcn-vue/TanStack table. It has no filtering, sorting, pagination, selection checkboxes, column toggles, or toolbar. Collapsed rows show the compact diff for each step, while expanded rows show the full `stateAfter` checkpoint. Clicking a row still restores that checkpoint, and rows after the selected checkpoint remain marked as future/stale until the next step prunes them.
 
+## Page layout
+
+The shell is the left menu plus the page. At 1280px and up that menu stays open. Below that it collapses into a sheet, opened from the header.
+
+A page that wants a right column wraps its body in `PageAside` (`demo/src/components/PageAside.vue`). Pass `links` for an "On this page" list, or use the `aside` slot for custom content. The column uses the same collapse as the menu: visible at 1280px and up, and a sheet below that, opened by the button at the top right of the page. Learn is the example. Pages that do not render `PageAside` use the full content width.
+
 ## Embeddable playground routes
 
 The same shared playground surface powers the playground page and the embeddable route:

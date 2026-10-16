@@ -11,9 +11,11 @@ async function expectShell(page: Page, width: number): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Rewrite a string until it stops.' })).toBeVisible()
   await expect(page.getByTestId('page-details')).toBeVisible()
   await expect(page.getByTestId('app-shell')).toBeVisible()
+  await expect(page.getByTestId('toc-trigger')).toHaveCount(0)
   if (width >= 1280) {
     await expect(page.getByTestId('site-nav')).toBeVisible()
     await expect(page.getByTestId('page-sidebar')).toBeVisible()
+    await expect(page.getByTestId('aside-trigger')).toBeHidden()
     await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Reference' })).toBeVisible()
     return
   }
@@ -24,7 +26,7 @@ async function expectShell(page: Page, width: number): Promise<void> {
   await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Hosts' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('site-nav')).toBeHidden()
-  await page.getByTestId('toc-trigger').click()
+  await page.getByTestId('aside-trigger').click()
   await expect(page.getByTestId('page-sidebar')).toBeVisible()
   await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'A program' })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -70,6 +72,16 @@ test('embed has no site chrome', async ({ page }) => {
   await expect(page.getByTestId('page-hero')).toHaveCount(0)
 })
 
+test('a page without an aside uses the full content width', async ({ page }) => {
+  for (const width of [375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'A rewrite language built on RE2.' })).toBeVisible()
+    await expect(page.getByTestId('page-sidebar')).toHaveCount(0)
+    await expect(page.getByTestId('aside-trigger')).toHaveCount(0)
+  }
+})
+
 test('deep links render their own heading', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   for (const [path, heading] of [
@@ -82,5 +94,6 @@ test('deep links render their own heading', async ({ page }) => {
     await page.goto(path)
     await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
     await expect(page.getByTestId('page-details')).toBeVisible()
+    await expect(page.getByTestId('page-sidebar')).toHaveCount(0)
   }
 })

@@ -1,16 +1,9 @@
 <script setup lang="ts">
-import { PanelRight } from '@lucide/vue'
-import { computed } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { tocToggle } from '@/tocToggle'
-import PageSidebar from './PageSidebar.vue'
 import SiteNav from './SiteNav.vue'
 import ThemeToggle from './ThemeToggle.vue'
-
-const route = useRoute()
-const showPageSidebar = computed(() => route.path !== '/playground')
 </script>
 
 <template>
@@ -21,19 +14,13 @@ const showPageSidebar = computed(() => route.path !== '/playground')
         <SidebarTrigger data-test="nav-trigger" aria-label="Open navigation" />
         <RouterLink to="/" class="font-semibold tracking-tight">Thue++</RouterLink>
         <div class="ml-auto flex items-center gap-1">
-          <Button v-if="showPageSidebar" variant="ghost" size="icon" data-test="toc-trigger" aria-label="Open page sidebar" @click="tocToggle?.()">
-            <PanelRight />
-          </Button>
           <ThemeToggle />
           <Button as="a" variant="ghost" href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">GitLab</Button>
         </div>
       </header>
-      <SidebarProvider cookie-name="sidebar_toc" :shortcut="false" class="min-h-0 w-auto flex-1 overflow-hidden">
-        <div class="@container/page min-h-0 min-w-0 flex-1 overflow-y-auto">
-          <RouterView />
-        </div>
-        <PageSidebar v-if="showPageSidebar" />
-      </SidebarProvider>
+      <div class="@container/page min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <RouterView />
+      </div>
     </SidebarInset>
   </SidebarProvider>
 </template>

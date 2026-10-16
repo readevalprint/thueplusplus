@@ -25,7 +25,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 - **Breaking:** the Python CLI is `uv run thuepp` / `python -m thuepp`. `python/thuepp.py` is gone.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.
 - **Breaking:** a manifest that passes `unlimited` without `allow_unlimited` on that one case fails before the program runs.
-- The site is a stock shadcn-vue shell: neutral theme, light and dark, and a three-column layout. Learn, Reference, Playground, Hosts, Guests, and Tasks each prerender to their own path. `/` is a placeholder. `/embed` has no chrome.
+- The site is a stock shadcn-vue shell: neutral theme, light and dark. The shell is the left menu plus the page. A page may render `PageAside` for a right column (a sheet below 1280px); pages without one use the full content width. Learn, Reference, Playground, Hosts, Guests, and Tasks each prerender to their own path. `/` is a placeholder. `/embed` has no chrome.
 - A host is a Thue++ implementation (Go, Python, JavaScript). A guest is a language implemented in Thue++.
 
 ### Fixed
