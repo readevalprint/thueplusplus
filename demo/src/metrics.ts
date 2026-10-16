@@ -9,6 +9,7 @@ const REQUIRED_ENVIRONMENTS = {
   go: 'go native',
   wasm: 'wasm (node)',
   rust: 'rust',
+  cpp: 'cpp',
 } as const
 const TASK_STATUSES = ['pass', 'fail', 'unsupported'] as const
 const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'guests', 'tasks', 'benchmarks']

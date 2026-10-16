@@ -152,7 +152,7 @@ describe('buildCatalog', () => {
     subset.hosts = ['python']
     assert.equal(buildCatalog(subset, sources).tasks[0].guests[0].status, 'pass')
     const unknown = resultsFor()
-    unknown.hosts = ['python', 'cpp']
+    unknown.hosts = ['python', 'erlang']
     assert.throws(() => buildCatalog(unknown, sources), /unknown host/)
     const unordered = resultsFor()
     unordered.hosts = ['wasm', 'python', 'go']

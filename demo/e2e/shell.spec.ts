@@ -62,7 +62,7 @@ test('home keeps the landing copy and stays dark by default', async ({ page }) =
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect(page.getByRole('heading', { level: 1, name: 'Thue++' })).toBeVisible()
   await expect(page.getByText('The safest, smallest, sandbox.')).toBeVisible()
-  await expect(page.getByTestId('landing-languages')).toContainText('Available in go, python, js, and soon cpp, erlang, ocaml, perl, ruby, haskell, rust.')
+  await expect(page.getByTestId('landing-languages')).toContainText('Available in go, python, js, rust, cpp, and soon erlang, ocaml, perl, ruby, haskell.')
   await expect(page.getByTestId('rewrite-motif')).toBeVisible()
   await expect(page.locator('body')).not.toContainText(/RE2/)
 })
@@ -107,7 +107,7 @@ test('deep links render their own heading', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   for (const [path, heading] of [
     ['/reference', 'Operators, resources, and limits.'],
-    ['/hosts', 'Go, Python, and JavaScript.'],
+    ['/hosts', 'Go, Python, JavaScript, Rust, and C++.'],
     ['/guests', 'Languages written in Thue++.'],
     ['/tasks', 'Programs with a finish line.'],
     ['/playground', 'playground'],

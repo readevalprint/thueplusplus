@@ -1,0 +1,29 @@
+name: cpp
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.6"
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install the C++ toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
+      - name: Run conformance, including the C++ host
+        env:
+          # Same stretch the Rust workflow uses. A heavy Lisp case misses
+          # the 10s budget on a GitHub-hosted core. Local make test leaves
+          # this unset.
+          THUEPP_TIMEOUT_SCALE: "2"
+        run: make test

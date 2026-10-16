@@ -1,5 +1,8 @@
 program = "../lisp.tpp"
 args = ["--max-evals", "120000"]
+# Go needs about 2s here when the machine is idle and more than 10s when
+# four hosts share a small CI runner. 30s matches the other heavy Lisp manifests.
+timeout = 30
 
 [[case]]
 name = "expr alias accepts nested list forms in dict values and renders recursively"

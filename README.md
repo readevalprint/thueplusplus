@@ -514,7 +514,7 @@ This is all with humble `lhs ::= rhs` rewrite rules.
 
 ## Current reference runners
 
-This repository has four current conformance backends:
+This repository has five current conformance backends:
 
 ```bash
 # Python package
@@ -528,6 +528,11 @@ node js/src/cli.js <program.tpp>
 
 # Rust crate thuepp
 ./rust/target/release/thuepp <program.tpp>
+
+# C++ library thuepp (CMake target thuepp, CLI build/cpp/thuepp)
+cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+cmake --build build/cpp --parallel
+build/cpp/thuepp <program.tpp>
 ```
 
 `uv run thuepp` is the Python console script. The Go library import is `github.com/readevalprint/thueplusplus/go/thuepp`. The npm package name is `thuepp`. The Rust crate is `thuepp` under `rust/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
@@ -544,11 +549,11 @@ make test
 
 `make test` is the per-PR check. It has two tiers.
 
-Host conformance runs a small core suite on every host: Python, native Go, wasm (node), and the Rust release binary (`--impl rust=./rust/target/release/thuepp`). When `cpp/CMakeLists.txt` is present, that host is included too. The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
+Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thuepp`), and, when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thuepp`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
 
 Guest programs (Forth, Lisp, BASIC, and Brainfuck) and `make tasks` run on the native Go host. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of the guest suite. `make tasks-full` runs the task suite on every host in `hosts.toml`.
 
-`make test-full` runs every manifest on every host, checks parity, and enforces rule coverage. A nightly workflow runs that command. Timings name the runtime: `python`, `go native`, `wasm (node)`, and `rust`. A wasm time is not a Go time.
+`make test-full` runs every manifest on every host, checks parity, and enforces rule coverage. A nightly workflow runs that command. Timings name the runtime: `python`, `go native`, `wasm (node)`, `rust`, and `cpp`. A wasm time is not a Go time.
 
 Spec version v0.5 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
 
@@ -627,7 +632,8 @@ python/thuepp/   Python package. The thuepp console script is the CLI.
 go/thuepp/       Go package github.com/readevalprint/thueplusplus/go/thuepp
 go/cmd/thuepp/   Thin Go CLI
 js/              npm package thuepp (ESM, types, Node CLI, browser worker)
-rust/            Rust crate thuepp and its thin CLI
+rust/            Rust crate thuepp and its thin CLI. Not published.
+cpp/             C++17 library thuepp and the thuepp CLI. Not published.
 demo/            Playground. It depends on the thuepp package.
 docs/            Language contracts, host API, and release steps
 tools/           Repository conformance checker and shared manifest runner
@@ -647,6 +653,7 @@ Project docs and examples:
 - [`docs/typed-values.md`](docs/typed-values.md) — readable typed value wrappers
 - [`docs/host-api.md`](docs/host-api.md) — embedder API for the host packages
 - [`rust/README.md`](rust/README.md) — Rust crate API, regex gaps, and the crates.io steps
+- [`cpp/README.md`](cpp/README.md) — C++ build, and the unpublished vcpkg and Conan sketches
 - [`docs/releasing.md`](docs/releasing.md) — how to publish the packages
 - [`js/README.md`](js/README.md) — npm package API
 
@@ -661,16 +668,17 @@ External context:
 
 ## Installation
 
-The hosts are packages. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). From a checkout:
+The Go, Python, and npm hosts are packages. The Rust crate and the C++ library are not published. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). From a checkout:
 
 ```bash
 uv run thuepp <program.tpp>
 (cd go && go run ./cmd/thuepp ../<program.tpp>)
 node js/src/cli.js <program.tpp>
 cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thuepp <program.tpp>
+build/cpp/thuepp <program.tpp>
 ```
 
-Import `thuepp` in Python, `github.com/readevalprint/thueplusplus/go/thuepp` in Go, `thuepp` from npm, and crate `thuepp` from `rust/`. The playground depends on the npm package. The Rust crate is not published.
+Import `thuepp` in Python, `github.com/readevalprint/thueplusplus/go/thuepp` in Go, `thuepp` from npm, and crate `thuepp` from `rust/`. C++ includes `thuepp/thuepp.hpp` and links `thuepp::thuepp`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
 
 Copy-pasteable agent prompt:
 
@@ -684,6 +692,8 @@ To run this repository's current reference tooling locally:
 uv run thuepp <program.tpp>
 (cd go && go run ./cmd/thuepp ../<program.tpp>)
 node js/src/cli.js <program.tpp>
+cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thuepp <program.tpp>
+build/cpp/thuepp <program.tpp>
 ```
 
 Repository development requirements:
@@ -694,6 +704,7 @@ Repository development requirements:
 - Rust 1.83+ (`cargo`) for the Rust host
 - `make` for verification targets
 - Node.js only for Go-WASM adapter and browser-demo checks
+- `g++`, CMake, `pkg-config`, and `libre2-dev` for the C++ host
 
 ## Editor install
 

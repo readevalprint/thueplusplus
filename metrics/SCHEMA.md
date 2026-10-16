@@ -64,7 +64,7 @@ The host benchmark limits are `metrics/benchmark.toml`. There is no omitted-limi
 | Field | Meaning |
 | --- | --- |
 | `task`, `guest`, `host` | The triple. `host` is an id from `hosts.toml`. A commit may record any subset of those hosts |
-| `environment` | Runtime label for that id. `python`, `go native`, `wasm (node)`, or `rust`. A wasm timing is never `go native`, and a native Go timing is never `wasm (node)` |
+| `environment` | Runtime label for that id. `python`, `go native`, `wasm (node)`, `rust`, or `cpp`. A wasm timing is never `go native`, and a native Go timing is never `wasm (node)` |
 | `status` | `pass`, `fail`, or `unsupported` |
 | `pass` | `true` only when `status` is `pass` |
 | `applied_steps` | `step_count` from the task JSON. `null` when the run did not produce a count. `null` for `unsupported` |
@@ -80,7 +80,7 @@ One program, `metrics/benchmark.tpp`, run on each host. `duration_ms` is the wal
 | --- | --- |
 | `program` | `benchmark.tpp` |
 | `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes` | The limits that were on the command and the process |
-| `hosts.HOST.environment` | `python`, `go native`, `wasm (node)`, or `rust`. The key stays the host id. `wasm` in this file is the Go interpreter compiled to wasm and run under Node, not the browser and not the native Go binary |
+| `hosts.HOST.environment` | `python`, `go native`, `wasm (node)`, `rust`, or `cpp`. The key stays the host id. `wasm` in this file is the Go interpreter compiled to wasm and run under Node, not the browser and not the native Go binary |
 | `hosts.HOST.duration_ms` | Wall clock in milliseconds for that environment |
 | `hosts.HOST.exit_code` | Process exit code. A recorded benchmark exited 0 |
 | `hosts.HOST.applied_steps`, `hosts.HOST.probes` | From `--counts`. `hosts` is a non-empty subset of `hosts.toml`, in any key order. The hosts that are present must agree. A host missing from an older commit is a gap in the duration chart, not an error |

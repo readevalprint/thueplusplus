@@ -174,7 +174,7 @@ class HistoryTests(unittest.TestCase):
             )
         with self.assertRaises(historylib.HistoryError):
             historylib.validate_history(
-                {"schema_version": 1, "entries": [entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmark("cpp"))]},
+                {"schema_version": 1, "entries": [entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmark("erlang"))]},
                 require_measurement=False,
             )
         disagreed = _benchmark("python", "go")
@@ -185,7 +185,7 @@ class HistoryTests(unittest.TestCase):
                 require_measurement=False,
             )
         with self.assertRaises(historylib.HistoryError):
-            historylib.task_row("factorial", "lisp", "cpp", "pass", 1, 1)
+            historylib.task_row("factorial", "lisp", "erlang", "pass", 1, 1)
 
     def test_benchmark_toml_is_explicit(self) -> None:
         limits = historylib.load_benchmark(ROOT / "metrics" / "benchmark.toml")

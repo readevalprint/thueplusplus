@@ -59,16 +59,17 @@
   "hosts": {
     "path": "/hosts",
     "kicker": "Hosts",
-    "title": "Go, Python, JavaScript, and Rust.",
-    "description": "A host is a Thue++ implementation. This site ships Go, Python, JavaScript, and Rust. JavaScript is the Go interpreter compiled to WebAssembly.",
-    "documentTitle": "Thue++ Hosts — Go, Python, JavaScript, and Rust",
+    "title": "Go, Python, JavaScript, Rust, and C++.",
+    "description": "A host is a Thue++ implementation. This site ships Go, Python, JavaScript, Rust, and C++. JavaScript is the Go interpreter compiled to WebAssembly.",
+    "documentTitle": "Thue++ Hosts — Go, Python, JavaScript, Rust, and C++",
     "canonical": "https://thuelang.org/hosts",
     "robots": "index,follow",
     "links": [
       { "title": "Go", "href": "#go" },
       { "title": "Python", "href": "#python" },
       { "title": "JavaScript", "href": "#javascript" },
-      { "title": "Rust", "href": "#rust" }
+      { "title": "Rust", "href": "#rust" },
+      { "title": "C++", "href": "#cpp" }
     ]
   },
   "guests": {

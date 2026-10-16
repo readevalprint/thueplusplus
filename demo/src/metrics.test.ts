@@ -26,7 +26,7 @@ describe('metrics history', () => {
     expect(history.entries.length).toBeGreaterThan(1)
     const rules = guestRuleChart(history, order, names)
     const latest = rules.commits[rules.commits.length - 1]
-    expect(latest.commit.startsWith('9e3bdd81f38b')).toBe(true)
+    expect(latest.commit.startsWith('b8473267b50d')).toBe(true)
     expect(latest.author).toContain('cursor[bot]')
     expect(rules.series.find(series => series.id === 'forth')?.points.find(point => point.commit === latest.commit)?.value).toBe(86)
     expect(rules.series.find(series => series.id === 'lisp')?.points.find(point => point.commit === latest.commit)?.value).toBe(441)
@@ -36,7 +36,7 @@ describe('metrics history', () => {
     const tasks = taskCommits(history, order, names)
     const latestTasks = tasks[tasks.length - 1]
     expect(latestTasks.guests.find(guest => guest.id === 'forth')).toMatchObject({ passCount: 10, failCount: 0, unsupportedCount: 0, stepCount: 1122 })
-    expect(latestTasks.guests.find(guest => guest.id === 'lisp')).toMatchObject({ passCount: 8, failCount: 2, stepCount: 14108 })
+    expect(latestTasks.guests.find(guest => guest.id === 'lisp')).toMatchObject({ passCount: 10, failCount: 0, stepCount: 50254 })
     expect(latestTasks.guests.find(guest => guest.id === 'brainfuck')).toMatchObject({ passCount: 2, unsupportedCount: 8, stepCount: 100 })
     expect(latestTasks.guests.find(guest => guest.id === 'basic')).toMatchObject({ passCount: 2, unsupportedCount: 8, stepCount: 10 })
     const mixed = tasks.find(commit => commit.commit.startsWith('09744fa8d495'))
@@ -47,10 +47,10 @@ describe('metrics history', () => {
     expect(latestBench.appliedSteps).toBe(10000)
     expect(latestBench.probes).toBe(10002)
     expect(latestBench.hosts.map(host => [host.id, host.environment, host.durationMs, host.exitCode])).toEqual([
-      ['python', 'python', 1217, 0],
-      ['go', 'go native', 1217, 0],
-      ['wasm', 'wasm (node)', 3029, 0],
-      ['rust', 'rust', 718, 0],
+      ['python', 'python', 916, 0],
+      ['go', 'go native', 875, 0],
+      ['wasm', 'wasm (node)', 2076, 0],
+      ['rust', 'rust', 574, 0],
     ])
     expect(latestBench.memoryCapBytes).toBe(268435456)
   })
@@ -82,7 +82,7 @@ describe('metrics history', () => {
     expect(series.find(item => item.id === 'python')?.points).toHaveLength(2)
     expect(() => loadHistory({
       schema_version: 1,
-      entries: [benchEntry('c'.repeat(40), '2026-01-03T00:00:00Z', ['cpp'])],
+      entries: [benchEntry('c'.repeat(40), '2026-01-03T00:00:00Z', ['erlang'])],
     })).toThrow(/unknown benchmark host/)
   })
 
@@ -107,7 +107,7 @@ function benchEntry(commit: string, timestamp: string, hosts: string[]) {
       applied_steps: 10000,
       probes: 10002,
       host_timeout_seconds: 30,
-      environment: { python: 'python', go: 'go native', wasm: 'wasm (node)', rust: 'rust' }[host],
+      environment: { python: 'python', go: 'go native', wasm: 'wasm (node)', rust: 'rust', cpp: 'cpp' }[host],
     }
   }
   return {

@@ -53,6 +53,7 @@ REQUIRED_ENVIRONMENTS = {
     "go": "go native",
     "wasm": "wasm (node)",
     "rust": "rust",
+    "cpp": "cpp",
 }
 ENVIRONMENTS_PATH = Path(__file__).resolve().parent / "environments.json"
 

@@ -1,0 +1,66 @@
+# C++ host
+
+C++17 library and CLI for Thue++ spec v0.5. The regex engine is [Google RE2](https://github.com/google/re2). The header is `include/thuepp/thuepp.hpp`. The CMake library target is `thuepp` (`thuepp::thuepp`). The CLI target is `thuepp-cli` and its output name is `thuepp`, so the static library and the binary do not share a filename.
+
+This tree does not publish the library. `vcpkg.json` and `conanfile.py` are packaging sketches for a later release. Do not upload them to a registry from this repository.
+
+## Build
+
+Requirements: `g++` (C++17), CMake 3.16 or newer, `pkg-config`, and `libre2-dev`. Pass `g++` explicitly. On some images `/usr/bin/c++` is clang and cannot link `libstdc++`.
+
+```bash
+cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+cmake --build build/cpp --parallel
+```
+
+`make cpp` runs those two commands. `make test` builds this host and runs the core conformance tier with `--impl cpp=./build/cpp/thuepp`. `make test-full` runs every manifest on this host and the others.
+
+The CLI matches the other hosts. The program path is the first argument. Defaults are 1000000 applied steps, 1000000 probes, and 8388608 bytes of state. `unlimited` clears one limit. `0` is a real limit. Exit codes are 0, 1, 2, 10, 11, 12, and 13. `--trace` writes one JSON object per event. Every run outside the conformance runner still needs an explicit step limit, probe limit, and state limit, plus an OS timeout and a memory cap.
+
+```bash
+timeout -k 1 10 build/cpp/thuepp program.tpp \
+  --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608
+```
+
+## Library
+
+```cpp
+#include "thuepp/thuepp.hpp"
+
+thuepp::Interpreter interp;
+interp.LoadProgram("hello.tpp");
+int code = interp.Run();
+```
+
+`Run` returns the exit code on quiescence or `::-`. A limit throws `thuepp::LimitError` (`kind()`, `code()`, `what()`). Any other failure throws `std::runtime_error`. `std::nullopt` clears a limit. Eval count accumulates across `Run`. Applied steps and the trace reset on each `Run`.
+
+Install with `cmake --install`. That installs the static library, the `thuepp` binary, and `include/thuepp/thuepp.hpp`.
+
+## Tasks and metrics
+
+`hosts.toml` registers this host for `make tasks` and the metrics benchmark. The build line is the CMake release build. Older history rows omit `cpp`; a missing host is a gap, not an error.
+
+## vcpkg
+
+`vcpkg.json` names the dependency `re2`. It is a manifest for a checkout, not a port in the vcpkg registry.
+
+```bash
+vcpkg install --triplet x64-linux
+cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+cmake --build build/cpp --parallel
+```
+
+The CMake build finds RE2 with `pkg-config`. A vcpkg install of `re2` exports that file when `PKG_CONFIG_PATH` includes the triplet's `lib/pkgconfig`. Classic mode, `vcpkg install re2`, is the same dependency without the manifest.
+
+## Conan
+
+`conanfile.py` is a Conan 2 recipe. It requires `re2` and generates `pkg-config` files so the existing CMake build can find it. It is not in Conan Center.
+
+```bash
+cd cpp
+conan profile detect --force
+conan create . --build=missing
+```
+
+`conan create` builds this recipe. It does not publish it. Omit `conan upload`.
