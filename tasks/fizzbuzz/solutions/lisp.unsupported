@@ -1,1 +1,0 @@
-Lisp can compute the sequence, but every successful program appends a rendered final value, so the stdout cannot be the plain FizzBuzz text.

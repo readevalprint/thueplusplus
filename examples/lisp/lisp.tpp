@@ -30,11 +30,11 @@ VLIST <- VLIST<$ITEMS>
 VSYM <- VSYM<$PCT>
 VCLOS <- VCLOS<[^>]*>
 VPRIM <- VPRIM<$NAME>
-PRIM_NUM2 <- add|sub|mul|div|eq|lt|lte|gt|gte
+PRIM_NUM2 <- add|sub|mul|div|mod|eq|lt|lte|gt|gte
 PRIM0 <- readline
-PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write
+PRIM1 <- first|rest|is-empty|count|type|symbol|name|parse|unparse|write|rev
 PRIM2 <- cons|nth|contains|dissoc|macroexpand|$PRIM_NUM2
-PRIM3 <- assoc|get|set-nth
+PRIM3 <- assoc|get|set-nth|tr
 SPECIAL_WRONG_ARITY <- eval|quote|quasiquote|set|fn|if|and|or|let|while
 UNSUPPORTED_FORM <- do|break|continue|map|unquote|splice|define|letrec
 NODE <- (?:$NUM|true|false|$VSTR|$VLIST|$VSYM|L<$PCT>)
@@ -46,6 +46,87 @@ EXPR <- $NAME|$NODE
 READER_DATUM <- (?:\([^()]*\)|$OPSYM|$EXPR)
 
 
+Exact stdout
+emit writes a number or a string as raw text and returns an empty list. finish exits before the final value is rendered, so stdout is only earlier emit and write output. rev reverses a string. tr maps each character through a pair of strings by index and copies characters that are absent from the source alphabet.
+
+^EENV<finish\|(?<env>[^|]*)\|(?<k>.*)>$ ::- 0
+^EENV<finish (?<args>[^|]*)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^EENV<emit (?<arg>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{arg}}|{{env}}|KEMIT {{k}}>
+^EENV<emit(?: (?<args>.*))?\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ERR<wrong_arity>
+^RET<VNUM<(?<n>$NUM)>\|KEMIT (?<k>.*)>$ ::= LWRITE<{{n|pctenc}}>RET<VLIST<>|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KEMIT (?<k>.*)>$ ::= LWRITE<{{s}}>RET<VLIST<>|{{k}}>
+^RET<(?<bad>$VAL)\|KEMIT (?<k>.*)>$ ::= ERR<type_error>
+^LWRITE<(?<msg>$PCT)> ::> stdout {{msg|pctdec}}
+
+Numeric calls whose nearest binding is still the original primitive skip the generic call walker. A shadowed binding falls back to ordinary application. The core environment always contains these primitives, so the scan ends on a binding.
+^EENV<(?<op>add|sub|mul|div|mod|eq|lt|lte|gt|gte) (?<a>$EXPR) (?<b>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= NFAST<{{op}}|{{a}}|{{b}}|{{env}}|{{env}}|{{k}}>
+^NFAST<(?<op>$NAME)\|(?<a>[^|]*)\|(?<b>[^|]*)\|(?<name>$NAME)=(?<val>[^;]*);(?<rest>[^|]*)\|(?<full>[^|]*)\|(?<k>.*)>$ ::= NFASTEQ<STREQ<{{op}},{{name}}>|{{op}}|{{a}}|{{b}}|{{val}}|{{rest}}|{{full}}|{{k}}>
+^NFASTEQ<0\|(?<op>$NAME)\|(?<a>[^|]*)\|(?<b>[^|]*)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<full>[^|]*)\|(?<k>.*)>$ ::= NFAST<{{op}}|{{a}}|{{b}}|{{rest}}|{{full}}|{{k}}>
+^NFASTEQ<1\|(?<op>$NAME)\|(?<a>[^|]*)\|(?<b>[^|]*)\|VPRIM%3C(?<prim>$NAME)%3E\|(?<rest>[^|]*)\|(?<full>[^|]*)\|(?<k>.*)>$ ::= NFASTPR<STREQ<{{op}},{{prim}}>|{{op}}|{{a}}|{{b}}|{{full}}|{{k}}>
+^NFASTPR<1\|(?<op>$NAME)\|(?<a>[^|]*)\|(?<b>[^|]*)\|(?<full>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{a}}|{{full}}|KFAST<{{op}}|{{b|pctenc}}|{{full}}> {{k}}>
+^NFASTEQ<1\|(?<op>$NAME)\|(?<a>[^|]*)\|(?<b>[^|]*)\|(?<val>[^|]*)\|(?<rest>[^|]*)\|(?<full>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{op}}|{{full}}|KENVCALL<{{a|pctenc}}%20{{b|pctenc}}|{{full}}> {{k}}>
+^RET<(?<av>$VAL)\|KFAST<(?<op>add|sub|mul|div|mod|eq|lt|lte|gt|gte)\|(?<b>$PCT)\|(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{b|pctdec}}|{{env}}|KFAST2<{{op}}|{{av|pctenc}}> {{k}}>
+^RET<(?<bv>$VAL)\|KFAST2<(?<op>add|sub|mul|div|mod|eq|lt|lte|gt|gte)\|(?<a>$PCT)> (?<k>.*)>$ ::= BNUM2<{{op}}|{{a|pctdec}}|{{bv}}|{{k}}>
+
+^BNUM2<add\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
+^BNUM2<sub\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>
+^BNUM2<mul\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|{{k}}>
+^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<0>\|(?<k>.*)>$ ::= ERR<division_by_zero>
+^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<0(?:\.0+|/[0-9]+)>\|(?<k>.*)>$ ::= ERR<division_by_zero>
+^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<DIV<{{a}},{{b}}>>|{{k}}>
+^BNUM2<eq\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<EQ<{{a}},{{b}}>>|{{k}}>
+^BNUM2<lt\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LT<{{a}},{{b}}>>|{{k}}>
+^BNUM2<lte\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LE<{{a}},{{b}}>>|{{k}}>
+^BNUM2<gt\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GT<{{a}},{{b}}>>|{{k}}>
+^BNUM2<gte\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GE<{{a}},{{b}}>>|{{k}}>
+^BNUM2<mod\|VNUM<(?<a>$NAT)>\|VNUM<(?<b>$POS)>\|(?<k>.*)>$ ::= RET<VNUM<MOD<{{a}},{{b}}>>|{{k}}>
+^BNUM2<(?<op>$PRIM_NUM2)\|(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
+SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
+MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
+DIV<(?<a>$NUM),(?<b>$NUM)> ::! div a b
+EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq a b
+LT<(?<a>$NUM),(?<b>$NUM)> ::! lt a b
+LE<(?<a>$NUM),(?<b>$NUM)> ::! le a b
+GT<(?<a>$NUM),(?<b>$NUM)> ::! gt a b
+GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
+MOD<(?<a>$NUM),(?<b>$NUM)> ::! mod a b
+^RET<VBOOL<1>\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
+^RET<VBOOL<0>\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+
+^APPLY<VPRIM<rev>\|(?<s>[^;]*);\|(?<k>.*)>$ ::= BREV<{{s|pctdec}}|{{k}}>
+^BREV<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= REV<{{s}}||{{k}}>
+^BREV<(?<bad>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^REV<\|(?<out>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{out}}>|{{k}}>
+^REV<(?<c>$PCTCHAR)(?<rest>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= REV<{{rest}}|{{c}}{{out}}|{{k}}>
+
+^APPLY<VPRIM<tr>\|(?<s>[^;]*);(?<from>[^;]*);(?<to>[^;]*);\|(?<k>.*)>$ ::= BTR<{{s|pctdec}}|{{from|pctdec}}|{{to|pctdec}}|{{k}}>
+^BTR<VSTR<(?<s>$PCT)>\|VSTR<(?<from>$PCT)>\|VSTR<(?<to>$PCT)>\|(?<k>.*)>$ ::= TR<{{s}}|{{from}}|{{to}}||{{k}}>
+^BTR<(?<a>$VAL)\|(?<b>$VAL)\|(?<c>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
+^TR<\|(?<from>$PCT)\|(?<to>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{out}}>|{{k}}>
+^TR<(?<c>$PCTCHAR)(?<rest>$PCT)\|(?<from>$PCT)\|(?<to>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= TRFIND<{{from}}|{{to}}|{{c}}|{{rest}}|{{from}}|{{to}}|{{out}}|{{k}}>
+^TRFIND<\|(?<to>$PCT)\|(?<c>$PCTCHAR)\|(?<rest>$PCT)\|(?<from0>$PCT)\|(?<to0>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= TR<{{rest}}|{{from0}}|{{to0}}|{{out}}{{c}}|{{k}}>
+^TRFIND<(?<a>$PCTCHAR)(?<as>$PCT)\|\|(?<c>$PCTCHAR)\|(?<rest>$PCT)\|(?<from0>$PCT)\|(?<to0>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= ERR<type_error>
+^TRFIND<(?<a>$PCTCHAR)(?<as>$PCT)\|(?<b>$PCTCHAR)(?<bs>$PCT)\|(?<c>$PCTCHAR)\|(?<rest>$PCT)\|(?<from0>$PCT)\|(?<to0>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= TRCMP<VALKEYEQ<{{a}},{{c}}>|{{as}}|{{bs}}|{{b}}|{{c}}|{{rest}}|{{from0}}|{{to0}}|{{out}}|{{k}}>
+^TRCMP<1\|(?<as>$PCT)\|(?<bs>$PCT)\|(?<b>$PCTCHAR)\|(?<c>$PCTCHAR)\|(?<rest>$PCT)\|(?<from0>$PCT)\|(?<to0>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= TR<{{rest}}|{{from0}}|{{to0}}|{{out}}{{b}}|{{k}}>
+^TRCMP<0\|(?<as>$PCT)\|(?<bs>$PCT)\|(?<b>$PCTCHAR)\|(?<c>$PCTCHAR)\|(?<rest>$PCT)\|(?<from0>$PCT)\|(?<to0>$PCT)\|(?<out>$PCT)\|(?<k>.*)>$ ::= TRFIND<{{as}}|{{bs}}|{{c}}|{{rest}}|{{from0}}|{{to0}}|{{out}}|{{k}}>
+
+^RET<VSTR<>\|KHEAD (?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^RET<VSTR<(?<c>$PCTCHAR)(?<rest>$PCT)>\|KHEAD (?<k>.*)>$ ::= RET<VSTR<{{c}}>|{{k}}>
+^RET<VSTR<>\|KTAIL (?<k>.*)>$ ::= RET<VSTR<>|{{k}}>
+^RET<VSTR<(?<c>$PCTCHAR)(?<rest>$PCT)>\|KTAIL (?<k>.*)>$ ::= RET<VSTR<{{rest}}>|{{k}}>
+^RET<VSTR<>\|KEMPTY (?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
+^RET<VSTR<(?<c>$PCTCHAR)(?<rest>$PCT)>\|KEMPTY (?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KLEN (?<k>.*)>$ ::= SLEN<{{s}}|0|{{k}}>
+^SLEN<\|(?<n>$NAT)\|(?<k>.*)>$ ::= RET<VNUM<{{n}}>|{{k}}>
+^SLEN<(?<c>$PCTCHAR)(?<rest>$PCT)\|(?<n>$NAT)\|(?<k>.*)>$ ::= SLEN<{{rest}}|ADD<{{n}},1>|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KAT2<(?<idx>$NAT)> (?<k>.*)>$ ::= SCHAR<{{s}}|{{idx}}|{{k}}>
+^SCHAR<\|(?<idx>$NAT)\|(?<k>.*)>$ ::= ERR<index_out_of_bounds>
+^SCHAR<(?<c>$PCTCHAR)(?<rest>$PCT)\|0\|(?<k>.*)>$ ::= RET<VSTR<{{c}}>|{{k}}>
+^SCHAR<(?<c>$PCTCHAR)(?<rest>$PCT)\|(?<idx>$POS)\|(?<k>.*)>$ ::= SCHAR<{{rest}}|SUB<{{idx}},1>|{{k}}>
+^RET<VSTR<(?<s>$PCT)>\|KPUSH2<VSTR<(?<pre>$PCT)>> (?<k>.*)>$ ::= RET<VSTR<{{pre}}{{s}}>|{{k}}>
+
+
 Reader entry and shared source freezer
 Top level input and the parse primitive both enter READ with different continuations so string escapes and list freezing cannot drift.
 Strings become VSTR before list freezing. Parenthesized source is reduced inside out into L pct payloads. Reader shorthand expands quote, quasiquote, unquote, and splice into ordinary source forms.
@@ -55,9 +136,11 @@ Strings become VSTR before list freezing. Parenthesized source is reduced inside
 
 String escape validation
 Invalid escapes are rejected before the generic unescape builtin runs. The double UNESC layer below first removes rewrite state escaping, then applies Lisp string literal escaping.
+The tail after a protected string is percent-encoded. An unfiltered template doubles backslashes, so a later escape would survive double UNESC as literal backslash text.
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= ERR<invalid_string_escape>
 ^READ<(?<pre>(?:[\s\S]*[^\\])?)\\(?<bad>[^"ntrbf\\])(?<post>[\s\S]*)> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<UNESC<{{str|pctenc}}>>>{{post}}> {{k}}
+^READ<(?<pre>[^"\\]*)"(?<str>(?:[^"\\]|\\\\"|\\"|\\n|\\t|\\r|\\b|\\f|\\\\)*)"(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}VSTR<UNESC<UNESC<{{str|pctenc}}>>>PDEC<{{post|pctenc}}%3E> {{k}}
+PDEC<(?<s>$PCT)> ::! pctdec s
 UNESC<(?<s>$PCT)> ::! unescape s
 
 Reader whitespace normalization
@@ -86,7 +169,7 @@ KTOP starts evaluation with the core environment. KPARSE returns code as data by
 ^READ<(?<atom>$NUM|true|false|VSTR<$PCT>)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{atom}}|{{k}}>
 ^READ<(?<sym>$SYM)> KPARSE<(?<k>.*)>$ ::= QUOTE<{{sym}}|{{k}}>
 ^READ<@> KPARSE<(?<k>.*)>$ ::= ERR<invalid_string_escape>
-^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;|{{k}}>
+^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;sub=VPRIM%3Csub%3E;mul=VPRIM%3Cmul%3E;div=VPRIM%3Cdiv%3E;eq=VPRIM%3Ceq%3E;lt=VPRIM%3Clt%3E;lte=VPRIM%3Clte%3E;gt=VPRIM%3Cgt%3E;gte=VPRIM%3Cgte%3E;first=VPRIM%3Cfirst%3E;rest=VPRIM%3Crest%3E;is-empty=VPRIM%3Cis-empty%3E;cons=VPRIM%3Ccons%3E;count=VPRIM%3Ccount%3E;nth=VPRIM%3Cnth%3E;get=VPRIM%3Cget%3E;contains=VPRIM%3Ccontains%3E;assoc=VPRIM%3Cassoc%3E;dissoc=VPRIM%3Cdissoc%3E;type=VPRIM%3Ctype%3E;parse=VPRIM%3Cparse%3E;unparse=VPRIM%3Cunparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;set-nth=VPRIM%3Cset-nth%3E;symbol=VPRIM%3Csymbol%3E;name=VPRIM%3Cname%3E;readline=VPRIM%3Creadline%3E;write=VPRIM%3Cwrite%3E;mod=VPRIM%3Cmod%3E;rev=VPRIM%3Crev%3E;tr=VPRIM%3Ctr%3E;|{{k}}>
 
 
 Literal demand
@@ -382,7 +465,6 @@ Parse reuses the shared reader with KPARSE. Unparse routes runtime data through 
 ^APPLY<VPRIM<write>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BWRITE<{{a|pctdec}}|{{k}}>
 ^BWRITE<VSTR<(?<msg>$PCT)>\|(?<k>.*)>$ ::= LWRITE<{{msg}}>RET<VLIST<>|{{k}}>
 ^BWRITE<(?<bad>VNUM<$NUM>|VBOOL<(?:true|false)>|VLIST<$ITEMS>|VSYM<$PCT>|VCLOS<[^>]*>|VPRIM<$NAME>)\|(?<k>.*)>$ ::= ERR<type_error>
-^LWRITE<(?<msg>$PCT)> ::> stdout {{msg|pctdec}}
 @LISP_READLINE@ ::< 30 stdin
 ^LREADRET<(?<line>$PCT)\|(?<k>.*)>$ ::= RET<VSTR<{{line}}>|{{k}}>
 ^APPLY<VPRIM<first>\|(?<v>[^;]*);\|(?<k>.*)>$ ::= RET<{{v|pctdec}}|KHEAD {{k}}>
@@ -430,18 +512,6 @@ Symbol validates a string as a public symbol and name converts symbols back to s
 
 Numeric primitives and not function errors
 Arithmetic and comparisons delegate to generic numeric builtins, then normalize numeric boolean results. Non callable values fail here if they reach APPLY.
-^BNUM2<add\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<ADD<{{a}},{{b}}>>|{{k}}>
-^BNUM2<sub\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<SUB<{{a}},{{b}}>>|{{k}}>
-^BNUM2<mul\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<MUL<{{a}},{{b}}>>|{{k}}>
-^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<0>\|(?<k>.*)>$ ::= ERR<division_by_zero>
-^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<0(?:\.0+|/[0-9]+)>\|(?<k>.*)>$ ::= ERR<division_by_zero>
-^BNUM2<div\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VNUM<DIV<{{a}},{{b}}>>|{{k}}>
-^BNUM2<eq\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<EQ<{{a}},{{b}}>>|{{k}}>
-^BNUM2<lt\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LT<{{a}},{{b}}>>|{{k}}>
-^BNUM2<lte\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<LE<{{a}},{{b}}>>|{{k}}>
-^BNUM2<gt\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GT<{{a}},{{b}}>>|{{k}}>
-^BNUM2<gte\|VNUM<(?<a>$NUM)>\|VNUM<(?<b>$NUM)>\|(?<k>.*)>$ ::= RET<VBOOL<GE<{{a}},{{b}}>>|{{k}}>
-^BNUM2<(?<op>$PRIM_NUM2)\|(?<bad1>$VAL)\|(?<bad2>$VAL)\|(?<k>.*)>$ ::= ERR<type_error>
 ^APPLY<VNUM<(?<n>$NUM)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VBOOL<(?<b>true|false)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
 ^APPLY<VSTR<(?<s>$PCT)>\|(?<args>$ITEMS)\|(?<k>.*)>$ ::= ERR<not_function>
@@ -459,18 +529,6 @@ Arithmetic and comparisons delegate to generic numeric builtins, then normalize 
 ^LETBINDRAW<L<(?<n>$NAME)%20(?<v>$LET_VALUE_PCT)>\|(?<body>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= LETARGENV<{{v}}|{{env}}|KLETN<{{n}}||{{body}}|{{env}}> {{k}}>
 ^LETARGENV<(?<node>$PCT)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{node|pctdec}}|{{env}}|{{k}}>
 ^RET<(?<v>$VAL)\|KLETN<(?<n>$NAME)\|(?<rest>[^|]*)\|(?<body>$PCT)\|(?<env>[^|>]*)> (?<k>.*)>$ ::= LETBINDRAW<{{rest}}|{{body}}|{{n}}={{v|pctenc}};{{env}}|{{k}}>
-
-ADD<(?<a>$NUM),(?<b>$NUM)> ::! add a b
-SUB<(?<a>$NUM),(?<b>$NUM)> ::! sub a b
-MUL<(?<a>$NUM),(?<b>$NUM)> ::! mul a b
-DIV<(?<a>$NUM),(?<b>$NUM)> ::! div a b
-EQ<(?<a>$NUM),(?<b>$NUM)> ::! numeq a b
-LT<(?<a>$NUM),(?<b>$NUM)> ::! lt a b
-LE<(?<a>$NUM),(?<b>$NUM)> ::! le a b
-GT<(?<a>$NUM),(?<b>$NUM)> ::! gt a b
-GE<(?<a>$NUM),(?<b>$NUM)> ::! ge a b
-^RET<VBOOL<1>\|(?<k>.*)>$ ::= RET<VBOOL<true>|{{k}}>
-^RET<VBOOL<0>\|(?<k>.*)>$ ::= RET<VBOOL<false>|{{k}}>
 
 List continuations and type names
 Continuation tags after RET implement type, first, rest, is empty, count, nth, and set nth. Walkers keep index handling and bounds errors explicit.

@@ -16,6 +16,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 - Landing page at `/`: the header Thue++, the tagline "The safest, smallest, sandbox.", a small animated rewrite graphic, then the language line. Go, Python, and JavaScript link to their Hosts sections. cpp, erlang, ocaml, perl, ruby, haskell, and rust are plain text.
 - Forth guest words for loops (`begin`/`until`), `if`/`else`/`then`, strings (`."`, `cr`, `.`, `rev`, `rot13`), and stdin (`input`, `accept`). The golden tasks now have Forth solutions for hello world, Fibonacci, FizzBuzz, factorial, reverse, 99 bottles, guess the number, sum of input, palindrome, and ROT13.
 - `--trace` writes one JSON object per trace event to stderr, before any `Error:` line. `examples/trace` locks that text for a state-limit rejection and for a matched rule that fails before replacement.
+- Lisp `emit` and `finish` write exact stdout. `emit` writes one number or string as raw text and returns `()`. `finish` exits before the final value is rendered. `mod`, `rev`, and `tr` are core primitives. `first`, `rest`, `is-empty`, `count`, `nth`, and `cons` accept strings. The six golden tasks that were unsupported now have Lisp solutions.
 - Golden-program task suite in `tasks/`. Each task is an I/O transcript. Forth and Lisp solutions run on every host under the shared step, state, probe, `timeout(1)`, and 256 MiB caps. `make tasks` writes `build/tasks/results.json` with pass/fail, applied steps, guest rule count, solution size, commit, author, and timestamp. GitLab CI archives that file from the `tasks` job.
 - Three importable hosts. Go module `github.com/readevalprint/thueplusplus/go`, package `thuepp`, CLI `go/cmd/thuepp`. Python distribution `thuepp` 0.5.0 with console script `thuepp`. npm package `thuepp` 0.5.0 (`js/`) with a Node CLI, ESM entry points, and TypeScript types. The playground depends on that package. Release steps are in `docs/releasing.md`. Nothing is published to a registry.
 - The manifest runner passes explicit `--max-steps 1000000` and `--max-state-bytes 8388608` when a case omits them, matching the probe flag it already passed. A `bindings.tpp` child gets the same three flags.
@@ -27,6 +28,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 - **Breaking:** a matched rule that fails before replacement records a trace event and then returns. Python used to raise that error with an empty trace.
 - **Breaking:** a state-limit stop records the trace event and then returns 12. The state is left unchanged. Go used to return 12 with an empty trace. The host does not install the oversized state, and it does not return 12 without the event.
 - The playground page is the hero, then the editor, run controls, output, and trace. Every run sends an explicit step limit, probe limit, and state limit through the `thuepp` package. Examples and settings are in that page's `PageAside`, open on desktop and a sheet below 1280px. `/embed` is the same surface without the site chrome.
+- Lisp numeric calls whose nearest binding is still the original primitive skip the generic call walker. Shadowed bindings still use ordinary application. Existing numeric Lisp tasks take fewer applied steps.
 - **Breaking:** the Go library path is `github.com/readevalprint/thueplusplus/go/thuepp`. `go/internal/thuepp` is gone.
 - **Breaking:** the Python CLI is `uv run thuepp` / `python -m thuepp`. `python/thuepp.py` is gone.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.
@@ -41,6 +43,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 - The right column starts below the header. `--header-height` sizes the header, and a sticky aside uses that offset with `calc(100svh - var(--header-height))`, including the sheet below 1280px. The left menu stays full height beside the header. Anchor targets already clear the header because it sits outside the scroller.
 - Desktop sidebars start expanded. An omitted boolean prop was read as false, so the menu opened collapsed.
 - Go's `stdin` resource enforces the `::<` read timeout. A newline that does not arrive in time exits 13 with `ERR:resource:stdin:timeout`. A closed stdin with no newline is still EOF. The Node CLI's stdin callback enforces the same deadline.
+- A Lisp string escape after an earlier string literal was reinserted with its backslashes doubled, so `\n` could be written as backslash text. The unread tail is percent-encoded before that reinsertion, and every escape is decoded once.
 
 ### Removed
 

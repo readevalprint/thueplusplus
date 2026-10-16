@@ -16,7 +16,7 @@ Atoms:
 
 Compound forms:
 
-- arithmetic primitive callables from the initial core environment: `add`, `sub`, `mul`, `div`;
+- arithmetic primitive callables from the initial core environment: `add`, `sub`, `mul`, `div`, and `mod`;
 - numeric comparison/equality primitive callables from the initial core environment: `eq`, `lt`, `gt`, `lte`, `gte`;
 - boolean control: `if`, `and`, `or`;
 - implicit sequence bodies: `let`, `fn`, and `while`;
@@ -28,7 +28,9 @@ Compound forms:
 - association-list helpers: `dict`, `get`, `contains`, `assoc`, and `dissoc`;
 - symbol/name conversion primitives: `symbol` and `name`;
 - runtime type inspection: `type`;
-- composable IO primitive callables: `write` and `readline`.
+- composable IO primitive callables: `write` and `readline`;
+- exact stdout forms: `emit` and `finish`;
+- string primitives: `rev` and `tr`.
 
 ## Runtime values
 
@@ -64,7 +66,7 @@ Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusa
 - `let` creates lexical bindings.
 - `fn` captures the lexical environment in a closure.
 - Function application resolves the callee through the current environment, evaluates arguments according to the current evaluator rules, and checks arity. Closures and primitive callable values are callable; lists are data values and must be accessed through explicit functions. Closure arity is the remaining parameter stream: applying fewer than all parameters returns a residual closure, which is useful as a callable but unparseable as final output; too many arguments still fail with `wrong_arity`.
-- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), macro expansion (`macroexpand`), and IO helpers (`write`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
+- Normal top-level programs start through a single explicit core-environment bootstrap containing named primitive callables. Numeric/comparison helpers (`add`, `sub`, `mul`, `div`, `mod`, `eq`, `lt`, `lte`, `gt`, `gte`), strict collection helpers (`first`, `rest`, `is-empty`, `cons`, `count`, `nth`, `set-nth`, `get`, `contains`, `assoc`, `dissoc`), string helpers (`rev`, `tr`), symbol/name conversion (`symbol`, `name`), type inspection (`type`), macro expansion (`macroexpand`), and IO helpers (`write`, `readline`) are ordinary environment bindings: they can be shadowed, passed, or deliberately omitted from explicit eval scopes. Symbolic arithmetic/comparison syntax (`+`, `-`, `*`, `/`, `=`, `<`, `<=`, `>`, `>=`) is not a public callable fallback. Lazy/control/syntax-owning forms (`if`, `and`, `or`, `fn`, `let`, `while`, `set`, `quote`, `quasiquote`, `eval`, `emit`, `finish`) and constructors (`list`, `dict`) remain evaluator forms, not callable primitive values. `do` is deliberately unsupported; use implicit body sequencing or `(let () ...)` blocks instead.
 - `quote` is lazy: it returns symbol/list code-as-data without evaluating the quoted payload.
 - `list` evaluates its children and constructs a proper list value.
 - `if`, `and`, and `or` are lazy control forms; unchosen branches are not evaluated.
@@ -178,6 +180,16 @@ To retain the read value for later expressions, bind or set it explicitly:
 
 There is no dedicated `prompt` or `input` form; those names are ordinary unbound names unless user code binds them. `write` requires a string argument and fails with `type_error` for other value types. `readline` takes no arguments; extra arguments fail with `wrong_arity`.
 
+`emit` and `finish` are evaluator forms, not core-environment bindings, so a lexical binding of those names does not replace the form. `(emit value)` writes one number or string as raw text and returns `()`. Numbers are written in numeric literal spelling. Strings are written without quotes and with escapes already decoded. Any other value fails with `type_error`. Zero or extra arguments fail with `wrong_arity`. `(finish)` exits before the final value is rendered, so stdout contains only earlier `emit` and `write` output. `(finish)` takes no arguments.
+
+```lisp
+(let ()
+  (emit "Hello, World!\n")
+  (finish))
+```
+
+outputs exactly `Hello, World!` followed by one newline.
+
 ## Explicit eval scope
 
 `eval` evaluates code-as-data using an explicit association-list scope:
@@ -261,7 +273,7 @@ Implementation contract:
 - `(splice expr)` at the top-level quasiquoted expression, bare `splice`, and bare `unquote` fail with `unsupported_form`; malformed `unquote`/`splice` escape forms fail with `wrong_arity`; splicing a non-list fails with `type_error`.
 - Nested `(quasiquote ...)` is deliberately rejected with `unsupported_form` in this first slice; there is no implicit quasiquote-depth accounting yet.
 - Internally, quoted symbols use `VSYM<...>` and proper lists use `VLIST<...>` with pct-encoded item payloads. These constructors are implementation details and must not leak to successful stdout.
-- `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth` operate on proper lists and fail loudly for invalid type or access cases. `assoc` is reserved for association-list key updates.
+- `first`, `rest`, `is-empty`, `cons`, `count`, `nth`, and `set-nth` operate on proper lists and fail loudly for invalid type or access cases. `first`, `rest`, `is-empty`, `cons`, `count`, and `nth` also accept strings. `assoc` is reserved for association-list key updates.
 
 `nth` is the supported positional list get form:
 
@@ -270,6 +282,10 @@ Implementation contract:
 ```
 
 returns `8`. `nth` accepts non-negative integer indices. Negative integer indices fail with `index_out_of_bounds`; decimal or fractional numeric indices fail with `type_error`; non-numeric indices fail with `type_error`; out-of-bounds non-negative integer indices fail with `index_out_of_bounds`; malformed arity fails with `wrong_arity`. The old `at` name is not part of this greenfield slice.
+
+On a string, `first` returns a one-character string and `rest` returns the remaining string. `rest` of `""` is `""`. `is-empty` reports whether the string has no characters. `count` is the number of characters. `nth` uses the same index rules as lists. `first` of `""`, and `nth` past the end, fail with `index_out_of_bounds`. `(cons head tail)` of two strings returns the concatenation `head` then `tail`. A string mixed with a non-string fails with `type_error`.
+
+`mod` takes two non-negative integers and a non-zero modulus and returns the remainder. A zero modulus, a negative integer, or a non-integer fails with `type_error`. `rev` returns the characters of one string in reverse order. `tr` maps each character of a string through a pair of alphabet strings by shared index and copies characters that are absent from the source alphabet. If the source alphabet still contains the character and the destination alphabet has ended, `tr` fails with `type_error`. Non-string arguments to `rev` or `tr` fail with `type_error`.
 
 `set-nth` is the value-returning positional list update form:
 
