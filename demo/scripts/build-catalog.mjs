@@ -22,19 +22,20 @@ export function taskDescription(markdown, file = 'task.md') {
   return { title, description }
 }
 
-export function transcriptCases(taskId, transcript) {
-  if (transcript?.name !== taskId) {
-    throw new CatalogError(`${taskId}/io.toml: name must be ${taskId}`)
+export function publishedCases(taskId, cases) {
+  if (!Array.isArray(cases) || cases.length === 0) {
+    throw new CatalogError(`${taskId}: cases must be a non-empty array`)
   }
-  if (transcript.case == null) return [oneCase(taskId, taskId, transcript)]
-  if (!Array.isArray(transcript.case) || transcript.case.length === 0) {
-    throw new CatalogError(`${taskId}/io.toml: case must be a non-empty array when present`)
-  }
-  return transcript.case.map((item, index) => {
-    if (typeof item?.name !== 'string' || item.name.length === 0) {
-      throw new CatalogError(`${taskId}/io.toml: case ${index} is missing a name`)
+  return cases.map((item, index) => {
+    const name = item?.name
+    if (typeof name !== 'string' || name.length === 0) {
+      throw new CatalogError(`${taskId}: case ${index} is missing a name`)
     }
-    return oneCase(taskId, item.name, item)
+    for (const key of ['stdin', 'stdout', 'stderr']) {
+      if (typeof item[key] !== 'string') throw new CatalogError(`${taskId}/${name}: ${key} must be a string`)
+    }
+    if (!Number.isInteger(item.exit_code)) throw new CatalogError(`${taskId}/${name}: exit_code must be an integer`)
+    return { name, stdin: item.stdin, stdout: item.stdout, stderr: item.stderr, exitCode: item.exit_code }
   })
 }
 
@@ -111,19 +112,6 @@ export function readGeneratedCatalog() {
   return catalog
 }
 
-function oneCase(taskId, name, block) {
-  const expect = block.expect
-  if (expect == null || typeof expect !== 'object' || Array.isArray(expect)) {
-    throw new CatalogError(`${taskId}/${name}: expect is required`)
-  }
-  if (typeof expect.stdout !== 'string') throw new CatalogError(`${taskId}/${name}: expect.stdout must be a string`)
-  if (typeof expect.stderr !== 'string') throw new CatalogError(`${taskId}/${name}: expect.stderr must be a string`)
-  if (!Number.isInteger(expect.exit_code)) throw new CatalogError(`${taskId}/${name}: expect.exit_code must be an integer`)
-  const stdin = block.stdin == null ? '' : block.stdin
-  if (typeof stdin !== 'string') throw new CatalogError(`${taskId}/${name}: stdin must be a string`)
-  return { name, stdin, stdout: expect.stdout, stderr: expect.stderr, exitCode: expect.exit_code }
-}
-
 function requireResults(results) {
   if (results?.schema_version !== 1) {
     throw new CatalogError(`results schema_version must be 1, got ${results?.schema_version}`)
@@ -185,7 +173,7 @@ function buildTask(results, sources, taskId, guestIds) {
   if (described.title !== resultTask.title) {
     throw new CatalogError(`${taskId}: task.md title ${described.title} does not match results title ${resultTask.title}`)
   }
-  const cases = transcriptCases(taskId, file.transcript)
+  const cases = publishedCases(taskId, resultTask.cases)
   const summary = described.description.split(/\n\n+/)[0].replace(/\s+/g, ' ').trim()
   const path = `/tasks/${taskId}`
   return {
@@ -335,9 +323,8 @@ function loadSources(taskOrder, guests) {
   for (const taskId of taskOrder) {
     const directory = join(repoRoot, 'tasks', taskId)
     const markdownPath = join(directory, 'task.md')
-    const transcriptPath = join(directory, 'io.toml')
-    if (!existsSync(markdownPath) || !existsSync(transcriptPath)) {
-      throw new CatalogError(`${taskId}: missing task.md or io.toml`)
+    if (!existsSync(markdownPath)) {
+      throw new CatalogError(`${taskId}: missing task.md`)
     }
     const solutions = {}
     for (const guest of guests) {
@@ -354,7 +341,6 @@ function loadSources(taskOrder, guests) {
     }
     files[taskId] = {
       markdown: readFileSync(markdownPath, 'utf8'),
-      transcript: parseToml(readFileSync(transcriptPath, 'utf8')),
       solutions,
     }
   }
@@ -400,7 +386,6 @@ function buildUnmeasuredTask(sources, taskId, guests) {
   const file = sources.files?.[taskId]
   if (!file) throw new CatalogError(`${taskId}: missing task files`)
   const described = taskDescription(file.markdown, `${taskId}/task.md`)
-  const cases = transcriptCases(taskId, file.transcript)
   const summary = described.description.split(/\n\n+/)[0].replace(/\s+/g, ' ').trim()
   const path = `/tasks/${taskId}`
   return {
@@ -411,7 +396,7 @@ function buildUnmeasuredTask(sources, taskId, guests) {
     path,
     canonical: `https://thuelang.org${path}`,
     documentTitle: `${described.title} — Thue++ Tasks`,
-    cases,
+    cases: [],
     guests: guests.map(guest => unmeasuredGuestResult(file, taskId, guest.id)),
   }
 }

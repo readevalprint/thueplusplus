@@ -1,1 +1,1 @@
-1 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 *
+input 1 swap begin dup 0 = if drop . cr true else swap over * swap 1 - false then until halt

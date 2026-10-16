@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build tasks tasks-full metrics
+.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build tasks metrics
 
 RUST_BIN := ./rust/target/release/thuepp
 RUST_IMPL := --impl rust=$(RUST_BIN)
@@ -78,21 +78,17 @@ test-full: test-static
 	cargo build --release --manifest-path rust/Cargo.toml
 	uv run python tools/example_runner.py --tier full $(FULL_IMPL)
 
-# Guest tasks on the native Go host.
+# Guest tasks. Each task is a Go test. Guests run on the native Go host.
 tasks:
-	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run the task suite" >&2; exit 127; }
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the task suite" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the task suite" >&2; exit 127; }
-	uv run python tasks/runner.py --host go --output build/tasks/results.json
-
-# Every host in hosts.toml. Metrics recording uses this set.
-tasks-full:
-	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run the task suite" >&2; exit 127; }
-	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the task suite" >&2; exit 127; }
-	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run the task suite" >&2; exit 127; }
-	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the task suite" >&2; exit 127; }
-	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to run the task suite" >&2; exit 127; }
-	uv run python tasks/runner.py --output build/tasks/results.json
+	go build -C go -o ../build/go-thuepp ./cmd/thuepp
+	rm -rf build/tasks/parts
+	mkdir -p build/tasks/parts
+	status=0; \
+	cd tasks && THUEPP_TASK_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
+	go run ./cmd/collect -o ../build/tasks/results.json || exit 1; \
+	exit $$status
 
 metrics:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to record metrics" >&2; exit 127; }

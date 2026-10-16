@@ -1,5 +1,5 @@
-# Guest languages implemented as Thue++ programs. The task runner feeds each
-# solution to that program as --input and runs it on every host.
+# Guest languages implemented as Thue++ programs. make tasks feeds each
+# solution to that program as --input and runs it on the native Go host.
 
 [[guest]]
 id = "forth"

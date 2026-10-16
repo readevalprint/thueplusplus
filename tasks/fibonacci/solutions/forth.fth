@@ -1,1 +1,1 @@
-0 1 swap over + swap over + swap over + swap over + swap over + swap over + swap over + swap over + swap over + swap drop
+input dup 0 = if . cr halt then 1 swap begin dup 0 = if drop dup 1000 mod swap over - swap drop 1000 / . cr true else 1 - swap dup 1000 mod swap over - 1000 / over + swap 1000 * + swap false then until halt

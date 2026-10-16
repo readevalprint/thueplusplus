@@ -551,7 +551,7 @@ make test
 
 Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thuepp`), and, when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thuepp`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
 
-Guest programs (Forth, Lisp, BASIC, and Brainfuck) and `make tasks` run on the native Go host. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of the guest suite. `make tasks-full` runs the task suite on every host in `hosts.toml`.
+Guest programs (Forth, Lisp, BASIC, and Brainfuck) and `make tasks` run on the native Go host. `make tasks` is the Go test in each task directory. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of the guest suite.
 
 `make test-full` runs every manifest on every host, checks parity, and enforces rule coverage. A nightly workflow runs that command. Timings name the runtime: `python`, `go native`, `wasm (node)`, `rust`, and `cpp`. A wasm time is not a Go time.
 

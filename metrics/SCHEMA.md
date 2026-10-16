@@ -27,7 +27,7 @@ Every Thue++ process uses explicit `--max-steps`, `--max-evals`, and `--max-stat
 
 The host benchmark limits are `metrics/benchmark.toml`. There is no omitted-limit fallback. `memory_cap_bytes` in that file must equal `RUN_MEMORY_CAP_BYTES`.
 
-`make tasks` runs guest programs on the native Go host. `make tasks-full` runs Python, native Go, and wasm (node). The metrics recorder calls `make tasks-full`, wrapped in `timeout(1)` for 1200 seconds, and still stores `tasks.source` as `make tasks`. Each task case keeps its own limits, OS timeout, and memory cap inside the task runner. The benchmark's wasm (node) host uses the task runner's scale: `max(timeout_seconds * 8, 30)`. The browser playground is wasm (browser). It is not a row in this file.
+`make tasks` runs guest programs on the native Go host. Each task is a Go test. A pass is an exact match on every case that test chose, and `applied_steps` and `probes` are the sums. The metrics recorder calls `make tasks`, wrapped in `timeout(1)` for 1200 seconds, and stores `tasks.source` as `make tasks`. Each case keeps its own step, probe, and state limits, OS timeout, and memory cap. The benchmark's wasm (node) host uses `max(timeout_seconds * 8, 30)`. The browser playground is wasm (browser). It is not a row in this file.
 
 ## Top level
 

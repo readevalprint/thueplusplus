@@ -27,7 +27,7 @@ const page = pages.tasks
       </template>
       <section id="suite" data-test="task-index" class="flex flex-col gap-3">
         <h2 class="text-xl font-semibold tracking-tight">Suite</h2>
-        <p class="leading-7">A task is an input and an output. The same transcript is the contract for every guest. The cell is that guest's status on every host.</p>
+        <p class="leading-7">A task is an input and an output. The Go test for that task builds the inputs and the reference output. A pass means every case matched. The cell is that guest on the native Go host.</p>
         <Table>
           <TableHeader>
             <TableRow>

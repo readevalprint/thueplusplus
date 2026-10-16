@@ -1,5 +1,5 @@
-(let ((mod mod) (eq eq) (lte lte) (add add) (n 1))
-  (while (lte n 100)
+(let ((mod mod) (eq eq) (lte lte) (add add) (n 1) (limit (parse (readline))))
+  (while (lte n limit)
     (if (eq (mod n 15) 0)
       (emit "FizzBuzz")
       (if (eq (mod n 3) 0)
