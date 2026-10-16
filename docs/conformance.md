@@ -109,3 +109,10 @@ Python `KeyboardInterrupt` exits 130. That is not a resource limit.
 | `--max-steps N` | Counts applied rewrites only. The Nth rewrite exits 10 and the run does not scan further. A run that quiesces before N rewrites exits 0. `::-` does not count. `0` applies nothing. | Exit 10. |
 
 A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-bytes` uses 8388608. A host that omits `--max-steps` uses 1000000. `unlimited` clears that limit. `0` is a real limit. The shared runner does not leave those flags to the host default: it passes `--max-evals 10000`, `--max-steps 1000000`, and `--max-state-bytes 8388608` unless the manifest already set that flag. See [host-api.md](host-api.md).
+
+## Trace
+
+`--trace` writes one JSON object per event to stderr, before any `Error:` line. The keys and their order are in [host-api.md](host-api.md). `examples/trace` locks two orders:
+
+- A matched rule that fails before replacement records the event, leaves the state unchanged, and then returns 1.
+- A replacement that would exceed the state limit records the event, with the rejected replacement and the unchanged state, and then returns 12. The host does not return 12 with an empty trace.

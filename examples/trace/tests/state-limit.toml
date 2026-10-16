@@ -1,0 +1,24 @@
+program = "../state-limit.tpp"
+
+[[case]]
+name = "state limit records the rejected replacement then returns 12"
+args = ["--max-state-bytes", "1", "--trace"]
+
+[case.expect]
+exit_code = 12
+stdout = ""
+stderr = """
+{"step":1,"ruleIndex":0,"lineNumber":1,"operator":"::=","matchStart":0,"matchEnd":1,"error":"State size (2 bytes) exceeds maximum (1 bytes)","stateBefore":"a","replacement":"bb","stateAfter":"a","exitCode":null}
+Error: State size (2 bytes) exceeds maximum (1 bytes)
+"""
+
+[[case]]
+name = "replacement within the state limit records an empty error"
+args = ["--max-state-bytes", "2", "--trace"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = """
+{"step":1,"ruleIndex":0,"lineNumber":1,"operator":"::=","matchStart":0,"matchEnd":1,"error":"","stateBefore":"a","replacement":"bb","stateAfter":"bb","exitCode":null}
+"""

@@ -25,6 +25,9 @@ func main() {
 		case arg == "--debug":
 			interp.Debug = true
 			idx++
+		case arg == "--trace":
+			interp.TraceEnabled = true
+			idx++
 		case arg == "--rule-coverage":
 			if idx+1 >= len(args) {
 				fmt.Fprintln(os.Stderr, "Error: --rule-coverage requires an argument")
@@ -103,6 +106,14 @@ func main() {
 		}
 	}
 	code, err := interp.Run()
+	if interp.TraceEnabled {
+		text, traceErr := thuepp.FormatTrace(interp.Trace)
+		if traceErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", traceErr)
+			os.Exit(1)
+		}
+		fmt.Fprint(os.Stderr, text)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		if code == 0 {
