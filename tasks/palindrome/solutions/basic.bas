@@ -1,3 +1,0 @@
-INPUT N
-IF N=10 THEN PRINT "false"
-IF N<>10 THEN PRINT "true"
