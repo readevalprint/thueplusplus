@@ -79,7 +79,7 @@ Terminal operators are `::=` replace, `::<` read, `::>` write, `::-` exit, and `
 
 ## 5. Patterns
 
-`LHS` is an RE2-compatible regex evaluated against the entire current state string as if prefixed by `(?m)`.
+`LHS` is a regex for the regex engine, evaluated against the entire current state string as if prefixed by `(?m)`.
 
 Required behavior: state is one mutable string and may contain newlines. `^`/`$` match line boundaries within that string; `.` does not match newline unless dotall is explicitly enabled. Patterns may match across newlines when they explicitly allow newline, for example with `\n` or a character class that includes newline. Named captures use `(?<name>...)`; capture names match `[A-Za-z_][A-Za-z0-9_]*`.
 
@@ -174,14 +174,14 @@ Zero or more `::|` steps sit between `LHS` and the terminal operator. After the 
 
 1. Fill holes from captures bound so far. A hole is `{{name}}` or `{{name|filter|filter...}}`. `name` and each filter match `[A-Za-z_][A-Za-z0-9_]*`. `{{rule_index}}` is not bound here. An unfiltered missing name expands to empty. A filtered missing name, an unknown filter, and a malformed filter are errors.
 2. Insert each value as regex source, verbatim. Do not double backslashes. Do not decode the value as a replacement string. A captured `.` means any character. A captured `(` opens a group. A captured `\` escapes the next pattern character. Substituted text is not scanned again for holes.
-3. Filters run left to right, then the result is inserted. `pctenc` and `pctdec` are the same filters as in a `::=` template. `quote` is RE2 `QuoteMeta`: escape `\ . + * ? ( ) | [ ] { } ^ $`, and leave every other character unchanged, including newline, tab, space, and non-ASCII. `{{name|quote}}` matches the captured text exactly. `{{name|pctenc|quote}}` encodes, then quotes. `{{name|quote|pctenc}}` quotes, then percent-encodes, so a quoted backslash becomes `%5C` and is no longer a regex escape. `quote` is not accepted by `::=` or `::>`.
+3. Filters run left to right, then the result is inserted. `pctenc` and `pctdec` are the same filters as in a `::=` template. `quote` quotes a literal for the regex engine: escape `\ . + * ? ( ) | [ ] { } ^ $`, and leave every other character unchanged, including newline, tab, space, and non-ASCII. `{{name|quote}}` matches the captured text exactly. `{{name|pctenc|quote}}` encodes, then quotes. `{{name|quote|pctenc}}` quotes, then percent-encodes, so a quoted backslash becomes `%5C` and is no longer a regex escape. `quote` is not accepted by `::=` or `::>`.
 4. Leave the rest of the step as regex source. Do not decode `\n`, `\t`, `\r`, or `\\` as replacement-string escapes. `\n` in the step is the regex newline escape. `\{{name}}` splices the value onto that escape. It is not an escape for a literal `{{`.
 5. A `{{` that is not a well-formed hole is ordinary pattern text. The first `{` stays, and scanning continues. `{{{{name}}` is the two characters `{{` followed by the hole `{{name}}`. `a{2}` is a repetition: exactly two `a` characters. `{{2}}` is not a hole, because `2` is not a name. The regex engine reads `{2}` as a repetition of the preceding `{`, so that pattern matches `{{}`. To match two `{` characters, write `{{` or `\{\{`. To match the text `{{foo}}` without reading a capture named `foo`, write `\{\{foo\}\}`.
-6. Compile the filled text as an RE2 regex with `(?m)`. If it does not compile, abort. The error is `Invalid ::| regex '<filled pattern>'` and does not include host-library text.
+6. Compile the filled text with the regex engine and `(?m)`. If it does not compile, abort. The error is `Invalid ::| regex '<filled pattern>'` and does not include host-library text.
 7. Search the whole state, not only the LHS span. The first match wins. If nothing matches, the rule does not apply and scanning continues at the next rule. Do not try a later LHS match.
 8. Add named groups that participated in that match. A later step, or the RHS, sees them. A repeated name overwrites the earlier value when the new group participates. An optional group that did not participate leaves the earlier value in place.
 
-Raw insertion is the rule. An earlier revision of this section quoted every substituted value with `QuoteMeta`. That quoting is the `quote` filter.
+Raw insertion is the rule. An earlier revision of this section quoted every substituted value as a literal for the regex engine. That quoting is the `quote` filter.
 
 `$NAME` aliases expand in the LHS and in each step before template filling. A `::!` argument may name a capture from the LHS or a `(?<name>...)` written in a step. Names are the groups written in the source, not groups assembled by placing a placeholder inside `(?<...>)`. Write placeholders where a literal belongs.
 

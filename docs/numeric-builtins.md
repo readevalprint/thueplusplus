@@ -6,7 +6,7 @@ Numeric builtins are deterministic exact-rational operations. They do not use bi
 
 ## Accepted numeric input grammar
 
-The accepted numeric input grammar is the RE2-compatible regular expression:
+The accepted numeric input grammar is the regular expression:
 
 ```regex
 -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)

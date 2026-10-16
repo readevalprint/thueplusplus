@@ -25,7 +25,7 @@ const page = pages.hosts
     </section>
     <section id="python" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Python</h2>
-      <p class="leading-7">The Python host is the other native implementation. It uses RE2 and the same default limits. Process bindings stay opt-in, the same way they do in Go.</p>
+      <p class="leading-7">The Python host is the other native implementation. It uses the regex engine and the same default limits. Process bindings stay opt-in, the same way they do in Go.</p>
     </section>
     <section id="javascript" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">JavaScript</h2>

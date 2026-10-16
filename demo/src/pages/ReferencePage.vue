@@ -36,7 +36,7 @@ const limits = [
     </template>
     <section id="operators" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Operators</h2>
-      <p class="leading-7">Rules are tried in order. The first pattern that matches is the one that runs. Patterns are RE2.</p>
+      <p class="leading-7">Rules are tried in order. The first pattern that matches is the one that runs. Patterns are regular expressions.</p>
       <Table>
         <TableHeader>
           <TableRow>
