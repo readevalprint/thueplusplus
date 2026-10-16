@@ -2,14 +2,10 @@
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import RewriteMotif from '@/components/RewriteMotif.vue'
+import { siteHosts, soonLanguages } from '@/hosts'
 
-const ready = [
-  { name: 'go', href: '/hosts#go' },
-  { name: 'python', href: '/hosts#python' },
-  { name: 'js', href: '/hosts#javascript' },
-]
-
-const soon = ['cpp', 'erlang', 'ocaml', 'perl', 'ruby', 'haskell', 'rust']
+const ready = siteHosts
+const soon = soonLanguages
 
 const pillars = [
   {
@@ -35,8 +31,8 @@ const pillars = [
         <p class="font-display mt-4 text-[clamp(40px,6vw,72px)] leading-[1.02] font-extrabold tracking-[-0.05em]">The safest, smallest, sandbox.</p>
         <p data-test="landing-languages" class="text-ash mt-6 max-w-[640px] font-sans text-[18px] leading-[1.5]">
           Available in
-          <template v-for="(language, index) in ready" :key="language.name">
-            <RouterLink :to="language.href" class="text-bone hover:text-signal transition-colors duration-150">{{ language.name }}</RouterLink><span v-if="index < ready.length - 1">, </span>
+          <template v-for="(language, index) in ready" :key="language.id">
+            <RouterLink :to="language.href" class="text-bone hover:text-signal transition-colors duration-150">{{ language.landing }}</RouterLink><span v-if="index < ready.length - 1">, </span>
           </template>, and soon {{ soon.join(', ') }}.
         </p>
         <div class="mt-8 flex flex-wrap gap-2">

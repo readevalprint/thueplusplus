@@ -40,7 +40,7 @@ Reload the window if an open `.tpp` file does not pick up the grammar.
 
 The command is **Thue++: Run Thue++ file**. It is in the Command Palette and the editor run menu when the active file is Thue++.
 
-It does not install an interpreter. Set `thuepp.executable` to the `thuepp` command or to an absolute path. The three hosts in this repository all install that command.
+It does not install an interpreter. Set `thuepp.executable` to the `thuepp` command or to an absolute path. Each host in this repository provides a `thuepp` command.
 
 Every run passes three finite limits. There is no unlimited value in these settings. `0` is a real limit.
 
