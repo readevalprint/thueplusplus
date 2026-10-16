@@ -43,6 +43,28 @@ test:
   script:
     - make test
 
+tasks:
+  image: golang:1.24.6-bookworm
+  rules:
+    - if: '$CI_SERVER_HOST != "gitlab.com"'
+  before_script:
+    - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
+    - |
+      if ! command -v uv >/dev/null 2>&1; then
+        curl -LsSf https://astral.sh/uv/install.sh \
+          | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 sh -s -- --no-modify-path
+        export PATH="/tmp/uv-bin:$PATH"
+      fi
+    - uv --version
+    - go version
+  script:
+    - make tasks
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - build/tasks/results.json
+
 e2e:
   image: node:22-bookworm
   rules:

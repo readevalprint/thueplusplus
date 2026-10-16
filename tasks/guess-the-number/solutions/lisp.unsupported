@@ -1,0 +1,1 @@
+Lisp can read lines and write prompts, but the rendered final value is appended to stdout, so it cannot match this transcript.

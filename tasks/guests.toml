@@ -1,0 +1,12 @@
+# Guest languages implemented as Thue++ programs. The task runner feeds each
+# solution to that program as --input and runs it on every host.
+
+[[guest]]
+id = "forth"
+program = "examples/forth/forth.tpp"
+extension = "fth"
+
+[[guest]]
+id = "lisp"
+program = "examples/lisp/lisp.tpp"
+extension = "lisp"

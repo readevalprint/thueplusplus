@@ -1,0 +1,1 @@
+Forth does not read stdin and cannot print prompts.

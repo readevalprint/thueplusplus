@@ -1,0 +1,1 @@
+Lisp strings cannot be indexed or split, so a line of text cannot be reversed.

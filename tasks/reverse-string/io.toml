@@ -1,0 +1,15 @@
+# Guest-agnostic transcript. The runner binds the guest interpreter and the solution.
+name = "reverse-string"
+timeout = 30
+args = ["--max-steps", "200000", "--max-evals", "2000000", "--max-state-bytes", "2097152"]
+
+stdin = """
+stressed
+"""
+
+[expect]
+exit_code = 0
+stdout = """
+desserts
+"""
+stderr = ""

@@ -1,0 +1,1 @@
+Forth has no loops and does not read stdin, so one program cannot answer every transcript.
