@@ -1,278 +1,188 @@
 <template>
-  <div ref="surfaceRoot" class="playground-route playground-surface" :class="[`playground-chrome-${props.chrome}`, { 'playground-compact-layout': isCompactLayout }]" :data-mode="props.mode" :data-compact="isCompactLayout ? 'true' : 'false'">
-    <header v-if="showHeader" class="playground-route-header" data-test="playground-header">
-      <h1>{{ props.title }}</h1>
-    </header>
-
-    <p v-if="loadError" class="error-text">{{ loadError }}</p>
-
-    <section v-if="showPicker" data-test="test-case-pane">
+  <div class="flex w-full" :class="showHero ? undefined : 'min-h-svh'">
+    <aside v-if="!isMobile" :class="[columnClass, 'border-r']" data-test="playground-examples">
+      <h2 class="px-4 pt-4 text-sm font-medium">Examples</h2>
       <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
-    </section>
+    </aside>
 
-    <section v-if="isCompactLayout" class="playground-embed-layout" data-test="playground-compact-surface">
-      <header class="playground-embed-topbar" data-test="embed-topbar">
-        <div class="playground-embed-title">
-          <strong>{{ sourcePath }}</strong>
-          <Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge>
-        </div>
-        <div class="playground-embed-actions">
-          <Button v-if="showRunButton" type="button" variant="secondary" data-test="embed-run" :disabled="!canRun" @click="() => runCompactProgram()">Run</Button>
-          <Button v-if="showStepControls" type="button" variant="secondary" data-test="playground-step" :disabled="!canRun" :title="stepTitle" @click="() => stepProgram()">Step</Button>
-          <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" @click="() => continueProgram()">Play</Button>
-          <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-pause" :disabled="!continuing" title="Pause" @click="pauseProgram">Pause</Button>
-          <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-end" :disabled="!canRun" :title="endTitle" @click="() => endProgram()">End</Button>
-          <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" @click="resetToFirstState">Reset</Button>
-          <Button v-if="showDebugControls" type="button" variant="secondary" data-test="playground-undo" :disabled="!canUndo" title="Step back" @click="undoStep">Back</Button>
-          <Button v-if="props.showOpenFull" as="a" variant="ghost" :href="openFullHref" data-test="embed-open-full">Open full</Button>
-        </div>
-      </header>
+    <div class="min-w-0 flex-1">
+      <div v-if="isMobile" class="flex flex-wrap gap-2 px-6 pt-4">
+        <Sheet v-model:open="examplesOpen">
+          <SheetTrigger as-child>
+            <Button type="button" variant="outline" data-test="playground-examples-trigger">Examples</Button>
+          </SheetTrigger>
+          <SheetContent side="left" class="w-full overflow-y-auto sm:max-w-sm" data-test="playground-examples">
+            <SheetHeader>
+              <SheetTitle>Examples</SheetTitle>
+              <SheetDescription>Programs and the manifest cases that load them.</SheetDescription>
+            </SheetHeader>
+            <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
+          </SheetContent>
+        </Sheet>
+        <Sheet v-model:open="settingsOpen">
+          <SheetTrigger as-child>
+            <Button type="button" variant="outline" data-test="playground-settings-trigger">Settings</Button>
+          </SheetTrigger>
+          <SheetContent side="right" class="w-full overflow-y-auto sm:max-w-sm" data-test="playground-settings">
+            <SheetHeader>
+              <SheetTitle>Settings</SheetTitle>
+              <SheetDescription>Step, probe, and state limits sent with every run.</SheetDescription>
+            </SheetHeader>
+            <PlaygroundSettings
+              v-model:max-steps="maxSteps"
+              v-model:max-evals="maxEvals"
+              v-model:max-state-bytes="maxStateBytes"
+              v-model:continue-speed="continueSpeed"
+              :disabled="isBusy"
+            />
+          </SheetContent>
+        </Sheet>
+      </div>
 
-      <Card class="playground-rules-pane playground-embed-source" data-test="embed-source-pane">
-        <CardHeader class="playground-rules-header">
-          <div class="playground-rules-title-block">
-            <CardTitle>program rules</CardTitle>
-            <p v-if="selectedTestCase" class="playground-selected-case" data-test="playground-selected-case">
-              <span>{{ selectedTestCase.caseName }}</span>
-              <small>{{ selectedTestCase.manifestPath }}</small>
-            </p>
-          </div>
-          <div v-if="showDebugControls" class="playground-rules-options">
-            <ButtonGroup class="playground-speed-links" aria-label="Step speed">
-              <Button v-for="option in continueSpeedOptions" :key="option.value" type="button" :variant="continueSpeed === option.value ? 'secondary' : 'ghost'" size="sm" :data-selected="continueSpeed === option.value" :data-test="`playground-speed-${option.value}`" :disabled="isBusy" @click="continueSpeed = option.value">{{ option.label }}</Button>
-            </ButtonGroup>
-            <div class="playground-max-steps" data-test="playground-max-steps">
-              <span>max steps:</span>
-              <ButtonGroup aria-label="Max steps">
-                <Button v-for="option in maxStepOptions" :key="option" type="button" :variant="maxSteps === option ? 'secondary' : 'ghost'" size="sm" :data-selected="maxSteps === option" :data-test="`playground-max-steps-${option}`" :disabled="isBusy" @click="maxSteps = option">{{ option }}</Button>
-              </ButtonGroup>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
-        </CardContent>
-      </Card>
+      <PageHero v-if="showHero" :kicker="page.kicker" :title="page.title">
+        <template #actions>
+          <Button type="button" data-test="playground-cta" @click="scrollToEditor">Edit the program</Button>
+        </template>
+      </PageHero>
 
-      <nav class="playground-section-tabs" aria-label="playground sections" data-test="embed-section-tabs">
-        <Button v-for="section in sectionTabs" :key="section.id" type="button" variant="secondary" :class="{ active: activeSection === section.id }" :data-section="section.id" @click="setActiveSection(section.id)">{{ section.label }}</Button>
-      </nav>
+      <div :data-test="showHero ? 'page-details' : undefined" class="flex flex-col gap-6 px-6 pt-2 pb-16">
+        <div data-test="playground-workbench" class="flex flex-col gap-6">
+          <p v-if="loadError" class="text-destructive text-sm">{{ loadError }}</p>
 
-      <Card class="playground-section-panel" data-test="embed-section-panel">
-        <CardHeader>
-          <CardTitle>{{ activeSection }}</CardTitle>
-          <div v-if="activeSection === 'output'" class="playground-output-tabs" data-test="embed-output-tabs">
-            <Button type="button" size="sm" variant="secondary" :class="{ active: activeOutputTab === 'stdout' }" data-output-tab="stdout" @click="setActiveOutputTab('stdout')">stdout</Button>
-            <Button type="button" size="sm" variant="secondary" :class="{ active: activeOutputTab === 'stderr' }" data-output-tab="stderr" @click="setActiveOutputTab('stderr')">stderr</Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <template v-if="activeSection === 'output'">
-            <Textarea v-if="activeOutputTab === 'stdout'" :model-value="resourceOutputText('stdout')" data-test="resource-output-stdout" readonly spellcheck="false" wrap="off" />
-            <Textarea v-else :model-value="resourceOutputText('stderr')" data-test="resource-output-stderr" readonly spellcheck="false" wrap="off" />
-          </template>
-          <Textarea v-else-if="activeSection === 'state'" v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
-          <div v-else-if="activeSection === 'input'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections.filter(showResourceInput)" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="false" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
-          </div>
-          <StateDiffs v-else-if="activeSection === 'trace'" :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
-          <div v-else-if="activeSection === 'resources'" class="resource-list compact-resource-list" data-test="resource-sections">
-            <ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" />
-          </div>
-          <Textarea v-else :model-value="rulesText" data-test="embed-source-text" readonly spellcheck="false" wrap="off" />
-        </CardContent>
-      </Card>
-    </section>
-
-    <ResizablePanelGroup v-else direction="horizontal" class="playground-layout" auto-save-id="playground-columns" data-test="playground-full-surface">
-      <ResizablePanel :default-size="42" :min-size="24" class="playground-column playground-rules-column">
-        <Card class="playground-rules-pane">
-          <CardHeader class="playground-rules-header">
-            <div class="playground-rules-title-block">
-              <CardTitle>program rules</CardTitle>
-              <p v-if="selectedTestCase" class="playground-selected-case" data-test="playground-selected-case">
+          <Card id="editor">
+            <CardHeader>
+              <CardTitle>Rules</CardTitle>
+              <CardDescription v-if="selectedTestCase" data-test="playground-selected-case">
                 <span>{{ selectedTestCase.caseName }}</span>
-                <small>{{ selectedTestCase.manifestPath }}</small>
-              </p>
+                <span class="block">{{ selectedTestCase.manifestPath }}</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>State</CardTitle>
+              <CardAction>
+                <Badge variant="secondary" data-test="playground-status">{{ statusText }}</Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <Textarea v-model="stateText" class="min-h-32 font-mono" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
+            </CardContent>
+          </Card>
+
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" aria-label="Reset to first state" @click="resetToFirstState">Reset</Button>
+              <Button type="button" variant="outline" data-test="playground-undo" :disabled="!canUndo" title="Step back" aria-label="Step back" @click="undoStep">Back</Button>
+              <Button type="button" variant="outline" data-test="playground-pause" :disabled="!continuing" title="Pause" aria-label="Pause" @click="pauseProgram">Pause</Button>
+              <Button type="button" variant="secondary" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">Play</Button>
+              <Button type="button" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">Step</Button>
+              <Button type="button" variant="secondary" data-test="playground-end" :disabled="!canRun" :title="endTitle" aria-label="End" @click="() => endProgram()">End</Button>
+              <Button v-if="props.showOpenFull" as="a" variant="ghost" :href="openFullHref" data-test="embed-open-full">Open full</Button>
             </div>
-            <div class="playground-rules-toolbar">
-              <Button type="button" variant="secondary" size="icon" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" aria-label="Reset to first state" @click="resetToFirstState">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M11 5v14l-9-7 9-7zm11 0v14l-9-7 9-7z" /></svg>
-              </Button>
-              <Button type="button" variant="secondary" size="icon" data-test="playground-undo" :disabled="!canUndo" title="Step back" aria-label="Step back" @click="undoStep">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512"><path d="M267.5 440.6c9.5 7.9 22.8 9.7 34.1 4.4s18.4-16.6 18.4-29l0-320c0-12.4-7.2-23.7-18.4-29s-24.5-3.6-34.1 4.4l-192 160L64 241 64 96c0-17.7-14.3-32-32-32S0 78.3 0 96L0 416c0 17.7 14.3 32 32 32s32-14.3 32-32l0-145 11.5 9.6 192 160z" /></svg>
-              </Button>
-              <Button type="button" variant="secondary" size="icon" data-test="playground-pause" :disabled="!continuing" title="Pause" aria-label="Pause" @click="pauseProgram">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z" /></svg>
-              </Button>
-              <Button type="button" variant="secondary" size="icon" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 384 512"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" /></svg>
-              </Button>
-              <Button type="button" variant="secondary" size="icon" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 320 512"><path d="M52.5 440.6c-9.5 7.9-22.8 9.7-34.1 4.4S0 428.4 0 416L0 96C0 83.6 7.2 72.3 18.4 67s24.5-3.6 34.1 4.4l192 160L256 241l0-145c0-17.7 14.3-32 32-32s32 14.3 32 32l0 320c0 17.7-14.3 32-32 32s-32-14.3-32-32l0-145-11.5 9.6-192 160z" /></svg>
-              </Button>
-              <Button type="button" variant="secondary" size="icon" data-test="playground-end" :disabled="!canRun" :title="endTitle" aria-label="End" @click="() => endProgram()">
-                <svg class="toolbar-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M13 5v14l9-7-9-7zM2 5v14l9-7-9-7z" /></svg>
-              </Button>
+            <div data-test="playground-applied-limits" class="flex flex-wrap gap-2">
+              <Badge variant="outline">steps {{ maxSteps }}</Badge>
+              <Badge variant="outline">probes {{ maxEvals }}</Badge>
+              <Badge variant="outline">state {{ maxStateBytes }}</Badge>
             </div>
-            <div class="playground-rules-options">
-              <ButtonGroup class="playground-speed-links" aria-label="Step speed">
-                <Button v-for="option in continueSpeedOptions" :key="option.value" type="button" :variant="continueSpeed === option.value ? 'secondary' : 'ghost'" size="sm" :data-selected="continueSpeed === option.value" :data-test="`playground-speed-${option.value}`" :disabled="isBusy" @click="continueSpeed = option.value">{{ option.label }}</Button>
-              </ButtonGroup>
-              <div class="playground-max-steps" data-test="playground-max-steps"><span>max steps:</span><ButtonGroup aria-label="Max steps"><Button v-for="option in maxStepOptions" :key="option" type="button" :variant="maxSteps === option ? 'secondary' : 'ghost'" size="sm" :data-selected="maxSteps === option" :data-test="`playground-max-steps-${option}`" :disabled="isBusy" @click="maxSteps = option">{{ option }}</Button></ButtonGroup></div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <RulesMonacoEditor v-model="rulesText" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
-          </CardContent>
-        </Card>
-      </ResizablePanel>
-      <ResizableHandle />
-      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-state-column">
-        <ResizablePanelGroup direction="vertical" class="playground-state-stack" data-test="playground-state-stack" auto-save-id="playground-state-rows">
-          <ResizablePanel :default-size="58" :min-size="24" class="playground-row playground-state-row"><Card class="playground-state-pane"><CardHeader><CardTitle>program state</CardTitle><Badge variant="secondary" class="run-status" data-test="playground-status">{{ statusText }}</Badge></CardHeader><CardContent><Textarea v-model="stateText" class="state-editor" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" /></CardContent></Card></ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel :default-size="42" :min-size="18" class="playground-row playground-timeline-row"><Card class="playground-diffs-pane"><CardHeader><CardTitle>timeline</CardTitle></CardHeader><CardContent><StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" /></CardContent></Card></ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-      <ResizableHandle />
-      <ResizablePanel :default-size="29" :min-size="20" class="playground-column playground-resources-column"><Card class="playground-resources-pane" data-test="resource-sections"><CardHeader><CardTitle>resources</CardTitle></CardHeader><CardContent class="resource-list"><ResourceSection v-for="resource in resourceSections" :key="resource.name" :resource="resource" :input="resourceInputs[resource.name] ?? ''" :output="resourceOutputText(resource.name)" :attention="resourceAttention[resource.name]" :running="isBusy" :can-submit="requestedResourceName === resource.name" :show-input="showResourceInput(resource)" :show-output="showResourceOutput(resource)" @update:input="setResourceInput(resource.name, $event)" @submit="submitResource(resource.name)" /></CardContent></Card></ResizablePanel>
-    </ResizablePanelGroup>
+          </div>
+
+          <Card id="output" data-test="resource-sections">
+            <CardHeader>
+              <CardTitle>Output</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <ResourceSection
+                v-for="resource in resourceSections"
+                :key="resource.name"
+                :resource="resource"
+                :input="resourceInputs[resource.name] ?? ''"
+                :output="resourceOutputText(resource.name)"
+                :attention="resourceAttention[resource.name]"
+                :running="isBusy"
+                :can-submit="requestedResourceName === resource.name"
+                :show-input="showResourceInput(resource)"
+                :show-output="showResourceOutput(resource)"
+                @update:input="setResourceInput(resource.name, $event)"
+                @submit="submitResource(resource.name)"
+              />
+            </CardContent>
+          </Card>
+
+          <Card id="trace">
+            <CardHeader>
+              <CardTitle>Trace</CardTitle>
+            </CardHeader>
+            <CardContent class="overflow-x-auto">
+              <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+
+    <aside v-if="!isMobile" :class="[columnClass, 'border-l']" data-test="playground-settings">
+      <h2 class="px-4 pt-4 text-sm font-medium">Settings</h2>
+      <PlaygroundSettings
+        v-model:max-steps="maxSteps"
+        v-model:max-evals="maxEvals"
+        v-model:max-state-bytes="maxStateBytes"
+        v-model:continue-speed="continueSpeed"
+        :disabled="isBusy"
+      />
+    </aside>
   </div>
 </template>
 
 <script setup lang="ts">
 import { diffChars } from 'diff'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useMediaQuery } from '@vueuse/core'
+import { computed, nextTick, ref } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ButtonGroup } from '@/components/ui/button-group'
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import PageHero from '@/components/PageHero.vue'
+import PlaygroundSettings from '@/playground/PlaygroundSettings.vue'
 import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
 import TestCaseMenu from './TestCaseMenu.vue'
+import { pages } from '@/site'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
-
-export type PlaygroundSection = 'output' | 'state' | 'input' | 'trace' | 'resources' | 'source'
-export type PlaygroundMode = 'auto' | 'full' | 'compact' | 'mini' | 'debug'
-export type PlaygroundControls = 'run' | 'step' | 'debug' | 'none'
-export type PlaygroundChrome = 'page' | 'embed' | 'bare'
-type OutputTab = 'stdout' | 'stderr'
 
 const props = withDefaults(defineProps<{
   file?: string
   test?: string
   caseName?: string
-  section?: PlaygroundSection
-  tab?: string
-  mode?: PlaygroundMode
-  chrome?: PlaygroundChrome
+  chrome?: 'page' | 'embed'
   editable?: boolean
-  controls?: PlaygroundControls
-  header?: boolean
-  picker?: boolean
-  showTestSelector?: boolean
   showOpenFull?: boolean
   syncUrl?: boolean
-  title?: string
 }>(), {
-  mode: 'auto',
   chrome: 'page',
   editable: true,
-  controls: 'debug',
-  header: true,
-  picker: true,
-  showTestSelector: true,
   showOpenFull: false,
   syncUrl: true,
-  title: 'THUE++ Playground',
 })
+
+const page = pages.playground
+const isMobile = useMediaQuery('(max-width: 1279px)')
+const showHero = computed(() => props.chrome === 'page')
+const columnClass = computed(() => showHero.value
+  ? 'bg-sidebar sticky top-0 flex max-h-[calc(100svh-3.5rem)] w-56 shrink-0 flex-col overflow-y-auto'
+  : 'bg-sidebar sticky top-0 flex h-svh w-56 shrink-0 flex-col overflow-y-auto')
+const examplesOpen = ref(false)
+const settingsOpen = ref(false)
 
 const routeSearchParams = new URLSearchParams(window.location.search)
-const surfaceRoot = ref<HTMLElement | null>(null)
-const measuredWidth = ref(window.innerWidth)
-const activeSection = ref<PlaygroundSection>(normalizeSection(props.section ?? routeSearchParams.get('section')))
-const activeOutputTab = ref<OutputTab>(normalizeOutputTab(props.tab ?? routeSearchParams.get('tab')))
-let surfaceResizeObserver: ResizeObserver | undefined
-
-const showHeader = computed(() => props.header && props.chrome !== 'bare')
-const showPicker = computed(() => props.picker && props.showTestSelector)
-const isCompactLayout = computed(() => {
-  if (props.mode === 'full') return false
-  if (props.mode === 'compact' || props.mode === 'mini' || props.mode === 'debug') return true
-  if (props.chrome === 'embed' || props.chrome === 'bare') return true
-  // The shell's center column is narrower than the viewport. 640px still fits the three panes there.
-  return measuredWidth.value < 640
-})
-const compactControls = computed<PlaygroundControls>(() => props.controls)
-const showRunButton = computed(() => compactControls.value === 'run' || compactControls.value === 'step' || compactControls.value === 'debug')
-const showStepControls = computed(() => compactControls.value === 'step' || compactControls.value === 'debug')
-const showDebugControls = computed(() => compactControls.value === 'debug')
-const openFullHref = computed(() => {
-  const url = new URL('/playground', window.location.href)
-  url.searchParams.set('file', fileParam.value)
-  if (activeSection.value) url.searchParams.set('section', activeSection.value)
-  if (activeOutputTab.value) url.searchParams.set('tab', activeOutputTab.value)
-  return `${url.pathname}${url.search}`
-})
-const sectionTabs: Array<{ id: PlaygroundSection; label: string }> = [
-  { id: 'output', label: 'Output' },
-  { id: 'state', label: 'State' },
-  { id: 'input', label: 'Input' },
-  { id: 'trace', label: 'Trace' },
-  { id: 'resources', label: 'Resources' },
-  { id: 'source', label: 'Source' },
-]
-
-function normalizeSection(value?: string | null): PlaygroundSection {
-  const allowed = new Set(['output', 'state', 'input', 'trace', 'resources', 'source'])
-  return allowed.has(value ?? '') ? value as PlaygroundSection : 'output'
-}
-
-function normalizeOutputTab(value?: string | null): OutputTab {
-  return value === 'stderr' ? 'stderr' : 'stdout'
-}
-
-function setActiveSection(section: PlaygroundSection): void {
-  activeSection.value = section
-  syncSelectionUrl()
-}
-
-function setActiveOutputTab(tab: OutputTab): void {
-  activeOutputTab.value = tab
-  syncSelectionUrl()
-}
-
-function syncSelectionUrl(): void {
-  if (!props.syncUrl) return
-  const url = new URL(window.location.href)
-  url.searchParams.set('section', activeSection.value)
-  url.searchParams.set('tab', activeOutputTab.value)
-  window.history.replaceState({}, '', url)
-}
-
-onMounted(() => {
-  if (!surfaceRoot.value) return
-  if (typeof ResizeObserver === 'undefined') {
-    measuredWidth.value = surfaceRoot.value.getBoundingClientRect().width || window.innerWidth
-    return
-  }
-  surfaceResizeObserver = new ResizeObserver(entries => {
-    const width = entries[0]?.contentRect.width ?? 0
-    if (width > 0) measuredWidth.value = width
-  })
-  surfaceResizeObserver.observe(surfaceRoot.value)
-})
-
-onBeforeUnmount(() => {
-  surfaceResizeObserver?.disconnect()
-})
-
 
 const exampleModules = import.meta.glob('../../examples/**/*.tpp', {
   query: '?raw',
@@ -301,7 +211,6 @@ const continueSpeedOptions: Array<{ value: ContinueSpeed; label: string; delayMs
   { value: '10', label: '10/s', delayMs: 100 },
   { value: '100', label: '100/s', delayMs: 10 },
 ]
-const maxStepOptions = [1000, 10000, 100000]
 
 const fileParam = ref(initialFile)
 const sourcePath = ref(initialFile.replace(/^\.\//, ''))
@@ -322,7 +231,9 @@ const selectedHistoryKey = ref<string | undefined>()
 const baseState = ref('')
 const lastRunMode = ref<'step' | 'continue' | 'end'>('step')
 const continueSpeed = ref<ContinueSpeed>('10')
-const maxSteps = ref(10000)
+const maxSteps = ref(1_000_000)
+const maxEvals = ref(1_000_000)
+const maxStateBytes = ref(8_388_608)
 const matchedRuleLine = ref<number | undefined>()
 const selectedTestCase = ref<TestCaseOption | undefined>()
 
@@ -337,6 +248,15 @@ const stepTitle = computed(() => 'Step forward')
 const continueTitle = computed(() => 'Play')
 const endTitle = computed(() => `End without rendering intermediate states (max ${maxSteps.value} steps)`)
 const continueDelayMs = computed(() => continueSpeedOptions.find(option => option.value === continueSpeed.value)?.delayMs ?? 100)
+const openFullHref = computed(() => {
+  const url = new URL('/playground', window.location.href)
+  url.searchParams.set('file', fileParam.value)
+  return `${url.pathname}${url.search}`
+})
+
+function scrollToEditor(): void {
+  document.getElementById('editor')?.scrollIntoView({ block: 'start' })
+}
 
 function toPublicExamplePath(globPath: string): string {
   return `./${globPath.replace(/^\.\.\/\.\.\//, '')}`
@@ -496,6 +416,7 @@ function selectTestCase(testCase: TestCaseOption): void {
   selectedTestCase.value = testCase
   if (testCase.hasInput) stateText.value = testCase.input
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
+  examplesOpen.value = false
   if (props.syncUrl) {
     const url = new URL(window.location.href)
     url.searchParams.set('test', `./${testCase.manifestPath}`)
@@ -583,8 +504,8 @@ async function executeProgram(options: { maxSteps?: number; status: string; coll
       sourceText: rulesText.value,
       sourcePath: sourcePath.value,
       input: runState,
-      maxEvals: maxSteps.value,
-      maxStateBytes: 1_000_000,
+      maxEvals: maxEvals.value,
+      maxStateBytes: maxStateBytes.value,
       coverage: false,
       resources: resourceConfigs(),
       trace: options.collectTrace ?? options.maxSteps !== undefined,
@@ -605,30 +526,22 @@ async function executeProgram(options: { maxSteps?: number; status: string; coll
     updateMatchedRuleLine(trace)
     if (pendingResource) {
       statusText.value = `waiting for ${pendingResource}`
-      activeSection.value = 'input'
       await focusResourceInput(pendingResource)
       return 'waiting'
-    } else {
-      const stepped = options.maxSteps === 1 && trace.length > 0 && !trace.some(event => event.exitCode !== undefined) && (deliberateStep || (!result.exitCode && !stderr))
-      if (stepped) {
-        statusText.value = 'stepped'
-        return 'stepped'
-      }
-      statusText.value = `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
-      if (stderr) {
-        activeSection.value = 'output'
-        activeOutputTab.value = 'stderr'
-      }
-      return 'exited'
     }
+    const stepped = options.maxSteps === 1 && trace.length > 0 && !trace.some(event => event.exitCode !== undefined) && (deliberateStep || (!result.exitCode && !stderr))
+    if (stepped) {
+      statusText.value = 'stepped'
+      return 'stepped'
+    }
+    statusText.value = `exited ${result.exitCode ?? (stderr ? 1 : 0)}`
+    return 'exited'
   } catch (error) {
     const stderr = error instanceof Error ? error.message : String(error)
     const nextStderr = `${resourceOutputs.value.stderr ?? ''}${stderr}`
     resourceAttention.value = {}
     resourceOutputs.value = { ...resourceOutputs.value, stderr: nextStderr }
     statusText.value = 'errored'
-    activeSection.value = 'output'
-    activeOutputTab.value = 'stderr'
     return 'errored'
   } finally {
     running.value = false
@@ -912,12 +825,6 @@ function appendErrorTranscript(current: string, next: string): string {
   return `${current}\n${next}`
 }
 
-
-async function runCompactProgram(): Promise<void> {
-  if (compactControls.value === 'run') await endProgram()
-  else await continueProgram()
-}
-
 function loadInitialSelection(): void {
   const testParam = props.test ?? routeSearchParams.get('test')
   const caseParam = props.caseName ?? routeSearchParams.get('case')
@@ -933,5 +840,4 @@ function loadInitialSelection(): void {
 }
 
 loadInitialSelection()
-
 </script>

@@ -66,7 +66,8 @@ test('embed has no site chrome', async ({ page }) => {
   await page.goto('/embed?file=./examples/hello/hello.tpp&section=state')
   await expect(page.getByTestId('app-shell')).toHaveCount(0)
   await expect(page.getByTestId('nav-trigger')).toHaveCount(0)
-  await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
+  await expect(page.getByTestId('playground-workbench')).toBeVisible()
+  await expect(page.getByTestId('page-hero')).toHaveCount(0)
 })
 
 test('deep links render their own heading', async ({ page }) => {
