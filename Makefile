@@ -23,6 +23,7 @@ tasks:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the task suite" >&2; exit 127; }
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run the task suite" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the task suite" >&2; exit 127; }
+	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to run the task suite" >&2; exit 127; }
 	uv run python tasks/runner.py --output build/tasks/results.json
 
 # Append HEAD to metrics/history.json. Runs the task suite, then the host benchmark.
@@ -31,6 +32,7 @@ metrics:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to record metrics" >&2; exit 127; }
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to record metrics" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to record metrics" >&2; exit 127; }
+	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to record metrics" >&2; exit 127; }
 	uv run python metrics/record.py
 
 wasm:

@@ -17,9 +17,9 @@ test('guests leaderboard invites autoresearch', async ({ page }) => {
   await expect(page.getByTestId('benchmark-readout')).toContainText('probes')
   await expect(page.locator('body')).not.toContainText(/RE2/)
   await expect(page.getByText('Placeholder')).toHaveCount(0)
-  await expect(page.getByTestId('rule-readout')).toContainText('886882cdd2cf')
+  await expect(page.getByTestId('rule-readout')).toContainText('91c61cf19d91')
   await page.getByTestId('rule-chart-slider').fill('0')
-  await expect(page.getByTestId('rule-readout')).not.toContainText('886882cdd2cf')
+  await expect(page.getByTestId('rule-readout')).not.toContainText('91c61cf19d91')
 })
 
 test('tasks index opens a task and its guest solution', async ({ page }) => {

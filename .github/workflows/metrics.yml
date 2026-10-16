@@ -23,6 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: dtolnay/rust-toolchain@1.83.0
       - name: Record metrics for this commit
         run: uv run python metrics/record.py
       - name: Commit the history file

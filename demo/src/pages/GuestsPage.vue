@@ -10,11 +10,11 @@ import GuestRewrite from '@/components/GuestRewrite.vue'
 import MetricChart from '@/components/MetricChart.vue'
 import { catalog, rankGuests, sourceUrl } from '@/catalog'
 import {
-  HistoryError,
   benchmarkCommits,
   commitUrl,
   guestRuleChart,
   history,
+  hostDurationSeries,
   seriesFromField,
   taskCommits,
 } from '@/metrics'
@@ -35,15 +35,7 @@ const stepProbeSeries = [
   { id: 'steps', label: 'Steps', points: benchmarks.map(commit => ({ commit: commit.commit, value: commit.appliedSteps })) },
   { id: 'probes', label: 'Probes', points: benchmarks.map(commit => ({ commit: commit.commit, value: commit.probes })) },
 ]
-const hostSeries = benchmarks[0]?.hosts.map(host => ({
-  id: host.id,
-  label: host.id,
-  points: benchmarks.map(commit => {
-    const row = commit.hosts.find(item => item.id === host.id)
-    if (!row) throw new HistoryError(`${commit.commit} is missing host ${host.id}`)
-    return { commit: commit.commit, value: row.durationMs }
-  }),
-})) ?? []
+const hostSeries = hostDurationSeries(benchmarks)
 
 const ruleIndex = ref(last(rules.commits.length))
 const taskIndex = ref(last(tasks.length))
@@ -175,7 +167,7 @@ function last(count: number): number {
     </section>
     <section id="benchmarks" data-test="benchmarks" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Benchmarks</h2>
-      <p class="leading-7">Each point is one run of <code>metrics/benchmark.tpp</code> on Python, Go, and the WebAssembly host. Applied steps and probes are the same on every host. Probes are host evals. Duration is wall-clock milliseconds, including startup.</p>
+      <p class="leading-7">Each point is one run of <code>metrics/benchmark.tpp</code> on a host from <code>hosts.toml</code>. Applied steps and probes are the same on every host that ran. A host missing from an older commit is a gap. Probes are host evals. Duration is wall-clock milliseconds, including startup.</p>
       <h3 id="steps-and-probes" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Steps and probes</h3>
       <MetricChart
         v-if="benchmarks.length > 0"

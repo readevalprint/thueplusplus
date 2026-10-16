@@ -5,6 +5,7 @@ import {
   guestName,
   guestRuleChart,
   history,
+  hostDurationSeries,
   loadHistory,
   placeChart,
   taskCommits,
@@ -24,7 +25,7 @@ describe('metrics history', () => {
     expect(history.entries.length).toBeGreaterThan(1)
     const rules = guestRuleChart(history, order, names)
     const latest = rules.commits[rules.commits.length - 1]
-    expect(latest.commit.startsWith('886882cdd2cf')).toBe(true)
+    expect(latest.commit.startsWith('91c61cf19d91')).toBe(true)
     expect(latest.author).toContain('cursor[bot]')
     expect(rules.series.find(series => series.id === 'forth')?.points.find(point => point.commit === latest.commit)?.value).toBe(86)
     expect(rules.series.find(series => series.id === 'lisp')?.points.find(point => point.commit === latest.commit)?.value).toBe(441)
@@ -45,9 +46,9 @@ describe('metrics history', () => {
     expect(latestBench.appliedSteps).toBe(10000)
     expect(latestBench.probes).toBe(10002)
     expect(latestBench.hosts.map(host => [host.id, host.durationMs, host.exitCode])).toEqual([
-      ['python', 1013, 0],
-      ['go', 912, 0],
-      ['wasm', 2111, 0],
+      ['python', 705, 0],
+      ['go', 504, 0],
+      ['wasm', 1408, 0],
     ])
     expect(latestBench.memoryCapBytes).toBe(268435456)
   })
@@ -62,6 +63,26 @@ describe('metrics history', () => {
     expect(guestName('forth', new Map())).toBe('Forth')
   })
 
+  it('leaves a gap when an older commit omits a host', () => {
+    const older = 'a'.repeat(40)
+    const newer = 'b'.repeat(40)
+    const loaded = loadHistory({
+      schema_version: 1,
+      entries: [
+        benchEntry(older, '2026-01-01T00:00:00Z', ['python', 'go', 'wasm']),
+        benchEntry(newer, '2026-01-02T00:00:00Z', ['python', 'go', 'wasm', 'rust']),
+      ],
+    })
+    const series = hostDurationSeries(benchmarkCommits(loaded))
+    expect(series.map(item => item.id)).toEqual(['python', 'go', 'wasm', 'rust'])
+    expect(series.find(item => item.id === 'rust')?.points).toEqual([{ commit: newer, value: 10 }])
+    expect(series.find(item => item.id === 'python')?.points).toHaveLength(2)
+    expect(() => loadHistory({
+      schema_version: 1,
+      entries: [benchEntry('c'.repeat(40), '2026-01-03T00:00:00Z', ['cpp'])],
+    })).toThrow(/unknown benchmark host/)
+  })
+
   it('rejects a document that breaks the schema', () => {
     expect(() => loadHistory({ schema_version: 2, entries: [] })).toThrow(HistoryError)
     expect(() => loadHistory({ schema_version: 2, entries: [] })).toThrow(/schema_version/)
@@ -71,6 +92,35 @@ describe('metrics history', () => {
     expect(() => placeChart(0, 1)).toThrow(HistoryError)
   })
 })
+
+function benchEntry(commit: string, timestamp: string, hosts: string[]) {
+  const rows: Record<string, unknown> = {}
+  for (const host of hosts) {
+    rows[host] = {
+      duration_ms: 10,
+      exit_code: 0,
+      applied_steps: 10000,
+      probes: 10002,
+      host_timeout_seconds: 30,
+    }
+  }
+  return {
+    commit,
+    author: 'Ada <ada@example.com>',
+    timestamp,
+    guests: {},
+    tasks: null,
+    benchmarks: {
+      program: 'benchmark.tpp',
+      max_steps: 15000,
+      max_evals: 50000,
+      max_state_bytes: 16384,
+      timeout_seconds: 30,
+      memory_cap_bytes: 268435456,
+      hosts: rows,
+    },
+  }
+}
 
 function blank(commit: string, timestamp: string) {
   return {

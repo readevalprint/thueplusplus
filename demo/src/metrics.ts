@@ -1,6 +1,8 @@
+import { parse as parseToml } from 'smol-toml'
 import rawHistory from '../../metrics/history.json'
+import hostsToml from '../../hosts.toml?raw'
 
-const HOSTS = ['python', 'go', 'wasm'] as const
+export const HOST_IDS = readHostIds(hostsToml)
 const TASK_STATUSES = ['pass', 'fail', 'unsupported'] as const
 const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'guests', 'tasks', 'benchmarks']
 const GUEST_KEYS = ['program', 'rule_lines', 'error']
@@ -177,6 +179,19 @@ export function taskCommits(history: History, order: readonly string[], names: R
     })
     return [{ ...commitRef(entry), guests }]
   })
+}
+
+export function hostDurationSeries(commits: readonly BenchmarkCommit[]): NamedSeries[] {
+  const present = new Set(commits.flatMap(commit => commit.hosts.map(host => host.id)))
+  return HOST_IDS.filter(id => present.has(id)).map(id => ({
+    id,
+    label: id,
+    points: commits.flatMap(commit => {
+      const row = commit.hosts.find(host => host.id === id)
+      if (!row) return []
+      return [{ commit: commit.commit, value: row.durationMs }]
+    }),
+  }))
 }
 
 export function benchmarkCommits(history: History): BenchmarkCommit[] {
@@ -362,7 +377,7 @@ function loadTaskRow(commit: string, value: unknown, seen: Set<string>): TaskRow
   const task = requireText(value.task, `${commit}: task`)
   const guest = requireText(value.guest, `${commit}: guest`)
   const host = requireText(value.host, `${commit}: host`)
-  if (!HOSTS.includes(host as typeof HOSTS[number])) throw new HistoryError(`${commit}: host ${host}`)
+  if (!HOST_IDS.includes(host)) throw new HistoryError(`${commit}: unknown host ${host}`)
   if (!TASK_STATUSES.includes(value.status as typeof TASK_STATUSES[number])) {
     throw new HistoryError(`${commit}: status ${String(value.status)}`)
   }
@@ -391,10 +406,12 @@ function loadBenchmarks(commit: string, value: unknown): HistoryEntry['benchmark
     throw new HistoryError(`${commit}: benchmark program must be a non-empty string`)
   }
   const hosts = value.hosts
-  if (!isRecord(hosts) || !exactKeys(hosts, HOSTS)) {
-    throw new HistoryError(`${commit}: benchmark hosts must be ${HOSTS.join(', ')}`)
+  if (!isRecord(hosts) || Object.keys(hosts).length === 0) {
+    throw new HistoryError(`${commit}: benchmark hosts must be a non-empty subset of ${HOST_IDS.join(', ')}`)
   }
-  const loaded = HOSTS.map(id => {
+  const unknown = Object.keys(hosts).filter(id => !HOST_IDS.includes(id))
+  if (unknown.length > 0) throw new HistoryError(`${commit}: unknown benchmark host(s) ${unknown.join(', ')}`)
+  const loaded = HOST_IDS.filter(id => id in hosts).map(id => {
     const row = hosts[id]
     if (!isRecord(row) || !exactKeys(row, BENCHMARK_HOST_KEYS)) {
       throw new HistoryError(`${commit} ${id}: benchmark host keys must be ${BENCHMARK_HOST_KEYS.join(', ')}`)
@@ -426,6 +443,21 @@ function loadBenchmarks(commit: string, value: unknown): HistoryEntry['benchmark
     memoryCapBytes: positiveInt(value.memory_cap_bytes, `${commit} benchmarks.memory_cap_bytes`),
     hosts: loaded.map(host => ({ id: host.id, durationMs: host.durationMs, exitCode: host.exitCode })),
   }
+}
+
+function readHostIds(text: string): string[] {
+  const parsed = parseToml(text) as { host?: { id?: unknown }[] }
+  if (!Array.isArray(parsed.host) || parsed.host.length === 0) {
+    throw new HistoryError('hosts.toml host must be a non-empty array')
+  }
+  const ids = parsed.host.map((row, index) => {
+    if (typeof row?.id !== 'string' || row.id.length === 0) {
+      throw new HistoryError(`hosts.toml host #${index + 1} id is empty`)
+    }
+    return row.id
+  })
+  if (new Set(ids).size !== ids.length) throw new HistoryError('hosts.toml has a duplicate id')
+  return ids
 }
 
 function compareKey(left: [string, string], right: [string, string]): number {
