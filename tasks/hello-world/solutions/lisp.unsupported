@@ -1,0 +1,1 @@
+A successful Lisp program renders its final value after any write. A string renders with quotes, and write appends (). Neither result is Hello, World!.

@@ -1,0 +1,11 @@
+# Guest-agnostic transcript. The runner binds the guest interpreter and the solution.
+name = "factorial"
+timeout = 30
+args = ["--max-steps", "50000", "--max-evals", "3000000", "--max-state-bytes", "2097152"]
+
+[expect]
+exit_code = 0
+stdout = """
+3628800
+"""
+stderr = ""

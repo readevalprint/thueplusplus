@@ -1,0 +1,1 @@
+Lisp can count, but it cannot emit the song as exact stdout: a successful program always renders a final value after any writes.

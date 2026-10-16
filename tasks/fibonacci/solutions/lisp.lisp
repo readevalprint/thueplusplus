@@ -1,0 +1,7 @@
+(let ((n 10) (a 0) (b 1) (i 0) (tmp 0))
+  (while (lt i n)
+    (set tmp b)
+    (set b (add a b))
+    (set a tmp)
+    (set i (add i 1)))
+  a)
