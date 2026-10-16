@@ -113,6 +113,7 @@ func run(args []js.Value) wasmResult {
 	if err := applyIntOption(opts, "stepLimit", &interp.MaxSteps); err != nil {
 		return errorResult(err.Error())
 	}
+	interp.Debug = truthy(opts.Get("debug"))
 	interp.TraceEnabled = truthy(opts.Get("trace"))
 	if resources := opts.Get("resources"); resources.Type() == js.TypeObject {
 		keys := js.Global().Get("Object").Call("keys", resources)
@@ -137,6 +138,13 @@ func run(args []js.Value) wasmResult {
 	}
 	if err := interp.LoadProgramText(sourcePath, sourceText); err != nil {
 		return resultWithError(stdout.String(), stderr.String(), err.Error())
+	}
+	if truthy(opts.Get("listRules")) {
+		var listed strings.Builder
+		for _, rule := range interp.Rules {
+			fmt.Fprintf(&listed, "%s:%d\t%s\n", rule.SourcePath, rule.LineNumber, rule.LHS)
+		}
+		return wasmResult{ExitCode: 0, Stdout: listed.String()}
 	}
 	if hasOwnProperty(opts, "input") {
 		input, err := requiredString(opts, "input")

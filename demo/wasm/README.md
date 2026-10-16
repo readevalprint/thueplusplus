@@ -27,4 +27,4 @@ const result = await thuepp.run({
 
 The result includes `exitCode`, `stdout`, `stderr`, `error` when nonzero, and `coverageTSV` when requested.
 
-Browser resources are callbacks (`readLine`, `write`, optional `close`). OS subprocess resources are intentionally unsupported in `GOOS=js/wasm` and fail loudly. Full language conformance remains the native Python/Go manifest suite (`make test`); adapter tests only prove the JavaScript/WASM host boundary.
+Browser resources are callbacks (`readLine`, `write`, optional `close`). The wasm module does not spawn OS processes; a `procs` option fails loudly. `make test` runs the shared manifests against Python, Go, and this wasm build. The conformance host in `go/wasm/cli.cjs` may spawn a process only when the manifest passes `--proc`. Adapter tests prove the JavaScript/WASM host boundary.

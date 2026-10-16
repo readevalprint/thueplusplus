@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import os
 import re
 import shlex
 import subprocess
@@ -28,6 +29,7 @@ DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
 class Interpreter:
     name: str
     argv: tuple[str, ...]
+    env: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -207,6 +209,12 @@ def run_case(
     validate_case_metadata(config_path, case)
     args, bound_files = build_case_args(config_path, case, tmp, extra_args=extra_args, interpreter=interpreter)
     timeout = float(case.get("timeout", 10))
+    # The wasm host is the same language build, started once per case. Give it
+    # the same manifest budget scaled for interpreter startup and wasm speed.
+    if interpreter.name == "wasm":
+        timeout = max(timeout * 8, 30)
+    env = os.environ.copy()
+    env.update(dict(interpreter.env))
     try:
         result = subprocess.run(
             [*interpreter.argv, *args],
@@ -215,6 +223,7 @@ def run_case(
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=env,
         )
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError(f"{config_path} {case_name(config_path, case)} {interpreter.name}: timed out after {timeout}s") from exc
@@ -439,6 +448,25 @@ def run_configs(interpreters: list[Interpreter], configs: list[Path], *, jobs: i
     return 0
 
 
+def build_wasm(build_root: Path) -> Path:
+    wasm_artifact = build_root / "thuepp.wasm"
+    env = os.environ.copy()
+    env.update({"GOOS": "js", "GOARCH": "wasm", "CGO_ENABLED": "0"})
+    completed = subprocess.run(
+        ["go", "build", "-o", str(wasm_artifact), "./cmd/thuepp-wasm"],
+        cwd=ROOT / "go",
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "wasm implementation build failed with exit "
+            f"{completed.returncode}\nstdout={completed.stdout!r}\nstderr={completed.stderr!r}"
+        )
+    return wasm_artifact
+
+
 def build_interpreters(build_root: Path) -> list[Interpreter]:
     build_root.mkdir(parents=True, exist_ok=True)
     go_artifact = build_root / "go-thuepp"
@@ -453,9 +481,11 @@ def build_interpreters(build_root: Path) -> list[Interpreter]:
             "go implementation build failed with exit "
             f"{completed.returncode}\nstdout={completed.stdout!r}\nstderr={completed.stderr!r}"
         )
+    wasm_artifact = build_wasm(build_root)
     return [
         Interpreter("python", ("uv", "run", "python", "python/thuepp.py")),
         Interpreter("go", (str(go_artifact),)),
+        Interpreter("wasm", ("node", str(ROOT / "go" / "wasm" / "cli.cjs")), (("THUEPP_WASM", str(wasm_artifact)),)),
     ]
 
 
