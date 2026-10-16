@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "metrics"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 import historylib  # noqa: E402
+import publish_checks  # noqa: E402
 from run_limits import RUN_MEMORY_CAP_BYTES, bounded_run  # noqa: E402
 
 COMMIT_A = "0123456789abcdef0123456789abcdef01234567"
@@ -300,6 +301,63 @@ class HistoryTests(unittest.TestCase):
             self.assertGreaterEqual(completed.peak_rss_bytes, 0)
             parsed = historylib.parse_counts(counts.read_text(encoding="utf-8"))
         self.assertEqual(parsed, (1, 3))
+
+
+class PublishChecksTest(unittest.TestCase):
+    def test_copies_passing_checks_and_skips_vercel(self) -> None:
+        checks = [
+            {"name": "static", "status": "completed", "conclusion": "success", "completed_at": "2026-10-16T00:00:00Z"},
+            {"name": "python", "status": "completed", "conclusion": "skipped", "completed_at": "2026-10-16T00:00:01Z"},
+            {"name": "record", "status": "in_progress", "conclusion": None},
+            {"name": "Vercel Preview Comments", "status": "completed", "conclusion": "success"},
+        ]
+        self.assertEqual(
+            publish_checks.checks_to_publish(checks, ["metrics/2026/10/16/abc/bench.json"]),
+            [
+                {"name": "python", "conclusion": "skipped"},
+                {"name": "static", "conclusion": "success"},
+                {"name": "record", "conclusion": "success"},
+            ],
+        )
+
+    def test_waits_when_a_parent_check_is_still_running(self) -> None:
+        checks = [{"name": "static", "status": "in_progress", "conclusion": None}]
+        with self.assertRaises(publish_checks.ParentPending):
+            publish_checks.checks_to_publish(checks, ["metrics/bench.json"])
+
+    def test_refuses_a_failed_parent_or_a_diff_outside_metrics(self) -> None:
+        failed = [{"name": "static", "status": "completed", "conclusion": "failure", "completed_at": "2026-10-16T00:00:00Z"}]
+        with self.assertRaises(historylib.HistoryError):
+            publish_checks.checks_to_publish(failed, ["metrics/bench.json"])
+        passed = [{"name": "static", "status": "completed", "conclusion": "success", "completed_at": "2026-10-16T00:00:00Z"}]
+        with self.assertRaises(historylib.HistoryError):
+            publish_checks.checks_to_publish(passed, ["demo/src/metrics.ts"])
+        with self.assertRaises(historylib.HistoryError):
+            publish_checks.checks_to_publish(passed, [])
+
+    def test_uses_the_latest_attempt(self) -> None:
+        checks = [
+            {"name": "static", "status": "completed", "conclusion": "failure", "completed_at": "2026-10-16T00:00:00Z"},
+            {"name": "static", "status": "completed", "conclusion": "success", "completed_at": "2026-10-16T00:00:02Z"},
+        ]
+        published = publish_checks.checks_to_publish(checks, ["metrics/bench.json"])
+        self.assertEqual(published[0], {"name": "static", "conclusion": "success"})
+
+    def test_parent_workflows_must_succeed(self) -> None:
+        runs = [
+            {"id": 1, "name": "metrics", "status": "in_progress", "conclusion": None},
+            {"id": 2, "name": "conformance", "status": "completed", "conclusion": "success"},
+            {"id": 3, "name": "cpp", "status": "completed", "conclusion": "success"},
+            {"id": 4, "name": "vscode", "status": "in_progress", "conclusion": None},
+        ]
+        with self.assertRaises(publish_checks.ParentPending):
+            publish_checks.parent_ready(runs, "1")
+        runs[3]["status"] = "completed"
+        runs[3]["conclusion"] = "failure"
+        with self.assertRaises(historylib.HistoryError):
+            publish_checks.parent_ready(runs, "1")
+        runs[3]["conclusion"] = "success"
+        publish_checks.parent_ready(runs, "1")
 
 
 if __name__ == "__main__":

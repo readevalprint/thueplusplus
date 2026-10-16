@@ -18,7 +18,7 @@ GitLab Pages copies the summary to `public/metrics/summary.json` after the demo 
 
 A commit is bookkeeping when its subject starts with `metrics:` or its only change from its single parent is one or more `bench.json` files. Neither script measures it. There is no single history file.
 
-`make metrics` runs `record.py`. GitHub Actions runs that on pull requests and commits the new file to the pull request branch, so the change and its metrics merge together. The job pushes nothing to `main`. It exits before measuring when the head commit subject starts with `metrics:`, so the commit it just pushed does not start another run. GitLab CI runs `record.py --results build/tasks/results.json` on the default branch after the `tasks` job and stores the bench files as an artifact.
+`make metrics` runs `record.py`. GitHub Actions runs that on pull requests and commits the new file to the pull request branch, so the change and its metrics merge together. The job pushes nothing to `main`. It waits until the other pull request workflows on the measured commit have passed, then pushes. A push from the workflow token does not get its own runs unless someone approves them, so the job copies those passing checks onto the metrics commit. The diff must be only under `metrics/`. It does not measure again when the head commit subject starts with `metrics:`. GitLab CI runs `record.py --results build/tasks/results.json` on the default branch after the `tasks` job and stores the bench files as an artifact.
 
 `record.py` is a no-op when `HEAD` already has tasks and benchmarks, unless `--force` is set. It refuses a dirty work tree.
 

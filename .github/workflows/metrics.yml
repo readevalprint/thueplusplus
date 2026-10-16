@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  checks: write
 
 concurrency:
   group: metrics-${{ github.event.pull_request.number }}
@@ -64,14 +65,18 @@ jobs:
       - name: Record metrics for this commit
         if: steps.gate.outputs.skip != 'true'
         run: uv run python metrics/record.py
-      - name: Commit bench.json to the pull request
+      - name: Commit bench.json and publish the parent checks
         if: steps.gate.outputs.skip != 'true'
         run: |
           git add metrics
           if git diff --cached --quiet; then
+            echo "no bench changes"
             exit 0
           fi
+          parent=$(git rev-parse HEAD)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "metrics: record $(git rev-parse HEAD)"
+          git commit -m "metrics: record ${parent}"
+          python3 metrics/publish_checks.py wait --parent "$parent"
           git push
+          python3 metrics/publish_checks.py publish --parent "$parent" --new "$(git rev-parse HEAD)"
