@@ -1,0 +1,8 @@
+>^a$ ::| b
+#^ source.thuepp invalid.illegal.missing-operator.thuepp meta.pattern.thuepp keyword.control.anchor.regexp.thuepp
+# ^ source.thuepp invalid.illegal.missing-operator.thuepp meta.pattern.thuepp
+#  ^ source.thuepp invalid.illegal.missing-operator.thuepp meta.pattern.thuepp keyword.control.anchor.regexp.thuepp
+#   ^ source.thuepp invalid.illegal.missing-operator.thuepp meta.pattern.thuepp
+#    ^^^ source.thuepp invalid.illegal.missing-operator.thuepp keyword.operator.mid.thuepp
+#       ^^ source.thuepp invalid.illegal.missing-operator.thuepp
+>

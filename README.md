@@ -679,3 +679,16 @@ Repository development requirements:
 - Go for the second conformance backend
 - `make` for verification targets
 - Node.js only for Go-WASM adapter and browser-demo checks
+
+## Editor install
+
+The extension in [`editors/vscode`](editors/vscode) highlights `.tpp` files and adds snippets and **Run Thue++ file**. It installs in VS Code, Cursor, VSCodium, and Windsurf. Build it with `npm --prefix editors/vscode ci && npm --prefix editors/vscode run package`, or download the `.vsix` from the CI job artifact. From the Extensions view, choose **Install from VSIX**. From a terminal:
+
+```bash
+code --install-extension editors/vscode/thuepp-0.5.0.vsix
+cursor --install-extension editors/vscode/thuepp-0.5.0.vsix
+codium --install-extension editors/vscode/thuepp-0.5.0.vsix
+windsurf --install-extension editors/vscode/thuepp-0.5.0.vsix
+```
+
+**Run Thue++ file** calls the `thuepp` already on your `PATH`. It always passes `--max-steps`, `--max-evals`, and `--max-state-bytes`. The defaults are 1000000, 1000000, and 8388608. The command has no unlimited setting. Publishing to the VS Code Marketplace and to Open VSX is documented in [`editors/vscode/README.md`](editors/vscode/README.md). This repository does not publish the extension. Cursor installs extensions from Open VSX.

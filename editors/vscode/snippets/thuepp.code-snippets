@@ -1,0 +1,67 @@
+{
+  "Rewrite rule": {
+    "prefix": "rule",
+    "body": "${1:pattern} ::= ${2:replacement}",
+    "description": "Replace the first match. Use {{name}} for a capture."
+  },
+  "Mid step": {
+    "prefix": "mid",
+    "body": "${1:pattern} ::| ${2:step} ::= ${3:replacement}",
+    "description": "Search the whole state in a ::| step, then rewrite."
+  },
+  "Quoted mid": {
+    "prefix": "quote",
+    "body": "${1:pattern} ::| ${2:before}{{${3:name}|quote}}${4:after} ::= ${5:replacement}",
+    "description": "Insert a capture into a ::| step as a literal."
+  },
+  "Read rule": {
+    "prefix": "read",
+    "body": "${1:pattern} ::< ${2:30} ${3:stdin}",
+    "description": "Read one line from a resource with a timeout in seconds."
+  },
+  "Write rule": {
+    "prefix": "write",
+    "body": "${1:pattern} ::> ${2:stdout} ${3:text}\\n",
+    "description": "Write to a resource and clear the match."
+  },
+  "Exit rule": {
+    "prefix": "exit",
+    "body": "${1:pattern} ::- ${2:0}",
+    "description": "Stop the run with an integer status."
+  },
+  "Builtin rule": {
+    "prefix": "builtin",
+    "body": "${1:pattern} ::! ${2:add} ${3:a} ${4:b}",
+    "description": "Call a builtin with capture names."
+  },
+  "Pattern alias": {
+    "prefix": "alias",
+    "body": "${1:NAME} <- ${2:regex}",
+    "description": "Define a $NAME pattern alias."
+  },
+  "Named capture": {
+    "prefix": "cap",
+    "body": "(?<${1:name}>${2:.*})",
+    "description": "Named capture group."
+  },
+  "Template": {
+    "prefix": "tpl",
+    "body": "{{${1:name}}}",
+    "description": "Insert a named capture."
+  },
+  "Percent-decode template": {
+    "prefix": "pctdec",
+    "body": "{{${1:name}|pctdec}}",
+    "description": "Insert a capture after percent-decoding."
+  },
+  "Program": {
+    "prefix": "program",
+    "body": [
+      "${1:pattern} ::= ${2:replacement}",
+      "",
+      "::=",
+      "${3:state}"
+    ],
+    "description": "A rule and the initial state after ::=."
+  }
+}
