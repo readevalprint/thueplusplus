@@ -10,5 +10,5 @@ host = [
   { id = "go", command = "build/go-thuepp", build = "go build -o ../build/go-thuepp ./cmd/thuepp", cwd = "go" },
   { id = "wasm", command = "node js/src/cli.js", build = "go build -o ../build/thuepp.wasm ./cmd/thuepp-wasm", cwd = "go", build_env = "GOOS=js GOARCH=wasm CGO_ENABLED=0", env = "THUEPP_WASM=build/thuepp.wasm", timeout_scale = 8, timeout_floor = 30 },
   { id = "rust", command = "rust/target/release/thuepp", build = "cargo build --release --manifest-path rust/Cargo.toml" },
-  { id = "cpp", command = "build/cpp/thuepp", build = "cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ && cmake --build build/cpp --parallel" },
+  { id = "cpp", command = "build/cpp/thuepp", build = "make cpp" },
 ]

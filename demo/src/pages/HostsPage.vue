@@ -15,6 +15,7 @@ interface HostSection {
   install: string
   installAfter?: string
   installAfterBody?: string
+  moreInstall?: { lead: string; body: string }[]
   libraryLead: string
   library: string
   cliLead: string
@@ -99,9 +100,31 @@ cargo build --release --manifest-path rust/Cargo.toml
   },
   cpp: {
     prose: 'The C++ host is a native implementation. The CMake target is thuepp and the command is thuepp. It uses the regex engine and the same default limits. Process bindings stay opt-in. The library is not published.',
-    installLead: 'There is no vcpkg port and no Conan package. From a checkout of this repository:',
-    install: `cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+    installLead: 'The library is not published. FetchContent adds the CMake target from this repository. Install the regex library with pkg-config before configuring:',
+    install: `include(FetchContent)
+FetchContent_Declare(
+  thuepp
+  GIT_REPOSITORY "${repositoryUrl}"
+  GIT_TAG main
+  SOURCE_SUBDIR cpp
+)
+FetchContent_MakeAvailable(thuepp)
+target_link_libraries(your_target PRIVATE thuepp::thuepp)`,
+    moreInstall: [
+      {
+        lead: 'vcpkg.json in cpp/ is an unpublished manifest, not a registry port. Do not upload it. From the repository root:',
+        body: `(cd cpp && vcpkg install --triplet x64-linux)
+cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ \\
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 cmake --build build/cpp --parallel`,
+      },
+      {
+        lead: 'conanfile.py is an unpublished Conan 2 recipe. conan create builds it. Do not upload it:',
+        body: `cd cpp
+conan profile detect --force
+conan create . --build=missing`,
+      },
+    ],
     libraryLead: 'A new interpreter binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. nullopt clears one.',
     library: `#include "thuepp/thuepp.hpp"
 
@@ -109,7 +132,10 @@ thuepp::Interpreter interp;
 interp.LoadProgram("hello.tpp");
 int code = interp.Run();`,
     cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',
-    cli: `build/cpp/thuepp program.tpp --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608`,
+    cli: `thuepp <program.tpp> [--max-steps N] [--max-evals N] [--max-state-bytes N]
+
+make cpp
+build/cpp/thuepp program.tpp`,
     readmeHref: `${blob}/cpp/README.md`,
     readmeLabel: 'cpp/README.md',
   },
@@ -141,6 +167,10 @@ const sections = siteHosts.map(host => {
       <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ host.install }}</pre>
       <p v-if="host.installAfter" class="leading-7">{{ host.installAfter }}</p>
       <pre v-if="host.installAfterBody" class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ host.installAfterBody }}</pre>
+      <template v-for="block in host.moreInstall ?? []" :key="block.lead">
+        <p class="leading-7">{{ block.lead }}</p>
+        <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ block.body }}</pre>
+      </template>
       <h3 :id="`${host.anchor}-library`" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Library</h3>
       <p class="leading-7">{{ host.libraryLead }}</p>
       <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ host.library }}</pre>

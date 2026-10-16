@@ -26,8 +26,8 @@ describe('metrics history', () => {
     expect(history.entries.length).toBeGreaterThan(1)
     const rules = guestRuleChart(history, order, names)
     const latest = rules.commits[rules.commits.length - 1]
-    expect(latest.commit.startsWith('b8473267b50d')).toBe(true)
-    expect(latest.author).toContain('cursor[bot]')
+    expect(latest.commit.startsWith('9c838a6aef3b')).toBe(true)
+    expect(latest.author).toContain('Cursor Agent')
     expect(rules.series.find(series => series.id === 'forth')?.points.find(point => point.commit === latest.commit)?.value).toBe(86)
     expect(rules.series.find(series => series.id === 'lisp')?.points.find(point => point.commit === latest.commit)?.value).toBe(441)
     expect(rules.series.find(series => series.id === 'brainfuck')?.points.find(point => point.commit === latest.commit)?.value).toBe(68)
@@ -47,10 +47,11 @@ describe('metrics history', () => {
     expect(latestBench.appliedSteps).toBe(10000)
     expect(latestBench.probes).toBe(10002)
     expect(latestBench.hosts.map(host => [host.id, host.environment, host.durationMs, host.exitCode])).toEqual([
-      ['python', 'python', 916, 0],
-      ['go', 'go native', 875, 0],
-      ['wasm', 'wasm (node)', 2076, 0],
-      ['rust', 'rust', 574, 0],
+      ['python', 'python', 808, 0],
+      ['go', 'go native', 576, 0],
+      ['wasm', 'wasm (node)', 1513, 0],
+      ['rust', 'rust', 409, 0],
+      ['cpp', 'cpp', 472, 0],
     ])
     expect(latestBench.memoryCapBytes).toBe(268435456)
   })

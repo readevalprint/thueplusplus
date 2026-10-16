@@ -1,12 +1,12 @@
 # C++ host
 
-C++17 library and CLI for Thue++ spec v0.5. The regex engine is [Google RE2](https://github.com/google/re2). The header is `include/thuepp/thuepp.hpp`. The CMake library target is `thuepp` (`thuepp::thuepp`). The CLI target is `thuepp-cli` and its output name is `thuepp`, so the static library and the binary do not share a filename.
+C++17 library and CLI for Thue++ spec v0.5. Patterns use the same regex syntax as the other hosts. The header is `include/thuepp/thuepp.hpp`. The CMake library target is `thuepp` (`thuepp::thuepp`). The CLI target is `thuepp-cli` and its output name is `thuepp`, so the static library and the binary do not share a filename.
 
 This tree does not publish the library. `vcpkg.json` and `conanfile.py` are packaging sketches for a later release. Do not upload them to a registry from this repository.
 
 ## Build
 
-Requirements: `g++` (C++17), CMake 3.16 or newer, `pkg-config`, and `libre2-dev`. Pass `g++` explicitly. On some images `/usr/bin/c++` is clang and cannot link `libstdc++`.
+Requirements: `g++` (C++17), CMake 3.16 or newer, `pkg-config`, and the regex library development package. Pass `g++` explicitly. On some images `/usr/bin/c++` is clang and cannot link `libstdc++`.
 
 ```bash
 cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
@@ -38,11 +38,11 @@ Install with `cmake --install`. That installs the static library, the `thuepp` b
 
 ## Tasks and metrics
 
-`hosts.toml` registers this host for `make tasks` and the metrics benchmark. The build line is the CMake release build. Older history rows omit `cpp`; a missing host is a gap, not an error.
+`hosts.toml` registers this host for `make tasks-full` and the metrics benchmark. The build line is `make cpp`, one command, because the task runner does not use a shell. The environment label is `cpp`. Older history rows omit `cpp`; a missing host is a gap, not an error.
 
 ## vcpkg
 
-`vcpkg.json` names the dependency `re2`. It is a manifest for a checkout, not a port in the vcpkg registry.
+`vcpkg.json` lists the regex library. It is a manifest for a checkout, not a port in the vcpkg registry.
 
 ```bash
 vcpkg install --triplet x64-linux
@@ -51,11 +51,11 @@ cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ \
 cmake --build build/cpp --parallel
 ```
 
-The CMake build finds RE2 with `pkg-config`. A vcpkg install of `re2` exports that file when `PKG_CONFIG_PATH` includes the triplet's `lib/pkgconfig`. Classic mode, `vcpkg install re2`, is the same dependency without the manifest.
+The CMake build finds that library with `pkg-config`. A vcpkg install exports that file when `PKG_CONFIG_PATH` includes the triplet's `lib/pkgconfig`. Classic mode is the same dependency without the manifest.
 
 ## Conan
 
-`conanfile.py` is a Conan 2 recipe. It requires `re2` and generates `pkg-config` files so the existing CMake build can find it. It is not in Conan Center.
+`conanfile.py` is a Conan 2 recipe. It requires the regex library and generates `pkg-config` files so the existing CMake build can find it. It is not in Conan Center.
 
 ```bash
 cd cpp

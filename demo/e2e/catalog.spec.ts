@@ -12,9 +12,9 @@ test('guests leaderboard invites autoresearch', async ({ page }) => {
   await expect(page.getByTestId('benchmark-readout')).toContainText('wasm (node)')
   await expect(page.locator('body')).not.toContainText(/RE2/)
   await expect(page.getByText('Placeholder')).toHaveCount(0)
-  await expect(page.getByTestId('rule-readout')).toContainText('b8473267b50d')
+  await expect(page.getByTestId('rule-readout')).toContainText('9c838a6aef3b')
   await page.getByTestId('rule-chart-slider').fill('0')
-  await expect(page.getByTestId('rule-readout')).not.toContainText('b8473267b50d')
+  await expect(page.getByTestId('rule-readout')).not.toContainText('9c838a6aef3b')
 })
 
 test('tasks index shows the finish line', async ({ page }) => {
