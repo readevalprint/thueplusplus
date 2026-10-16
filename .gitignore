@@ -11,3 +11,4 @@ demo/dist/
 demo/test-results/
 demo/.wasm-public/
 metrics/*.json.tmp
+demo/src/generated/

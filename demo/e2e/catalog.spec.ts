@@ -1,0 +1,50 @@
+import { expect, test } from '@playwright/test'
+
+test('guests leaderboard invites autoresearch', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/guests')
+  await expect(page.getByRole('heading', { level: 1, name: 'Languages written in Thue++.' })).toBeVisible()
+  await expect(page.getByTestId('page-hero-graphic')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'See the tasks' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Passed' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Rule lines' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Steps' })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Forth/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Lisp/ })).toBeVisible()
+  await expect(page.getByTestId('guest-improve')).toContainText(/autoresearch/i)
+  await expect(page.getByText('Placeholder')).toHaveCount(0)
+})
+
+test('tasks index opens a task and its guest solution', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/tasks')
+  await expect(page.getByRole('heading', { level: 1, name: 'Programs with a finish line.' })).toBeVisible()
+  await expect(page.getByTestId('page-hero-graphic')).toBeVisible()
+  await page.getByTestId('task-index').getByRole('link', { name: 'Factorial' }).click()
+  await expect(page).toHaveURL(/\/tasks\/factorial$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Factorial' })).toBeVisible()
+  await expect(page.getByTestId('task-io')).toContainText('3628800')
+  await expect(page.locator('[data-guest="forth"]')).toContainText('1 2 *')
+  await expect(page.locator('[data-guest="lisp"]')).toContainText('pass')
+})
+
+test('a task deep link renders that task', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/tasks/hello-world')
+  await expect(page.getByRole('heading', { level: 1, name: 'Hello world' })).toBeVisible()
+  await expect(page.getByTestId('task-description')).toContainText('Hello, World!')
+  await expect(page.getByTestId('task-io')).toContainText('Hello, World!')
+  await expect(page.locator('[data-guest="forth"]')).toContainText('." Hello, World!"')
+  await expect(page.locator('[data-guest="forth"]')).toContainText('pass')
+})
+
+test('mobile guests page keeps the hero and the leaderboard', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/guests')
+  await expect(page.getByTestId('page-hero')).toBeVisible()
+  await expect(page.getByTestId('page-hero-graphic')).toBeVisible()
+  await expect(page.getByTestId('guest-leaderboard')).toBeVisible()
+  await expect(page.getByTestId('site-nav')).toBeHidden()
+  await page.getByTestId('nav-trigger').click()
+  await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Tasks' })).toBeVisible()
+})

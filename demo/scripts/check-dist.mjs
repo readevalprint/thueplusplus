@@ -1,10 +1,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { readGeneratedCatalog, taskPages } from './build-catalog.mjs'
 
 const dist = new URL('../dist/', import.meta.url).pathname
 const pages = JSON.parse(readFileSync(new URL('../src/pages.json', import.meta.url), 'utf8'))
+const tasks = taskPages(readGeneratedCatalog())
 const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
-const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), 'embed']
+const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...tasks.map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {
   const path = join(dist, asset)
@@ -48,11 +50,20 @@ const embedIndex = readFileSync(join(dist, 'embed', 'index.html'), 'utf8')
 if (!embedIndex.includes('noindex,follow')) {
   throw new Error('embed route index must be noindexed')
 }
-for (const page of Object.values(pages)) {
+for (const page of [...Object.values(pages), ...tasks]) {
   if (page.path === '/') continue
   const routeIndex = readFileSync(join(dist, page.path.replace(/^\//, ''), 'index.html'), 'utf8')
   if (!routeIndex.includes(page.title) || !routeIndex.includes(page.canonical)) {
     throw new Error(`${page.path} index must include its heading and canonical URL`)
+  }
+}
+if (tasks.length === 0) {
+  throw new Error('demo production dist is missing prerendered task pages')
+}
+const sitemap = readFileSync(join(dist, 'sitemap.xml'), 'utf8')
+for (const task of tasks) {
+  if (!sitemap.includes(task.canonical)) {
+    throw new Error(`sitemap.xml is missing ${task.canonical}`)
   }
 }
 

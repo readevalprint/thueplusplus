@@ -28,7 +28,7 @@ npm run build        # compile WASM, type-check, build, and smoke-check dist
 
 The production page uses origin-root asset URLs (`/assets/...`, `/thuepp.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
 
-`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite.
+`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. It does require `build/tasks/results.json` from `make tasks`; the Guests and Tasks pages are generated from that file.
 
 ## Vercel
 
@@ -70,7 +70,7 @@ The same shared playground surface powers the playground page and the embeddable
 
 - `/playground` sits in the site shell. Examples and settings are in the page aside.
 - `/embed` renders that same surface with no site chrome. It is for iframe embeds.
-- `/`, `/learn`, `/reference`, `/hosts`, `/guests`, and `/tasks` are the other prerendered pages. Guests and Tasks are placeholders.
+- `/`, `/learn`, `/reference`, `/hosts`, `/guests`, and `/tasks` are the other prerendered pages. `/` is the landing page. `/guests` is the guest leaderboard. `/tasks` is the task index, and each task is also prerendered at `/tasks/<id>`. Run `make tasks` before `npm test`, `npm run dev`, or `npm run build`.
 
 Supported embed query parameters:
 

@@ -44,11 +44,13 @@ wasm-adapter-test: wasm
 
 demo-test:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to run the browser demo tests" >&2; exit 127; }
+	@test -s build/tasks/results.json || { echo "Error: build/tasks/results.json is missing. Run make tasks." >&2; exit 1; }
 	npm --prefix demo ci
 	npm --prefix demo test
 	node js/browser-adapter.test.cjs
 
 demo-build:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to build the browser demo" >&2; exit 127; }
+	@test -s build/tasks/results.json || { echo "Error: build/tasks/results.json is missing. Run make tasks." >&2; exit 1; }
 	npm --prefix demo ci
 	npm --prefix demo run build

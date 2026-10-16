@@ -9,6 +9,7 @@ declare module 'vue-router' {
     robots?: string
   }
 }
+import { taskRouteMeta } from './catalog'
 import EmbedPage from './pages/EmbedPage.vue'
 import GuestsPage from './pages/GuestsPage.vue'
 import HomePage from './pages/HomePage.vue'
@@ -16,6 +17,7 @@ import HostsPage from './pages/HostsPage.vue'
 import LearnPage from './pages/LearnPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
 import ReferencePage from './pages/ReferencePage.vue'
+import TaskPage from './pages/TaskPage.vue'
 import TasksPage from './pages/TasksPage.vue'
 import { pages } from './site'
 
@@ -51,6 +53,10 @@ export const routes: RouteRecordRaw[] = [
       robots: 'noindex,follow',
     },
   },
+  {
+    path: '/tasks/:taskId',
+    component: TaskPage,
+  },
 ]
 
 export function createAppRouter() {
@@ -59,6 +65,14 @@ export function createAppRouter() {
     routes,
   })
   router.beforeEach((to) => {
+    const taskId = to.params.taskId
+    if (typeof taskId === 'string') {
+      const meta = taskRouteMeta(taskId)
+      to.meta.documentTitle = meta.documentTitle
+      to.meta.description = meta.description
+      to.meta.canonical = meta.canonical
+      to.meta.robots = meta.robots
+    }
     if (to.path.length > 1 && to.path.endsWith('/')) {
       return { path: to.path.replace(/\/+$/, ''), query: to.query, hash: to.hash, replace: true }
     }
