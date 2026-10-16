@@ -2,6 +2,7 @@
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
+import PageAside from '@/components/PageAside.vue'
 import { pages } from '@/site'
 
 const page = pages.learn
@@ -11,7 +12,8 @@ hello Ada`
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
+  <PageAside :links="page.links">
+    <DocPage :kicker="page.kicker" :title="page.title">
     <template #actions>
       <Button as-child>
         <RouterLink to="/playground?file=./examples/hello/hello.tpp">Open the playground</RouterLink>
@@ -38,5 +40,6 @@ hello Ada`
       <h2 class="text-xl font-semibold tracking-tight">Try it</h2>
       <p class="leading-7">The <RouterLink to="/playground" class="underline underline-offset-4">playground</RouterLink> loads the Go host compiled to WebAssembly. Step runs one rewrite, and the step limit is on before you press anything.</p>
     </section>
-  </DocPage>
+    </DocPage>
+  </PageAside>
 </template>

@@ -74,7 +74,7 @@ describe('Go-WASM demo UI', () => {
     })
   })
 
-  it('renders the placeholder landing inside the three-column shell', async () => {
+  it('renders the placeholder landing inside the shell', async () => {
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(true)
@@ -89,7 +89,8 @@ describe('Go-WASM demo UI', () => {
     expect(nav.text()).toContain('Tasks')
     expect(wrapper.findAll('a[href="/"]').some(link => link.attributes('aria-current') === 'page')).toBe(true)
     expect(nav.get('a[href="/playground"]').attributes('aria-current')).toBeUndefined()
-    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Placeholder')
+    expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="aside-trigger"]').exists()).toBe(false)
     expect(wrapper.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
   })
@@ -99,12 +100,14 @@ describe('Go-WASM demo UI', () => {
     let wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('Rewrite a string until it stops.')
     expect(wrapper.text()).toContain('A program')
+    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('A program')
     expect(wrapper.get('[data-test="site-nav"]').get('a[href="/learn"]').attributes('aria-current')).toBe('page')
 
     window.history.pushState({}, '', '/reference')
     wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('Operators, resources, and limits.')
     expect(wrapper.text()).toContain('::=')
+    expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
 
     window.history.pushState({}, '', '/hosts')
     wrapper = await mountApp()
