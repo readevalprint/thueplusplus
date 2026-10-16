@@ -28,10 +28,12 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.
 - **Breaking:** a manifest that passes `unlimited` without `allow_unlimited` on that one case fails before the program runs.
 - The site is a stock shadcn-vue shell: neutral theme, light and dark. The shell is the left menu plus the page. A page may render `PageAside` for a right column (a sheet below 1280px); pages without one use the full content width. Learn, Reference, Playground, Hosts, Guests, and Tasks each prerender to their own path. `/` is a placeholder. `/embed` has no chrome.
+- Nav, hero, and card marks are rewrite and regex glyphs: a rewrite arrow, `Regex`, `Replace`, `Package`, `Boxes`, and a finish line. Generic book, library, play, server, and checklist icons are gone.
 - A host is a Thue++ implementation (Go, Python, JavaScript). A guest is a language implemented in Thue++.
 
 ### Fixed
 
+- Desktop sidebars start expanded. An omitted boolean prop was read as false, so the menu opened collapsed.
 - Go's `stdin` resource enforces the `::<` read timeout. A newline that does not arrive in time exits 13 with `ERR:resource:stdin:timeout`. A closed stdin with no newline is still EOF. The Node CLI's stdin callback enforces the same deadline.
 
 ### Removed

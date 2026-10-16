@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
 import PageAside from '@/components/PageAside.vue'
+import RewriteArrow from '@/components/marks/RewriteArrow.vue'
 import { pages } from '@/site'
 
 const page = pages.learn
@@ -14,6 +15,9 @@ hello Ada`
 <template>
   <PageAside :links="page.links">
     <DocPage :kicker="page.kicker" :title="page.title">
+    <template #mark>
+      <RewriteArrow />
+    </template>
     <template #actions>
       <Button as-child>
         <RouterLink to="/playground?file=./examples/hello/hello.tpp">Open the playground</RouterLink>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { BookOpen, Languages, Library, ListChecks, Play, Server } from '@lucide/vue'
+import { Boxes, Package, Regex, Replace } from '@lucide/vue'
+import FinishLine from '@/components/marks/FinishLine.vue'
+import RewriteArrow from '@/components/marks/RewriteArrow.vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { watch } from 'vue'
 import {
@@ -26,22 +28,22 @@ const groups: { label: string, items: { title: string, path: string, icon: Compo
   {
     label: 'Read',
     items: [
-      { title: 'Learn', path: '/learn', icon: BookOpen },
-      { title: 'Reference', path: '/reference', icon: Library },
+      { title: 'Learn', path: '/learn', icon: RewriteArrow },
+      { title: 'Reference', path: '/reference', icon: Regex },
     ],
   },
   {
     label: 'Run',
     items: [
-      { title: 'Playground', path: '/playground', icon: Play },
+      { title: 'Playground', path: '/playground', icon: Replace },
     ],
   },
   {
     label: 'Catalog',
     items: [
-      { title: 'Hosts', path: '/hosts', icon: Server },
-      { title: 'Guests', path: '/guests', icon: Languages },
-      { title: 'Tasks', path: '/tasks', icon: ListChecks },
+      { title: 'Hosts', path: '/hosts', icon: Package },
+      { title: 'Guests', path: '/guests', icon: Boxes },
+      { title: 'Tasks', path: '/tasks', icon: FinishLine },
     ],
   },
 ]

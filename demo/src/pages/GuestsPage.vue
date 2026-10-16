@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Boxes } from '@lucide/vue'
 import DocPage from '@/components/DocPage.vue'
 import { pages } from '@/site'
 
@@ -7,6 +8,9 @@ const page = pages.guests
 
 <template>
   <DocPage :kicker="page.kicker" :title="page.title">
+    <template #mark>
+      <Boxes />
+    </template>
     <section id="what-a-guest-is" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">What a guest is</h2>
       <p class="leading-7">A guest is a language implemented in Thue++. Its programs are state. Its semantics are rules. A host runs those rules. The guest does not get files, sockets, or processes unless that host binds them.</p>
