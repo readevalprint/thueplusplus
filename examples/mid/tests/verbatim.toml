@@ -1,0 +1,29 @@
+name = "mid verbatim pattern text"
+program = "../verbatim.tpp"
+
+[[case]]
+name = "filled source matches"
+input = "pre=n\nnX"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "filled source misses"
+input = "pre=n\nno"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "a captured backslash is one character in the pattern"
+input = "pre=\\\n"
+
+[case.expect]
+stdout = ""
+exit_code = 1
+stderr_contains = ["Invalid ::| regex '\\X'"]

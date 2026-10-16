@@ -8,9 +8,9 @@ import (
 
 // Mid is one ::| step: a regex searched over the whole state.
 // {{name}} holes are filled from captures so far. Each substituted value is
-// inserted as a literal (regexp.QuoteMeta), not as regex syntax. Named groups
-// in the step bind for later steps and for the RHS. No match skips the rule.
-// A regex that is invalid after filling is an error.
+// inserted verbatim as regex source. {{name|quote}} quotes a value as a
+// literal. Named groups in the step bind for later steps and for the RHS.
+// No match skips the rule. A regex that is invalid after filling is an error.
 type Mid struct {
 	Pattern string
 }
@@ -35,13 +35,16 @@ func midCaptureNames(mids []Mid) map[string]bool {
 	return names
 }
 
-// expandMidPattern fills template holes in a ::| step.
+// expandMidPattern fills holes in a ::| step.
 //
-// Substituted values are regexp.QuoteMeta'd. A capture of "." becomes "\."
-// and matches a dot, not any character. Filters run before quoting.
-// Unfiltered missing names expand to empty, same as a ::= template.
-// {{rule_index}} is not bound in a step. Literal step text is regex source:
-// it is not decoded as a replacement string, so "\n" stays the regex escape.
+// A hole is {{name}} or {{name|filter|filter...}}. name matches
+// [A-Za-z_][A-Za-z0-9_]*. {{2}} is not a hole. An unfiltered value is inserted
+// verbatim: no QuoteMeta and no backslash doubling. Filters run left to right.
+// quote is regexp.QuoteMeta. pctenc and pctdec are the template filters.
+// Unfiltered missing names expand to empty. {{rule_index}} is not bound.
+// Text that is not a hole is copied unchanged, so \n stays a regex escape.
+// A "{{" that is not a well-formed hole contributes one "{" and scanning
+// continues, so "{{{{name}}" is "{{" followed by the hole {{name}}.
 func expandMidPattern(pattern string, groups map[string]string) (string, error) {
 	var out strings.Builder
 	pos := 0
@@ -51,41 +54,66 @@ func expandMidPattern(pattern string, groups map[string]string) (string, error) 
 			if end >= 0 {
 				inside := pattern[pos+2 : pos+2+end]
 				if strings.Contains(inside, "|") {
-					parts := strings.Split(inside, "|")
-					if len(parts) != 2 || !isWord(parts[0]) || parts[0][0] >= '0' && parts[0][0] <= '9' || !isWord(parts[1]) || parts[1][0] >= '0' && parts[1][0] <= '9' {
-						return "", fmt.Errorf("Malformed template filter '{{%s}}'", inside)
-					}
-					value, ok := groups[parts[0]]
-					if !ok {
-						return "", fmt.Errorf("Missing template capture '%s'", parts[0])
-					}
-					rendered, err := renderMidFilter(parts[1], value)
+					rendered, err := expandMidFilters(inside, groups)
 					if err != nil {
 						return "", err
 					}
-					out.WriteString(regexp.QuoteMeta(rendered))
+					out.WriteString(rendered)
 					pos += 2 + end + 2
 					continue
 				}
-				if isWord(inside) {
-					out.WriteString(regexp.QuoteMeta(groups[inside]))
+				if isMidName(inside) {
+					out.WriteString(groups[inside])
 					pos += 2 + end + 2
 					continue
 				}
 			}
 		}
-		if strings.HasPrefix(pattern[pos:], "{{") {
+		next := strings.Index(pattern[pos:], "{{")
+		if next < 0 {
+			out.WriteString(pattern[pos:])
+			break
+		}
+		if next == 0 {
 			out.WriteByte(pattern[pos])
 			pos++
 			continue
 		}
-		literalStart := pos
-		for pos < len(pattern) && !strings.HasPrefix(pattern[pos:], "{{") {
-			pos++
-		}
-		out.WriteString(pattern[literalStart:pos])
+		out.WriteString(pattern[pos : pos+next])
+		pos += next
 	}
 	return out.String(), nil
+}
+
+func isMidName(s string) bool {
+	if s == "" || s[0] >= '0' && s[0] <= '9' {
+		return false
+	}
+	return isWord(s)
+}
+
+func expandMidFilters(inside string, groups map[string]string) (string, error) {
+	parts := strings.Split(inside, "|")
+	if len(parts) < 2 || !isMidName(parts[0]) {
+		return "", fmt.Errorf("Malformed template filter '{{%s}}'", inside)
+	}
+	for _, filt := range parts[1:] {
+		if !isMidName(filt) {
+			return "", fmt.Errorf("Malformed template filter '{{%s}}'", inside)
+		}
+	}
+	value, ok := groups[parts[0]]
+	if !ok {
+		return "", fmt.Errorf("Missing template capture '%s'", parts[0])
+	}
+	var err error
+	for _, filt := range parts[1:] {
+		value, err = renderMidFilter(filt, value)
+		if err != nil {
+			return "", err
+		}
+	}
+	return value, nil
 }
 
 func renderMidFilter(name, value string) (string, error) {
@@ -94,6 +122,8 @@ func renderMidFilter(name, value string) (string, error) {
 		return pctEncode(value), nil
 	case "pctdec":
 		return pctDecode(value)
+	case "quote":
+		return regexp.QuoteMeta(value), nil
 	default:
 		return "", fmt.Errorf("Unknown template filter '%s'", name)
 	}

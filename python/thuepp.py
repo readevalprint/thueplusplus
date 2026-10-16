@@ -104,11 +104,17 @@ def _split_rule_line(line: str) -> _RuleSplit | None:
     return None
 
 
+def _is_mid_name(value: str) -> bool:
+    return py_re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value) is not None
+
+
 def _quote_meta(value: str) -> str:
     """Quote a string the way Go's regexp.QuoteMeta does.
 
-    Substituted ::| values match as literals. Only RE2 metacharacters are
-    escaped, so a captured '.' does not mean 'any character'.
+    This is the {{name|quote}} filter. Only RE2 metacharacters are escaped.
+    Newlines, tabs, spaces, and non-ASCII characters stay as themselves.
+    Python re.escape is not used: it also escapes space, '#', '&', '~', and
+    writes a backslash in front of a newline.
     """
     out: list[str] = []
     for ch in value:
@@ -700,40 +706,58 @@ class ThueppInterpreter:
         return "".join(pieces)
 
     def _expand_mid_pattern(self, pattern: str, groups: dict) -> str:
-        """Fill {{name}} holes in a ::| step.
+        """Fill holes in a ::| step.
 
-        Each substituted value is quoted as a literal. Filters run before
-        quoting. Unfiltered missing names expand to empty, same as a ::=
-        template. {{rule_index}} is not bound in a step. Literal step text
-        stays regex source and is not decoded as a replacement string.
+        A hole is {{name}} or {{name|filter|filter...}}. An unfiltered value
+        is inserted verbatim. Filters run left to right; quote is QuoteMeta.
+        A '{{' that is not a well-formed hole contributes one '{' and scanning
+        continues. Step text outside a hole is copied unchanged.
         """
         pieces: list[str] = []
         pos = 0
-        for match in py_re.finditer(r"{{([^}]*)}}", pattern):
-            pieces.append(pattern[pos:match.start()])
-            inner = match.group(1)
-            if "|" in inner:
-                name, filt = inner.split("|", 1)
-                if not py_re.fullmatch(r"[A-Za-z_]\w*", name) or not py_re.fullmatch(r"[A-Za-z_]\w*", filt):
-                    raise RuntimeError(f"Malformed template filter '{{{{{inner}}}}}'")
-                if name not in groups:
-                    raise RuntimeError(f"Missing template capture '{name}'")
-                value = str(groups[name])
-                if filt == "pctenc":
-                    rendered = self._pct_encode(value)
-                elif filt == "pctdec":
-                    rendered = self._pct_decode(value)
-                else:
-                    raise RuntimeError(f"Unknown template filter '{filt}'")
-                pieces.append(_quote_meta(rendered))
-            elif py_re.fullmatch(r"\w+", inner):
-                raw = groups.get(inner, "")
-                pieces.append(_quote_meta("" if raw is None else str(raw)))
-            else:
-                pieces.append(match.group(0))
-            pos = match.end()
-        pieces.append(pattern[pos:])
+        while pos < len(pattern):
+            if pattern.startswith("{{", pos):
+                end = pattern.find("}}", pos + 2)
+                if end >= 0:
+                    inside = pattern[pos + 2:end]
+                    if "|" in inside:
+                        pieces.append(self._expand_mid_filters(inside, groups))
+                        pos = end + 2
+                        continue
+                    if _is_mid_name(inside):
+                        raw = groups.get(inside, "")
+                        pieces.append("" if raw is None else str(raw))
+                        pos = end + 2
+                        continue
+            next_hole = pattern.find("{{", pos)
+            if next_hole < 0:
+                pieces.append(pattern[pos:])
+                break
+            if next_hole == pos:
+                pieces.append(pattern[pos])
+                pos += 1
+                continue
+            pieces.append(pattern[pos:next_hole])
+            pos = next_hole
         return "".join(pieces)
+
+    def _expand_mid_filters(self, inside: str, groups: dict) -> str:
+        parts = inside.split("|")
+        if len(parts) < 2 or not _is_mid_name(parts[0]) or any(not _is_mid_name(part) for part in parts[1:]):
+            raise RuntimeError(f"Malformed template filter '{{{{{inside}}}}}'")
+        if parts[0] not in groups or groups[parts[0]] is None:
+            raise RuntimeError(f"Missing template capture '{parts[0]}'")
+        value = str(groups[parts[0]])
+        for filt in parts[1:]:
+            if filt == "pctenc":
+                value = self._pct_encode(value)
+            elif filt == "pctdec":
+                value = self._pct_decode(value)
+            elif filt == "quote":
+                value = _quote_meta(value)
+            else:
+                raise RuntimeError(f"Unknown template filter '{filt}'")
+        return value
 
     def _apply_mids(self, rule: Rule, groups: dict) -> tuple[dict, bool]:
         if not rule.mids:
