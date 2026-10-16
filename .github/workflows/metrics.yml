@@ -11,12 +11,12 @@ jobs:
   record:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Fetch the pull request base
         run: git fetch --no-tags origin "${{ github.event.pull_request.base.sha }}"
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
       - name: Check latest.json and archived benches
