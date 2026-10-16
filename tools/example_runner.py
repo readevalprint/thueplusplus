@@ -27,7 +27,9 @@ from run_limits import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-INTERNAL_JOBS = 8
+# Eight workers oversubscribe a 4-core runner. Go's lisp cases then miss the
+# 10s wall-clock budget. Cap at the machine's CPU count.
+INTERNAL_JOBS = min(8, os.cpu_count() or 1)
 DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
 
 
