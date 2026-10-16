@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -38,13 +39,29 @@ func (r *processResource) ensureStarted() error {
 	if err != nil {
 		return err
 	}
-	r.stdout, err = r.cmd.StdoutPipe()
+	// Own the stdout pipe. Cmd.StdoutPipe records the read end in
+	// parentIOPipes, and Cmd.Wait closes that end before returning.
+	// A concurrent reader then loses bytes that were still in the pipe.
+	stdoutRead, stdoutWrite, err := os.Pipe()
 	if err != nil {
 		return err
 	}
+	r.cmd.Stdout = stdoutWrite
+	r.stdout = stdoutRead
 	r.outCh = make(chan string, 1024)
 	r.exitCh = make(chan error, 1)
 	if err := r.cmd.Start(); err != nil {
+		_ = stdoutRead.Close()
+		_ = stdoutWrite.Close()
+		return err
+	}
+	// The child has its own copy of the write end. Close ours so the
+	// reader observes EOF when the child exits.
+	if err := stdoutWrite.Close(); err != nil {
+		_ = r.cmd.Process.Kill()
+		_, _ = r.cmd.Process.Wait()
+		_ = stdoutRead.Close()
+		r.cmd = nil
 		return err
 	}
 	go func() {
@@ -91,26 +108,32 @@ func (r *processResource) ReadLine(timeout time.Duration) (string, error) {
 		return stripped, nil
 	case <-time.After(timeout):
 		return "", fmt.Errorf("timeout")
-	case err := <-r.exitCh:
-		lineTimeout := 100 * time.Millisecond
-		if timeout < lineTimeout {
-			lineTimeout = timeout
-		}
-		select {
-		case line, ok := <-r.outCh:
-			if ok {
+	case exitErr := <-r.exitCh:
+		// stdout can arrive after Wait returns. Keep reading until the
+		// reader closes or the caller's timeout elapses. A short fixed
+		// grace drops a line when the host is busy.
+		deadline := time.After(timeout)
+		for {
+			select {
+			case line, ok := <-r.outCh:
+				if !ok {
+					if err := r.exitError(exitErr); err != nil {
+						return "", err
+					}
+					return "", fmt.Errorf("EOF before newline")
+				}
 				stripped, complete := stripLineTerminator(line)
 				if !complete {
 					return "", fmt.Errorf("EOF before newline")
 				}
 				return stripped, nil
+			case <-deadline:
+				if err := r.exitError(exitErr); err != nil {
+					return "", err
+				}
+				return "", fmt.Errorf("EOF before newline")
 			}
-		case <-time.After(lineTimeout):
 		}
-		if exitErr := r.exitError(err); exitErr != nil {
-			return "", exitErr
-		}
-		return "", fmt.Errorf("EOF before newline")
 	}
 }
 
