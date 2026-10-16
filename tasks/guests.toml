@@ -10,3 +10,13 @@ extension = "fth"
 id = "lisp"
 program = "examples/lisp/lisp.tpp"
 extension = "lisp"
+
+[[guest]]
+id = "brainfuck"
+program = "examples/brainfuck/brainfuck.tpp"
+extension = "bf"
+
+[[guest]]
+id = "basic"
+program = "examples/basic/basic.tpp"
+extension = "bas"

@@ -2,7 +2,7 @@
 
 A task is a programming problem defined only by input and output. The same transcript is the contract for every host and every guest.
 
-Hosts are the Thue++ implementations: Python, Go, and wasm. Guests are languages implemented in Thue++. The guests in this suite are [Forth](../examples/forth/forth.tpp) and [Lisp](../examples/lisp/lisp.tpp).
+Hosts are the Thue++ implementations: Python, Go, and wasm. Guests are languages implemented in Thue++. The guests in this suite are [Forth](../examples/forth/forth.tpp), [Lisp](../examples/lisp/lisp.tpp), [Brainfuck](../examples/brainfuck/brainfuck.tpp), and [BASIC](../examples/basic/basic.tpp).
 
 ```text
 make tasks
