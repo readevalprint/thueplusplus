@@ -1,26 +1,25 @@
 # Metrics benches
 
-Each measured commit is one file, `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the commit's UTC author date. `/guests` does not import these files one by one. `demo/scripts/build-summary.mjs` globs `metrics/**/bench.json` at build time and writes `demo/src/generated/summary.json`. The charts and the guest leaderboard read that summary. The same summary is published at `/metrics/summary.json`.
+`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/guests` does not import these files one by one. `demo/scripts/build-summary.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json`. The charts and the guest leaderboard read that summary. The same summary is published at `/metrics/summary.json`.
 
 | Path | Role |
 | --- | --- |
-| `metrics/YYYY/MM/DD/{sha}/bench.json` | One commit. The directory date matches `timestamp`. |
-| `demo/src/generated/summary.json` | Compact series generated from every bench file. Not committed. |
+| `metrics/latest.json` | The measurement the author committed with the change. It has no commit SHA. |
+| `metrics/YYYY/MM/DD/{sha}/bench.json` | One archived measurement. The directory date matches `timestamp`. |
+| `demo/src/generated/summary.json` | Compact series generated from every bench file and from `latest.json`. Not committed. |
 | `/metrics/summary.json` | That summary on the published site. |
 
 GitLab Pages copies the summary to `public/metrics/summary.json` after the demo build. The demo build copies it to `demo/dist/metrics/summary.json`. Both URLs are `/metrics/summary.json`.
 
-## Who writes a bench file
+## Who writes a file
 
-`metrics/record.py` measures `HEAD` and writes its file.
+The pull request author runs `make metrics` before the pull request is accepted and commits `metrics/latest.json` with the change. The script runs the host benchmarks on every host and the task suite on native Go.
 
-`metrics/backfill.py` walks every commit reachable from `HEAD` and fills SHA, author, commit timestamp, and guest rule-line counts. It keeps tasks and benchmarks already stored for that commit. It does not run the task suite or the workloads. A historical task run would time today's hosts against an old tree, which is a different question.
+If `metrics/latest.json` already exists, the script resolves the commit that added it and moves that measurement to `metrics/YYYY/MM/DD/{sha}/bench.json`, filling in the commit, the author, and the UTC author date. It then writes a new `latest.json`. The script refuses a dirty work tree. It does not push.
 
-A commit is bookkeeping when its subject starts with `metrics:` or its only change from its single parent is one or more `bench.json` files. Neither script measures it. There is no single history file.
+GitHub Actions does not measure and does not push. On a pull request it checks that `latest.json` exists, that the pull request changed it, that it matches this schema, and that each archived bench matches the `latest.json` from the commit that added it. There is no single history file and no post-merge write.
 
-`make metrics` runs `record.py`. GitHub Actions runs that on pull requests and commits the new file to the pull request branch, so the change and its metrics merge together. The job pushes nothing to `main`. It waits until the other pull request workflows on the measured commit have passed, then pushes. A push from the workflow token does not get its own runs unless someone approves them, so the job copies those passing checks onto the metrics commit. The diff must be only under `metrics/`. It does not measure again when the head commit subject starts with `metrics:`. GitLab CI runs `record.py --results build/tasks/results.json` on the default branch after the `tasks` job and stores the bench files as an artifact.
-
-`record.py` is a no-op when `HEAD` already has tasks and benchmarks, unless `--force` is set. It refuses a dirty work tree.
+`metrics/backfill.py` walks every commit reachable from `HEAD` and fills SHA, author, commit timestamp, and guest rule-line counts. It keeps tasks and benchmarks already stored for that commit. It does not run the task suite or the workloads. A historical task run would time today's hosts against an old tree, which is a different question. Those rows record `machine: null`.
 
 ## Safety
 
@@ -28,19 +27,44 @@ Every Thue++ process uses explicit `--max-steps`, `--max-evals`, and `--max-stat
 
 The host workloads are `metrics/workloads.toml`. There is no omitted-limit fallback. `memory_cap_bytes` in that file must equal `RUN_MEMORY_CAP_BYTES`. Each workload names its program, its `input`, its `stdin`, and the four limits.
 
-`make tasks` runs guest programs on the native Go host. Each task is a Go test. A pass is an exact match on every case that test chose, and `applied_steps` and `probes` are the sums. The metrics recorder calls `make tasks`, wrapped in `timeout(1)` for 1200 seconds, and stores `tasks.source` as `make tasks`. It records those rows once, from native Go. Each case keeps its own step, probe, and state limits, OS timeout, and memory cap. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
+`make tasks` runs guest programs on the native Go host. Each task is a Go test. A pass is an exact match on every case that test chose, and `applied_steps` and `probes` are the sums. The metrics script calls `make tasks`, wrapped in `timeout(1)` for 1200 seconds, and stores `tasks.source` as `make tasks`. It records those rows once, from native Go. Each case keeps its own step, probe, and state limits, OS timeout, and memory cap. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
+
+Steps and probes are properties of the program and the host. Durations and resident memory are properties of the machine that ran `make metrics`. `machine` records that machine. An archived row converted from the old history has `machine: null` because that file did not record one.
+
+## latest.json
+
+| Field | Meaning |
+| --- | --- |
+| `schema_version` | `2` |
+| `machine` | The machine that ran the script. Required |
+| `guests` | Object keyed by guest id |
+| `tasks` | The native Go task run. Required |
+| `benchmarks` | `{ "workloads": [ ... ] }`. Required |
+
+`latest.json` has no `commit`, `author`, or `timestamp`. The summary stamps the pull request head, or the merge commit when the site is built from that checkout, using `git rev-parse HEAD`.
 
 ## Bench file
 
 | Field | Meaning |
 | --- | --- |
 | `schema_version` | `2` |
-| `commit` | Full lowercase SHA. It is the directory name |
-| `author` | `Name <email>` from `git log -1 --format=%an <%ae>` |
-| `timestamp` | Commit author time, UTC, `YYYY-MM-DDTHH:MM:SSZ`. The `YYYY/MM/DD` directories are this date |
+| `commit` | Full lowercase SHA of the commit that added the archived `latest.json`. It is the directory name |
+| `author` | `Name <email>` from `git log -1 --format=%an <%ae>` on that commit |
+| `timestamp` | That commit's author time, UTC, `YYYY-MM-DDTHH:MM:SSZ`. The `YYYY/MM/DD` directories are this date |
+| `machine` | The machine that produced the durations, or `null` when the row was not recorded by `make metrics` |
 | `guests` | Object keyed by guest id. Absent means that guest program was not in the commit |
 | `tasks` | `null` when this commit was not measured with `make tasks` |
 | `benchmarks` | `null` when this commit was not benchmarked. Otherwise `{ "workloads": [ ... ] }` |
+
+## Machine
+
+| Field | Meaning |
+| --- | --- |
+| `os` | `platform.system()` |
+| `release` | `platform.release()` |
+| `arch` | `platform.machine()` |
+| `cpu` | The CPU model name |
+| `cpus` | `os.cpu_count()` |
 
 ## Guests
 
@@ -68,7 +92,7 @@ The host workloads are `metrics/workloads.toml`. There is no omitted-limit fallb
 
 ## Workloads
 
-`metrics/workloads.toml` lists the programs. Each host records one row per workload. `duration_ms` is the wall clock of that process, including startup. `memory_bytes` is the peak resident set size of the process tree observed while it ran. A converted row from the old history has `memory_bytes: null` because that file did not record it. A new run writes an integer.
+`metrics/workloads.toml` lists the programs. Each host records one row per workload. `duration_ms` is the wall clock of that process, including startup, on the machine in `machine`. `memory_bytes` is the peak resident set size of the process tree observed while it ran. A converted row from the old history has `memory_bytes: null` because that file did not record it. A new run writes an integer.
 
 The workloads are:
 
@@ -89,7 +113,7 @@ The workloads are:
 | `stdin` | Bytes written to standard input. Empty means no input |
 | `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes` | The limits on the command and the process |
 | `hosts.HOST.environment` | `python`, `go native`, `wasm (node)`, `rust`, or `cpp`. The key stays the host id. `wasm` in this file is the Go interpreter compiled to wasm and run under Node, not the browser and not the native Go binary |
-| `hosts.HOST.duration_ms` | Wall clock in milliseconds for that environment |
+| `hosts.HOST.duration_ms` | Wall clock in milliseconds for that environment on `machine` |
 | `hosts.HOST.memory_bytes` | Peak resident set size in bytes, or `null` when that commit did not record it |
 | `hosts.HOST.exit_code` | Process exit code. A recorded workload exited 0 |
 | `hosts.HOST.applied_steps`, `hosts.HOST.probes` | From `--counts`. Hosts that ran one workload must agree. A host missing from an older commit is a gap in the chart, not an error |
@@ -98,9 +122,13 @@ The workloads are:
 ```json
 {
   "schema_version": 2,
-  "commit": "0123456789abcdef0123456789abcdef01234567",
-  "author": "Ada Lovelace <ada@example.com>",
-  "timestamp": "2026-10-16T13:40:00Z",
+  "machine": {
+    "os": "Linux",
+    "release": "6.12.0",
+    "arch": "x86_64",
+    "cpu": "Example CPU",
+    "cpus": 4
+  },
   "guests": {
     "forth": { "program": "examples/forth/forth.tpp", "rule_lines": 45 }
   },
@@ -148,11 +176,11 @@ The workloads are:
 }
 ```
 
-The numbers above are the shape, not a measurement.
+The numbers above are the shape of `latest.json`, not a measurement. An archived bench adds `commit`, `author`, and `timestamp`.
 
 ## Summary
 
-`summary.json` is `schema_version` 1. `entries` is every bench file, sorted by `timestamp`, then `commit`. Guests whose rules could not be listed are omitted. `tasks` is one object per guest: `pass`, `fail`, `unsupported`, and `steps`. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value.
+`summary.json` is `schema_version` 1. `entries` is every bench file plus `latest.json`, sorted by `timestamp`, then `commit`. `latest.json` uses the HEAD commit: the pull request head, or the merge commit on a checkout of the merged result. Guests whose rules could not be listed are omitted. `tasks` is one object per guest: `pass`, `fail`, `unsupported`, and `steps`. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value.
 
 ## Charts
 

@@ -3,6 +3,7 @@
   "commit": "ba70bea0775642bbfbb8501f4174fff548f2e749",
   "author": "Administrator <gitlab_admin_3698b5@example.com>",
   "timestamp": "2026-05-14T14:24:45Z",
+  "machine": null,
   "guests": {},
   "tasks": null,
   "benchmarks": null

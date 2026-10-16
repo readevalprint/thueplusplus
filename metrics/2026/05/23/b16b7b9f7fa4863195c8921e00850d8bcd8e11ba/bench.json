@@ -3,6 +3,7 @@
   "commit": "b16b7b9f7fa4863195c8921e00850d8bcd8e11ba",
   "author": "Tim Watts <tim@readevalprint.com>",
   "timestamp": "2026-05-23T16:24:33Z",
+  "machine": null,
   "guests": {
     "forth": {
       "program": "examples/forth/forth.tpp",

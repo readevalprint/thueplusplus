@@ -5,6 +5,7 @@ import GuestsPage from './pages/GuestsPage.vue'
 import TaskPage from './pages/TaskPage.vue'
 import TasksPage from './pages/TasksPage.vue'
 import { catalog, rankGuests, taskRouteMeta } from './catalog'
+import { history } from './metrics'
 import { pageLinks } from './site'
 
 async function mountAt(path: string) {
@@ -70,13 +71,13 @@ describe('catalog pages', () => {
     expect(wrapper.get('[data-test="guest-improve"]').text().toLowerCase()).toContain('autoresearch')
     expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('09744fa8d495')
     expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('Forth · 86')
-    expect(wrapper.get('[data-test="rule-chart"]').text()).toContain('61ec35406371…9d34a9a0cc75 · 86')
+    expect(wrapper.get('[data-test="rule-chart"]').text()).toContain(`61ec35406371…${history.entries[history.entries.length - 1].commit.slice(0, 12)} · 86`)
     expect(wrapper.get('[data-test="task-readout"]').text()).toContain('Lisp · 10 pass · 0 fail · 0 unsupported · 76749 steps')
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('steps 10000 · probes 10002')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('wasm (node) · 3024 ms')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native · 1176 ms')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('rust · 880 ms')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('cpp · 914 ms')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('wasm (node) · 1408 ms')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native · 607 ms')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('rust · 468 ms')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('cpp · 624 ms')
     expect(wrapper.get('[data-test="rule-chart"]').find('path').exists()).toBe(true)
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Placeholder')

@@ -3,6 +3,7 @@
   "commit": "0fdca06c5b06e5a1ec8a0bb51d72b7c3fa5a7d84",
   "author": "Administrator <gitlab_admin_3698b5@example.com>",
   "timestamp": "2026-05-21T20:33:08Z",
+  "machine": null,
   "guests": {
     "lisp": {
       "program": "examples/lisp/lisp.tpp",

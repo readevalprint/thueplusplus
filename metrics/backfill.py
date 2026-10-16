@@ -173,6 +173,7 @@ def _main() -> int:
                     "commit": commit,
                     "author": author,
                     "timestamp": timestamp,
+                    "machine": None,
                     "guests": guest_entries,
                     "tasks": None if previous is None else previous["tasks"],
                     "benchmarks": None if previous is None else previous["benchmarks"],

@@ -3,6 +3,7 @@
   "commit": "7976e348385133fdd1d7046d0bb9cd5f787215e8",
   "author": "cursor[bot] <206951365+cursor[bot]@users.noreply.github.com>",
   "timestamp": "2026-10-16T13:51:57Z",
+  "machine": null,
   "guests": {
     "forth": {
       "program": "examples/forth/forth.tpp",

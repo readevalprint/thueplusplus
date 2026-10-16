@@ -1,4 +1,5 @@
-import { globSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, globSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseToml } from 'smol-toml'
@@ -154,13 +155,55 @@ function summarizeBenchmarks(commit, benchmarks, ids) {
   })
 }
 
+function git(args) {
+  try {
+    return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim()
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    throw new SummaryError(`git ${args.join(' ')} failed: ${detail}`)
+  }
+}
+
+function utcTimestamp(iso) {
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) throw new SummaryError(`bad commit timestamp ${iso}`)
+  const stamp = parsed.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(stamp)) {
+    throw new SummaryError(`bad commit timestamp ${iso}`)
+  }
+  return stamp
+}
+
+function headMeasurement(latest) {
+  if (latest?.schema_version !== 2) throw new SummaryError('metrics/latest.json schema_version must be 2')
+  if ('commit' in latest || 'author' in latest || 'timestamp' in latest) {
+    throw new SummaryError('metrics/latest.json must not store a commit; the summary uses HEAD')
+  }
+  if (latest.machine == null || typeof latest.machine !== 'object' || Array.isArray(latest.machine)) {
+    throw new SummaryError('metrics/latest.json machine is required')
+  }
+  const sha = git(['rev-parse', 'HEAD'])
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new SummaryError(`HEAD is not a full sha: ${sha}`)
+  const author = git(['log', '-1', '--format=%an <%ae>', 'HEAD'])
+  const timestamp = utcTimestamp(git(['log', '-1', '--format=%aI', 'HEAD']))
+  const [year, month, day] = timestamp.slice(0, 10).split('-')
+  return {
+    rel: `metrics/${year}/${month}/${day}/${sha}/bench.json`,
+    document: { ...latest, commit: sha, author, timestamp },
+  }
+}
+
 function readBenches() {
   const paths = globSync('metrics/**/bench.json', { cwd: repoRoot }).sort()
   if (paths.length === 0) throw new SummaryError('metrics/**/bench.json matched nothing')
-  return paths.map(rel => ({
+  const latestPath = join(repoRoot, 'metrics', 'latest.json')
+  if (!existsSync(latestPath)) throw new SummaryError('metrics/latest.json does not exist')
+  const files = paths.map(rel => ({
     rel,
     document: JSON.parse(readFileSync(join(repoRoot, rel), 'utf8')),
   }))
+  files.push(headMeasurement(JSON.parse(readFileSync(latestPath, 'utf8'))))
+  return files
 }
 
 function main() {

@@ -5,78 +5,19 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: write
-  checks: write
-
-concurrency:
-  group: metrics-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
+  contents: read
 
 jobs:
   record:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-      - name: Skip the metrics commit
-        id: gate
-        run: |
-          subject=$(git log -1 --format=%s)
-          if [[ "$subject" == metrics:* ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "head is the metrics commit: $subject"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-      - uses: actions/setup-go@v5
-        if: steps.gate.outputs.skip != 'true'
-        with:
-          go-version: "1.24.6"
-          cache-dependency-path: go/go.sum
+      - name: Fetch the pull request base
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.sha }}"
       - uses: astral-sh/setup-uv@v5
-        if: steps.gate.outputs.skip != 'true'
         with:
           enable-cache: true
-      - uses: actions/setup-node@v4
-        if: steps.gate.outputs.skip != 'true'
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: demo/package-lock.json
-      - uses: dtolnay/rust-toolchain@1.83.0
-        if: steps.gate.outputs.skip != 'true'
-      - uses: Swatinem/rust-cache@v2
-        if: steps.gate.outputs.skip != 'true'
-        with:
-          workspaces: rust
-      - uses: actions/cache@v4
-        if: steps.gate.outputs.skip != 'true'
-        with:
-          path: |
-            build/go-thuepp
-            build/thuepp.wasm
-          key: hosts-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
-      - name: Install the C++ toolchain
-        if: steps.gate.outputs.skip != 'true'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
-      - name: Record metrics for this commit
-        if: steps.gate.outputs.skip != 'true'
-        run: uv run python metrics/record.py
-      - name: Commit bench.json and publish the parent checks
-        if: steps.gate.outputs.skip != 'true'
-        run: |
-          git add metrics
-          if git diff --cached --quiet; then
-            echo "no bench changes"
-            exit 0
-          fi
-          parent=$(git rev-parse HEAD)
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "metrics: record ${parent}"
-          python3 metrics/publish_checks.py wait --parent "$parent"
-          git push
-          python3 metrics/publish_checks.py publish --parent "$parent" --new "$(git rev-parse HEAD)"
+      - name: Check latest.json and archived benches
+        run: uv run python metrics/check_history.py --base "${{ github.event.pull_request.base.sha }}"

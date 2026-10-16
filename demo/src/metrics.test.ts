@@ -24,8 +24,8 @@ const names = new Map([
   ['basic', 'Basic'],
 ])
 const order = ['forth', 'lisp', 'brainfuck', 'basic']
-const LAST_BENCH = '9d34a9a0cc75defe0ef1997234ec0765f9644159'
 const LAST_RULE = '09744fa8d495101d1c5a3d80d5872a21d6164548'
+const LAST_REWRITE = 'ee6ce4482dfd007937dd310f426b810f4c62c6ac'
 
 describe('metrics history', () => {
   it('loads the committed series', () => {
@@ -35,18 +35,18 @@ describe('metrics history', () => {
     const latest = rules.commits[rules.commits.length - 1]
     expect(latest.commit).toBe(LAST_RULE)
     expect(latest.author).toContain('cursor[bot]')
+    const tip = history.entries[history.entries.length - 1].commit
     const forth = rules.series.find(series => series.id === 'forth')
     const forthPoint = forth?.points.find(point => point.commit === '61ec3540637188ef0bc7b116c7015ade908c7926')
-    expect(forthPoint).toEqual({ commit: '61ec3540637188ef0bc7b116c7015ade908c7926', until: LAST_BENCH, value: 86 })
+    expect(forthPoint).toEqual({ commit: '61ec3540637188ef0bc7b116c7015ade908c7926', until: tip, value: 86 })
     expect(pointAt(forth?.points ?? [], latest.commit, rules.order)?.value).toBe(86)
     expect(pointAt(rules.series.find(series => series.id === 'lisp')?.points ?? [], latest.commit, rules.order)?.value).toBe(441)
     expect(pointAt(rules.series.find(series => series.id === 'brainfuck')?.points ?? [], latest.commit, rules.order)?.value).toBe(68)
     expect(pointAt(rules.series.find(series => series.id === 'basic')?.points ?? [], latest.commit, rules.order)?.value).toBe(62)
-    expect(rangeLabel(forthPoint!)).toBe('61ec35406371…9d34a9a0cc75 · 86')
+    expect(rangeLabel(forthPoint!)).toBe(`61ec35406371…${tip.slice(0, 12)} · 86`)
 
     const tasks = taskCommits(history, order, names)
     const latestTasks = tasks[tasks.length - 1]
-    expect(latestTasks.commit).toBe(LAST_BENCH)
     expect(latestTasks.guests.find(guest => guest.id === 'forth')).toMatchObject({ passCount: 9, failCount: 0, unsupportedCount: 1, stepCount: 6256 })
     expect(latestTasks.guests.find(guest => guest.id === 'lisp')).toMatchObject({ passCount: 10, failCount: 0, stepCount: 76749 })
     expect(latestTasks.guests.find(guest => guest.id === 'brainfuck')).toMatchObject({ passCount: 1, unsupportedCount: 9, stepCount: 83 })
@@ -56,20 +56,20 @@ describe('metrics history', () => {
 
     const benches = benchmarkCommits(history, 'rewrite')
     const latestBench = benches[benches.length - 1]
-    expect(latestBench.commit).toBe(LAST_BENCH)
+    expect(latestBench.commit).toBe(LAST_REWRITE)
     expect(latestBench.appliedSteps).toBe(10000)
     expect(latestBench.probes).toBe(10002)
     expect(latestBench.hosts.map(host => [host.id, host.environment, host.durationMs, host.exitCode, host.memoryBytes])).toEqual([
-      ['python', 'python', 1244, 0, null],
-      ['go', 'go native', 1176, 0, null],
-      ['wasm', 'wasm (node)', 3024, 0, null],
-      ['rust', 'rust', 880, 0, null],
-      ['cpp', 'cpp', 914, 0, null],
+      ['python', 'python', 721, 0, null],
+      ['go', 'go native', 607, 0, null],
+      ['wasm', 'wasm (node)', 1408, 0, null],
+      ['rust', 'rust', 468, 0, null],
+      ['cpp', 'cpp', 624, 0, null],
     ])
     expect(latestBench.memoryCapBytes).toBe(268435456)
     const hosts = hostDurationSeries(benches)
-    expect(hosts.find(series => series.id === 'wasm')?.points.at(-1)).toEqual({ commit: LAST_BENCH, until: LAST_BENCH, value: 3024 })
-    expect(hosts.find(series => series.id === 'cpp')?.points).toHaveLength(3)
+    expect(hosts.find(series => series.id === 'wasm')?.points.at(-1)).toEqual({ commit: LAST_REWRITE, until: LAST_REWRITE, value: 1408 })
+    expect(hosts.find(series => series.id === 'cpp')?.points.at(-1)).toEqual({ commit: LAST_REWRITE, until: LAST_REWRITE, value: 624 })
   })
 
   it('places zero on the baseline and the max near the top', () => {

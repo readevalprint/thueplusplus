@@ -3,6 +3,7 @@
   "commit": "74a3da0e78b8d9b9a43bdc8a8d1fa3af212bd2da",
   "author": "herm <project_52_bot_b0958bdc5590d3b9b8c376a85dbf083b@noreply.gitlab.backrooms.internal>",
   "timestamp": "2026-05-21T19:59:23Z",
+  "machine": null,
   "guests": {
     "lisp": {
       "program": "examples/lisp/lisp.tpp",

@@ -3,6 +3,7 @@
   "commit": "9d088026025bd4732a7ab1d9e37bc06c09e2b052",
   "author": "Tim <coconutrandom@gmail.com>",
   "timestamp": "2026-05-27T14:58:02Z",
+  "machine": null,
   "guests": {
     "forth": {
       "program": "examples/forth/forth.tpp",

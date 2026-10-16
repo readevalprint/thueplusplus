@@ -3,6 +3,7 @@
   "commit": "c463ce2597818f02dcb86e31922fddb281a46729",
   "author": "Administrator <gitlab_admin_3698b5@example.com>",
   "timestamp": "2026-05-23T11:18:26Z",
+  "machine": null,
   "guests": {
     "forth": {
       "program": "examples/forth/forth.tpp",

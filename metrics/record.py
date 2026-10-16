@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""Measure HEAD and write metrics/YYYY/MM/DD/{sha}/bench.json.
+"""Run every host benchmark and the Go task suite, then write metrics/latest.json.
 
-Refuses a dirty work tree. Skips a metrics commit and a commit that already
-has tasks and benchmarks. `--force` measures again. Task rows come from
-`make tasks`, which runs the native Go host only.
+When metrics/latest.json is already committed, the script first resolves
+`git log -1 --format=%H -- metrics/latest.json` and moves that file to
+metrics/YYYY/MM/DD/{sha}/bench.json, filling in that commit and its UTC
+author date. The suite runs against a clean work tree. The new latest.json
+is written after that move. The author commits it with the change. This
+script does not push.
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -35,15 +38,14 @@ GUESTS_PATH = ROOT / "tasks" / "guests.toml"
 RESULTS_PATH = ROOT / "build" / "tasks" / "results.json"
 SUITE_TIMEOUT_SECONDS = 1200
 SUITE_TIMEOUT_KILL_SECONDS = 30
-METRICS_SUBJECT = "metrics:"
 
 
 class RecordError(RuntimeError):
     pass
 
 
-def git_text(args: list[str]) -> str:
-    completed = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
+def git_text(args: list[str], *, root: Path = ROOT) -> str:
+    completed = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}"
         raise RecordError(f"git {' '.join(args)} failed: {detail}")
@@ -58,23 +60,67 @@ def commit_timestamp(iso: str) -> str:
     return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def parents_of(commit: str) -> list[str]:
-    parts = git_text(["rev-list", "--parents", "-n", "1", commit]).split()
-    if not parts or parts[0] != commit:
-        raise RecordError(f"git rev-list did not describe {commit}")
-    return parts[1:]
+def machine_info() -> dict:
+    system = platform.system().strip()
+    release = platform.release().strip()
+    arch = platform.machine().strip()
+    cpu = cpu_model()
+    cpus = os.cpu_count()
+    if not system or not release or not arch:
+        raise RecordError(f"machine os/release/arch is incomplete: {system!r} {release!r} {arch!r}")
+    if cpus is None or cpus < 1:
+        raise RecordError("os.cpu_count() did not return a CPU count")
+    info = {"os": system, "release": release, "arch": arch, "cpu": cpu, "cpus": cpus}
+    historylib.validate_machine(info, historylib.LATEST_REL, allow_null=False)
+    return info
 
 
-def bookkeeping(commit: str) -> bool:
-    subject = git_text(["log", "-1", "--format=%s", commit])
-    if subject.startswith(METRICS_SUBJECT):
-        return True
-    parents = parents_of(commit)
-    if len(parents) != 1:
-        return False
-    diff = git_text(["diff", "--name-only", parents[0], commit])
-    paths = [line for line in diff.splitlines() if line]
-    return historylib.history_only(paths)
+def cpu_model() -> str:
+    cpuinfo = Path("/proc/cpuinfo")
+    if cpuinfo.is_file():
+        for line in cpuinfo.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.lower().startswith("model name"):
+                value = line.split(":", 1)[1].strip()
+                if value:
+                    return value
+    processor = platform.processor().strip()
+    if processor:
+        return processor
+    raise RecordError("could not read the CPU model")
+
+
+def read_committed_latest(root: Path = ROOT) -> tuple[str, dict] | None:
+    path = root / historylib.LATEST_REL
+    if not path.is_file():
+        return None
+    sha = git_text(["log", "-1", "--format=%H", "--", historylib.LATEST_REL], root=root)
+    if not sha:
+        raise RecordError(f"{historylib.LATEST_REL} exists but no commit added it")
+    raw = git_text(["show", f"{sha}:{historylib.LATEST_REL}"], root=root)
+    try:
+        document = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RecordError(f"{sha}:{historylib.LATEST_REL} is not JSON: {exc}") from exc
+    historylib.validate_latest(document)
+    return sha, document
+
+
+def move_latest(root: Path, sha: str, document: dict) -> Path:
+    author = git_text(["log", "-1", "--format=%an <%ae>", sha], root=root)
+    timestamp = commit_timestamp(git_text(["log", "-1", "--format=%aI", sha], root=root))
+    bench = historylib.bench_from_latest(document, sha, author, timestamp)
+    rel = historylib.bench_rel(timestamp, sha)
+    dest = root / rel
+    if dest.is_file():
+        existing = historylib.load_bench(dest)
+        if existing != bench:
+            raise RecordError(f"{rel} already exists and does not match {historylib.LATEST_REL} at {sha}")
+    else:
+        historylib.save_bench(root, bench)
+    latest = root / historylib.LATEST_REL
+    if latest.is_file():
+        latest.unlink()
+    return root / rel
 
 
 def run_make_tasks() -> None:
@@ -247,62 +293,43 @@ def print_benchmarks(benchmarks: dict) -> None:
             )
 
 
-def already_measured(path: Path, head: str) -> bool:
-    if not path.is_file():
-        return False
-    document = historylib.load_bench(path)
-    return document["commit"] == head and document["tasks"] is not None and document["benchmarks"] is not None
-
-
-def measure(results_path: Path | None, *, force: bool = False) -> int:
+def measure() -> int:
     if git_text(["status", "--porcelain"]):
-        raise RecordError("metrics record refuses a dirty work tree")
+        raise RecordError("make metrics refuses a dirty work tree")
     head = git_text(["rev-parse", "HEAD"])
-    if bookkeeping(head):
-        print("metrics record: metrics commit, nothing to measure")
-        return 0
-    timestamp = commit_timestamp(git_text(["log", "-1", "--format=%aI", head]))
-    rel = historylib.bench_rel(timestamp, head)
-    path = ROOT / rel
-    if already_measured(path, head) and not force:
-        print(f"metrics record: {head} is already measured")
-        return 0
-    if force and path.is_file():
-        path.unlink()
-    if results_path is None:
-        run_make_tasks()
-        results_path = RESULTS_PATH
-    tasks_document = load_tasks(results_path, head)
+    # Resolve the commit that added the current latest.json before the suite
+    # runs. The file stays in place until the new measurement is ready, then
+    # it is moved and the new latest.json is written.
+    pending = read_committed_latest(ROOT)
+    run_make_tasks()
+    tasks_document = load_tasks(RESULTS_PATH, head)
     benchmarks = run_benchmarks(historylib.load_workloads(WORKLOADS_PATH))
     print_benchmarks(benchmarks)
-    entry = {
+    if pending is not None:
+        sha, previous = pending
+        archived = move_latest(ROOT, sha, previous)
+        print(f"metrics: archived {sha} to {archived.relative_to(ROOT)}")
+    latest = {
         "schema_version": historylib.SCHEMA_VERSION,
-        "commit": head,
-        "author": git_text(["log", "-1", "--format=%an <%ae>", head]),
-        "timestamp": timestamp,
+        "machine": machine_info(),
         "guests": guest_counts(tasks_document),
         "tasks": historylib.tasks_document(historylib.rows_from_tasks(tasks_document)),
         "benchmarks": benchmarks,
     }
-    historylib.save_bench(ROOT, entry)
-    print(f"metrics record: wrote {head} to {rel}")
+    historylib.save_latest(ROOT, latest)
+    print(f"metrics: wrote {historylib.LATEST_REL}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Record per-commit metrics for HEAD")
-    parser.add_argument("--results", type=Path, help="existing make tasks JSON; skips running the suite")
-    parser.add_argument("--force", action="store_true", help="measure HEAD again when it is already present")
-    args = parser.parse_args(argv)
-    results = None if args.results is None else (args.results if args.results.is_absolute() else ROOT / args.results)
+    if argv:
+        raise RecordError("make metrics takes no arguments")
     try:
-        if args.force:
-            return measure(results, force=True)
-        return measure(results)
+        return measure()
     except (RecordError, historylib.HistoryError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

@@ -3,6 +3,7 @@
   "commit": "001f72effa3eff4e042612736f1ca9d7a69e0d65",
   "author": "herm <project_52_bot_b0958bdc5590d3b9b8c376a85dbf083b@noreply.gitlab.backrooms.internal>",
   "timestamp": "2026-05-23T10:35:20Z",
+  "machine": null,
   "guests": {
     "forth": {
       "program": "examples/forth/forth.tpp",

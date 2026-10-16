@@ -3,6 +3,7 @@
   "commit": "1d652bde422030174d10dccea1b95f0f174c1f0c",
   "author": "Tim Watts <tim@readevalprint.com>",
   "timestamp": "2026-05-16T12:16:33Z",
+  "machine": null,
   "guests": {
     "lisp": {
       "program": "examples/lisp/lisp.tpp",

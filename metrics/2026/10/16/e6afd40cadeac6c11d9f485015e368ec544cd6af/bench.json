@@ -3,6 +3,7 @@
   "commit": "e6afd40cadeac6c11d9f485015e368ec544cd6af",
   "author": "Cursor Agent <cursoragent@cursor.com>",
   "timestamp": "2026-10-16T13:51:19Z",
+  "machine": null,
   "guests": {
     "forth": {
       "program": "examples/forth/forth.tpp",

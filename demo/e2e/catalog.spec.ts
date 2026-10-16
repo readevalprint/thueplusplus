@@ -1,4 +1,12 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+
+function summaryTip(): string {
+  const summary = JSON.parse(readFileSync(new URL('../src/generated/summary.json', import.meta.url), 'utf8')) as {
+    entries: { commit: string }[]
+  }
+  return summary.entries[summary.entries.length - 1].commit.slice(0, 12)
+}
 
 test('guests leaderboard invites autoresearch', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -13,7 +21,7 @@ test('guests leaderboard invites autoresearch', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText(/RE2/)
   await expect(page.getByText('Placeholder')).toHaveCount(0)
   await expect(page.getByTestId('rule-readout')).toContainText('09744fa8d495')
-  await expect(page.getByTestId('rule-chart')).toContainText('61ec35406371…9d34a9a0cc75 · 86')
+  await expect(page.getByTestId('rule-chart')).toContainText(`61ec35406371…${summaryTip()} · 86`)
   await page.getByTestId('rule-chart-slider').fill('0')
   await expect(page.getByTestId('rule-readout')).not.toContainText('09744fa8d495')
 })

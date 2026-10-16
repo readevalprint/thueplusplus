@@ -80,49 +80,6 @@ tasks:
     paths:
       - build/tasks/results.json
 
-metrics:
-  image: golang:1.24.6-bookworm
-  needs:
-    - job: tasks
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_SERVER_HOST != "gitlab.com"'
-      when: always
-  before_script:
-    - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
-    - |
-      if ! command -v uv >/dev/null 2>&1; then
-        curl -LsSf https://astral.sh/uv/install.sh \
-          | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 sh -s -- --no-modify-path
-        export PATH="/tmp/uv-bin:$PATH"
-      fi
-    - uv --version
-    - go version
-    - apt-get update
-    - apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
-    - |
-      if ! command -v cargo >/dev/null 2>&1; then
-        curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
-          | sh -s -- -y --default-toolchain 1.83.0 --profile minimal
-      fi
-      export PATH="$CARGO_HOME/bin:$PATH"
-      rustc --version
-    - |
-      if ! command -v node >/dev/null 2>&1; then
-        curl -fsSL https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-x64.tar.xz -o /tmp/node.tar.xz
-        tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
-      fi
-      node --version
-  script:
-    - |
-      export PATH="$CARGO_HOME/bin:/tmp/uv-bin:${PATH}"
-      uv run python metrics/record.py --results build/tasks/results.json
-  artifacts:
-    when: always
-    expire_in: 14 days
-    paths:
-      - metrics/**/bench.json
-
 e2e:
   image: node:22-bookworm
   needs:

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -14,8 +15,9 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "metrics"))
 sys.path.insert(0, str(ROOT / "tools"))
 
+import check_history  # noqa: E402
 import historylib  # noqa: E402
-import publish_checks  # noqa: E402
+import record  # noqa: E402
 from run_limits import RUN_MEMORY_CAP_BYTES, bounded_run  # noqa: E402
 
 COMMIT_A = "0123456789abcdef0123456789abcdef01234567"
@@ -28,6 +30,7 @@ def entry(commit: str, timestamp: str, *, tasks=None, benchmarks=None) -> dict:
         "commit": commit,
         "author": "Ada Lovelace <ada@example.com>",
         "timestamp": timestamp,
+        "machine": None,
         "guests": {"forth": {"program": "examples/forth/forth.tpp", "rule_lines": 3}},
         "tasks": tasks,
         "benchmarks": benchmarks,
@@ -254,10 +257,17 @@ class HistoryTests(unittest.TestCase):
         self.assertNotIn("history.json", gitlab)
         self.assertIn("pull_request:", workflow)
         self.assertNotIn("branches: [main]", workflow)
-        self.assertIn("metrics:", workflow)
+        self.assertNotIn("git push", workflow)
+        self.assertNotIn("git commit", workflow)
+        self.assertNotIn("history.json", workflow)
+        self.assertNotIn("publish_checks", workflow)
+        self.assertIn("check_history.py", workflow)
+        self.assertIn("latest.json", workflow)
         self.assertIn("`metrics/YYYY/MM/DD/{sha}/bench.json`", schema)
+        self.assertIn("`metrics/latest.json`", schema)
         self.assertIn("`/metrics/summary.json`", schema)
         self.assertNotIn("history.json", schema)
+        self.assertNotIn("record.py", gitlab)
 
     def test_committed_benches_match_the_schema(self) -> None:
         benches = historylib.iter_benches(ROOT)
@@ -303,61 +313,71 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(parsed, (1, 3))
 
 
-class PublishChecksTest(unittest.TestCase):
-    def test_copies_passing_checks_and_skips_vercel(self) -> None:
-        checks = [
-            {"name": "static", "status": "completed", "conclusion": "success", "completed_at": "2026-10-16T00:00:00Z"},
-            {"name": "python", "status": "completed", "conclusion": "skipped", "completed_at": "2026-10-16T00:00:01Z"},
-            {"name": "record", "status": "in_progress", "conclusion": None},
-            {"name": "Vercel Preview Comments", "status": "completed", "conclusion": "success"},
-        ]
-        self.assertEqual(
-            publish_checks.checks_to_publish(checks, ["metrics/2026/10/16/abc/bench.json"]),
-            [
-                {"name": "python", "conclusion": "skipped"},
-                {"name": "static", "conclusion": "success"},
-                {"name": "record", "conclusion": "success"},
-            ],
-        )
+def _latest_document() -> dict:
+    return {
+        "schema_version": 2,
+        "machine": {"os": "Linux", "release": "6.12.0", "arch": "x86_64", "cpu": "Example CPU", "cpus": 2},
+        "guests": {"forth": {"program": "examples/forth/forth.tpp", "rule_lines": 3}},
+        "tasks": historylib.tasks_document([historylib.task_row("factorial", "lisp", "pass", 1, 1)]),
+        "benchmarks": _benchmarks("go"),
+    }
 
-    def test_waits_when_a_parent_check_is_still_running(self) -> None:
-        checks = [{"name": "static", "status": "in_progress", "conclusion": None}]
-        with self.assertRaises(publish_checks.ParentPending):
-            publish_checks.checks_to_publish(checks, ["metrics/bench.json"])
 
-    def test_refuses_a_failed_parent_or_a_diff_outside_metrics(self) -> None:
-        failed = [{"name": "static", "status": "completed", "conclusion": "failure", "completed_at": "2026-10-16T00:00:00Z"}]
+class LatestTests(unittest.TestCase):
+    def test_latest_requires_a_machine_and_a_bench_may_leave_it_null(self) -> None:
+        document = entry(COMMIT_A, "2026-10-16T00:00:01Z")
+        historylib.validate_bench(document)
+        del document["machine"]
         with self.assertRaises(historylib.HistoryError):
-            publish_checks.checks_to_publish(failed, ["metrics/bench.json"])
-        passed = [{"name": "static", "status": "completed", "conclusion": "success", "completed_at": "2026-10-16T00:00:00Z"}]
+            historylib.validate_bench(document)
+        latest = _latest_document()
+        historylib.validate_latest(latest)
+        latest["machine"] = None
         with self.assertRaises(historylib.HistoryError):
-            publish_checks.checks_to_publish(passed, ["demo/src/metrics.ts"])
+            historylib.validate_latest(latest)
+        latest = _latest_document()
+        latest["commit"] = COMMIT_A
         with self.assertRaises(historylib.HistoryError):
-            publish_checks.checks_to_publish(passed, [])
+            historylib.validate_latest(latest)
 
-    def test_uses_the_latest_attempt(self) -> None:
-        checks = [
-            {"name": "static", "status": "completed", "conclusion": "failure", "completed_at": "2026-10-16T00:00:00Z"},
-            {"name": "static", "status": "completed", "conclusion": "success", "completed_at": "2026-10-16T00:00:02Z"},
-        ]
-        published = publish_checks.checks_to_publish(checks, ["metrics/bench.json"])
-        self.assertEqual(published[0], {"name": "static", "conclusion": "success"})
-
-    def test_parent_workflows_must_succeed(self) -> None:
-        runs = [
-            {"id": 1, "name": "metrics", "status": "in_progress", "conclusion": None},
-            {"id": 2, "name": "conformance", "status": "completed", "conclusion": "success"},
-            {"id": 3, "name": "cpp", "status": "completed", "conclusion": "success"},
-            {"id": 4, "name": "vscode", "status": "in_progress", "conclusion": None},
-        ]
-        with self.assertRaises(publish_checks.ParentPending):
-            publish_checks.parent_ready(runs, "1")
-        runs[3]["status"] = "completed"
-        runs[3]["conclusion"] = "failure"
-        with self.assertRaises(historylib.HistoryError):
-            publish_checks.parent_ready(runs, "1")
-        runs[3]["conclusion"] = "success"
-        publish_checks.parent_ready(runs, "1")
+    def test_archive_fills_the_commit_that_added_latest_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "ada@example.com"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Ada Lovelace"], cwd=root, check=True)
+            metrics = root / "metrics"
+            metrics.mkdir()
+            latest = _latest_document()
+            (metrics / "latest.json").write_text(json.dumps(latest) + "\n", encoding="utf-8")
+            subprocess.run(["git", "add", "metrics/latest.json"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "measure"], cwd=root, check=True, capture_output=True)
+            sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+            found = record.read_committed_latest(root)
+            self.assertIsNotNone(found)
+            assert found is not None
+            self.assertEqual(found[0], sha)
+            path = record.move_latest(root, found[0], found[1])
+            self.assertFalse((metrics / "latest.json").exists())
+            loaded = historylib.load_bench(path)
+            self.assertEqual(loaded["commit"], sha)
+            self.assertEqual(loaded["author"], "Ada Lovelace <ada@example.com>")
+            self.assertTrue(loaded["timestamp"].endswith("Z"))
+            self.assertEqual(loaded["machine"]["cpu"], "Example CPU")
+            self.assertEqual(loaded["tasks"]["host"], "go")
+            again = _latest_document()
+            again["machine"] = {**again["machine"], "cpus": 4}
+            (metrics / "latest.json").write_text(json.dumps(again) + "\n", encoding="utf-8")
+            subprocess.run(["git", "add", "metrics/latest.json"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "measure again"], cwd=root, check=True, capture_output=True)
+            benches = {document["commit"]: document for _rel, document in historylib.iter_benches(root)}
+            check_history.assert_archives(root, benches)
+            broken = json.loads(path.read_text(encoding="utf-8"))
+            broken["machine"]["cpu"] = "other"
+            path.write_text(json.dumps(broken) + "\n", encoding="utf-8")
+            benches = {document["commit"]: document for _rel, document in historylib.iter_benches(root)}
+            with self.assertRaises(historylib.HistoryError):
+                check_history.assert_archives(root, benches)
 
 
 if __name__ == "__main__":

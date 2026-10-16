@@ -3,6 +3,7 @@
   "commit": "22aea963b2863eec76156bdbbfdba7159f83ced6",
   "author": "Tim <readevalprint@users.noreply.github.com>",
   "timestamp": "2026-10-16T16:29:47Z",
+  "machine": null,
   "guests": {
     "forth": {
       "program": "examples/forth/forth.tpp",

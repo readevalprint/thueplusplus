@@ -21,7 +21,9 @@ SCHEMA_VERSION = 2
 TASK_HOST = "go"
 TASK_STATUSES = frozenset({"pass", "fail", "unsupported"})
 TASK_SOURCE = "make tasks"
-BENCH_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "guests", "tasks", "benchmarks"})
+BENCH_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "machine", "guests", "tasks", "benchmarks"})
+LATEST_KEYS = frozenset({"schema_version", "machine", "guests", "tasks", "benchmarks"})
+MACHINE_KEYS = frozenset({"os", "release", "arch", "cpu", "cpus"})
 GUEST_KEYS = frozenset({"program", "rule_lines", "error"})
 TASK_KEYS = frozenset({"source", "host", "environment", "results"})
 TASK_ROW_KEYS = frozenset({"task", "guest", "pass", "status", "applied_steps", "probes"})
@@ -68,6 +70,7 @@ COUNTS_KEYS = frozenset({"applied_steps", "probes"})
 BENCH_REL_RE = re.compile(r"^metrics/(\d{4})/(\d{2})/(\d{2})/([0-9a-f]{40})/bench\.json$")
 WORKLOAD_ID_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 LEGACY_HISTORY = "metrics/history.json"
+LATEST_REL = "metrics/latest.json"
 
 
 class HistoryError(ValueError):
@@ -289,6 +292,49 @@ def sort_key(entry: dict) -> tuple[str, str]:
     return (entry["timestamp"], entry["commit"])
 
 
+def validate_machine(machine, label: str, *, allow_null: bool) -> None:
+    if machine is None:
+        if allow_null:
+            return
+        raise HistoryError(f"{label}: machine is required")
+    if not isinstance(machine, dict) or set(machine) != MACHINE_KEYS:
+        raise HistoryError(f"{label}: machine keys must be {', '.join(sorted(MACHINE_KEYS))}")
+    for key in ("os", "release", "arch", "cpu"):
+        value = machine[key]
+        if not isinstance(value, str) or not value.strip():
+            raise HistoryError(f"{label}: machine.{key} must be a non-empty string")
+    cpus = machine["cpus"]
+    if isinstance(cpus, bool) or not isinstance(cpus, int) or cpus < 1:
+        raise HistoryError(f"{label}: machine.cpus must be a positive integer")
+
+
+def validate_latest(document: dict) -> None:
+    if not isinstance(document, dict) or set(document) != LATEST_KEYS:
+        raise HistoryError(f"latest.json keys must be {', '.join(sorted(LATEST_KEYS))}")
+    if document["schema_version"] != SCHEMA_VERSION:
+        raise HistoryError(f"latest.json schema_version must be {SCHEMA_VERSION}")
+    validate_machine(document["machine"], LATEST_REL, allow_null=False)
+    _validate_measurement(LATEST_REL, document["guests"], document["tasks"], document["benchmarks"])
+    if document["tasks"] is None or document["benchmarks"] is None:
+        raise HistoryError(f"{LATEST_REL} must include tasks and benchmarks")
+
+
+def bench_from_latest(latest: dict, commit: str, author: str, timestamp: str) -> dict:
+    validate_latest(latest)
+    document = {
+        "schema_version": SCHEMA_VERSION,
+        "commit": commit,
+        "author": author,
+        "timestamp": timestamp,
+        "machine": latest["machine"],
+        "guests": latest["guests"],
+        "tasks": latest["tasks"],
+        "benchmarks": latest["benchmarks"],
+    }
+    validate_bench(document)
+    return document
+
+
 def validate_bench(document: dict) -> None:
     if not isinstance(document, dict) or set(document) != BENCH_KEYS:
         raise HistoryError(f"bench keys must be {', '.join(sorted(BENCH_KEYS))}")
@@ -297,13 +343,17 @@ def validate_bench(document: dict) -> None:
     commit = _commit(document["commit"], "bench")
     _author(document["author"], commit)
     _timestamp(document["timestamp"], commit)
-    guests = document["guests"]
+    validate_machine(document["machine"], commit, allow_null=True)
+    _validate_measurement(commit, document["guests"], document["tasks"], document["benchmarks"])
+
+
+def _validate_measurement(label: str, guests, tasks, benchmarks) -> None:
     if not isinstance(guests, dict):
-        raise HistoryError(f"{commit}: guests must be an object")
+        raise HistoryError(f"{label}: guests must be an object")
     for guest_id, guest in guests.items():
-        _validate_guest(commit, guest_id, guest)
-    _validate_tasks(commit, document["tasks"])
-    _validate_benchmarks(commit, document["benchmarks"])
+        _validate_guest(label, guest_id, guest)
+    _validate_tasks(label, tasks)
+    _validate_benchmarks(label, benchmarks)
 
 
 def validate_placed(rel: str, document: dict) -> None:
@@ -328,6 +378,26 @@ def save_bench(root: Path, document: dict) -> Path:
     temporary.write_text(payload, encoding="utf-8")
     temporary.replace(path)
     return path
+
+
+def save_latest(root: Path, document: dict) -> Path:
+    validate_latest(document)
+    path = root / LATEST_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(payload, encoding="utf-8")
+    temporary.replace(path)
+    return path
+
+
+def load_latest(path: Path) -> dict:
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HistoryError(f"{path}: {exc}") from exc
+    validate_latest(document)
+    return document
 
 
 def load_bench(path: Path) -> dict:
