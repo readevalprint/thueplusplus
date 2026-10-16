@@ -137,7 +137,10 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.text()).toContain('Leaderboard')
     expect(wrapper.text()).toContain('Lisp')
     expect(wrapper.text()).toContain('Forth')
+    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Rule lines')
+    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Benchmarks')
     expect(wrapper.text()).not.toContain('Placeholder')
+    expect(wrapper.text()).not.toContain('RE2')
 
     window.history.pushState({}, '', '/tasks')
     wrapper = await mountApp()

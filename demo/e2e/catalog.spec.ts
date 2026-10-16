@@ -12,7 +12,14 @@ test('guests leaderboard invites autoresearch', async ({ page }) => {
   await expect(page.getByRole('row', { name: /Forth/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /Lisp/ })).toBeVisible()
   await expect(page.getByTestId('guest-improve')).toContainText(/autoresearch/i)
+  await expect(page.getByTestId('rule-readout')).toContainText('Forth')
+  await expect(page.getByTestId('task-readout')).toContainText('pass')
+  await expect(page.getByTestId('benchmark-readout')).toContainText('probes')
+  await expect(page.locator('body')).not.toContainText(/RE2/)
   await expect(page.getByText('Placeholder')).toHaveCount(0)
+  await expect(page.getByTestId('rule-readout')).toContainText('886882cdd2cf')
+  await page.getByTestId('rule-chart-slider').fill('0')
+  await expect(page.getByTestId('rule-readout')).not.toContainText('886882cdd2cf')
 })
 
 test('tasks index opens a task and its guest solution', async ({ page }) => {
@@ -51,4 +58,16 @@ test('mobile guests page keeps the hero and the leaderboard', async ({ page }) =
   await page.getByRole('button', { name: 'Close' }).click()
   await page.getByTestId('contents-toggle').click()
   await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'Leaderboard' })).toBeVisible()
+  await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'Rule lines' })).toBeVisible()
+})
+
+test('guests chart headings are deep links', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/guests#host-time')
+  await expect(page.getByRole('heading', { level: 3, name: 'Host time' })).toBeInViewport()
+  await expect(page.getByTestId('benchmark-readout')).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/guests#rule-lines')
+  await expect(page.getByRole('heading', { level: 2, name: 'Rule lines' })).toBeInViewport()
+  await expect(page.getByTestId('rule-chart')).toBeVisible()
 })

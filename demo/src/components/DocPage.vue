@@ -3,12 +3,13 @@ defineProps<{
   kicker: string
   title: string
   wide?: boolean
+  fold?: boolean
 }>()
 </script>
 
 <template>
   <article class="doc-page py-8 lg:py-10">
-    <header data-test="page-hero">
+    <header data-test="page-hero" :class="fold ? 'flex min-h-[calc(100svh-8rem)] flex-col justify-center' : undefined">
       <div class="flex items-center gap-3">
         <span v-if="$slots.mark" class="text-signal inline-flex size-5 items-center justify-center">
           <slot name="mark" />

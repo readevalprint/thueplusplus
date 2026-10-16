@@ -68,8 +68,15 @@ describe('catalog pages', () => {
     const names = wrapper.findAll('[data-test="guest-row"]').map(row => row.attributes('data-guest'))
     expect(names).toEqual(rankGuests(catalog.guests).map(guest => guest.id))
     expect(wrapper.get('[data-test="guest-improve"]').text().toLowerCase()).toContain('autoresearch')
+    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('886882cdd2cf')
+    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('Forth · 86')
+    expect(wrapper.get('[data-test="task-readout"]').text()).toContain('Lisp · 10 pass · 0 fail · 0 unsupported · 50254 steps')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('steps 10000 · probes 10002')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('wasm · 2111 ms')
+    expect(wrapper.get('[data-test="rule-chart"]').find('path').exists()).toBe(true)
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Placeholder')
+    expect(wrapper.text()).not.toContain('RE2')
   })
 
   it('renders a rosetta index and one page per task', async () => {
