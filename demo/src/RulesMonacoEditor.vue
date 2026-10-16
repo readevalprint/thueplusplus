@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" class="monaco-rules-editor" :data-current-match-line="highlightLine || undefined" />
+  <div ref="container" class="monaco-rules-editor h-64 w-full overflow-hidden rounded-md border" :data-current-match-line="highlightLine || undefined" />
 </template>
 
 <script setup lang="ts">
@@ -129,3 +129,13 @@ onBeforeUnmount(() => {
   editor?.dispose()
 })
 </script>
+
+<style scoped>
+.monaco-rules-editor :deep(.matched-rule-line) {
+  background: color-mix(in oklch, var(--primary) 16%, transparent);
+}
+
+.monaco-rules-editor :deep(.matched-rule-line-gutter) {
+  border-left: 3px solid var(--primary);
+}
+</style>

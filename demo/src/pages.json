@@ -51,8 +51,8 @@
     "robots": "index,follow",
     "links": [
       { "title": "Editor", "href": "#editor" },
-      { "title": "Limits", "href": "/reference#limits" },
-      { "title": "Hosts", "href": "/hosts" }
+      { "title": "Output", "href": "#output" },
+      { "title": "Trace", "href": "#trace" }
     ]
   },
   "hosts": {

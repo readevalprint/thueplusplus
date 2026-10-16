@@ -22,9 +22,6 @@
             </TableRow>
           </template>
         </template>
-        <TableRow v-else>
-          <TableCell :colspan="columns.length" class="state-diff-empty">No state history yet.</TableCell>
-        </TableRow>
       </TableBody>
     </Table>
   </section>
@@ -104,38 +101,30 @@ function isFuture(entry: StateDiffEntry): boolean {
 }
 
 function entryCell(entry: StateDiffEntry) {
-  return h('div', { class: 'state-diff-entry-body' }, [
-    h('div', { class: 'state-diff-field state-diff-rule-field' }, [
-      h('div', { class: 'state-diff-rule', 'data-test': 'playground-diff-rule' }, entry.rule),
-    ]),
+  return h('div', { class: 'flex flex-col gap-1 font-mono text-sm' }, [
+    h('div', { class: 'state-diff-rule break-all', 'data-test': 'playground-diff-rule' }, entry.rule),
     diffCell(entry),
   ])
 }
 
 function diffCell(entry: StateDiffEntry) {
-  if (entry.error) return h('div', { class: 'state-diff-error', 'data-test': 'playground-diff-error' }, entry.error)
-  if (entry.note) return h('div', { class: 'state-diff-note', 'data-test': 'playground-diff-note' }, entry.note)
-  return h('div', { class: 'state-diff-lines' }, [
-    h('div', { class: 'state-diff-field' }, [
-      diffLine(entry.before, 'removed', '-'),
-    ]),
-    h('div', { class: 'state-diff-field' }, [
-      diffLine(entry.after, 'added', '+'),
-    ]),
+  if (entry.error) return h('div', { class: 'state-diff-error text-destructive break-all', 'data-test': 'playground-diff-error' }, entry.error)
+  if (entry.note) return h('div', { class: 'text-muted-foreground break-all', 'data-test': 'playground-diff-note' }, entry.note)
+  return h('div', { class: 'flex flex-col gap-1' }, [
+    diffLine(entry.before, 'removed', '-'),
+    diffLine(entry.after, 'added', '+'),
   ])
 }
 
 function diffLine(parts: DiffPart[], side: 'removed' | 'added', sign: '-' | '+') {
-  return h('div', { class: `state-diff-line ${side}` }, [
-    h('span', { class: 'state-diff-sign' }, sign),
+  return h('div', { class: `state-diff-line ${side} break-all whitespace-pre-wrap` }, [
+    h('span', sign),
     ...parts.map(part => h('span', { key: part.key, class: partClass(part, side) }, part.text)),
   ])
 }
 
-function partClass(part: DiffPart, side: 'removed' | 'added'): Record<string, boolean> {
-  return {
-    [`state-diff-char-${side}`]: part.changed,
-    'state-diff-ellipsis': Boolean(part.ellipsis),
-  }
+function partClass(part: DiffPart, side: 'removed' | 'added'): string {
+  const changed = part.changed ? (side === 'removed' ? 'state-diff-char-removed bg-destructive/30' : 'state-diff-char-added bg-foreground/15') : ''
+  return [changed, part.ellipsis ? 'text-muted-foreground' : ''].filter(Boolean).join(' ')
 }
 </script>

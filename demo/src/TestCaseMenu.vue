@@ -1,43 +1,27 @@
 <template>
-  <div class="test-case-menu-row">
-    <span class="test-case-menu-label">Select an example</span>
-    <NavigationMenu data-test="test-case-menu">
-      <NavigationMenuList>
-        <NavigationMenuItem v-for="group in menuGroups" :key="group.label">
-          <NavigationMenuTrigger data-test="test-case-menu-trigger">{{ group.label }}</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <ul class="grid w-[24rem] gap-3 p-4 md:w-[34rem] md:grid-cols-2">
-              <li v-for="option in group.options" :key="option.id">
-                <NavigationMenuLink
-                  as="button"
-                  type="button"
-                  class="cursor-pointer text-left"
-                  data-test="test-case-menu-case"
-                  :data-test-case-id="option.id"
-                  @click="emit('select', option)"
-                >
-                  <span class="text-sm leading-none font-medium" data-test="test-case-menu-case-name">{{ option.menuLabel }}</span>
-                  <span class="text-muted-foreground line-clamp-2 text-sm leading-snug" data-test="test-case-menu-case-description">{{ option.menuDescription }}</span>
-                </NavigationMenuLink>
-              </li>
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-      </NavigationMenuList>
-    </NavigationMenu>
-  </div>
+  <nav data-test="test-case-menu" class="flex flex-col gap-6 p-4" aria-label="Examples">
+    <section v-for="group in menuGroups" :key="group.label" class="flex flex-col gap-1">
+      <h2 class="px-2 text-sm font-medium" data-test="test-case-menu-trigger">{{ group.label }}</h2>
+      <Button
+        v-for="option in group.options"
+        :key="option.id"
+        type="button"
+        variant="ghost"
+        class="h-auto w-full flex-col items-start gap-1 whitespace-normal px-2 py-2 text-left"
+        data-test="test-case-menu-case"
+        :data-test-case-id="option.id"
+        @click="emit('select', option)"
+      >
+        <span class="text-sm leading-none font-medium" data-test="test-case-menu-case-name">{{ option.menuLabel }}</span>
+        <span class="text-muted-foreground text-xs leading-snug font-normal" data-test="test-case-menu-case-description">{{ option.menuDescription }}</span>
+      </Button>
+    </section>
+  </nav>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from '@/components/ui/navigation-menu'
+import { Button } from '@/components/ui/button'
 import type { TestCaseOption } from './testCases'
 
 const props = defineProps<{
