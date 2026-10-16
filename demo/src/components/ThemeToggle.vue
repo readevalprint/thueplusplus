@@ -10,6 +10,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { applyTheme, readTheme, setTheme, type ThemeChoice } from '@/theme'
 
+defineProps<{
+  class?: string
+}>()
+
 let media: MediaQueryList | undefined
 
 function onSystemChange(): void {
@@ -34,7 +38,7 @@ onBeforeUnmount(() => {
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button variant="ghost" size="icon" data-test="theme-toggle" aria-label="Toggle theme">
+      <Button variant="ghost" size="icon" data-test="theme-toggle" aria-label="Toggle theme" :class="$props.class">
         <Sun class="dark:hidden" />
         <Moon class="hidden dark:block" />
       </Button>

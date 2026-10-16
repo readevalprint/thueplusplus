@@ -1,21 +1,21 @@
 <template>
   <div class="bg-void text-bone flex h-dvh flex-col overflow-hidden font-mono" data-test="playground-standalone" :data-chrome="props.chrome">
-    <header data-test="playground-header" class="border-line relative z-20 flex h-[52px] shrink-0 items-center gap-3 border-b px-4 text-[13px] sm:px-6">
-      <RouterLink to="/" class="flex items-center gap-2 text-bone">
+    <header data-test="playground-header" class="border-line relative z-20 flex h-[52px] shrink-0 items-center gap-1 border-b px-1.5 text-[13px] min-[720px]:gap-3 min-[720px]:px-6">
+      <RouterLink to="/" class="flex shrink-0 items-center gap-2 text-bone">
         <Mark />
-        <span class="font-display font-semibold tracking-[-0.03em]">Thue++</span>
+        <span class="font-display font-semibold tracking-[-0.03em] max-[719px]:sr-only">Thue++</span>
       </RouterLink>
-      <span class="text-dim" aria-hidden="true">/</span>
-      <h1 class="text-ash text-[13px] font-normal lowercase">playground</h1>
-      <div class="relative" data-test="playground-examples">
-        <Button type="button" variant="outline" data-test="playground-examples-trigger" :aria-expanded="examplesOpen" @click="examplesOpen = !examplesOpen">examples</Button>
+      <span class="text-dim shrink-0" aria-hidden="true">/</span>
+      <h1 class="text-ash shrink-0 text-[13px] font-normal lowercase">playground</h1>
+      <div class="relative shrink-0" data-test="playground-examples">
+        <Button type="button" variant="outline" class="max-[719px]:h-8 max-[719px]:px-2" data-test="playground-examples-trigger" :aria-expanded="examplesOpen" @click="examplesOpen = !examplesOpen">examples</Button>
         <div v-show="examplesOpen" class="border-line bg-surface absolute top-full left-0 z-30 mt-1 max-h-[70vh] w-[min(100vw-2rem,22rem)] overflow-y-auto border">
           <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
         </div>
       </div>
       <div class="flex-1" />
-      <div class="relative" data-test="playground-settings">
-        <Button type="button" variant="outline" data-test="playground-settings-trigger" :aria-expanded="settingsOpen" @click="settingsOpen = !settingsOpen">limits</Button>
+      <div class="relative shrink-0" data-test="playground-settings">
+        <Button type="button" variant="outline" class="max-[719px]:h-8 max-[719px]:px-2" data-test="playground-settings-trigger" :aria-expanded="settingsOpen" @click="settingsOpen = !settingsOpen">limits</Button>
         <div v-show="settingsOpen" class="border-line bg-surface absolute top-full right-0 z-30 mt-1 max-h-[70vh] w-[min(100vw-2rem,22rem)] overflow-y-auto border">
           <PlaygroundSettings
             v-model:max-steps="maxSteps"
@@ -26,8 +26,8 @@
           />
         </div>
       </div>
-      <ThemeToggle />
-      <Button type="button" data-test="playground-share" @click="sharePlayground">share</Button>
+      <ThemeToggle class="max-[719px]:size-8" />
+      <Button type="button" class="max-[719px]:h-8 max-[719px]:px-2" data-test="playground-share" @click="sharePlayground">share</Button>
       <Button v-if="props.showOpenFull" as="a" variant="ghost" :href="openFullHref" data-test="embed-open-full">open full</Button>
     </header>
 
@@ -89,7 +89,7 @@
       </PlaygroundSplit>
     </div>
 
-    <footer class="border-line text-dim flex h-8 shrink-0 items-center gap-3 border-t px-3 text-[11px]">
+    <footer class="border-line text-dim flex min-h-8 shrink-0 flex-wrap items-center gap-x-3 gap-y-0.5 border-t px-3 py-1.5 text-[11px]">
       <span data-test="playground-status">{{ statusText }}</span>
       <span aria-hidden="true">·</span>
       <span data-test="playground-applied-limits">steps {{ appliedSteps }}/{{ maxSteps }} · probes {{ probeCount }}/{{ maxEvals }} · state {{ stateBytes }}/{{ maxStateBytes }}</span>
