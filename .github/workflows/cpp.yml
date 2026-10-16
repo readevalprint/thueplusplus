@@ -20,7 +20,4 @@ jobs:
       - name: Install the C++ toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
       - name: Run conformance, including the C++ host
-        # A lisp case can sit near the 10s cap. Four hosts at the runner's
-        # internal parallelism sometimes push the Go host over that cap.
-        # Retry the same make test once; a real mismatch fails both times.
-        run: make test || make test
+        run: make test
