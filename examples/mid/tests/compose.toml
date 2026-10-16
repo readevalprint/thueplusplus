@@ -1,0 +1,83 @@
+name = "mid filter composition"
+program = "../compose.tpp"
+
+[[case]]
+name = "pctenc then quote matches the encoded text literally"
+input = "ENC=a.b\nrest=a.b"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "pctenc then quote does not leave the dot live"
+input = "ENC=a.b\nrest=axb"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "pctenc without quote leaves a dot live"
+input = "RAW=a.b\nrest=axb"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "raw pctenc dot still needs the extra character"
+input = "RAW=a.b\nrest=ab"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "pctdec then quote matches the decoded parenthesis"
+input = "DEC=%28\nrest=("
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "pctdec then quote misses a different character"
+input = "DEC=%28\nrest=x"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "pctdec error is reported before the step is compiled"
+input = "DEC=%2\nrest=("
+
+[case.expect]
+stdout = ""
+exit_code = 1
+stderr_contains = ["PCT payload has incomplete percent escape"]
+
+[[case]]
+name = "quote then pctenc leaves the encoded dot live"
+input = "ORD=.\nrest=%5Cx"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quote then pctenc still needs the wildcard character"
+input = "ORD=.\nrest=%5C"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2

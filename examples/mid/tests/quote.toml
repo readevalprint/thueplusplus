@@ -1,0 +1,139 @@
+name = "mid quote filter"
+program = "../quote.tpp"
+
+[[case]]
+name = "quoted dot matches a dot"
+input = "pre=.\n---\nmode=rest=\nrest=."
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quoted dot does not match another character"
+input = "pre=.\n---\nmode=rest=\nrest=x"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "quoted parenthesis is a literal"
+input = "pre=(\n---\nmode=rest=\nrest=("
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quoted backslash matches one backslash"
+input = "pre=\\\n---\nmode=rest=\nrest=\\"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quoted backslash does not match n"
+input = "pre=\\\n---\nmode=rest=\nrest=n"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "quoted dollar matches a dollar"
+input = "pre=$\n---\nmode=rest=\nrest=$"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quoted dollar is not an end anchor"
+input = "pre=$\n---\nmode=rest=\nrest="
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "quoted braces match braces"
+input = "pre={2}\n---\nmode=rest=\nrest={2}"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quoted braces are not a repetition"
+input = "pre={2}\n---\nmode=rest=\nrest=="
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "quoted newline matches a newline"
+input = """
+pre=a
+b
+---
+mode=rest=
+rest=a
+b"""
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quoted newline does not match the letters ab"
+input = """
+pre=a
+b
+---
+mode=rest=
+rest=ab"""
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "quoted unicode matches itself"
+input = "pre=é\n---\nmode=rest=\nrest=é"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "quoted unicode does not match a stripped letter"
+input = "pre=é\n---\nmode=rest=\nrest=e"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "quote writes QuoteMeta into the filled pattern"
+input = "pre=.\n---\nmode=(\nrest="
+
+[case.expect]
+stdout = ""
+exit_code = 1
+stderr_contains = ["Invalid ::| regex '(\\.'"]

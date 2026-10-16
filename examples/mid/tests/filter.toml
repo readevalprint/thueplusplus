@@ -1,8 +1,8 @@
-name = "mid filter before quote"
+name = "mid pctenc inserted raw"
 program = "../filter.tpp"
 
 [[case]]
-name = "pctenc value is matched literally"
+name = "pctenc text is inserted as regex source"
 input = "pre=a b\na%20b"
 
 [case.expect]

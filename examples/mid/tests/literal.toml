@@ -1,8 +1,17 @@
-name = "mid literal insertion"
+name = "mid raw substitution"
 program = "../literal.tpp"
 
 [[case]]
-name = "dot does not match a different character"
+name = "captured dot is a wildcard"
+input = "pre=.\nx"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "wildcard dot does not match a longer line"
 input = "pre=.\naxc"
 
 [case.expect]
@@ -11,8 +20,8 @@ stderr = ""
 exit_code = 2
 
 [[case]]
-name = "dot matches a literal dot"
-input = "pre=.\n."
+name = "a captured backslash is inserted once"
+input = "pre=\\\n$"
 
 [case.expect]
 stdout = "hit\n"
@@ -20,19 +29,19 @@ stderr = ""
 exit_code = 0
 
 [[case]]
-name = "parenthesis is a literal"
-input = "pre=(\n("
-
-[case.expect]
-stdout = "hit\n"
-stderr = ""
-exit_code = 0
-
-[[case]]
-name = "backslash is a literal"
+name = "one backslash does not match a backslash line"
 input = "pre=\\\n\\"
 
 [case.expect]
-stdout = "hit\n"
+stdout = ""
 stderr = ""
-exit_code = 0
+exit_code = 2
+
+[[case]]
+name = "a captured parenthesis makes the filled regex invalid"
+input = "pre=(\n("
+
+[case.expect]
+stdout = ""
+exit_code = 1
+stderr_contains = ["Invalid ::| regex '^($'"]

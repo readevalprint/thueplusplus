@@ -108,7 +108,7 @@ b
 
 Templates in `::=`/`::>` contain `{{name}}`, `{{name|pctenc}}`, `{{name|pctdec}}`, and `{{rule_index}}`; `name` matches `[A-Za-z_][A-Za-z0-9_]*`. Unfiltered missing captures expand to empty. Filtered missing captures, unknown filters, and malformed filtered variables are errors. Malformed unfiltered `{{...}}` spans remain literal. Literal escapes are `\n`, `\t`, `\r`, `\\`.
 
-`::|` steps use the same `{{name}}`, `{{name|pctenc}}`, and `{{name|pctdec}}` holes. `{{rule_index}}` is not bound in a step. Step filling quotes values and does not decode replacement escapes. Those rules are under `::|`.
+`::|` steps use `{{name}}` and `{{name|filter|filter...}}`. Filters are `pctenc`, `pctdec`, and `quote`, applied left to right. `quote` is a step filter only. `{{rule_index}}` is not bound in a step. Step filling inserts values verbatim and does not decode replacement escapes. Those rules are under `::|`.
 
 ## 7. Execution
 
@@ -122,7 +122,7 @@ loop:
     if none: continue
     captures = named groups from that match
     for step in rule.mids:
-      regex = fill step from captures, quoting each value as a literal
+      regex = fill step from captures, inserting each value as regex source
       if regex is invalid: error
       search whole state
       if none: continue to the next rule
@@ -142,12 +142,16 @@ Only one span is replaced per action, and that span is the LHS match. A `::|` st
 
 Zero or more `::|` steps sit between `LHS` and the terminal operator. After the LHS matches, steps run in order. For each step:
 
-1. Fill `{{name}}` and `{{name|pctenc}}` / `{{name|pctdec}}` from captures bound so far. Unfiltered missing names expand to empty. Filtered missing names, unknown filters, and malformed filters are errors. `{{rule_index}}` is not bound here.
-2. Insert each substituted value as a regex literal. Quote it the way RE2 `QuoteMeta` does: escape `\ . + * ? ( ) | [ ] { } ^ $`. Do not interpret the value as regex syntax. A captured `.` matches a dot. A captured `(` matches a parenthesis and does not open a group. A captured `\` matches a backslash.
-3. Leave the rest of the step as regex source. Do not decode `\n`, `\t`, `\r`, or `\\` as replacement-string escapes. `\n` in the step is the regex newline escape.
-4. Compile the filled text as an RE2 regex with `(?m)`. If it does not compile, abort. The error names the filled pattern and does not include host-library text.
-5. Search the whole state, not only the LHS span. The first match wins. If nothing matches, the rule does not apply and scanning continues at the next rule. Do not try a later LHS match.
-6. Add named groups that participated in that match. A later step, or the RHS, sees them. A repeated name overwrites the earlier value when the new group participates. An optional group that did not participate leaves the earlier value in place.
+1. Fill holes from captures bound so far. A hole is `{{name}}` or `{{name|filter|filter...}}`. `name` and each filter match `[A-Za-z_][A-Za-z0-9_]*`. `{{rule_index}}` is not bound here. An unfiltered missing name expands to empty. A filtered missing name, an unknown filter, and a malformed filter are errors.
+2. Insert each value as regex source, verbatim. Do not double backslashes. Do not decode the value as a replacement string. A captured `.` means any character. A captured `(` opens a group. A captured `\` escapes the next pattern character. Substituted text is not scanned again for holes.
+3. Filters run left to right, then the result is inserted. `pctenc` and `pctdec` are the same filters as in a `::=` template. `quote` is RE2 `QuoteMeta`: escape `\ . + * ? ( ) | [ ] { } ^ $`, and leave every other character unchanged, including newline, tab, space, and non-ASCII. `{{name|quote}}` matches the captured text exactly. `{{name|pctenc|quote}}` encodes, then quotes. `{{name|quote|pctenc}}` quotes, then percent-encodes, so a quoted backslash becomes `%5C` and is no longer a regex escape. `quote` is not accepted by `::=` or `::>`.
+4. Leave the rest of the step as regex source. Do not decode `\n`, `\t`, `\r`, or `\\` as replacement-string escapes. `\n` in the step is the regex newline escape. `\{{name}}` splices the value onto that escape. It is not an escape for a literal `{{`.
+5. A `{{` that is not a well-formed hole is ordinary pattern text. The first `{` stays, and scanning continues. `{{{{name}}` is the two characters `{{` followed by the hole `{{name}}`. `a{2}` is a repetition: exactly two `a` characters. `{{2}}` is not a hole, because `2` is not a name. The regex engine reads `{2}` as a repetition of the preceding `{`, so that pattern matches `{{}`. To match two `{` characters, write `{{` or `\{\{`. To match the text `{{foo}}` without reading a capture named `foo`, write `\{\{foo\}\}`.
+6. Compile the filled text as an RE2 regex with `(?m)`. If it does not compile, abort. The error is `Invalid ::| regex '<filled pattern>'` and does not include host-library text.
+7. Search the whole state, not only the LHS span. The first match wins. If nothing matches, the rule does not apply and scanning continues at the next rule. Do not try a later LHS match.
+8. Add named groups that participated in that match. A later step, or the RHS, sees them. A repeated name overwrites the earlier value when the new group participates. An optional group that did not participate leaves the earlier value in place.
+
+Raw insertion is the rule. An earlier revision of this section quoted every substituted value with `QuoteMeta`. That quoting is the `quote` filter.
 
 `$NAME` aliases expand in the LHS and in each step before template filling. A `::!` argument may name a capture from the LHS or a `(?<name>...)` written in a step. Names are the groups written in the source, not groups assembled by placing a placeholder inside `(?<...>)`. Write placeholders where a literal belongs.
 

@@ -83,7 +83,9 @@ LHS ::| regex ::| regex ... ::= RHS
 
 The left pattern matches first. Each step then fills `{{name}}` from the captures so far and searches the whole state, not just the left match. Named groups in a step bind for later steps and for the right-hand side. If any step misses, the rule does not apply. The text that gets replaced is still the left match.
 
-Filled values are literals. A captured `.` matches a dot, and a captured `(` matches a parenthesis. It is not a regex backreference, and it is not pasted in as regex syntax. The rest of the step is still a regex. `{{name|pctenc}}` and `{{name|pctdec}}` run before that quoting. An unfiltered name that is not captured yet expands to empty. `{{rule_index}}` is not available in a step.
+A filled `{{name}}` is pasted in as regex source. A captured `.` matches any character, and a captured `(` opens a group. Backslashes are copied once, not doubled. `{{name|quote}}` quotes the text so it matches itself, including `.`, `(`, `\`, `$`, braces, newlines, and non-ASCII characters. `pctenc`, `pctdec`, and `quote` chain left to right: `{{name|pctenc|quote}}` encodes and then quotes, while `{{name|quote|pctenc}}` quotes first. `quote` is a step filter. A `::=` template does not accept it. An unfiltered name that is not captured yet expands to empty. `{{rule_index}}` is not available in a step.
+
+`a{2}` is still "exactly two a's", because a hole needs two opening braces and a name. `{{2}}` is not a hole. To match two `{` characters, write `{{` or `\{\{`. To match the characters `{{foo}}` without reading a capture named `foo`, write `\{\{foo\}\}`. The step's own `\n` stays a regex newline. `\{{name}}` splices the value onto that backslash.
 
 This program reads `a` and `b` out of one map line:
 
@@ -571,7 +573,7 @@ uv run python tools/check_contract.py --update-readme
 - named captures and `{{group}}` templates
 - operators: `::|`, `::=`, `::<`, `::>`, `::-`, `::!`
 - `::|` steps search the whole state and bind captures for the rest of the rule
-- values substituted into a `::|` step are regex literals (`QuoteMeta`), not raw regex
+- values substituted into a `::|` step are raw regex source; `{{name|quote}}` quotes them as literals
 - default resources: `stdin`, `stdout`, `stderr`
 - runner-provided resource bindings
 - source rules parse once; execution rewrites only state

@@ -1,0 +1,92 @@
+name = "mid braces and repetition"
+program = "../braces.tpp"
+
+[[case]]
+name = "a{2} is a repetition"
+input = "Q2\naa"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "a{2} does not match one a"
+input = "Q2\na"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "a bare {{ matches two braces"
+input = "OPEN\n{{"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "a bare {{ does not match one brace"
+input = "OPEN\n{"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "backslash braces match the text {{foo}}"
+input = "ESC\n{{foo}}"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "backslash braces do not read a capture named foo"
+input = "ESC\nfoo"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "{{2}} matches two braces and a closing brace"
+input = "NUM\n{{}"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "{{2}} is not an empty hole and does not match two braces"
+input = "NUM\n{{"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
+
+[[case]]
+name = "an ill-formed {{ leaves the first brace and the next hole"
+input = "DBL=Z\n{{Z"
+
+[case.expect]
+stdout = "hit\n"
+stderr = ""
+exit_code = 0
+
+[[case]]
+name = "that rescan does not emit the letters name"
+input = "DBL=Z\n{{name}}"
+
+[case.expect]
+stdout = ""
+stderr = ""
+exit_code = 2
