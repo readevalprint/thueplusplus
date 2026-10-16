@@ -1,1 +1,0 @@
-Forth does not read stdin, so one program cannot sum the numbers in each transcript.
