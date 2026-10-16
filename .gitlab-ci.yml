@@ -43,6 +43,31 @@ test:
   script:
     - make test
 
+e2e:
+  image: node:22-bookworm
+  rules:
+    - if: '$CI_SERVER_HOST != "gitlab.com"'
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends ca-certificates curl make
+    - |
+      case "$(uname -m)" in
+        x86_64) GO_ARCH=amd64 ;;
+        aarch64|arm64) GO_ARCH=arm64 ;;
+        *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+      esac
+      curl -fsSL "https://go.dev/dl/go1.24.6.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tgz
+      tar -C /usr/local -xzf /tmp/go.tgz
+      export PATH="/usr/local/go/bin:$PATH"
+      go version
+    - node --version
+    - npm --version
+    - npm --prefix demo ci
+    - npx --prefix demo playwright install --with-deps chromium
+  script:
+    - export PATH="/usr/local/go/bin:$PATH"
+    - npm --prefix demo run test:e2e
+
 pages:
   image: node:22-bookworm
   stage: pages

@@ -8,45 +8,42 @@ async function fillRules(page: Page, value: string): Promise<void> {
   }, value)
 }
 
-test('playground selector searches by path/case but not input', async ({ page }) => {
+test('example menu lists curated groups and has no command search', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
-  await page.getByTestId('test-case-command-trigger').click()
-  const search = page.getByTestId('test-case-command-input')
+  const menu = page.getByTestId('test-case-menu')
 
-  await search.fill('closure_binding_flattening zero arg')
-  await expect(page.getByTestId('test-case-option').first()).toBeVisible()
-  await expect(page.getByTestId('test-case-option-path').first()).toContainText('closure_binding_flattening.toml')
-  await expect(page.getByTestId('test-case-option-name').first()).toContainText('zero arg')
-  await expect(page.getByTestId('test-case-option-input-preview').first()).toContainText('fn')
+  await expect(menu.getByTestId('test-case-menu-trigger').filter({ hasText: 'Basic rules' })).toBeVisible()
+  await expect(menu.getByTestId('test-case-menu-trigger').filter({ hasText: 'Lisp' })).toBeVisible()
+  await expect(page.getByTestId('test-case-command-trigger')).toHaveCount(0)
+  await expect(page.getByTestId('test-case-command-input')).toHaveCount(0)
 
-  await search.fill('100')
-  await expect(page.getByTestId('test-case-command-empty')).toBeVisible()
+  await menu.getByTestId('test-case-menu-trigger').filter({ hasText: 'Lisp' }).click()
+  await expect(page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Closure call' })).toBeVisible()
+  await expect(page.getByTestId('test-case-menu-case-description').filter({ hasText: 'zero-argument closure' })).toBeVisible()
+  await expect(page.getByTestId('test-case-menu-case-name').filter({ hasText: 'source row beginning with hash' })).toHaveCount(0)
 })
 
-test('clicking a test case loads rules, state, and resources without running', async ({ page }) => {
+test('clicking a curated test case loads rules, state, and resources without running', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp')
 
-  await page.getByTestId('test-case-command-trigger').click()
-  await page.getByTestId('test-case-command-input').fill('zero arg closure call still evaluates body')
-  await page.getByTestId('test-case-option').first().click()
+  await page.getByTestId('test-case-menu-trigger').filter({ hasText: 'Lisp' }).click()
+  await page.getByTestId('test-case-menu-case').filter({ hasText: 'Closure call' }).click()
 
+  await expect(page.getByTestId('playground-selected-case')).toContainText('zero arg closure call still evaluates body')
+  await expect(page.getByTestId('playground-selected-case')).toContainText('closure_binding_flattening.toml')
   await expect(page.getByTestId('playground-state')).toHaveValue('((fn () 7))')
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('')
   await expect(page.getByTestId('playground-status')).toContainText('idle')
   await expect(page.getByTestId('terminal')).toHaveCount(0)
 })
 
-test('command palette can load top-level manifest tests without dropping hash-prefixed source rows', async ({ page }) => {
-  await page.goto('/playground?file=./examples/hello/hello.tpp')
+test('opening a hash-prefixed program keeps the source row in the editor', async ({ page }) => {
+  await page.goto('/playground?file=./examples/hash-data/source-hash-rule.tpp')
 
-  await page.getByTestId('test-case-command-trigger').click()
-  await page.getByTestId('test-case-command-input').fill('source row beginning with hash')
-  await page.getByTestId('test-case-option').first().click()
-
-  await expect(page.getByTestId('test-case-command-current')).toContainText('source_hash_rule.toml')
   await expect(page.getByTestId('playground-rules')).toContainText('#x ::= y')
   await expect(page.getByTestId('playground-rules')).toContainText('^y$ ::> stdout source-row-rule\\n')
-  await expect(page.getByTestId('playground-state')).toHaveValue('#x')
+  await expect(page.getByTestId('playground-state')).toHaveValue('')
+  await expect(page.getByTestId('playground-status')).toContainText('idle')
 })
 
 test('step button writes stdout without a shell simulator', async ({ page }) => {
@@ -214,15 +211,15 @@ test('embed route starts on requested section and opens full playground with cur
   await expect(page.getByTestId('embed-open-full')).toHaveAttribute('href', /\/playground\?file=.*hello\.tpp/)
 })
 
-test('playground compact mode and embed header query params are observable', async ({ page }) => {
+test('playground compact mode hides the page header and embed header=1 shows it', async ({ page }) => {
   await page.goto('/playground?file=./examples/hello/hello.tpp&mode=compact&section=trace')
-  await expect(page.getByTestId('playground-header')).toBeVisible()
+  await expect(page.getByTestId('playground-header')).toHaveCount(0)
   await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
   await expect(page.getByTestId('embed-section-panel')).toContainText('trace')
 
   await page.goto('/embed?file=./examples/hello/hello.tpp&header=1')
   await expect(page.getByTestId('playground-header')).toBeVisible()
-  await expect(page.getByTestId('test-selector')).toHaveCount(0)
+  await expect(page.getByTestId('test-case-menu')).toHaveCount(0)
   await expect(page.getByTestId('playground-compact-surface')).toBeVisible()
 })
 
