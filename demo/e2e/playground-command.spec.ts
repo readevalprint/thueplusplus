@@ -231,6 +231,14 @@ test('playground hero sits above the editor, with limits on the run', async ({ p
   await expect(page.getByTestId('playground-rules')).toBeInViewport()
 })
 
+async function expectAsideBelowHeader(page: Page): Promise<void> {
+  const headerBox = await page.locator('header').boundingBox()
+  const asideBox = await page.getByTestId('page-sidebar').boundingBox()
+  expect(headerBox).not.toBeNull()
+  expect(asideBox).not.toBeNull()
+  expect(asideBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 1)
+}
+
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
   { name: 'tablet', width: 768, height: 1024 },
@@ -244,24 +252,28 @@ for (const viewport of viewports) {
     await expect(page.getByRole('heading', { level: 1, name: 'Run it in the browser.' })).toBeVisible()
     await expect(page.getByTestId('playground-rules')).toBeVisible()
     if (viewport.width >= 1280) {
+      await expect(page.getByTestId('page-sidebar')).toBeVisible()
+      await expect(page.getByTestId('aside-trigger')).toBeHidden()
       await expect(page.getByTestId('playground-examples')).toBeVisible()
       await expect(page.getByTestId('playground-settings')).toBeVisible()
-      await expect(page.getByTestId('playground-examples-trigger')).toHaveCount(0)
       await expect(page.getByTestId('test-case-menu-trigger').filter({ hasText: 'Basic rules' })).toBeVisible()
+      await expectAsideBelowHeader(page)
       return
     }
+    await expect(page.getByTestId('page-sidebar')).toBeHidden()
     await expect(page.getByTestId('playground-examples')).toBeHidden()
     await expect(page.getByTestId('playground-settings')).toBeHidden()
-    await page.getByTestId('playground-examples-trigger').click()
+    await page.getByTestId('aside-trigger').click()
+    await expect(page.getByTestId('page-sidebar')).toBeVisible()
     await expect(page.getByTestId('playground-examples')).toBeVisible()
-    await expect(page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Hello rewrite' })).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByTestId('playground-examples')).toBeHidden()
-    await page.getByTestId('playground-settings-trigger').click()
     await expect(page.getByTestId('playground-settings')).toBeVisible()
+    await expect(page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Hello rewrite' })).toBeVisible()
     await expect(page.getByTestId('playground-max-steps-1000000')).toBeVisible()
     await expect(page.getByTestId('playground-max-probes-1000000')).toBeVisible()
     await expect(page.getByTestId('playground-max-state-8388608')).toBeVisible()
+    await expectAsideBelowHeader(page)
+    await page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Hello rewrite' }).click()
+    await expect(page.getByTestId('page-sidebar')).toBeHidden()
   })
 }
 

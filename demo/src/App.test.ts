@@ -161,8 +161,9 @@ describe('Go-WASM demo UI', () => {
     const nav = wrapper.get('[data-test="site-nav"]')
     expect(nav.get('a[href="/playground"]').attributes('aria-current')).toBe('page')
     expect(wrapper.get('header a[href="/"]').attributes('aria-current')).toBeUndefined()
-    expect(wrapper.get('[data-test="playground-examples"]').text()).toContain('Lisp')
-    expect(wrapper.get('[data-test="playground-settings"]').text()).toContain('Probe limit')
+    const aside = wrapper.get('[data-test="page-sidebar"]')
+    expect(aside.get('[data-test="playground-examples"]').text()).toContain('Lisp')
+    expect(aside.get('[data-test="playground-settings"]').text()).toContain('Probe limit')
     expect(wrapper.get('[data-test="playground-rules"]').element.tagName).toBe('TEXTAREA')
     expect(wrapper.get('[data-test="playground-rules"]').attributes('wrap')).toBe('off')
     expect(wrapper.get('[data-test="playground-state"]').element.tagName).toBe('TEXTAREA')
@@ -914,8 +915,9 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="page-hero"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="page-details"]').find('[data-test="playground-workbench"]').text()).toContain('Rules')
     expect(wrapper.find('[data-test="playground-diffs"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="playground-examples-trigger"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="playground-settings-trigger"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="page-sidebar"]').find('[data-test="playground-examples"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="page-sidebar"]').find('[data-test="playground-settings"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="aside-trigger"]').exists()).toBe(true)
   })
 
   it('renders /embed as the same workbench without site chrome', async () => {

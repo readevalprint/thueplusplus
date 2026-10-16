@@ -161,11 +161,17 @@ test('deep links render their own heading', async ({ page }) => {
     ['/hosts', 'Go, Python, and JavaScript.'],
     ['/guests', 'Languages written in Thue++.'],
     ['/tasks', 'Programs with a finish line.'],
-    ['/playground', 'Run it in the browser.'],
   ] as const) {
     await page.goto(path)
     await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
     await expect(page.getByTestId('page-details')).toBeVisible()
     await expect(page.getByTestId('page-sidebar')).toHaveCount(0)
   }
+
+  await page.goto('/playground')
+  await expect(page.getByRole('heading', { level: 1, name: 'Run it in the browser.' })).toBeVisible()
+  await expect(page.getByTestId('page-details')).toBeVisible()
+  await expect(page.getByTestId('page-sidebar')).toBeVisible()
+  await expect(page.getByTestId('playground-examples')).toBeVisible()
+  await expect(page.getByTestId('playground-settings')).toBeVisible()
 })

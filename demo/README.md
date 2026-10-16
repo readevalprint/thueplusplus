@@ -62,14 +62,14 @@ The state history below the State editor is a raw chronological shadcn-vue/TanSt
 
 The shell is the left menu plus the page. At 1280px and up that menu stays open. Below that it collapses into a sheet, opened from the header.
 
-A page that wants a right column wraps its body in `PageAside` (`demo/src/components/PageAside.vue`). Pass `links` for an "On this page" list, or use the `aside` slot for custom content. The column uses the same collapse as the menu: visible at 1280px and up, and a sheet below that, opened by the button at the top right of the page. Its top is `--header-height` and its height is the rest of the viewport, so the header does not cover it. The left menu stays full height beside the header. Learn is the example. Pages that do not render `PageAside` use the full content width.
+A page that wants a right column wraps its body in `PageAside` (`demo/src/components/PageAside.vue`). Pass `links` for an "On this page" list, or use the `aside` slot for custom content. The column uses the same collapse as the menu: visible at 1280px and up, and a sheet below that, opened by the button at the top right of the page. Its top is `--header-height` and its height is the rest of the viewport, so the header does not cover it. The left menu stays full height beside the header. Learn passes links. The playground puts examples and settings in the aside slot. Pages that do not render `PageAside` use the full content width.
 
 ## Embeddable playground routes
 
 The same shared playground surface powers the playground page and the embeddable route:
 
-- `/playground` sits in the site shell, with the test selector and debugger controls. On narrow containers or `mode=compact`, the surface switches to the compact tabbed layout.
-- `/embed` renders that compact surface with no site chrome. It is for iframe embeds.
+- `/playground` sits in the site shell. Examples and settings are in the page aside.
+- `/embed` renders that same surface with no site chrome. It is for iframe embeds.
 - `/`, `/learn`, `/reference`, `/hosts`, `/guests`, and `/tasks` are the other prerendered pages. Guests and Tasks are placeholders.
 
 Supported embed query parameters:

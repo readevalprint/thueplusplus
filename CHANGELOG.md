@@ -25,7 +25,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 - **Breaking:** a matched rule that fails before replacement records a trace event and then returns. Python used to raise that error with an empty trace.
 - **Breaking:** a state-limit stop records the trace event and then returns 12. The state is left unchanged. Go used to return 12 with an empty trace. The host does not install the oversized state, and it does not return 12 without the event.
-- The playground is the shell's center column: the hero, then the editor, run controls, output, and trace. Every run sends an explicit step limit, probe limit, and state limit through the `thuepp` package. Examples and settings are the side columns, and they open as sheets below 1280px. `/embed` is that same surface without the site chrome.
+- The playground page is the hero, then the editor, run controls, output, and trace. Every run sends an explicit step limit, probe limit, and state limit through the `thuepp` package. Examples and settings are in that page's `PageAside`, open on desktop and a sheet below 1280px. `/embed` is the same surface without the site chrome.
 - **Breaking:** the Go library path is `github.com/readevalprint/thueplusplus/go/thuepp`. `go/internal/thuepp` is gone.
 - **Breaking:** the Python CLI is `uv run thuepp` / `python -m thuepp`. `python/thuepp.py` is gone.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.
