@@ -4,7 +4,7 @@ Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
-The reference implementations are the Python package `thuepp` (`uv run thuepp`), the Go package `github.com/readevalprint/thueplusplus/go/thuepp` (`go/cmd/thuepp`), and the npm package `thuepp` (`node js/src/cli.js`). `make test` runs the manifests against all three and requires identical results. The embedder API is [host-api.md](host-api.md).
+The reference implementations are the Python package `thuepp` (`uv run thuepp`), the Go package `github.com/readevalprint/thueplusplus/go/thuepp` (`go/cmd/thuepp`), the npm package `thuepp` (`node js/src/cli.js`), and the Rust crate `thuepp` (`rust/target/release/thuepp`). `make test` runs the manifests against all four and requires identical results. The embedder API is [host-api.md](host-api.md).
 
 Patterns are compiled by the regex engine. The syntax reference is <https://github.com/google/re2/wiki/Syntax>. Do not use backreferences, lookaround, or recursion.
 
@@ -74,7 +74,7 @@ uv run python tools/example_runner.py \
 
 `NAME` is an identifier and must not be `python`, `go`, or `wasm`. The runner still builds those three, then runs your command in the same parity set. A mismatch prints both results and exits non-zero.
 
-Omit the manifest paths to run every `examples/**/tests/*.toml` file. That is what `make test` does, without `--impl`.
+Omit the manifest paths to run every `examples/**/tests/*.toml` file. `make test` does that after it builds `rust/target/release/thuepp` and passes `--impl rust=./rust/target/release/thuepp`. The runner still builds Python, Go, and wasm itself.
 
 Rule coverage is computed from the Python interpreter. Your command does not need `--rule-coverage` for the gate. It does need to apply the same rules, because parity compares the observable output of every case, including cases whose only purpose is to cover a rule.
 

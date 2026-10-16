@@ -514,7 +514,7 @@ This is all with humble `lhs ::= rhs` rewrite rules.
 
 ## Current reference runners
 
-This repository has three current conformance backends:
+This repository has four current conformance backends:
 
 ```bash
 # Python package
@@ -525,9 +525,12 @@ uv run thuepp <program.tpp>
 
 # npm package thuepp
 node js/src/cli.js <program.tpp>
+
+# Rust crate thuepp
+./rust/target/release/thuepp <program.tpp>
 ```
 
-`uv run thuepp` is the Python console script. The Go library import is `github.com/readevalprint/thueplusplus/go/thuepp`. The npm package name is `thuepp`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
+`uv run thuepp` is the Python console script. The Go library import is `github.com/readevalprint/thueplusplus/go/thuepp`. The npm package name is `thuepp`. The Rust crate is `thuepp` under `rust/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -539,7 +542,7 @@ Before review, run the root check:
 make test
 ```
 
-`make test` runs the conformance check and shared manifest runner. The runner invokes Python, Go, and the wasm host, checks parity, reports per-program rule counts, and enforces rule coverage for manifest-declared examples. Spec version v0.5 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
+`make test` runs the conformance check and shared manifest runner. The runner invokes Python, Go, and the wasm host, and `make test` adds the Rust release binary with `--impl`. It checks parity, reports per-program rule counts, and enforces rule coverage for manifest-declared examples. Spec version v0.5 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
 
 For focused debugging, pass manifest paths directly:
 
@@ -616,6 +619,7 @@ python/thuepp/   Python package. The thuepp console script is the CLI.
 go/thuepp/       Go package github.com/readevalprint/thueplusplus/go/thuepp
 go/cmd/thuepp/   Thin Go CLI
 js/              npm package thuepp (ESM, types, Node CLI, browser worker)
+rust/            Rust crate thuepp and its thin CLI
 demo/            Playground. It depends on the thuepp package.
 docs/            Language contracts, host API, and release steps
 tools/           Repository conformance checker and shared manifest runner
@@ -633,7 +637,8 @@ Project docs and examples:
 - [`docs/numeric-builtins.md`](docs/numeric-builtins.md) — exact numeric grammar and display policy
 - [`docs/string-escape-builtins.md`](docs/string-escape-builtins.md) — escape/unescape contract
 - [`docs/typed-values.md`](docs/typed-values.md) — readable typed value wrappers
-- [`docs/host-api.md`](docs/host-api.md) — embedder API for the three packages
+- [`docs/host-api.md`](docs/host-api.md) — embedder API for the host packages
+- [`rust/README.md`](rust/README.md) — Rust crate API, regex gaps, and the crates.io steps
 - [`docs/releasing.md`](docs/releasing.md) — how to publish the packages
 - [`js/README.md`](js/README.md) — npm package API
 
@@ -648,15 +653,16 @@ External context:
 
 ## Installation
 
-The three hosts are packages. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). From a checkout:
+The hosts are packages. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). From a checkout:
 
 ```bash
 uv run thuepp <program.tpp>
 (cd go && go run ./cmd/thuepp ../<program.tpp>)
 node js/src/cli.js <program.tpp>
+cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thuepp <program.tpp>
 ```
 
-Import `thuepp` in Python, `github.com/readevalprint/thueplusplus/go/thuepp` in Go, and `thuepp` from npm. The playground depends on the npm package.
+Import `thuepp` in Python, `github.com/readevalprint/thueplusplus/go/thuepp` in Go, `thuepp` from npm, and crate `thuepp` from `rust/`. The playground depends on the npm package. The Rust crate is not published.
 
 Copy-pasteable agent prompt:
 
@@ -677,6 +683,7 @@ Repository development requirements:
 - Python 3.11+
 - `uv` for Python dependencies from `pyproject.toml` / `uv.lock`
 - Go for the second conformance backend
+- Rust 1.83+ (`cargo`) for the Rust host
 - `make` for verification targets
 - Node.js only for Go-WASM adapter and browser-demo checks
 

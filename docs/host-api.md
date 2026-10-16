@@ -2,7 +2,7 @@
 
 Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
-This is the embedder contract for the Python interpreter, the Go interpreter, and the Go wasm module. The CLI is a host that follows the same rules.
+This is the embedder contract for the Python interpreter, the Go interpreter, the Go wasm module, and the Rust crate. The CLI is a host that follows the same rules.
 
 ## Safe by default
 
@@ -14,6 +14,7 @@ A process binding exists only after the host opts in:
 | --- | --- |
 | Go | `AddProcBinding(name, command)` |
 | Python | `add_proc_binding(name, command)` |
+| Rust | `add_proc_binding(name, command)` |
 | CLI | `--proc:NAME COMMAND` |
 | wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thuepp` package spawns a process only when it is given `--proc`. |
 
@@ -33,7 +34,7 @@ Max steps counts applied rewrites. The Nth rewrite exits `10` with `Applied step
 
 A `::<` read that exceeds its timeout exits `13` with `ERR:resource:NAME:timeout`. The CLI prints that as `Error: ERR:resource:NAME:timeout`.
 
-These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go; `max_evals`, `max_state_bytes`, and `max_steps` in Python; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it.
+These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go; `max_evals`, `max_state_bytes`, and `max_steps` in Python and Rust; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it. Rust uses `None`.
 
 ## Exit codes
 
@@ -104,6 +105,7 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 | Go | `github.com/readevalprint/thueplusplus/go/thuepp` | `go/cmd/thuepp` |
 | Python | distribution `thuepp` | console script `thuepp` |
 | JS | npm package `thuepp` | `thuepp` bin, `node js/src/cli.js` in this repo |
+| Rust | crate `thuepp` (`rust/`) | `thuepp` bin, `rust/target/release/thuepp` in this repo |
 
 Go:
 
@@ -157,3 +159,23 @@ const result = await engine.run({
 ```
 
 Browser code imports `initThuePPWasm` from `thuepp/browser`. A page that wants a worker imports `ThuePPWorker` from `thuepp/worker` and loads `thuepp/browser-worker` as a classic worker. JSON `null` clears a limit. Omitting the field keeps the default.
+
+Rust:
+
+```rust
+use thuepp::Interpreter;
+
+let mut interp = Interpreter::new();
+interp.load_program("hello.tpp")?;
+interp.add_proc_binding("echo", "cat");
+match interp.run() {
+    Ok(code) => { let _ = code; }
+    Err(err) => {
+        if let Some(limit) = err.limit() {
+            // limit.kind is steps, evals, state, or timeout. limit.exit_code is 10–13.
+        }
+    }
+}
+```
+
+`None` clears `max_evals`, `max_state_bytes`, or `max_steps`. Leave them at the values from `Interpreter::new` for the defaults. The crate sets `publish = false` and is not on crates.io. See [releasing.md](releasing.md).

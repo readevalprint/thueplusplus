@@ -291,6 +291,7 @@ def check_numeric_regex(root: Path) -> list[Failure]:
     checks = [
         (root / "python" / "thuepp" / "interpreter.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
         (root / "go" / "thuepp" / "interpreter.go", 1, None),
+        (root / "rust" / "src" / "builtin.rs", 1, None),
         (root / "examples" / "builtin" / "builtin.tpp", 1, f"N <- {grammar}"),
         (root / "examples" / "lisp" / "lisp.tpp", 1, None),
     ]
