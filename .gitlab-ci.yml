@@ -121,7 +121,7 @@ metrics:
     when: always
     expire_in: 14 days
     paths:
-      - metrics/history.json
+      - metrics/**/bench.json
 
 e2e:
   image: node:22-bookworm
@@ -200,7 +200,7 @@ pages:
     - rm -rf public
     - cp -R demo/dist public
     - mkdir -p public/metrics
-    - cp metrics/history.json public/metrics/history.json
+    - cp demo/src/generated/summary.json public/metrics/summary.json
     - |
       for path in \
         public/index.html \
@@ -213,7 +213,7 @@ pages:
         public/tasks/index.html \
         public/embed/index.html \
         public/thuepp.wasm \
-        public/metrics/history.json
+        public/metrics/summary.json
       do
         test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
       done

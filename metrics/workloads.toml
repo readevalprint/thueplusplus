@@ -1,0 +1,55 @@
+# One row per host benchmark. Every run passes these limits, timeout(1),
+# and the resident-memory cap. input replaces the initial state. stdin is
+# the process standard input. An empty string passes neither.
+
+memory_cap_bytes = 268435456
+
+[[workload]]
+id = "probe-cost"
+program = "metrics/workloads/probe-cost.tpp"
+input = ""
+stdin = ""
+max_steps = 20
+max_evals = 5000
+max_state_bytes = 4096
+timeout_seconds = 10
+
+[[workload]]
+id = "state-rewrite"
+program = "metrics/workloads/state-rewrite.tpp"
+input = ""
+stdin = ""
+max_steps = 20
+max_evals = 5000
+max_state_bytes = 65536
+timeout_seconds = 10
+
+[[workload]]
+id = "regex"
+program = "metrics/workloads/regex.tpp"
+input = ""
+stdin = ""
+max_steps = 20
+max_evals = 5000
+max_state_bytes = 4096
+timeout_seconds = 10
+
+[[workload]]
+id = "io"
+program = "metrics/workloads/io.tpp"
+input = ""
+stdin = "alpha\nbeta\ngamma\ndelta\nepsilon\nzeta\neta\ntheta\n"
+max_steps = 100
+max_evals = 5000
+max_state_bytes = 4096
+timeout_seconds = 10
+
+[[workload]]
+id = "guest"
+program = "examples/forth/forth.tpp"
+input = "1 2 + ."
+stdin = ""
+max_steps = 100000
+max_evals = 1000000
+max_state_bytes = 8388608
+timeout_seconds = 30

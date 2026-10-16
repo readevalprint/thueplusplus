@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "commit": "5b9be3ab5d6bd03d5a50770a6dc029fb7a6db0c3",
+  "author": "Tim Watts <tim@readevalprint.com>",
+  "timestamp": "2026-05-18T08:23:54Z",
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": null,
+      "error": "Error: Line 58: Invalid pattern alias token '<|NAME|>'; use '$NAME' aliases"
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

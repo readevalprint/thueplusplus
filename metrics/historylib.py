@@ -1,4 +1,4 @@
-"""Schema and pure helpers for metrics/history.json.
+"""Schema and pure helpers for per-commit metrics/YYYY/MM/DD/{sha}/bench.json.
 
 The field list lives in metrics/SCHEMA.md. This module rejects anything that
 document does not describe.
@@ -7,6 +7,7 @@ document does not describe.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -16,17 +17,21 @@ sys.path.insert(0, str(_ROOT / "tools"))
 
 from hosts import host_ids  # noqa: E402
 
-SCHEMA_VERSION = 1
-HISTORY_REL = "metrics/history.json"
+SCHEMA_VERSION = 2
+TASK_HOST = "go"
 TASK_STATUSES = frozenset({"pass", "fail", "unsupported"})
 TASK_SOURCE = "make tasks"
-ENTRY_KEYS = frozenset({"commit", "author", "timestamp", "guests", "tasks", "benchmarks"})
+BENCH_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "guests", "tasks", "benchmarks"})
 GUEST_KEYS = frozenset({"program", "rule_lines", "error"})
-TASK_KEYS = frozenset({"source", "results"})
-TASK_ROW_KEYS = frozenset({"task", "guest", "host", "environment", "pass", "status", "applied_steps", "probes"})
-BENCHMARK_KEYS = frozenset(
+TASK_KEYS = frozenset({"source", "host", "environment", "results"})
+TASK_ROW_KEYS = frozenset({"task", "guest", "pass", "status", "applied_steps", "probes"})
+BENCHMARK_KEYS = frozenset({"workloads"})
+WORKLOAD_KEYS = frozenset(
     {
+        "id",
         "program",
+        "input",
+        "stdin",
         "max_steps",
         "max_evals",
         "max_state_bytes",
@@ -36,12 +41,33 @@ BENCHMARK_KEYS = frozenset(
     }
 )
 BENCHMARK_HOST_KEYS = frozenset(
-    {"duration_ms", "exit_code", "applied_steps", "probes", "host_timeout_seconds", "environment"}
+    {
+        "environment",
+        "applied_steps",
+        "probes",
+        "duration_ms",
+        "memory_bytes",
+        "exit_code",
+        "host_timeout_seconds",
+    }
 )
-BENCHMARK_TOML_KEYS = frozenset(
-    {"program", "max_steps", "max_evals", "max_state_bytes", "timeout_seconds", "memory_cap_bytes"}
+WORKLOAD_TOML_KEYS = frozenset(
+    {
+        "id",
+        "program",
+        "input",
+        "stdin",
+        "max_steps",
+        "max_evals",
+        "max_state_bytes",
+        "timeout_seconds",
+    }
 )
+SUITE_TOML_KEYS = frozenset({"memory_cap_bytes", "workload"})
 COUNTS_KEYS = frozenset({"applied_steps", "probes"})
+BENCH_REL_RE = re.compile(r"^metrics/(\d{4})/(\d{2})/(\d{2})/([0-9a-f]{40})/bench\.json$")
+WORKLOAD_ID_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+LEGACY_HISTORY = "metrics/history.json"
 
 
 class HistoryError(ValueError):
@@ -102,24 +128,50 @@ def parse_counts(text: str) -> tuple[int, int]:
     return applied, probes
 
 
-def load_benchmark(path: Path) -> dict:
+def load_workloads(path: Path) -> dict:
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
         raise HistoryError(f"{path}: {exc}") from exc
-    if set(data) != BENCHMARK_TOML_KEYS:
-        raise HistoryError(
-            f"{path}: keys must be {', '.join(sorted(BENCHMARK_TOML_KEYS))}, got {', '.join(sorted(data))}"
+    if set(data) != SUITE_TOML_KEYS:
+        raise HistoryError(f"{path}: keys must be memory_cap_bytes and workload")
+    _positive_int(data["memory_cap_bytes"], f"{path} memory_cap_bytes")
+    rows = data["workload"]
+    if not isinstance(rows, list) or not rows:
+        raise HistoryError(f"{path}: workload must be a non-empty array")
+    loaded: list[dict] = []
+    seen: set[str] = set()
+    for index, row in enumerate(rows, 1):
+        if not isinstance(row, dict) or set(row) != WORKLOAD_TOML_KEYS:
+            raise HistoryError(
+                f"{path} workload #{index}: keys must be {', '.join(sorted(WORKLOAD_TOML_KEYS))}"
+            )
+        workload_id = row["id"]
+        if not isinstance(workload_id, str) or WORKLOAD_ID_RE.fullmatch(workload_id) is None or workload_id in seen:
+            raise HistoryError(f"{path} workload #{index}: id must be a new lowercase slug")
+        seen.add(workload_id)
+        for key in ("max_steps", "max_evals", "max_state_bytes"):
+            _positive_int(row[key], f"{path} {workload_id} {key}")
+        timeout = row["timeout_seconds"]
+        if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout < 1:
+            raise HistoryError(f"{path} {workload_id}: timeout_seconds must be a positive integer")
+        program = _relative_program(row["program"], f"{path} {workload_id}")
+        if not isinstance(row["input"], str) or not isinstance(row["stdin"], str):
+            raise HistoryError(f"{path} {workload_id}: input and stdin must be strings")
+        loaded.append(
+            {
+                "id": workload_id,
+                "program": program,
+                "input": row["input"],
+                "stdin": row["stdin"],
+                "max_steps": row["max_steps"],
+                "max_evals": row["max_evals"],
+                "max_state_bytes": row["max_state_bytes"],
+                "timeout_seconds": row["timeout_seconds"],
+                "memory_cap_bytes": data["memory_cap_bytes"],
+            }
         )
-    for key in ("max_steps", "max_evals", "max_state_bytes", "memory_cap_bytes"):
-        _positive_int(data[key], f"{path} {key}")
-    timeout = data["timeout_seconds"]
-    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
-        raise HistoryError(f"{path}: timeout_seconds must be a positive number")
-    program = data["program"]
-    if not isinstance(program, str) or not program or program.startswith("/") or ".." in program.split("/"):
-        raise HistoryError(f"{path}: program must be a relative path inside metrics/")
-    return data
+    return {"memory_cap_bytes": data["memory_cap_bytes"], "workloads": loaded}
 
 
 def load_guests(path: Path) -> list[dict[str, str]]:
@@ -160,20 +212,25 @@ def rows_from_tasks(document: dict) -> list[dict]:
     if not isinstance(results, list) or not results:
         raise HistoryError("tasks results must be a non-empty array")
     rows: list[dict] = []
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str]] = set()
     for index, row in enumerate(results, 1):
         if not isinstance(row, dict):
             raise HistoryError(f"tasks result #{index} must be an object")
         for key in ("task", "guest", "host", "status", "step_count", "probe_count"):
             if key not in row:
                 raise HistoryError(f"tasks result #{index} missing {key}")
+        host = row["host"]
+        if host != TASK_HOST:
+            raise HistoryError(f"tasks are recorded from native Go, not {host}")
+        if "environment" in row and row["environment"] is not None:
+            assert_environment(TASK_HOST, row["environment"])
         status = row["status"]
         if status not in TASK_STATUSES:
             raise HistoryError(f"tasks result #{index} status {status!r}")
         applied = _optional_count(row["step_count"], f"tasks result #{index} step_count")
         probes = _optional_count(row["probe_count"], f"tasks result #{index} probe_count")
-        built = task_row(str(row["task"]), str(row["guest"]), str(row["host"]), status, applied, probes)
-        identity = (built["task"], built["guest"], built["host"])
+        built = task_row(str(row["task"]), str(row["guest"]), status, applied, probes)
+        identity = (built["task"], built["guest"])
         if identity in seen:
             raise HistoryError(f"duplicate tasks result {identity}")
         seen.add(identity)
@@ -184,27 +241,21 @@ def rows_from_tasks(document: dict) -> list[dict]:
 def task_row(
     task: str,
     guest: str,
-    host: str,
     status: str,
     applied_steps: int | None,
     probes: int | None,
 ) -> dict:
     if status not in TASK_STATUSES:
         raise HistoryError(f"status {status!r}")
-    if host not in host_ids():
-        raise HistoryError(f"unknown host {host!r}")
-    environment = environment_for(host)
     if not task or not guest:
         raise HistoryError("task and guest must be non-empty")
     if status == "pass" and (applied_steps is None or probes is None):
-        raise HistoryError(f"{task}/{guest}/{host} pass requires applied_steps and probes")
+        raise HistoryError(f"{task}/{guest} pass requires applied_steps and probes")
     if status == "unsupported" and (applied_steps is not None or probes is not None):
-        raise HistoryError(f"{task}/{guest}/{host} unsupported clears applied_steps and probes")
+        raise HistoryError(f"{task}/{guest} unsupported clears applied_steps and probes")
     return {
         "task": task,
         "guest": guest,
-        "host": host,
-        "environment": environment,
         "pass": status == "pass",
         "status": status,
         "applied_steps": applied_steps,
@@ -212,93 +263,100 @@ def task_row(
     }
 
 
-def empty_history() -> dict:
-    return {"schema_version": SCHEMA_VERSION, "entries": []}
+def tasks_document(results: list[dict]) -> dict:
+    if not results:
+        raise HistoryError("tasks results must be a non-empty array")
+    return {
+        "source": TASK_SOURCE,
+        "host": TASK_HOST,
+        "environment": environment_for(TASK_HOST),
+        "results": results,
+    }
+
+
+def bench_rel(timestamp: str, commit: str) -> str:
+    _commit(commit, "bench path")
+    _timestamp(timestamp, commit)
+    year, month, day = timestamp[:10].split("-")
+    return f"metrics/{year}/{month}/{day}/{commit}/bench.json"
+
+
+def history_only(paths: list[str]) -> bool:
+    return bool(paths) and all(BENCH_REL_RE.fullmatch(path) for path in paths)
 
 
 def sort_key(entry: dict) -> tuple[str, str]:
     return (entry["timestamp"], entry["commit"])
 
 
-def upsert(document: dict, entry: dict) -> dict:
-    entries = [item for item in document["entries"] if item["commit"] != entry["commit"]]
-    entries.append(entry)
-    return {"schema_version": SCHEMA_VERSION, "entries": sorted(entries, key=sort_key)}
-
-
-def history_only(paths: list[str]) -> bool:
-    return paths == [HISTORY_REL]
-
-
-def validate_history(document: dict, *, require_measurement: bool) -> None:
-    if not isinstance(document, dict) or set(document) != {"schema_version", "entries"}:
-        raise HistoryError("history keys must be schema_version and entries")
+def validate_bench(document: dict) -> None:
+    if not isinstance(document, dict) or set(document) != BENCH_KEYS:
+        raise HistoryError(f"bench keys must be {', '.join(sorted(BENCH_KEYS))}")
     if document["schema_version"] != SCHEMA_VERSION:
         raise HistoryError(f"schema_version must be {SCHEMA_VERSION}")
-    entries = document["entries"]
-    if not isinstance(entries, list):
-        raise HistoryError("entries must be an array")
-    seen: set[str] = set()
-    measured = False
-    previous: tuple[str, str] | None = None
-    for index, entry in enumerate(entries, 1):
-        _validate_entry(entry, index)
-        if entry["commit"] in seen:
-            raise HistoryError(f"duplicate commit {entry['commit']}")
-        seen.add(entry["commit"])
-        key = sort_key(entry)
-        if previous is not None and key < previous:
-            raise HistoryError(f"entries out of order at {entry['commit']}")
-        previous = key
-        if entry["tasks"] is not None and entry["benchmarks"] is not None:
-            measured = True
-    if require_measurement and not measured:
-        raise HistoryError("history has no measured commit (tasks and benchmarks)")
+    commit = _commit(document["commit"], "bench")
+    _author(document["author"], commit)
+    _timestamp(document["timestamp"], commit)
+    guests = document["guests"]
+    if not isinstance(guests, dict):
+        raise HistoryError(f"{commit}: guests must be an object")
+    for guest_id, guest in guests.items():
+        _validate_guest(commit, guest_id, guest)
+    _validate_tasks(commit, document["tasks"])
+    _validate_benchmarks(commit, document["benchmarks"])
 
 
-def save_history(path: Path, document: dict) -> None:
-    document = {
-        "schema_version": document["schema_version"],
-        "entries": sorted(document["entries"], key=sort_key),
-    }
-    validate_history(document, require_measurement=False)
+def validate_placed(rel: str, document: dict) -> None:
+    match = BENCH_REL_RE.fullmatch(rel)
+    if match is None:
+        raise HistoryError(f"{rel} is not metrics/YYYY/MM/DD/{{sha}}/bench.json")
+    year, month, day, sha = match.groups()
+    validate_bench(document)
+    if document["commit"] != sha:
+        raise HistoryError(f"{rel} commit is {document['commit']}")
+    if document["timestamp"][:10] != f"{year}-{month}-{day}":
+        raise HistoryError(f"{rel} date does not match {document['timestamp']}")
+
+
+def save_bench(root: Path, document: dict) -> Path:
+    validate_bench(document)
+    rel = bench_rel(document["timestamp"], document["commit"])
+    path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
     temporary = path.with_suffix(".json.tmp")
     temporary.write_text(payload, encoding="utf-8")
     temporary.replace(path)
+    return path
 
 
-def load_history(path: Path) -> dict:
-    if not path.is_file():
-        return empty_history()
+def load_bench(path: Path) -> dict:
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         raise HistoryError(f"{path}: {exc}") from exc
-    validate_history(document, require_measurement=False)
+    validate_bench(document)
     return document
 
 
-def _validate_entry(entry: dict, index: int) -> None:
-    if not isinstance(entry, dict) or set(entry) != ENTRY_KEYS:
-        raise HistoryError(f"entry #{index} keys must be {', '.join(sorted(ENTRY_KEYS))}")
-    commit = entry["commit"]
-    if not isinstance(commit, str) or len(commit) != 40 or any(ch not in "0123456789abcdef" for ch in commit):
-        raise HistoryError(f"entry #{index} commit must be 40 lowercase hex characters")
-    author = entry["author"]
-    if not isinstance(author, str) or "<" not in author or not author.endswith(">") or not author.split("<", 1)[0].strip():
-        raise HistoryError(f"{commit}: author must be 'Name <email>'")
-    timestamp = entry["timestamp"]
-    if not isinstance(timestamp, str) or len(timestamp) != 20 or timestamp[10] != "T" or not timestamp.endswith("Z"):
-        raise HistoryError(f"{commit}: timestamp must be YYYY-MM-DDTHH:MM:SSZ")
-    guests = entry["guests"]
-    if not isinstance(guests, dict):
-        raise HistoryError(f"{commit}: guests must be an object")
-    for guest_id, guest in guests.items():
-        _validate_guest(commit, guest_id, guest)
-    _validate_tasks(commit, entry["tasks"])
-    _validate_benchmarks(commit, entry["benchmarks"])
+def iter_benches(root: Path) -> list[tuple[str, dict]]:
+    if (root / LEGACY_HISTORY).exists():
+        raise HistoryError(f"{LEGACY_HISTORY} must be deleted; one bench.json per commit replaced it")
+    metrics = root / "metrics"
+    if not metrics.is_dir():
+        raise HistoryError("metrics/ does not exist")
+    found: list[tuple[str, dict]] = []
+    seen: set[str] = set()
+    for path in sorted(metrics.rglob("bench.json")):
+        rel = path.relative_to(root).as_posix()
+        document = load_bench(path)
+        validate_placed(rel, document)
+        if document["commit"] in seen:
+            raise HistoryError(f"duplicate commit {document['commit']}")
+        seen.add(document["commit"])
+        found.append((rel, document))
+    found.sort(key=lambda item: sort_key(item[1]))
+    return found
 
 
 def _validate_guest(commit: str, guest_id: str, guest: dict) -> None:
@@ -323,22 +381,24 @@ def _validate_tasks(commit: str, tasks) -> None:
     if tasks is None:
         return
     if not isinstance(tasks, dict) or set(tasks) != TASK_KEYS:
-        raise HistoryError(f"{commit}: tasks keys must be source and results")
+        raise HistoryError(f"{commit}: tasks keys must be source, host, environment, and results")
     if tasks["source"] != TASK_SOURCE:
         raise HistoryError(f"{commit}: tasks source must be {TASK_SOURCE!r}")
+    if tasks["host"] != TASK_HOST:
+        raise HistoryError(f"{commit}: tasks host must be {TASK_HOST}")
+    assert_environment(TASK_HOST, tasks["environment"])
     results = tasks["results"]
     if not isinstance(results, list) or not results:
         raise HistoryError(f"{commit}: tasks results must be a non-empty array")
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str]] = set()
     for row in results:
         if not isinstance(row, dict) or set(row) != TASK_ROW_KEYS:
             raise HistoryError(f"{commit}: task row keys must be {', '.join(sorted(TASK_ROW_KEYS))}")
-        identity = (row["task"], row["guest"], row["host"])
+        identity = (row["task"], row["guest"])
         if identity in seen:
             raise HistoryError(f"{commit}: duplicate task row {identity}")
         seen.add(identity)
-        task_row(row["task"], row["guest"], row["host"], row["status"], row["applied_steps"], row["probes"])
-        assert_environment(row["host"], row["environment"])
+        task_row(row["task"], row["guest"], row["status"], row["applied_steps"], row["probes"])
         if row["pass"] is not (row["status"] == "pass"):
             raise HistoryError(f"{commit}: pass does not match status for {identity}")
 
@@ -347,37 +407,88 @@ def _validate_benchmarks(commit: str, benchmarks) -> None:
     if benchmarks is None:
         return
     if not isinstance(benchmarks, dict) or set(benchmarks) != BENCHMARK_KEYS:
-        raise HistoryError(f"{commit}: benchmark keys must be {', '.join(sorted(BENCHMARK_KEYS))}")
-    if not isinstance(benchmarks["program"], str) or not benchmarks["program"]:
-        raise HistoryError(f"{commit}: benchmark program must be a non-empty string")
-    for key in ("max_steps", "max_evals", "max_state_bytes", "memory_cap_bytes"):
-        _positive_int(benchmarks[key], f"{commit} benchmarks.{key}")
-    _positive_int(benchmarks["timeout_seconds"], f"{commit} benchmarks.timeout_seconds")
-    hosts = benchmarks["hosts"]
+        raise HistoryError(f"{commit}: benchmark keys must be workloads")
+    workloads = benchmarks["workloads"]
+    if not isinstance(workloads, list) or not workloads:
+        raise HistoryError(f"{commit}: workloads must be a non-empty array")
+    seen: set[str] = set()
+    for workload in workloads:
+        if not isinstance(workload, dict) or set(workload) != WORKLOAD_KEYS:
+            raise HistoryError(f"{commit}: workload keys must be {', '.join(sorted(WORKLOAD_KEYS))}")
+        workload_id = workload["id"]
+        if not isinstance(workload_id, str) or WORKLOAD_ID_RE.fullmatch(workload_id) is None or workload_id in seen:
+            raise HistoryError(f"{commit}: workload id {workload_id!r} must be a new lowercase slug")
+        seen.add(workload_id)
+        _relative_program(workload["program"], f"{commit} {workload_id}")
+        if not isinstance(workload["input"], str) or not isinstance(workload["stdin"], str):
+            raise HistoryError(f"{commit} {workload_id}: input and stdin must be strings")
+        for key in ("max_steps", "max_evals", "max_state_bytes", "memory_cap_bytes"):
+            _positive_int(workload[key], f"{commit} {workload_id} {key}")
+        _positive_int(workload["timeout_seconds"], f"{commit} {workload_id} timeout_seconds")
+        _validate_hosts(commit, workload_id, workload["hosts"])
+
+
+def _validate_hosts(commit: str, workload_id: str, hosts) -> None:
     registered = host_ids()
     if not isinstance(hosts, dict) or not hosts:
-        raise HistoryError(f"{commit}: benchmark hosts must be a non-empty subset of {', '.join(registered)}")
+        raise HistoryError(f"{commit} {workload_id}: hosts must be a non-empty subset of {', '.join(registered)}")
     unknown = [name for name in hosts if name not in registered]
     if unknown:
-        raise HistoryError(f"{commit}: unknown benchmark host(s) {', '.join(unknown)}")
+        raise HistoryError(f"{commit} {workload_id}: unknown benchmark host(s) {', '.join(unknown)}")
     steps = set()
     probes = set()
     for host, row in hosts.items():
         if not isinstance(row, dict) or set(row) != BENCHMARK_HOST_KEYS:
-            raise HistoryError(f"{commit} {host}: benchmark host keys must be {', '.join(sorted(BENCHMARK_HOST_KEYS))}")
+            raise HistoryError(
+                f"{commit} {workload_id} {host}: keys must be {', '.join(sorted(BENCHMARK_HOST_KEYS))}"
+            )
         assert_environment(host, row["environment"])
-        _non_negative_int(row["duration_ms"], f"{commit} {host} duration_ms")
+        _non_negative_int(row["duration_ms"], f"{commit} {workload_id} {host} duration_ms")
+        memory = row["memory_bytes"]
+        if memory is not None:
+            _non_negative_int(memory, f"{commit} {workload_id} {host} memory_bytes")
         if isinstance(row["exit_code"], bool) or not isinstance(row["exit_code"], int):
-            raise HistoryError(f"{commit} {host}: exit_code must be an integer")
-        _non_negative_int(row["applied_steps"], f"{commit} {host} applied_steps")
-        _non_negative_int(row["probes"], f"{commit} {host} probes")
+            raise HistoryError(f"{commit} {workload_id} {host}: exit_code must be an integer")
+        _non_negative_int(row["applied_steps"], f"{commit} {workload_id} {host} applied_steps")
+        _non_negative_int(row["probes"], f"{commit} {workload_id} {host} probes")
         timeout = row["host_timeout_seconds"]
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
-            raise HistoryError(f"{commit} {host}: host_timeout_seconds must be a positive number")
+            raise HistoryError(f"{commit} {workload_id} {host}: host_timeout_seconds must be a positive number")
         steps.add(row["applied_steps"])
         probes.add(row["probes"])
     if len(steps) != 1 or len(probes) != 1:
-        raise HistoryError(f"{commit}: benchmark hosts disagree on applied_steps or probes")
+        raise HistoryError(f"{commit} {workload_id}: hosts disagree on applied_steps or probes")
+
+
+def _relative_program(program, label: str) -> str:
+    if not isinstance(program, str) or not program.endswith(".tpp"):
+        raise HistoryError(f"{label}: program must be a .tpp path")
+    if program.startswith("/") or ".." in program.split("/"):
+        raise HistoryError(f"{label}: program must be a relative path")
+    return program
+
+
+def _commit(value, label: str) -> str:
+    if not isinstance(value, str) or len(value) != 40 or any(ch not in "0123456789abcdef" for ch in value):
+        raise HistoryError(f"{label}: commit must be 40 lowercase hex characters")
+    return value
+
+
+def _author(author, commit: str) -> None:
+    if not isinstance(author, str) or "<" not in author or not author.endswith(">") or not author.split("<", 1)[0].strip():
+        raise HistoryError(f"{commit}: author must be 'Name <email>'")
+
+
+def _timestamp(timestamp, commit: str) -> None:
+    if (
+        not isinstance(timestamp, str)
+        or len(timestamp) != 20
+        or timestamp[10] != "T"
+        or not timestamp.endswith("Z")
+        or timestamp[4] != "-"
+        or timestamp[7] != "-"
+    ):
+        raise HistoryError(f"{commit}: timestamp must be YYYY-MM-DDTHH:MM:SSZ")
 
 
 def _non_negative_int(value, label: str) -> int:

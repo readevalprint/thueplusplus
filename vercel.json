@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci --prefix demo",
-  "buildCommand": "npm --prefix demo run build && mkdir -p demo/dist/metrics && cp metrics/history.json demo/dist/metrics/history.json",
+  "buildCommand": "npm --prefix demo run build && mkdir -p demo/dist/metrics && cp demo/src/generated/summary.json demo/dist/metrics/summary.json",
   "outputDirectory": "demo/dist"
 }

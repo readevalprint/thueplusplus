@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "commit": "40ec0f743dd2298eb23387d6c98006d83647c90e",
+  "author": "cursor[bot] <206951365+cursor[bot]@users.noreply.github.com>",
+  "timestamp": "2026-10-16T14:08:45Z",
+  "guests": {
+    "forth": {
+      "program": "examples/forth/forth.tpp",
+      "rule_lines": 45
+    },
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 394
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

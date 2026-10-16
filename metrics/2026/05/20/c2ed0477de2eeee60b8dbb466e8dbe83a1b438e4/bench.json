@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "commit": "c2ed0477de2eeee60b8dbb466e8dbe83a1b438e4",
+  "author": "Tim Watts <tim@readevalprint.com>",
+  "timestamp": "2026-05-20T13:14:01Z",
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 317
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "catalog": "node scripts/build-catalog.mjs",
-    "dev": "node scripts/build-catalog.mjs && npm run wasm && vite --host 0.0.0.0",
+    "summary": "node scripts/build-summary.mjs",
+    "dev": "node scripts/build-summary.mjs && node scripts/build-catalog.mjs && npm run wasm && vite --host 0.0.0.0",
     "wasm": "node scripts/build-wasm.mjs",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
-    "build": "node scripts/build-catalog.mjs && npm run wasm && npm run brand:assets && vue-tsc --noEmit && vite build && node scripts/prepare-dist.mjs && node scripts/check-dist.mjs",
-    "test": "node --test scripts/catalog.test.mjs && node scripts/build-catalog.mjs && vue-tsc --noEmit && vitest run",
-    "test:ui": "node scripts/build-catalog.mjs && vitest run",
+    "build": "node scripts/build-summary.mjs && node scripts/build-catalog.mjs && npm run wasm && npm run brand:assets && vue-tsc --noEmit && vite build && node scripts/prepare-dist.mjs && node scripts/check-dist.mjs",
+    "test": "node scripts/build-summary.mjs && node --test scripts/catalog.test.mjs scripts/summary.test.mjs && node scripts/build-catalog.mjs && vue-tsc --noEmit && vitest run",
+    "test:ui": "node scripts/build-summary.mjs && node scripts/build-catalog.mjs && vitest run",
     "test:e2e": "playwright test",
     "smoke:dist": "node scripts/check-dist.mjs"
   },

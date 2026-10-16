@@ -1,0 +1,413 @@
+{
+  "schema_version": 2,
+  "commit": "9d34a9a0cc75defe0ef1997234ec0765f9644159",
+  "author": "cursor[bot] <206951365+cursor[bot]@users.noreply.github.com>",
+  "timestamp": "2026-10-16T19:11:43Z",
+  "guests": {
+    "forth": {
+      "program": "examples/forth/forth.tpp",
+      "rule_lines": 86
+    },
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 441
+    },
+    "brainfuck": {
+      "program": "examples/brainfuck/brainfuck.tpp",
+      "rule_lines": 68
+    },
+    "basic": {
+      "program": "examples/basic/basic.tpp",
+      "rule_lines": 62
+    }
+  },
+  "tasks": {
+    "source": "make tasks",
+    "host": "go",
+    "environment": "go native",
+    "results": [
+      {
+        "task": "hello-world",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 1,
+        "probes": 101
+      },
+      {
+        "task": "hello-world",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 24,
+        "probes": 2548
+      },
+      {
+        "task": "hello-world",
+        "guest": "brainfuck",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 83,
+        "probes": 2235
+      },
+      {
+        "task": "hello-world",
+        "guest": "basic",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 5,
+        "probes": 311
+      },
+      {
+        "task": "fibonacci",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 2112,
+        "probes": 86419
+      },
+      {
+        "task": "fibonacci",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 10749,
+        "probes": 349569
+      },
+      {
+        "task": "fibonacci",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "fibonacci",
+        "guest": "basic",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 2686,
+        "probes": 84684
+      },
+      {
+        "task": "fizzbuzz",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 2709,
+        "probes": 111312
+      },
+      {
+        "task": "fizzbuzz",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 15203,
+        "probes": 338204
+      },
+      {
+        "task": "fizzbuzz",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "fizzbuzz",
+        "guest": "basic",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "factorial",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 581,
+        "probes": 23812
+      },
+      {
+        "task": "factorial",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 3863,
+        "probes": 125731
+      },
+      {
+        "task": "factorial",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "factorial",
+        "guest": "basic",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 993,
+        "probes": 32034
+      },
+      {
+        "task": "reverse-string",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 57,
+        "probes": 2183
+      },
+      {
+        "task": "reverse-string",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 887,
+        "probes": 45052
+      },
+      {
+        "task": "reverse-string",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "reverse-string",
+        "guest": "basic",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "99-bottles",
+        "guest": "forth",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "99-bottles",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 2734,
+        "probes": 146223
+      },
+      {
+        "task": "99-bottles",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "99-bottles",
+        "guest": "basic",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "guess-the-number",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 324,
+        "probes": 14007
+      },
+      {
+        "task": "guess-the-number",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 3129,
+        "probes": 148269
+      },
+      {
+        "task": "guess-the-number",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "guess-the-number",
+        "guest": "basic",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "sum-numbers",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 330,
+        "probes": 13270
+      },
+      {
+        "task": "sum-numbers",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 3565,
+        "probes": 157420
+      },
+      {
+        "task": "sum-numbers",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "sum-numbers",
+        "guest": "basic",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 960,
+        "probes": 30745
+      },
+      {
+        "task": "palindrome",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 85,
+        "probes": 3376
+      },
+      {
+        "task": "palindrome",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 32816,
+        "probes": 688615
+      },
+      {
+        "task": "palindrome",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "palindrome",
+        "guest": "basic",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "rot13",
+        "guest": "forth",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 57,
+        "probes": 2043
+      },
+      {
+        "task": "rot13",
+        "guest": "lisp",
+        "pass": true,
+        "status": "pass",
+        "applied_steps": 3779,
+        "probes": 504964
+      },
+      {
+        "task": "rot13",
+        "guest": "brainfuck",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      },
+      {
+        "task": "rot13",
+        "guest": "basic",
+        "pass": false,
+        "status": "unsupported",
+        "applied_steps": null,
+        "probes": null
+      }
+    ]
+  },
+  "benchmarks": {
+    "workloads": [
+      {
+        "id": "rewrite",
+        "program": "benchmark.tpp",
+        "input": "",
+        "stdin": "",
+        "max_steps": 15000,
+        "max_evals": 50000,
+        "max_state_bytes": 16384,
+        "timeout_seconds": 30,
+        "memory_cap_bytes": 268435456,
+        "hosts": {
+          "python": {
+            "environment": "python",
+            "applied_steps": 10000,
+            "probes": 10002,
+            "duration_ms": 1244,
+            "memory_bytes": null,
+            "exit_code": 0,
+            "host_timeout_seconds": 30
+          },
+          "go": {
+            "environment": "go native",
+            "applied_steps": 10000,
+            "probes": 10002,
+            "duration_ms": 1176,
+            "memory_bytes": null,
+            "exit_code": 0,
+            "host_timeout_seconds": 30
+          },
+          "wasm": {
+            "environment": "wasm (node)",
+            "applied_steps": 10000,
+            "probes": 10002,
+            "duration_ms": 3024,
+            "memory_bytes": null,
+            "exit_code": 0,
+            "host_timeout_seconds": 240
+          },
+          "rust": {
+            "environment": "rust",
+            "applied_steps": 10000,
+            "probes": 10002,
+            "duration_ms": 880,
+            "memory_bytes": null,
+            "exit_code": 0,
+            "host_timeout_seconds": 30
+          },
+          "cpp": {
+            "environment": "cpp",
+            "applied_steps": 10000,
+            "probes": 10002,
+            "duration_ms": 914,
+            "memory_bytes": null,
+            "exit_code": 0,
+            "host_timeout_seconds": 30
+          }
+        }
+      }
+    ]
+  }
+}

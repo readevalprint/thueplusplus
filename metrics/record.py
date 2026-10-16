@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Measure HEAD and upsert it into metrics/history.json.
+"""Measure HEAD and write metrics/YYYY/MM/DD/{sha}/bench.json.
 
-Refuses a dirty work tree. Skips a bookkeeping commit and a commit that
-already has tasks and benchmarks. `--force` measures again.
+Refuses a dirty work tree. Skips a metrics commit and a commit that already
+has tasks and benchmarks. `--force` measures again. Task rows come from
+`make tasks`, which runs the native Go host only.
 """
 
 from __future__ import annotations
@@ -29,12 +30,12 @@ from hosts import build_registered, host_ids, host_timeout  # noqa: E402
 from rules import count_rule_lines  # noqa: E402
 from run_limits import RUN_MEMORY_CAP_BYTES, bounded_run  # noqa: E402
 
-HISTORY_PATH = ROOT / historylib.HISTORY_REL
-BENCHMARK_TOML = ROOT / "metrics" / "benchmark.toml"
+WORKLOADS_PATH = ROOT / "metrics" / "workloads.toml"
 GUESTS_PATH = ROOT / "tasks" / "guests.toml"
 RESULTS_PATH = ROOT / "build" / "tasks" / "results.json"
 SUITE_TIMEOUT_SECONDS = 1200
 SUITE_TIMEOUT_KILL_SECONDS = 30
+METRICS_SUBJECT = "metrics:"
 
 
 class RecordError(RuntimeError):
@@ -65,6 +66,9 @@ def parents_of(commit: str) -> list[str]:
 
 
 def bookkeeping(commit: str) -> bool:
+    subject = git_text(["log", "-1", "--format=%s", commit])
+    if subject.startswith(METRICS_SUBJECT):
+        return True
     parents = parents_of(commit)
     if len(parents) != 1:
         return False
@@ -104,6 +108,9 @@ def load_tasks(path: Path, head: str) -> dict:
             f"{path} is not a clean measurement of {head} "
             f"(commit={document.get('commit')!r}, dirty={document.get('commit_dirty')!r})"
         )
+    safety = document.get("safety")
+    if not isinstance(safety, dict) or safety.get("host") != historylib.TASK_HOST:
+        raise RecordError(f"{path} safety.host must be {historylib.TASK_HOST}")
     return document
 
 
@@ -128,14 +135,15 @@ def guest_counts(tasks_document: dict) -> dict[str, dict]:
     return counted
 
 
-def run_benchmarks(limits: dict) -> dict:
-    if limits["memory_cap_bytes"] != RUN_MEMORY_CAP_BYTES:
+def _timeout_number(timeout: float) -> int | float:
+    return int(timeout) if timeout == int(timeout) else timeout
+
+
+def run_benchmarks(suite: dict) -> dict:
+    if suite["memory_cap_bytes"] != RUN_MEMORY_CAP_BYTES:
         raise RecordError(
-            f"benchmark memory_cap_bytes {limits['memory_cap_bytes']} != {RUN_MEMORY_CAP_BYTES}"
+            f"benchmark memory_cap_bytes {suite['memory_cap_bytes']} != {RUN_MEMORY_CAP_BYTES}"
         )
-    program = ROOT / "metrics" / limits["program"]
-    if not program.is_file():
-        raise RecordError(f"benchmark program does not exist: {program}")
     interpreters = build_registered(ROOT / "build")
     by_name = {interpreter.name: interpreter for interpreter in interpreters}
     registered = host_ids()
@@ -143,23 +151,29 @@ def run_benchmarks(limits: dict) -> dict:
     if missing:
         raise RecordError(f"missing host build: {', '.join(missing)}")
 
-    def one(host: str) -> tuple[str, dict]:
+    def one(workload: dict, host: str) -> tuple[str, dict]:
         interpreter = by_name[host]
-        timeout = host_timeout(float(limits["timeout_seconds"]), host)
-        with tempfile.TemporaryDirectory(prefix=f"thuepp-bench-{host}-") as tmpname:
+        program = ROOT / workload["program"]
+        if not program.is_file():
+            raise RecordError(f"benchmark program does not exist: {program}")
+        timeout = host_timeout(float(workload["timeout_seconds"]), host)
+        with tempfile.TemporaryDirectory(prefix=f"thuepp-bench-{workload['id']}-{host}-") as tmpname:
             counts_path = Path(tmpname) / "counts.json"
-            argv = [
-                *interpreter.argv,
-                str(program),
-                "--counts",
-                str(counts_path),
-                "--max-steps",
-                str(limits["max_steps"]),
-                "--max-evals",
-                str(limits["max_evals"]),
-                "--max-state-bytes",
-                str(limits["max_state_bytes"]),
-            ]
+            argv = [*interpreter.argv, str(program)]
+            if workload["input"]:
+                argv.extend(["--input", workload["input"]])
+            argv.extend(
+                [
+                    "--counts",
+                    str(counts_path),
+                    "--max-steps",
+                    str(workload["max_steps"]),
+                    "--max-evals",
+                    str(workload["max_evals"]),
+                    "--max-state-bytes",
+                    str(workload["max_state_bytes"]),
+                ]
+            )
             env = os.environ.copy()
             env.update(dict(interpreter.env))
             started = time.perf_counter()
@@ -168,62 +182,76 @@ def run_benchmarks(limits: dict) -> dict:
                 timeout=timeout,
                 cwd=ROOT,
                 env=env,
-                memory_cap=limits["memory_cap_bytes"],
+                input_text=workload["stdin"] if workload["stdin"] else None,
+                memory_cap=workload["memory_cap_bytes"],
             )
             duration_ms = int((time.perf_counter() - started) * 1000)
             if completed.returncode != 0:
                 detail = completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}"
-                raise RecordError(f"benchmark {host} exited {completed.returncode}: {detail}")
+                raise RecordError(f"benchmark {workload['id']} {host} exited {completed.returncode}: {detail}")
             if not counts_path.is_file():
-                raise RecordError(f"benchmark {host} did not write counts")
+                raise RecordError(f"benchmark {workload['id']} {host} did not write counts")
             applied, probes = historylib.parse_counts(counts_path.read_text(encoding="utf-8"))
-        environment = historylib.environment_for(host)
+            memory = getattr(completed, "peak_rss_bytes", None)
+            if isinstance(memory, bool) or not isinstance(memory, int) or memory < 0:
+                raise RecordError(f"benchmark {workload['id']} {host} did not report resident memory")
         return host, {
-            "duration_ms": duration_ms,
-            "exit_code": completed.returncode,
+            "environment": historylib.environment_for(host),
             "applied_steps": applied,
             "probes": probes,
-            "host_timeout_seconds": int(timeout) if timeout == int(timeout) else timeout,
-            "environment": environment,
+            "duration_ms": duration_ms,
+            "memory_bytes": memory,
+            "exit_code": completed.returncode,
+            "host_timeout_seconds": _timeout_number(timeout),
         }
 
-    with ThreadPoolExecutor(max_workers=len(registered)) as pool:
-        rows = dict(pool.map(one, registered))
-    steps = {row["applied_steps"] for row in rows.values()}
-    probes = {row["probes"] for row in rows.values()}
-    if len(steps) != 1 or len(probes) != 1:
-        rendered = ", ".join(
-            f"{rows[host]['environment']} steps={rows[host]['applied_steps']} probes={rows[host]['probes']}"
-            for host in registered
+    recorded = []
+    for workload in suite["workloads"]:
+        with ThreadPoolExecutor(max_workers=len(registered)) as pool:
+            rows = dict(pool.map(lambda host, workload=workload: one(workload, host), registered))
+        steps = {row["applied_steps"] for row in rows.values()}
+        probes = {row["probes"] for row in rows.values()}
+        if len(steps) != 1 or len(probes) != 1:
+            rendered = ", ".join(
+                f"{rows[host]['environment']} steps={rows[host]['applied_steps']} probes={rows[host]['probes']}"
+                for host in registered
+            )
+            raise RecordError(f"benchmark {workload['id']} hosts disagree: {rendered}")
+        recorded.append(
+            {
+                "id": workload["id"],
+                "program": workload["program"],
+                "input": workload["input"],
+                "stdin": workload["stdin"],
+                "max_steps": workload["max_steps"],
+                "max_evals": workload["max_evals"],
+                "max_state_bytes": workload["max_state_bytes"],
+                "timeout_seconds": workload["timeout_seconds"],
+                "memory_cap_bytes": workload["memory_cap_bytes"],
+                "hosts": {host: rows[host] for host in registered},
+            }
         )
-        raise RecordError(f"benchmark hosts disagree: {rendered}")
-    return {
-        "program": limits["program"],
-        "max_steps": limits["max_steps"],
-        "max_evals": limits["max_evals"],
-        "max_state_bytes": limits["max_state_bytes"],
-        "timeout_seconds": limits["timeout_seconds"],
-        "memory_cap_bytes": limits["memory_cap_bytes"],
-        "hosts": {host: rows[host] for host in registered},
-    }
+    return {"workloads": recorded}
 
 
 def print_benchmarks(benchmarks: dict) -> None:
-    for host in host_ids():
-        row = benchmarks["hosts"].get(host)
-        if row is None:
-            continue
-        historylib.assert_environment(host, row["environment"])
-        print(
-            f"benchmark {row['environment']}: {row['duration_ms']} ms exit {row['exit_code']}"
-        )
+    for workload in benchmarks["workloads"]:
+        for host in host_ids():
+            row = workload["hosts"].get(host)
+            if row is None:
+                continue
+            historylib.assert_environment(host, row["environment"])
+            print(
+                f"benchmark {workload['id']} {row['environment']}: "
+                f"{row['duration_ms']} ms {row['memory_bytes']} bytes exit {row['exit_code']}"
+            )
 
 
-def already_measured(document: dict, head: str) -> bool:
-    for entry in document["entries"]:
-        if entry["commit"] == head and entry["tasks"] is not None and entry["benchmarks"] is not None:
-            return True
-    return False
+def already_measured(path: Path, head: str) -> bool:
+    if not path.is_file():
+        return False
+    document = historylib.load_bench(path)
+    return document["commit"] == head and document["tasks"] is not None and document["benchmarks"] is not None
 
 
 def measure(results_path: Path | None, *, force: bool = False) -> int:
@@ -231,32 +259,33 @@ def measure(results_path: Path | None, *, force: bool = False) -> int:
         raise RecordError("metrics record refuses a dirty work tree")
     head = git_text(["rev-parse", "HEAD"])
     if bookkeeping(head):
-        print("metrics record: bookkeeping commit, nothing to measure")
+        print("metrics record: metrics commit, nothing to measure")
         return 0
-    document = historylib.load_history(HISTORY_PATH)
-    if already_measured(document, head) and not force:
+    timestamp = commit_timestamp(git_text(["log", "-1", "--format=%aI", head]))
+    rel = historylib.bench_rel(timestamp, head)
+    path = ROOT / rel
+    if already_measured(path, head) and not force:
         print(f"metrics record: {head} is already measured")
         return 0
-    if force:
-        document["entries"] = [entry for entry in document["entries"] if entry["commit"] != head]
+    if force and path.is_file():
+        path.unlink()
     if results_path is None:
         run_make_tasks()
         results_path = RESULTS_PATH
     tasks_document = load_tasks(results_path, head)
-    tasks = {"source": historylib.TASK_SOURCE, "results": historylib.rows_from_tasks(tasks_document)}
-    benchmarks = run_benchmarks(historylib.load_benchmark(BENCHMARK_TOML))
+    benchmarks = run_benchmarks(historylib.load_workloads(WORKLOADS_PATH))
     print_benchmarks(benchmarks)
     entry = {
+        "schema_version": historylib.SCHEMA_VERSION,
         "commit": head,
         "author": git_text(["log", "-1", "--format=%an <%ae>", head]),
-        "timestamp": commit_timestamp(git_text(["log", "-1", "--format=%aI", head])),
+        "timestamp": timestamp,
         "guests": guest_counts(tasks_document),
-        "tasks": tasks,
+        "tasks": historylib.tasks_document(historylib.rows_from_tasks(tasks_document)),
         "benchmarks": benchmarks,
     }
-    updated = historylib.upsert(document, entry)
-    historylib.save_history(HISTORY_PATH, updated)
-    print(f"metrics record: wrote {head} to {historylib.HISTORY_REL}")
+    historylib.save_bench(ROOT, entry)
+    print(f"metrics record: wrote {head} to {rel}")
     return 0
 
 

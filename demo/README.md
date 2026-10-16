@@ -68,7 +68,7 @@ The same shared playground surface powers the playground page and the embeddable
 
 - `/playground` is its own full-screen route: header, resizable editor and output, and a status bar. It does not use the docs shell.
 - `/embed` renders that same surface with no docs chrome. It is for iframe embeds.
-- `/`, `/learn`, `/reference`, `/hosts`, `/guests`, and `/tasks` are the other prerendered pages. `/` is the landing page. `/guests` is the guest leaderboard and the per-commit charts from `metrics/history.json`. `/tasks` is the task index, and each task is also prerendered at `/tasks/<id>`. Run `make tasks` before `npm test`, `npm run dev`, or `npm run build`. Hash links such as `/guests#rule-lines` open that section.
+- `/`, `/learn`, `/reference`, `/hosts`, `/guests`, and `/tasks` are the other prerendered pages. `/` is the landing page. `/guests` is the guest leaderboard and the per-commit charts from the generated `demo/src/generated/summary.json`. `/tasks` is the task index, and each task is also prerendered at `/tasks/<id>`. Run `make tasks` before `npm test`, `npm run dev`, or `npm run build`. Hash links such as `/guests#rule-lines` open that section.
 
 Supported embed query parameters:
 

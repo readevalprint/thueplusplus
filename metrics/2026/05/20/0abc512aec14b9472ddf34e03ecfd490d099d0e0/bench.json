@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "commit": "0abc512aec14b9472ddf34e03ecfd490d099d0e0",
+  "author": "herm <project_52_bot_b0958bdc5590d3b9b8c376a85dbf083b@noreply.gitlab.backrooms.internal>",
+  "timestamp": "2026-05-20T18:01:53Z",
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 414
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

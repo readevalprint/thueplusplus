@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "commit": "fd77e933c6c4ec16cb8e1bb10939dbb8a53e9109",
+  "author": "Tim <readevalprint@users.noreply.github.com>",
+  "timestamp": "2026-10-16T10:54:47Z",
+  "guests": {
+    "forth": {
+      "program": "examples/forth/forth.tpp",
+      "rule_lines": 45
+    },
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 394
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

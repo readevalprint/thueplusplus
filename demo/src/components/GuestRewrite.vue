@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { placeChart, type CommitRef, type NamedSeries } from '@/metrics'
+import { placeChart, pointAt, stepPath, type CommitRef, type NamedSeries } from '@/metrics'
 
 const props = defineProps<{
   commits: CommitRef[]
+  order: string[]
   series: NamedSeries[]
 }>()
 
@@ -12,19 +13,19 @@ const paths = computed(() => {
   if (props.commits.length === 0 || values.length === 0) return []
   const placed = placeChart(props.commits.length, Math.max(...values), 640, 168)
   return props.series.flatMap(series => {
-    const byCommit = new Map(series.points.map(point => [point.commit, point.value]))
-    let d = ''
-    let drawing = false
+    const runs: { x: number; y: number; value: number }[][] = []
+    let run: { x: number; y: number; value: number }[] = []
     props.commits.forEach((commit, index) => {
-      const value = byCommit.get(commit.commit)
-      if (value === undefined) {
-        drawing = false
+      const point = pointAt(series.points, commit.commit, props.order)
+      if (!point) {
+        if (run.length > 0) runs.push(run)
+        run = []
         return
       }
-      d += `${drawing ? 'L' : 'M'}${placed.xAt(index).toFixed(1)} ${(placed.yAt(value) + 78).toFixed(1)}`
-      drawing = true
+      run.push({ x: placed.xAt(index), y: placed.yAt(point.value) + 78, value: point.value })
     })
-    return d.length > 0 ? [d] : []
+    if (run.length > 0) runs.push(run)
+    return runs.map(item => stepPath(item)).filter(path => path.length > 0)
   })
 })
 </script>
