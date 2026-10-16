@@ -1,10 +1,11 @@
 <template>
   <section class="flex flex-col gap-2" :data-test="`resource-section-${resource.name}`">
-    <p class="font-mono text-sm font-medium">{{ resource.name }}</p>
+    <p :id="titleId" class="font-mono text-sm font-medium">{{ resource.name }}</p>
 
     <div v-if="showInput" class="flex flex-col gap-2">
       <Textarea
         :id="inputId"
+        :aria-labelledby="titleId"
         :model-value="input"
         class="font-mono"
         :data-attention="attention === 'input' ? 'input' : undefined"
@@ -20,6 +21,7 @@
       <Textarea
         :id="outputId"
         ref="outputTextarea"
+        :aria-labelledby="titleId"
         :model-value="output"
         class="font-mono"
         :data-attention="outputAttentionEffect ? 'output' : undefined"
@@ -60,6 +62,7 @@ defineEmits<{
 }>()
 
 const safeName = computed(() => props.resource.name.replace(/[^A-Za-z0-9_-]/g, '-'))
+const titleId = computed(() => `resource-title-${safeName.value}`)
 const inputId = computed(() => `resource-input-${safeName.value}`)
 const outputId = computed(() => `resource-output-${safeName.value}`)
 const outputTextarea = ref<{ textarea?: HTMLTextAreaElement | null } | null>(null)
