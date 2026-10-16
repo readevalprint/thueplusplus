@@ -14,20 +14,21 @@ async function expectShell(page: Page, width: number): Promise<void> {
   if (width >= 1280) {
     await expect(page.getByTestId('site-nav')).toBeVisible()
     await expect(page.getByTestId('page-sidebar')).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Reference' })).toBeVisible()
+    await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Reference' })).toBeVisible()
     return
   }
-  await expect(page.getByTestId('site-nav')).toHaveCount(0)
-  await expect(page.getByTestId('page-sidebar')).toHaveCount(0)
+  await expect(page.getByTestId('site-nav')).toBeHidden()
+  await expect(page.getByTestId('page-sidebar')).toBeHidden()
   await page.getByTestId('nav-trigger').click()
   await expect(page.getByTestId('site-nav')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Hosts' })).toBeVisible()
+  await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Hosts' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByTestId('site-nav')).toHaveCount(0)
+  await expect(page.getByTestId('site-nav')).toBeHidden()
   await page.getByTestId('toc-trigger').click()
   await expect(page.getByTestId('page-sidebar')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'A program' })).toBeVisible()
+  await expect(page.getByTestId('page-sidebar').getByRole('link', { name: 'A program' })).toBeVisible()
   await page.keyboard.press('Escape')
+  await expect(page.getByTestId('page-sidebar')).toBeHidden()
 }
 
 for (const viewport of viewports) {

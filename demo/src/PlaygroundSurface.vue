@@ -206,7 +206,8 @@ const isCompactLayout = computed(() => {
   if (props.mode === 'full') return false
   if (props.mode === 'compact' || props.mode === 'mini' || props.mode === 'debug') return true
   if (props.chrome === 'embed' || props.chrome === 'bare') return true
-  return measuredWidth.value < 760
+  // The shell's center column is narrower than the viewport. 640px still fits the three panes there.
+  return measuredWidth.value < 640
 })
 const compactControls = computed<PlaygroundControls>(() => props.controls)
 const showRunButton = computed(() => compactControls.value === 'run' || compactControls.value === 'step' || compactControls.value === 'debug')
@@ -262,7 +263,8 @@ onMounted(() => {
     return
   }
   surfaceResizeObserver = new ResizeObserver(entries => {
-    measuredWidth.value = entries[0]?.contentRect.width ?? window.innerWidth
+    const width = entries[0]?.contentRect.width ?? 0
+    if (width > 0) measuredWidth.value = width
   })
   surfaceResizeObserver.observe(surfaceRoot.value)
 })

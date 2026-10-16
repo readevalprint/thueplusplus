@@ -1,5 +1,5 @@
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
+  <DocPage wide :kicker="page.kicker" :title="page.title">
     <template #actions>
       <Button as-child variant="outline">
         <RouterLink to="/reference#limits">Step limits</RouterLink>
