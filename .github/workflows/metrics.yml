@@ -38,6 +38,8 @@ jobs:
             build/go-thuepp
             build/thuepp.wasm
           key: hosts-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
+      - name: Install the C++ toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
       - name: Record metrics for this commit
         run: uv run python metrics/record.py
       - name: Commit the history file

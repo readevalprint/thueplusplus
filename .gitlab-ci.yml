@@ -44,6 +44,9 @@ test:
       fi
     - uv --version
     - go version
+    - apt-get update
+    - apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
+    - g++ --version
     - |
       if ! command -v cargo >/dev/null 2>&1; then
         curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
@@ -76,6 +79,8 @@ tasks:
       fi
     - uv --version
     - go version
+    - apt-get update
+    - apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
     - |
       if ! command -v cargo >/dev/null 2>&1; then
         curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
@@ -116,6 +121,8 @@ metrics:
       fi
     - uv --version
     - go version
+    - apt-get update
+    - apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
     - |
       if ! command -v cargo >/dev/null 2>&1; then
         curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \

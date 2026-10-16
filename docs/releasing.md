@@ -2,7 +2,7 @@
 
 Spec version stays in `SPEC_VERSION`. Package versions are the `version` fields below. This repository does not publish on its own. The commands here are the release path when a tag is ready.
 
-The hosts share the API in [host-api.md](host-api.md).
+The hosts share the API in [host-api.md](host-api.md). The Rust crate and the C++ library are not published.
 
 | Host | Name | Version field |
 | --- | --- | --- |
@@ -10,6 +10,7 @@ The hosts share the API in [host-api.md](host-api.md).
 | Python | `thuepp` | `pyproject.toml` `version` |
 | npm | `thuepp` | `js/package.json` `version` |
 | Rust | crate `thuepp` | `rust/Cargo.toml` `version` |
+| C++ | CMake project `thuepp` | `cpp/CMakeLists.txt` `VERSION` (not published) |
 
 ## Go
 
@@ -56,3 +57,7 @@ The crate is `rust/`. The library and the CLI binary are both named `thuepp`. `C
 cargo publish --dry-run --manifest-path rust/Cargo.toml
 cargo publish --manifest-path rust/Cargo.toml   # crates.io token required; omit until the release is intentional
 ```
+
+## C++
+
+The library is `cpp/`. The CMake target is `thuepp`. The CLI installs as `thuepp`. This repository does not publish a vcpkg port or a Conan package. `cpp/vcpkg.json` and `cpp/conanfile.py` are the packaging sketches, and `cpp/README.md` is the build and install note. Do not upload them to a registry from this tree.

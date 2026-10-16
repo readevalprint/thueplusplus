@@ -82,7 +82,7 @@ describe('metrics history', () => {
     expect(series.find(item => item.id === 'python')?.points).toHaveLength(2)
     expect(() => loadHistory({
       schema_version: 1,
-      entries: [benchEntry('c'.repeat(40), '2026-01-03T00:00:00Z', ['cpp'])],
+      entries: [benchEntry('c'.repeat(40), '2026-01-03T00:00:00Z', ['erlang'])],
     })).toThrow(/unknown benchmark host/)
   })
 
@@ -107,7 +107,7 @@ function benchEntry(commit: string, timestamp: string, hosts: string[]) {
       applied_steps: 10000,
       probes: 10002,
       host_timeout_seconds: 30,
-      environment: { python: 'python', go: 'go native', wasm: 'wasm (node)', rust: 'rust' }[host],
+      environment: { python: 'python', go: 'go native', wasm: 'wasm (node)', rust: 'rust', cpp: 'cpp' }[host],
     }
   }
   return {

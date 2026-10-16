@@ -21,12 +21,13 @@ const PRESENTATION: Record<string, Presentation> = {
   python: { landing: 'python', title: 'Python', anchor: 'python' },
   wasm: { landing: 'js', title: 'JavaScript', anchor: 'javascript' },
   rust: { landing: 'rust', title: 'Rust', anchor: 'rust' },
+  cpp: { landing: 'cpp', title: 'C++', anchor: 'cpp' },
 }
 
 // Landing sentence and Hosts page order. Every hosts.toml id is required.
-const SITE_ORDER = ['go', 'python', 'wasm', 'rust']
+const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp']
 
-export const soonLanguages = ['cpp', 'erlang', 'ocaml', 'perl', 'ruby', 'haskell']
+export const soonLanguages = ['erlang', 'ocaml', 'perl', 'ruby', 'haskell']
 
 export const repositoryUrl = 'https://github.com/readevalprint/thueplusplus'
 

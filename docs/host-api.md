@@ -2,7 +2,7 @@
 
 Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
-This is the embedder contract for the Python interpreter, the Go interpreter, the Go wasm module, and the Rust crate. The CLI is a host that follows the same rules.
+This is the embedder contract for the Python interpreter, the Go interpreter, the Go wasm module, the Rust crate, and the C++ library. The CLI is a host that follows the same rules.
 
 ## Safe by default
 
@@ -15,6 +15,7 @@ A process binding exists only after the host opts in:
 | Go | `AddProcBinding(name, command)` |
 | Python | `add_proc_binding(name, command)` |
 | Rust | `add_proc_binding(name, command)` |
+| C++ | `AddProcBinding(name, command)` |
 | CLI | `--proc:NAME COMMAND` |
 | wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thuepp` package spawns a process only when it is given `--proc`. |
 
@@ -34,7 +35,7 @@ Max steps counts applied rewrites. The Nth rewrite exits `10` with `Applied step
 
 A `::<` read that exceeds its timeout exits `13` with `ERR:resource:NAME:timeout`. The CLI prints that as `Error: ERR:resource:NAME:timeout`.
 
-These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go; `max_evals`, `max_state_bytes`, and `max_steps` in Python and Rust; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it. Rust uses `None`.
+These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go; `max_evals`, `max_state_bytes`, and `max_steps` in Python and Rust; `set_max_evals`, `set_max_state_bytes`, and `set_max_steps` in C++; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it. Rust uses `None`. C++ uses `std::nullopt`.
 
 ## Exit codes
 
@@ -56,6 +57,7 @@ The reason is part of the host API:
 | --- | --- |
 | Go | `*LimitError` with `Kind`, `ExitCode`, and `Message`. `Error()` is `Message`. Use `errors.As`. |
 | Python | `LimitExceeded`, a `RuntimeError` with `.kind`, `.code`, and the message as the exception text. |
+| C++ | `thuepp::LimitError`, a `std::runtime_error`. `kind()` is `steps`, `evals`, `state`, or `timeout`. `code()` is 10–13. `what()` is the message. |
 | wasm | result field `limit` (`steps`, `evals`, `state`, or `timeout`) and `exitCode`. `limit` is omitted when the run did not stop for a limit. `error` is the message without the `Error: ` prefix. |
 | Rust | `RunFailure::Limit` carries `LimitError` (`kind`, `exit_code`, `message`). `limit()` returns it. `RunFailure::Message` is any other failure. |
 
@@ -67,12 +69,12 @@ Repository runners do not clear these limits. Conformance passes explicit `--max
 
 ## Metering
 
-| | Go | Python | wasm result | Rust |
-| --- | --- | --- | --- | --- |
-| rule probes | `EvalCount` | `eval_count` | `evalCount` | `eval_count` |
-| applied rewrites | `AppliedSteps` | `applied_steps` | `appliedSteps` | `applied_steps` |
-| trace switch | `TraceEnabled` | `trace_enabled` | `trace: true` | `trace_enabled` |
-| trace log | `Trace` | `trace` | `trace` | `trace` |
+| | Go | Python | C++ | wasm result | Rust |
+| --- | --- | --- | --- | --- | --- |
+| rule probes | `EvalCount` | `eval_count` | `eval_count()` | `evalCount` | `eval_count` |
+| applied rewrites | `AppliedSteps` | `applied_steps` | `applied_steps()` | `appliedSteps` | `applied_steps` |
+| trace switch | `TraceEnabled` | `trace_enabled` | `set_trace_enabled` | `trace: true` | `trace_enabled` |
+| trace log | `Trace` | `trace` | `trace()` | `trace` | `trace` |
 
 The CLI flag `--counts PATH` writes those two numbers as JSON: `applied_steps` and `probes` (`probes` is the eval count). The file is written after a run, including a limit stop. `--list-rules` does not write it.
 
@@ -107,6 +109,7 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 | Python | distribution `thuepp` | console script `thuepp` |
 | JS | npm package `thuepp` | `thuepp` bin, `node js/src/cli.js` in this repo |
 | Rust | crate `thuepp` (`rust/`) | `thuepp` bin, `rust/target/release/thuepp` in this repo |
+| C++ | CMake target `thuepp` (`thuepp::thuepp`) | `thuepp-cli`, output name `thuepp` |
 
 Go:
 
@@ -180,3 +183,23 @@ match interp.run() {
 ```
 
 `None` clears `max_evals`, `max_state_bytes`, or `max_steps`. Leave them at the values from `Interpreter::new` for the defaults. The crate sets `publish = false` and is not on crates.io. See [releasing.md](releasing.md).
+
+C++:
+
+```cpp
+#include "thuepp/thuepp.hpp"
+
+thuepp::Interpreter interp;
+interp.set_trace_enabled(true);
+interp.LoadProgram("hello.tpp");
+interp.AddProcBinding("echo", "cat");
+try {
+  int code = interp.Run();
+  (void)code;
+} catch (const thuepp::LimitError& err) {
+  // err.kind() is steps, evals, state, or timeout. err.code() is 10–13.
+  throw;
+}
+```
+
+A new interpreter uses the defaults. `std::nullopt` clears a limit. `0` is a real limit. The header does not include RE2. Link the `thuepp` CMake target.

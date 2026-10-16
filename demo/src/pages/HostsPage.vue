@@ -97,6 +97,22 @@ cargo build --release --manifest-path rust/Cargo.toml
     readmeHref: `${blob}/rust/README.md`,
     readmeLabel: 'rust/README.md',
   },
+  cpp: {
+    prose: 'The C++ host is a native implementation. The CMake target is thuepp and the command is thuepp. It uses Google RE2 and the same default limits. Process bindings stay opt-in. The library is not published.',
+    installLead: 'There is no vcpkg port and no Conan package. From a checkout of this repository:',
+    install: `cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+cmake --build build/cpp --parallel`,
+    libraryLead: 'A new interpreter binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. nullopt clears one.',
+    library: `#include "thuepp/thuepp.hpp"
+
+thuepp::Interpreter interp;
+interp.LoadProgram("hello.tpp");
+int code = interp.Run();`,
+    cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',
+    cli: `build/cpp/thuepp program.tpp --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608`,
+    readmeHref: `${blob}/cpp/README.md`,
+    readmeLabel: 'cpp/README.md',
+  },
 }
 
 const sections = siteHosts.map(host => {

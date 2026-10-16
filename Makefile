@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full wasm wasm-smoke wasm-adapter-test demo-test demo-build tasks tasks-full metrics
+.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build tasks tasks-full metrics
 
 RUST_BIN := ./rust/target/release/thuepp
 RUST_IMPL := --impl rust=$(RUST_BIN)
@@ -16,12 +16,24 @@ else
 endif
 
 ifneq ($(wildcard cpp/CMakeLists.txt),)
+  FULL_IMPL := $(RUST_IMPL) --impl cpp=./build/cpp/thuepp
   ifeq ($(HOST),)
     CORE_ARGS += --impl cpp=./build/cpp/thuepp
   else ifeq ($(HOST),cpp)
     CORE_ARGS := --tier core --only cpp --impl cpp=./build/cpp/thuepp
   endif
+else
+  FULL_IMPL := $(RUST_IMPL)
 endif
+
+# C++17 host. The binary is build/cpp/thuepp. g++ is required: the default c++
+# on some images is clang without libstdc++.
+cpp:
+	@command -v cmake >/dev/null 2>&1 || { echo "Error: cmake is required to build the C++ host" >&2; exit 127; }
+	@command -v g++ >/dev/null 2>&1 || { echo "Error: g++ is required to build the C++ host" >&2; exit 127; }
+	@command -v pkg-config >/dev/null 2>&1 || { echo "Error: pkg-config is required to build the C++ host" >&2; exit 127; }
+	cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+	cmake --build build/cpp --parallel
 
 # Per-PR check. Core features on every host, guest programs on native Go.
 test: test-static test-core test-guests
@@ -64,7 +76,7 @@ test-full: test-static
 	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to run repository verification" >&2; exit 127; }
 	cargo test --manifest-path rust/Cargo.toml
 	cargo build --release --manifest-path rust/Cargo.toml
-	uv run python tools/example_runner.py --tier full $(RUST_IMPL)
+	uv run python tools/example_runner.py --tier full $(FULL_IMPL)
 
 # Guest tasks on the native Go host.
 tasks:
@@ -114,6 +126,7 @@ demo-build:
 	npm --prefix demo run build
 
 ifneq ($(wildcard cpp/CMakeLists.txt),)
+test-full: cpp
 ifeq ($(HOST),)
 test-core: cpp
 else ifeq ($(HOST),cpp)

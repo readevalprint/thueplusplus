@@ -35,5 +35,7 @@ jobs:
             build/go-thuepp
             build/thuepp.wasm
           key: hosts-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
+      - name: Install the C++ toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
       - name: Every manifest on every host
         run: make test-full
