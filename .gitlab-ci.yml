@@ -16,6 +16,8 @@ variables:
   UV_LINK_MODE: copy
   GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
   GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
+  CARGO_HOME: "$CI_PROJECT_DIR/.cache/cargo"
+  RUSTUP_HOME: "$CI_PROJECT_DIR/.cache/rustup"
   SECRET_DETECTION_ENABLED: "true"
 
 cache:
@@ -24,6 +26,8 @@ cache:
     - .cache/uv/
     - .cache/go-build/
     - .cache/go-mod/
+    - .cache/cargo/
+    - .cache/rustup/
     - demo/.npm/
 
 test:
@@ -40,7 +44,22 @@ test:
       fi
     - uv --version
     - go version
+    - |
+      if ! command -v cargo >/dev/null 2>&1; then
+        curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
+          | sh -s -- -y --default-toolchain 1.83.0 --profile minimal
+      fi
+      export PATH="$CARGO_HOME/bin:$PATH"
+      rustc --version
+    - |
+      if ! command -v node >/dev/null 2>&1; then
+        curl -fsSL https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-x64.tar.xz -o /tmp/node.tar.xz
+        tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+      fi
+      node --version
   script:
+    - export PATH="$CARGO_HOME/bin:$PATH"
+    - export THUEPP_TIMEOUT_SCALE=2
     - make test
 
 tasks:

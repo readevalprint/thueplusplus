@@ -2,13 +2,14 @@
 
 Spec version stays in `SPEC_VERSION`. Package versions are the `version` fields below. This repository does not publish on its own. The commands here are the release path when a tag is ready.
 
-The three hosts share the API in [host-api.md](host-api.md).
+The hosts share the API in [host-api.md](host-api.md).
 
 | Host | Name | Version field |
 | --- | --- | --- |
 | Go | `github.com/readevalprint/thueplusplus/go` | git tag `go/vX.Y.Z` |
 | Python | `thuepp` | `pyproject.toml` `version` |
 | npm | `thuepp` | `js/package.json` `version` |
+| Rust | crate `thuepp` | `rust/Cargo.toml` `version` |
 
 ## Go
 
@@ -44,3 +45,14 @@ npm --prefix js publish   # npm credentials required; omit until the release is 
 ```
 
 The playground depends on `file:../js`. A published release replaces that dependency with the published version in a later change. Do not publish from a dirty tree.
+
+## Rust
+
+The crate is `rust/`. The library and the CLI binary are both named `thuepp`. `Cargo.toml` sets `publish = false`. This repository does not publish it.
+
+`license` is `MIT`, matching the npm package. The repository has no `LICENSE` file. Add one before a real publish. Then remove `publish = false` and:
+
+```bash
+cargo publish --dry-run --manifest-path rust/Cargo.toml
+cargo publish --manifest-path rust/Cargo.toml   # crates.io token required; omit until the release is intentional
+```

@@ -8,11 +8,14 @@ test:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run repository verification" >&2; exit 127; }
+	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to run repository verification" >&2; exit 127; }
 	uv run python metrics/test_history.py
 	uv run python metrics/check_history.py
 	uv run python tools/test_runner_limits.py
 	uv run python tools/check_contract.py
-	uv run python tools/example_runner.py
+	cargo test --manifest-path rust/Cargo.toml
+	cargo build --release --manifest-path rust/Cargo.toml
+	uv run python tools/example_runner.py --impl 'rust=./rust/target/release/thuepp'
 
 # Golden-program transcripts under tasks/. One JSON row per task, guest, and host.
 tasks:

@@ -1,0 +1,30 @@
+name: rust
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.6"
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Conformance
+        env:
+          # Heaviest Go lisp case is about 3s locally and misses the 10s
+          # manifest budget on a GitHub-hosted core. This stretches that
+          # budget. Local `make test` leaves it unset.
+          THUEPP_TIMEOUT_SCALE: "2"
+        run: make test

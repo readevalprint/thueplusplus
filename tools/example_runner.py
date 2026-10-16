@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import math
 import os
 import re
 import shlex
@@ -27,8 +28,22 @@ from run_limits import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-INTERNAL_JOBS = 8
+# Eight workers oversubscribe a 4-core runner. Cap at the machine's CPU count.
+INTERNAL_JOBS = min(8, os.cpu_count() or 1)
 DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
+
+
+def timeout_scale() -> float:
+    raw = os.environ.get("THUEPP_TIMEOUT_SCALE", "").strip()
+    if not raw:
+        return 1.0
+    try:
+        scale = float(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"THUEPP_TIMEOUT_SCALE must be a number >= 1, got {raw!r}") from exc
+    if not math.isfinite(scale) or scale < 1:
+        raise RuntimeError(f"THUEPP_TIMEOUT_SCALE must be a number >= 1, got {raw!r}")
+    return scale
 
 
 @dataclass(frozen=True)
@@ -241,6 +256,10 @@ def run_case(
     validate_case_metadata(config_path, case)
     args, bound_files = build_case_args(config_path, case, tmp, extra_args=extra_args, interpreter=interpreter)
     timeout = float(case.get("timeout", DEFAULT_TIMEOUT_SECONDS))
+    # Hosted runners are slower per core than the machines these budgets were
+    # timed on. THUEPP_TIMEOUT_SCALE stretches every case budget before the
+    # wasm multiplier. Unset, the manifest budget is unchanged.
+    timeout *= timeout_scale()
     # The wasm host is the same language build, started once per case. Give it
     # the same manifest budget scaled for interpreter startup and wasm speed.
     if interpreter.name == "wasm":
