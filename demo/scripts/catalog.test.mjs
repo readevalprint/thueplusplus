@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { CatalogError, buildCatalog, catalogFromSources, sitemapXml, taskDescription, transcriptCases } from './build-catalog.mjs'
+import { CatalogError, buildCatalog, catalogFromSources, publishedCases, sitemapXml, taskDescription } from './build-catalog.mjs'
 
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
 
@@ -28,11 +28,7 @@ function sourcesFor(solutions) {
     ],
     files: {
       factorial: {
-        markdown: '# Factorial\n\nPrint 10!, which is 3628800, and a newline.\n\nThere is no stdin.\n',
-        transcript: {
-          name: 'factorial',
-          expect: { exit_code: 0, stdout: '3628800\n', stderr: '' },
-        },
+        markdown: '# Factorial\n\nPrint n! and a newline.\n\nRead n from stdin.\n',
         solutions,
       },
     },
@@ -64,7 +60,11 @@ function resultsFor() {
       { id: 'forth', program: 'examples/forth/forth.tpp', rule_count: 45 },
       { id: 'lisp', program: 'examples/lisp/lisp.tpp', rule_count: 394 },
     ],
-    tasks: [{ id: 'factorial', title: 'Factorial' }],
+    tasks: [{
+      id: 'factorial',
+      title: 'Factorial',
+      cases: [{ name: 'ten', stdin: '10\n', stdout: '3628800\n', stderr: '', exit_code: 0 }],
+    }],
     grid: {
       factorial: {
         forth: { status: 'pass', step_count: 52 },
@@ -82,25 +82,18 @@ describe('task transcripts', () => {
     assert.equal(described.description, 'Print it.\n\nThen stop.')
   })
 
-  it('reads one transcript and several cases', () => {
-    const single = transcriptCases('factorial', {
-      name: 'factorial',
-      expect: { exit_code: 0, stdout: '3628800\n', stderr: '' },
-    })
-    assert.deepEqual(single, [{ name: 'factorial', stdin: '', stdout: '3628800\n', stderr: '', exitCode: 0 }])
-    const many = transcriptCases('sum-numbers', {
-      name: 'sum-numbers',
-      case: [
-        { name: 'three', stdin: '3\n', expect: { exit_code: 0, stdout: '60\n', stderr: '' } },
-        { name: 'none', stdin: '0\n', expect: { exit_code: 0, stdout: '0\n', stderr: '' } },
-      ],
-    })
-    assert.equal(many.length, 2)
-    assert.equal(many[1].stdin, '0\n')
+  it('reads the cases the Go test published', () => {
+    const cases = publishedCases('sum-numbers', [
+      { name: 'three', stdin: '3\n', stdout: '60\n', stderr: '', exit_code: 0 },
+      { name: 'none', stdin: '0\n', stdout: '0\n', stderr: '', exit_code: 0 },
+    ])
+    assert.equal(cases.length, 2)
+    assert.equal(cases[1].stdin, '0\n')
+    assert.equal(cases[0].stdout, '60\n')
   })
 
-  it('rejects a transcript that omits stdout', () => {
-    assert.throws(() => transcriptCases('factorial', { name: 'factorial', expect: { exit_code: 0, stderr: '' } }), CatalogError)
+  it('rejects a case that omits stdout', () => {
+    assert.throws(() => publishedCases('factorial', [{ name: 'ten', stdin: '10\n', stderr: '', exit_code: 0 }]), CatalogError)
   })
 })
 
@@ -119,7 +112,8 @@ describe('buildCatalog', () => {
     assert.equal(catalog.guests[1].ruleCount, 394)
     assert.equal(catalog.tasks[0].guests[0].solution, '1 2 *\n')
     assert.equal(catalog.tasks[0].guests[1].reason, 'Lisp cannot print plain text.')
-    assert.equal(catalog.tasks[0].summary, 'Print 10!, which is 3628800, and a newline.')
+    assert.equal(catalog.tasks[0].summary, 'Print n! and a newline.')
+    assert.equal(catalog.tasks[0].cases[0].stdout, '3628800\n')
     assert.equal(catalog.tasks[0].canonical, 'https://thuelang.org/tasks/factorial')
   })
 

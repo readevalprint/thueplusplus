@@ -1,4 +1,4 @@
-(let ((n 10) (a 0) (b 1) (i 0) (tmp 0))
+(let ((n (parse (readline))) (a 0) (b 1) (i 0) (tmp 0))
   (while (lt i n)
     (set tmp b)
     (set b (add a b))

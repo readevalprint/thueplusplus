@@ -150,3 +150,15 @@ jobs:
           path: build/go-thuepp
           key: go-native-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
       - run: make test-guests
+
+  tasks:
+    needs: changes
+    if: needs.changes.outputs.guests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - run: make tasks

@@ -11,11 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "metrics"))
-sys.path.insert(0, str(ROOT / "tasks"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 import historylib  # noqa: E402
-import runner as task_runner  # noqa: E402
 from run_limits import RUN_MEMORY_CAP_BYTES, bounded_run  # noqa: E402
 
 COMMIT_A = "0123456789abcdef0123456789abcdef01234567"
@@ -40,7 +38,7 @@ class HistoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "counts.json"
             path.write_text(text, encoding="utf-8")
-            self.assertEqual(task_runner.read_counts(path), (2, 5))
+            self.assertEqual(historylib.parse_counts(path.read_text(encoding="utf-8")), (2, 5))
 
     def test_parse_counts_rejects_extra_fields_and_bools(self) -> None:
         with self.assertRaises(historylib.HistoryError):

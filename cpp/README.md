@@ -38,7 +38,7 @@ Install with `cmake --install`. That installs the static library, the `thuepp` b
 
 ## Tasks and metrics
 
-`hosts.toml` registers this host for `make tasks-full` and the metrics benchmark. The build line is `make cpp`, one command, because the task runner does not use a shell. The environment label is `cpp`. Older history rows omit `cpp`; a missing host is a gap, not an error.
+`hosts.toml` registers this host for the metrics benchmark. Guest tasks run on native Go. The build line is `make cpp`, one command, because the task runner does not use a shell. The environment label is `cpp`. Older history rows omit `cpp`; a missing host is a gap, not an error.
 
 ## vcpkg
 

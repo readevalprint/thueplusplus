@@ -1,5 +1,5 @@
 # ROT13
 
-Read one line and print its ROT13 encoding, then a newline. Letters rotate by 13 places and keep their case. Every other character stays as it is.
+Read one line and print it after ROT13, then a newline.
 
-The transcript in `io.toml` is the contract.
+Letters rotate by 13 places. Everything else stays. The Go test checks `Hello, World!` and `a.b`, plus two short lines from seeds 3 and 11.

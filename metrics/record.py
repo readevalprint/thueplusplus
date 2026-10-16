@@ -22,12 +22,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "metrics"))
-sys.path.insert(0, str(ROOT / "tasks"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 import historylib  # noqa: E402
-import runner as task_runner  # noqa: E402
-from hosts import build_registered, host_ids  # noqa: E402
+from hosts import build_registered, host_ids, host_timeout  # noqa: E402
 from rules import count_rule_lines  # noqa: E402
 from run_limits import RUN_MEMORY_CAP_BYTES, bounded_run  # noqa: E402
 
@@ -85,7 +83,7 @@ def run_make_tasks() -> None:
         str(SUITE_TIMEOUT_KILL_SECONDS),
         str(SUITE_TIMEOUT_SECONDS),
         "make",
-        "tasks-full",
+        "tasks",
     ]
     completed = subprocess.run(command, cwd=ROOT)
     if not RESULTS_PATH.is_file():
@@ -147,7 +145,7 @@ def run_benchmarks(limits: dict) -> dict:
 
     def one(host: str) -> tuple[str, dict]:
         interpreter = by_name[host]
-        timeout = task_runner.host_timeout(float(limits["timeout_seconds"]), host)
+        timeout = host_timeout(float(limits["timeout_seconds"]), host)
         with tempfile.TemporaryDirectory(prefix=f"thuepp-bench-{host}-") as tmpname:
             counts_path = Path(tmpname) / "counts.json"
             argv = [
