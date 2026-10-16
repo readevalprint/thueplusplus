@@ -9,6 +9,9 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Added
 
+- Per-commit metrics history at `metrics/history.json`. The schema is `metrics/SCHEMA.md`. `metrics/record.py` appends the current commit: SHA, author, commit timestamp, guest rule-line counts, task pass / applied steps / probes from `make tasks`, and benchmark wall-clock time for each host. `metrics/backfill.py` fills older commits with rule-line counts where the current Python host can list rules. GitHub Actions commits a new `main` measurement. GitLab CI runs the same recorder. The static site fetches `/metrics/history.json`.
+- Host CLI `--counts PATH`. After a run it writes `{"applied_steps": N, "probes": N}`. `make tasks` records `probe_count` from that file on every task, guest, and host.
+
 - Golden-program task suite in `tasks/`. Each task is an I/O transcript. Forth and Lisp solutions run on every host under the shared step, state, probe, `timeout(1)`, and 256 MiB caps. `make tasks` writes `build/tasks/results.json` with pass/fail, applied steps, guest rule count, solution size, commit, author, and timestamp. GitLab CI archives that file from the `tasks` job.
 - Three importable hosts. Go module `github.com/readevalprint/thueplusplus/go`, package `thuepp`, CLI `go/cmd/thuepp`. Python distribution `thuepp` 0.5.0 with console script `thuepp`. npm package `thuepp` 0.5.0 (`js/`) with a Node CLI, ESM entry points, and TypeScript types. The playground depends on that package. Release steps are in `docs/releasing.md`. Nothing is published to a registry.
 - The manifest runner passes explicit `--max-steps 1000000` and `--max-state-bytes 8388608` when a case omits them, matching the probe flag it already passed. A `bindings.tpp` child gets the same three flags.

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/readevalprint/thueplusplus/go/thuepp"
@@ -18,6 +20,7 @@ func main() {
 	interp := thuepp.New()
 	var inputOverride *string
 	ruleCoveragePath := ""
+	countsPath := ""
 
 	for idx := 1; idx < len(args); {
 		arg := args[idx]
@@ -34,6 +37,16 @@ func main() {
 			idx += 2
 		case strings.HasPrefix(arg, "--rule-coverage="):
 			ruleCoveragePath = strings.TrimPrefix(arg, "--rule-coverage=")
+			idx++
+		case arg == "--counts":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --counts requires an argument")
+				os.Exit(1)
+			}
+			countsPath = args[idx+1]
+			idx += 2
+		case strings.HasPrefix(arg, "--counts="):
+			countsPath = strings.TrimPrefix(arg, "--counts=")
 			idx++
 		case arg == "--input":
 			if idx+1 >= len(args) {
@@ -109,6 +122,12 @@ func main() {
 			code = thuepp.ExitRuntime
 		}
 	}
+	if countsPath != "" {
+		if werr := writeCounts(countsPath, interp.AppliedSteps, interp.EvalCount); werr != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to write counts: %v\n", werr)
+			code = 1
+		}
+	}
 	if err := interp.WriteRuleCoverage(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to write rule coverage: %v\n", err)
 		code = 1
@@ -119,6 +138,20 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options]")
+}
+
+func writeCounts(path string, appliedSteps int, probes int) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	payload, err := json.Marshal(struct {
+		AppliedSteps int `json:"applied_steps"`
+		Probes       int `json:"probes"`
+	}{AppliedSteps: appliedSteps, Probes: probes})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(payload, '\n'), 0o644)
 }
 
 func applyLimit(text string, target **int) {

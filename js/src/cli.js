@@ -50,6 +50,7 @@ async function main() {
     if (Object.prototype.hasOwnProperty.call(options, 'input')) runOptions.input = options.input
     const result = await thuepp.run(runOptions)
     if (options.ruleCoverage) writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
+    if (options.counts && !options.listRules) writeCounts(options.counts, result)
     process.stdout.write(result.stdout || '')
     process.stderr.write(result.stderr || '')
     if (result.error) process.stderr.write(`Error: ${result.error}\n`)
@@ -79,6 +80,9 @@ function parseArgs(argv) {
     } else if (arg === '--rule-coverage' || arg.startsWith('--rule-coverage=')) {
       options.ruleCoverage = takeValue(argv, index, '--rule-coverage')
       index += arg.startsWith('--rule-coverage=') ? 1 : 2
+    } else if (arg === '--counts' || arg.startsWith('--counts=')) {
+      options.counts = takeValue(argv, index, '--counts')
+      index += arg.startsWith('--counts=') ? 1 : 2
     } else if (arg === '--input' || arg.startsWith('--input=')) {
       options.input = takeValue(argv, index, '--input')
       index += arg.startsWith('--input=') ? 1 : 2
@@ -105,6 +109,14 @@ function parseArgs(argv) {
     }
   }
   return options
+}
+
+function writeCounts(path, result) {
+  if (!Number.isInteger(result.appliedSteps) || !Number.isInteger(result.evalCount)) {
+    process.stderr.write('Error: host result missing integer appliedSteps and evalCount\n')
+    process.exit(1)
+  }
+  writeFileSync(path, `${JSON.stringify({ applied_steps: result.appliedSteps, probes: result.evalCount })}\n`)
 }
 
 function takeValue(argv, index, flag) {

@@ -65,6 +65,34 @@ tasks:
     paths:
       - build/tasks/results.json
 
+metrics:
+  image: golang:1.24.6-bookworm
+  needs:
+    - job: tasks
+      artifacts: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_SERVER_HOST != "gitlab.com"'
+      when: always
+  before_script:
+    - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
+    - |
+      if ! command -v uv >/dev/null 2>&1; then
+        curl -LsSf https://astral.sh/uv/install.sh \
+          | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 sh -s -- --no-modify-path
+        export PATH="/tmp/uv-bin:$PATH"
+      fi
+    - uv --version
+    - go version
+  script:
+    - |
+      export PATH="/tmp/uv-bin:${PATH}"
+      uv run python metrics/record.py --results build/tasks/results.json
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - metrics/history.json
+
 e2e:
   image: node:22-bookworm
   rules:
@@ -118,6 +146,8 @@ pages:
     - make demo-build
     - rm -rf public
     - cp -R demo/dist public
+    - mkdir -p public/metrics
+    - cp metrics/history.json public/metrics/history.json
     - |
       for path in \
         public/index.html \
@@ -125,7 +155,8 @@ pages:
         public/playground/index.html \
         public/embed/index.html \
         public/embed/demo/index.html \
-        public/thuepp.wasm
+        public/thuepp.wasm \
+        public/metrics/history.json
       do
         test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
       done

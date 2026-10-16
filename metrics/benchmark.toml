@@ -1,0 +1,6 @@
+program = "benchmark.tpp"
+max_steps = 15000
+max_evals = 50000
+max_state_bytes = 16384
+timeout_seconds = 30
+memory_cap_bytes = 268435456
