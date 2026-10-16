@@ -946,6 +946,24 @@ func isWord(s string) bool {
 	return true
 }
 
+// parseReadRHS checks a ::< right-hand side. A read is exactly two tokens:
+// a finite positive timeout in seconds, then a literal resource name.
+func parseReadRHS(lineNumber int, rhs string) (string, time.Duration, error) {
+	parts := strings.Fields(strings.TrimSpace(rhs))
+	if len(parts) != 2 {
+		return "", 0, fmt.Errorf("Line %d: ::< requires read_spec and literal resource", lineNumber)
+	}
+	readSpec, resource := parts[0], parts[1]
+	seconds, err := strconv.ParseFloat(readSpec, 64)
+	if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
+		return "", 0, fmt.Errorf("Line %d: invalid read timeout '%s'", lineNumber, readSpec)
+	}
+	if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
+		return "", 0, fmt.Errorf("Line %d: ::< resource must be a literal binding name", lineNumber)
+	}
+	return resource, time.Duration(seconds * float64(time.Second)), nil
+}
+
 func decodeReplacementEscapes(text string) string {
 	ph := "\x00BACKSLASH\x00"
 	text = strings.ReplaceAll(text, `\\`, ph)
@@ -1210,23 +1228,8 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				i.recordRuleCoverage(rule)
 			case Read:
-				parts := strings.Fields(strings.TrimSpace(rule.RHS))
-				if len(parts) != 2 {
-					err := fmt.Errorf("Line %d: ::< requires read_spec and literal resource", rule.LineNumber)
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return ExitRuntime, err
-				}
-				readSpec, resource := parts[0], parts[1]
-				var readTimeout time.Duration
-				seconds, err := strconv.ParseFloat(readSpec, 64)
-				if err != nil || math.IsInf(seconds, 0) || math.IsNaN(seconds) || seconds <= 0 {
-					err := fmt.Errorf("Line %d: invalid read timeout '%s'", rule.LineNumber, readSpec)
-					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
-					return ExitRuntime, err
-				}
-				readTimeout = time.Duration(seconds * float64(time.Second))
-				if !isWord(resource) || resource[0] >= '0' && resource[0] <= '9' {
-					err := fmt.Errorf("Line %d: ::< resource must be a literal binding name", rule.LineNumber)
+				resource, readTimeout, err := parseReadRHS(rule.LineNumber, rule.RHS)
+				if err != nil {
 					i.recordTraceWithError(rule, ruleIndex, match, stateBefore, "", nil, err.Error())
 					return ExitRuntime, err
 				}

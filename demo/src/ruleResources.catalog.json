@@ -1,0 +1,828 @@
+[
+  {
+    "path": "examples/basic/basic.tpp",
+    "resources": [
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stderr",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/brainfuck/brainfuck.tpp",
+    "resources": [
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stderr",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/builtin/builtin.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/builtin/tests/fixtures/bad-arity.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/builtin/tests/fixtures/bad-missing-capture.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/builtin/tests/fixtures/bad-template-arg.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/builtin/tests/fixtures/bad-unknown.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/builtin/tests/fixtures/parser-error-fixture.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/counter/counter.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/cow-kv/cow-kv.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/echo/echo.tpp",
+    "resources": [
+      {
+        "name": "input",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/fibonacci/fibonacci.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/forth/forth.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stderr",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/guess-number/guess-number.tpp",
+    "resources": [
+      {
+        "name": "random",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/hash-data/alias-metadata.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/hash-data/hash-data.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/hash-data/source-hash-rule.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/hello/hello.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/immutable-rules/generated-rule-inert.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/immutable-rules/generated-substitution-inert.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/limits/max-evals.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/limits/max-state-two.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/limits/max-state-zero-empty.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/limits/max-state-zero-nonempty.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/limits/max-steps.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/lisp/lisp.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stderr",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/alias.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/braces.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/builtin.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/chain.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/compose.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/empty-mid.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/filter.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/first-match.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/invalid.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/literal.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/lookup.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/missing-operator.tpp",
+    "resources": [],
+    "errors": [
+      "Line 1: ::| requires a terminal operator"
+    ]
+  },
+  {
+    "path": "examples/mid/quote.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/search.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/mid/verbatim.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/multiline/multiline.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/dollar-transitive.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/escaped-dollar-literal.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/invalid-duplicate.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/invalid-forward-alias.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/invalid-named-capture-p.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/invalid-named-capture.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/invalid-old-syntax.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/invalid-rule-forward.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/rhs-literal.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-alias/token-boundary.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pattern-order/pattern-order.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/pct/pct.tpp",
+    "resources": [
+      {
+        "name": "input",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/process/line-read.tpp",
+    "resources": [
+      {
+        "name": "worker",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/process/process.tpp",
+    "resources": [
+      {
+        "name": "worker",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/process/sequential-line-read.tpp",
+    "resources": [
+      {
+        "name": "worker",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/process/write-read-line.tpp",
+    "resources": [
+      {
+        "name": "worker",
+        "reads": true,
+        "writes": true
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/rule-syntax/no-whitespace.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/simple/simple.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/final-separator-empty.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/final-separator-multiline-state.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/final-separator-one-row.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/hash-state-row.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/include-literal-state.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/invalid-data-operator.tpp",
+    "resources": [],
+    "errors": [
+      "Line 1: Invalid rule syntax: ^x$ ::% data"
+    ]
+  },
+  {
+    "path": "examples/source-parsing/no-separator-empty-state.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/post-state-alias-as-state.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/source-parsing/post-state-rule-as-state.tpp",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/state-rewrite/cycle-self.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/state-rewrite/self-update.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/state-rewrite/toggle-self.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/state-rewrite/update-above.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/template-delimiters/template-delimiters.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/tpp-process/counter-service.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/tpp-process/parent-counter.tpp",
+    "resources": [
+      {
+        "name": "svc",
+        "reads": true,
+        "writes": true
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/trace/rule-failure.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "examples/trace/state-limit.tpp",
+    "resources": [],
+    "errors": []
+  }
+]

@@ -76,7 +76,8 @@ test('playground is outside the docs shell in both themes', async ({ page }) => 
   await page.getByTestId('theme-toggle').click()
   await page.getByTestId('theme-light').click()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
-  await expect(page.getByTestId('playground-header')).toBeVisible()
+  await expect(page.getByTestId('site-header')).toBeVisible()
+  await expect(page.getByTestId('playground-toolbar')).toBeVisible()
   await expect(page.getByTestId('app-shell')).toHaveCount(0)
 })
 
@@ -110,11 +111,15 @@ test('deep links render their own heading', async ({ page }) => {
     ['/hosts', 'Go, Python, JavaScript, Rust, and C++.'],
     ['/guests', 'Languages written in Thue++.'],
     ['/tasks', 'Programs with a finish line.'],
-    ['/playground', 'playground'],
   ] as const) {
     await page.goto(path)
     await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
   }
+  await page.goto('/playground')
+  await expect(page.getByTestId('site-header')).toBeVisible()
+  await expect(page.getByTestId('site-nav').getByRole('link', { name: 'Playground' })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByTestId('playground-toolbar')).toBeVisible()
+  await expect(page.getByTestId('app-shell')).toHaveCount(0)
   await page.goto('/learn')
   await expect(page.getByTestId('page-details')).toBeVisible()
 })

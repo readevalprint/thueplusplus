@@ -170,9 +170,10 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp()
 
-    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="site-header"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="playground-toolbar"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
-    expect(wrapper.get('h1').text()).toBe('playground')
+    expect(wrapper.get('[data-test="site-nav"]').get('a[href="/playground"]').attributes('aria-current')).toBe('page')
     expect(wrapper.find('[data-test="page-hero-graphic"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-share"]').text()).toBe('share')
     expect(wrapper.get('header a[href="/"]').attributes('aria-current')).toBeUndefined()
@@ -216,12 +217,18 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="stdio-panel"]').exists()).toBe(false)
     expect(wrapper.find('[data-slot="resizable-panel"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="playground-split"]').attributes('data-direction')).toBe('horizontal')
-    expect(wrapper.get('[data-test="resource-section-stdin"]').text()).toContain('stdin')
+    expect(wrapper.find('[data-test="resource-section-stdin"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stderr"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="resource-section-stdout"]').text()).toContain('stdout')
-    expect(wrapper.get('[data-test="resource-section-stderr"]').text()).toContain('stderr')
-    expect(wrapper.get('[data-test="resource-input-stdin"]').element.tagName).toBe('TEXTAREA')
+    expect(wrapper.find('[data-test="resource-input-stdin"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="resource-output-stdout"]').element.tagName).toBe('TEXTAREA')
-    expect(wrapper.get('[data-test="resource-output-stderr"]').element.tagName).toBe('TEXTAREA')
+    expect(wrapper.find('[data-test="resource-output-stderr"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="playground-column"]').attributes('data-orientation')).toBe('vertical')
+    expect(wrapper.get('[data-test="playground-panel-resources"]').text()).toContain('resources')
+    expect(wrapper.get('[data-test="playground-panel-state"]').text()).toContain('state')
+    expect(wrapper.get('[data-test="playground-panel-trace"]').text()).toContain('trace')
+    expect(wrapper.get('[data-test="playground-resize-resources"]').attributes('aria-label')).toBe('Resize resources and state')
+    expect(wrapper.get('[data-test="playground-resize-trace"]').attributes('aria-label')).toBe('Resize state and trace')
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
     expect(loadedSource).toContain('Hello, World')
     expect(loadedSource).not.toContain('\n::=\nSTART\n')
@@ -298,6 +305,73 @@ describe('Go-WASM demo UI', () => {
     await wrapper.get('[data-test="playground-rules"]').setValue('#read ::< @VALUE custom\n#done ::> custom done\n')
 
     expect(wrapper.get('[data-test="resource-section-custom"]').text()).toContain('custom')
+    expect(wrapper.get('[data-test="playground-rule-error"]').text()).toContain("Line 1: invalid read timeout '@VALUE'")
+    expect(wrapper.find('[data-test="resource-input-custom"]').exists()).toBe(false)
+  })
+
+  it('sizes the resources, state, and trace panels equally, then restores a saved layout', async () => {
+    localStorage.removeItem('reka:thuepp-playground-column')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const fresh = await mountApp()
+    const grow = (wrapper: Awaited<ReturnType<typeof mountApp>>, name: string) => {
+      const panel = wrapper.get(`[data-test="playground-panel-${name}"]`).element.parentElement as HTMLElement
+      return panel.style.flexGrow
+    }
+    const initial = ['resources', 'state', 'trace'].map(name => grow(fresh, name))
+    expect(initial.every(size => size === initial[0] && Number(size) > 0)).toBe(true)
+
+    localStorage.setItem('reka:thuepp-playground-column', JSON.stringify({
+      'resources,state,trace': { expandToSizes: {}, layout: [60, 25, 15] },
+    }))
+    const restored = await mountApp()
+    expect(['resources', 'state', 'trace'].map(name => Number(grow(restored, name)))).toEqual([60, 25, 15])
+    localStorage.removeItem('reka:thuepp-playground-column')
+  })
+
+  it('shows only bar and the Go error for a read rule without a timeout', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = await mountApp()
+    await wrapper.get('[data-test="playground-rules"]').setValue('foo ::> bar\nbaz ::< qux\n')
+
+    expect(wrapper.get('[data-test="playground-panel-resources"]').text()).toContain('resources')
+    expect(wrapper.get('[data-test="resource-section-bar"]').text()).toContain('bar')
+    expect(wrapper.get('[data-test="resource-output-bar"]').element.tagName).toBe('TEXTAREA')
+    expect(wrapper.find('[data-test="resource-input-bar"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-qux"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stdin"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stdout"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stderr"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="playground-rule-error"]').text()).toBe('Line 2: ::< requires read_spec and literal resource')
+  })
+
+  it('labels the read input with the resource name from ::< timeout name', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = await mountApp()
+    await wrapper.get('[data-test="playground-rules"]').setValue('foo ::> bar\nbaz ::< 30 qux\n')
+
+    expect(wrapper.find('[data-test="playground-rule-error"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="resource-section-bar"]').text()).toContain('bar')
+    expect(wrapper.find('[data-test="resource-input-bar"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="resource-output-bar"]').element.tagName).toBe('TEXTAREA')
+    const qux = wrapper.get('[data-test="resource-section-qux"]')
+    expect(qux.text()).toContain('qux')
+    expect(qux.text()).not.toContain('hello')
+    expect(wrapper.get('[data-test="resource-input-qux"]').attributes('aria-labelledby')).toBe('resource-title-qux')
+    expect(wrapper.get('#resource-title-qux').text()).toBe('qux')
+    expect(wrapper.get('[data-test="resource-submit-qux"]').text()).toBe('Submit')
+    expect(wrapper.find('[data-test="resource-output-qux"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stdin"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stdout"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stderr"]').exists()).toBe(false)
+
+    mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '', state: 'baz', resourceLogs: [] })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([
+      { name: 'bar', inputText: '', readError: undefined },
+      { name: 'qux', inputText: '', readError: undefined },
+    ])
   })
 
   it('steps one rule and updates State as the current state', async () => {
@@ -355,7 +429,7 @@ describe('Go-WASM demo UI', () => {
     const diffs = wrapper.get('[data-test="playground-diffs"]')
     const entries = wrapper.findAll('.state-diff-row')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 1')
-    expect(wrapper.get('[data-test="resource-output-stderr"]').element).toHaveProperty('value', "Builtin 'div' division by zero")
+    expect(wrapper.find('[data-test="resource-section-stderr"]').exists()).toBe(false)
     expect(diffs.text()).toContain('Builtin \'div\' division by zero')
     expect(entries[1].find('.state-diff-error').exists()).toBe(true)
     expect(entries[1].find('.state-diff-line.removed').exists()).toBe(false)
@@ -397,7 +471,7 @@ describe('Go-WASM demo UI', () => {
 
     const diffs = wrapper.get('[data-test="playground-diffs"]')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('exited 1')
-    expect(wrapper.get('[data-test="resource-output-stderr"]').element).toHaveProperty('value', "Line 1: Unknown builtin 'nope'")
+    expect(wrapper.find('[data-test="resource-section-stderr"]').exists()).toBe(false)
     expect(diffs.text()).toContain('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
     expect(diffs.text()).toContain("Line 1: Unknown builtin 'nope'")
     expect(diffs.find('.state-diff-error').exists()).toBe(true)
@@ -829,11 +903,11 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[0][0].resources).toEqual([
+      { name: 'random', inputText: '', readError: undefined },
       { name: 'stdout', inputText: '', readError: undefined },
       { name: 'stdin', inputText: '', readError: undefined },
-      { name: 'stderr', inputText: '', readError: undefined },
-      { name: 'random', inputText: '', readError: undefined },
     ])
+    expect(wrapper.find('[data-test="resource-section-stderr"]').exists()).toBe(false)
     expect(mockedRunWithWorker.mock.calls[0][0].procs).toBeUndefined()
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Guess:\nPlease enter digits only.\nGuess:\nToo low.\nGuess:\nToo high.\nGuess:\nCorrect!\n')
     expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', 'x\n3\n8\n7')
@@ -844,32 +918,33 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
 
-    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Ada')
+    expect(wrapper.get('#resource-title-input').text()).toBe('input')
+    await wrapper.get('[data-test="resource-input-input"]').setValue('Ada')
     expect(wrapper.find('[data-test="stdin-send"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="stdin-queue"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="resource-ready-stdin"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-ready-input"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="resource-section-stdin"]').exists()).toBe(false)
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 1,
       stdout: '',
       stderr: '',
-      error: 'ERR:resource:stdin:pending_input:stdin',
-      errors: 'ERR:resource:stdin:pending_input:stdin',
+      error: 'ERR:resource:input:pending_input:input',
+      errors: 'ERR:resource:input:pending_input:input',
       state: 'read',
       resourceLogs: [
-        { name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' },
+        { name: 'input', reads: [], writes: [], errors: ['pending_input:input'], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
-        { name: 'stderr', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
       ],
     })
     await wrapper.get('[data-test="playground-step"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[0][0].input).toBe('read')
-    expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: '', readError: undefined })
+    expect(mockedRunWithWorker.mock.calls[0][0].resources.find(resource => resource.name === 'input')).toEqual({ name: 'input', inputText: '', readError: undefined })
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'read')
-    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for stdin')
-    expect(document.activeElement).toBe(wrapper.get('[data-test="resource-input-stdin"]').element)
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('waiting for input')
+    expect(document.activeElement).toBe(wrapper.get('[data-test="resource-input-input"]').element)
 
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 0,
@@ -878,28 +953,27 @@ describe('Go-WASM demo UI', () => {
       state: 'got:Ada',
       trace: [{ step: 1, ruleIndex: 1, sourcePath: 'examples/echo/echo.tpp', lineNumber: 8, operator: '::<', lhs: '@IN@', matchStart: 4, matchEnd: 8, groups: {}, stateBefore: 'got:@IN@', replacement: 'Ada', stateAfter: 'got:Ada' }],
       resourceLogs: [
-        { name: 'stdin', reads: ['Ada'], writes: [], errors: [], remainingInputText: '', outputText: '' },
+        { name: 'input', reads: ['Ada'], writes: [], errors: [], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
-        { name: 'stderr', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
       ],
     })
-    await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
+    await wrapper.get('[data-test="resource-submit-input"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[1][0].maxSteps).toBe(1)
-    expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'stdin')).toEqual({ name: 'stdin', inputText: 'Ada', readError: undefined })
+    expect(mockedRunWithWorker.mock.calls[1][0].resources.find(resource => resource.name === 'input')).toEqual({ name: 'input', inputText: 'Ada', readError: undefined })
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'got:Ada')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
 
-    await wrapper.get('[data-test="resource-input-stdin"]').setValue('Grace')
+    await wrapper.get('[data-test="resource-input-input"]').setValue('Grace')
     mockedRunWithWorker.mockResolvedValueOnce({
       exitCode: 1,
       stdout: '',
       stderr: '',
-      error: 'ERR:resource:stdin:pending_input:stdin',
-      errors: 'ERR:resource:stdin:pending_input:stdin',
+      error: 'ERR:resource:input:pending_input:input',
+      errors: 'ERR:resource:input:pending_input:input',
       state: 'got:@IN@',
-      resourceLogs: [{ name: 'stdin', reads: [], writes: [], errors: ['pending_input:stdin'], remainingInputText: '', outputText: '' }],
+      resourceLogs: [{ name: 'input', reads: [], writes: [], errors: ['pending_input:input'], remainingInputText: '', outputText: '' }],
     })
     await wrapper.get('[data-test="playground-continue"]').trigger('click')
     await flush()
@@ -910,15 +984,15 @@ describe('Go-WASM demo UI', () => {
       stderr: '',
       state: '',
       resourceLogs: [
-        { name: 'stdin', reads: ['Grace'], writes: [], errors: [], remainingInputText: '', outputText: '' },
+        { name: 'input', reads: ['Grace'], writes: [], errors: [], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: ['Grace\n'], errors: [], remainingInputText: '', outputText: 'Grace\n' },
       ],
     })
-    await wrapper.get('[data-test="resource-submit-stdin"]').trigger('click')
+    await wrapper.get('[data-test="resource-submit-input"]').trigger('click')
     await flush()
 
     expect(mockedRunWithWorker.mock.calls[3][0].maxSteps).toBe(1)
-    expect(wrapper.get('[data-test="resource-input-stdin"]').element).toHaveProperty('value', '')
+    expect(wrapper.get('[data-test="resource-input-input"]').element).toHaveProperty('value', '')
     expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'Grace\n')
     expect(wrapper.find('[data-test="terminal"]').exists()).toBe(false)
   })
@@ -927,10 +1001,11 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
     const wrapper = await mountApp({ attachTo: document.body })
 
-    expect(wrapper.find('[data-test="playground-header"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="site-header"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="playground-toolbar"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="page-hero"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="playground-workbench"]').text()).toContain('step')
+    expect(wrapper.get('[data-test="playground-toolbar"]').text()).toContain('step')
     expect(wrapper.find('[data-test="playground-diffs"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="playground-examples-trigger"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="playground-settings-trigger"]').exists()).toBe(true)
@@ -943,6 +1018,7 @@ describe('Go-WASM demo UI', () => {
     const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="site-header"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="page-hero"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-workbench"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'START')

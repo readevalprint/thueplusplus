@@ -1,22 +1,16 @@
 <template>
   <div class="bg-void text-bone flex h-dvh flex-col overflow-hidden font-mono" data-test="playground-standalone" :data-chrome="props.chrome">
-    <header data-test="playground-header" class="border-line relative z-20 flex h-[52px] shrink-0 items-center gap-1 border-b px-1.5 text-[13px] min-[720px]:gap-3 min-[720px]:px-6">
-      <RouterLink to="/" class="flex shrink-0 items-center gap-2 text-bone">
-        <Mark />
-        <span class="font-display font-semibold tracking-[-0.03em] max-[719px]:sr-only">Thue++</span>
-      </RouterLink>
-      <span class="text-dim shrink-0" aria-hidden="true">/</span>
-      <h1 class="text-ash shrink-0 text-[13px] font-normal lowercase">playground</h1>
+    <SiteHeader v-if="props.chrome === 'page'" />
+    <div data-test="playground-toolbar" role="toolbar" aria-label="Playground" class="border-line relative z-20 flex shrink-0 flex-wrap items-center gap-1 border-b px-1.5 py-1.5 text-[13px] min-[720px]:gap-2 min-[720px]:px-3">
       <div class="relative shrink-0" data-test="playground-examples">
         <Button type="button" variant="outline" class="max-[719px]:h-8 max-[719px]:px-2" data-test="playground-examples-trigger" :aria-expanded="examplesOpen" @click="examplesOpen = !examplesOpen">examples</Button>
         <div v-show="examplesOpen" class="border-line bg-surface absolute top-full left-0 z-30 mt-1 max-h-[70vh] w-[min(100vw-2rem,22rem)] overflow-y-auto border">
           <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
         </div>
       </div>
-      <div class="flex-1" />
       <div class="relative shrink-0" data-test="playground-settings">
         <Button type="button" variant="outline" class="max-[719px]:h-8 max-[719px]:px-2" data-test="playground-settings-trigger" :aria-expanded="settingsOpen" @click="settingsOpen = !settingsOpen">limits</Button>
-        <div v-show="settingsOpen" class="border-line bg-surface absolute top-full right-0 z-30 mt-1 max-h-[70vh] w-[min(100vw-2rem,22rem)] overflow-y-auto border">
+        <div v-show="settingsOpen" class="border-line bg-surface absolute top-full left-0 z-30 mt-1 max-h-[70vh] w-[min(100vw-2rem,22rem)] overflow-y-auto border">
           <PlaygroundSettings
             v-model:max-steps="maxSteps"
             v-model:max-evals="maxEvals"
@@ -26,65 +20,82 @@
           />
         </div>
       </div>
-      <ThemeToggle class="max-[719px]:size-8" />
+      <Button type="button" variant="outline" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" aria-label="Reset to first state" @click="resetToFirstState">reset</Button>
+      <Button type="button" variant="outline" data-test="playground-undo" :disabled="!canUndo" title="Step back" aria-label="Step back" @click="undoStep">back</Button>
+      <Button type="button" variant="outline" data-test="playground-pause" :disabled="!continuing" title="Pause" aria-label="Pause" @click="pauseProgram">pause</Button>
+      <Button type="button" variant="outline" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">play</Button>
+      <Button type="button" variant="outline" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">step</Button>
+      <Button type="button" variant="outline" data-test="playground-end" :disabled="!canRun" :title="endTitle" aria-label="End" @click="() => endProgram()">end</Button>
+      <p v-if="selectedTestCase" data-test="playground-selected-case" class="text-dim min-w-0 text-[11px]">
+        <span class="text-ash block truncate">{{ selectedTestCase.caseName }}</span>
+        <span class="block truncate">{{ selectedTestCase.manifestPath }}</span>
+      </p>
+      <div class="flex-1" />
+      <ThemeToggle v-if="props.chrome !== 'page'" class="max-[719px]:size-8" />
       <Button type="button" class="max-[719px]:h-8 max-[719px]:px-2" data-test="playground-share" @click="sharePlayground">share</Button>
       <Button v-if="props.showOpenFull" as="a" variant="ghost" :href="openFullHref" data-test="embed-open-full">open full</Button>
-    </header>
+    </div>
 
     <div data-test="playground-workbench" class="flex min-h-0 flex-1 flex-col">
       <PlaygroundSplit :stacked="stacked">
         <template #editor>
           <div class="bg-surface flex h-full min-h-0 flex-col">
-            <div class="border-line flex flex-wrap items-center gap-2 border-b px-3 py-2">
-              <Button type="button" variant="outline" data-test="playground-reset" :disabled="!canReset" title="Reset to first state" aria-label="Reset to first state" @click="resetToFirstState">reset</Button>
-              <Button type="button" variant="outline" data-test="playground-undo" :disabled="!canUndo" title="Step back" aria-label="Step back" @click="undoStep">back</Button>
-              <Button type="button" variant="outline" data-test="playground-pause" :disabled="!continuing" title="Pause" aria-label="Pause" @click="pauseProgram">pause</Button>
-              <Button type="button" variant="outline" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">play</Button>
-              <Button type="button" variant="outline" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">step</Button>
-              <Button type="button" variant="outline" data-test="playground-end" :disabled="!canRun" :title="endTitle" aria-label="End" @click="() => endProgram()">end</Button>
-              <p v-if="selectedTestCase" data-test="playground-selected-case" class="text-dim min-w-0 text-[11px]">
-                <span class="text-ash block truncate">{{ selectedTestCase.caseName }}</span>
-                <span class="block truncate">{{ selectedTestCase.manifestPath }}</span>
-              </p>
-            </div>
             <p v-if="loadError" class="border-signal bg-signal/10 text-destructive border-l-2 px-3 py-2 text-[12px]">{{ loadError }}</p>
+            <p v-if="ruleErrors.length" data-test="playground-rule-error" class="border-signal bg-signal/10 text-destructive border-l-2 px-3 py-2 text-[12px] whitespace-pre-wrap">{{ ruleErrors.join('\n') }}</p>
             <RulesMonacoEditor v-model="rulesText" class="min-h-0 flex-1" :highlight-line="matchedRuleLine" :readonly="!props.editable" data-test="playground-rules" @paste="seedStateFromSource" />
           </div>
         </template>
         <template #output>
-          <Tabs v-model="outputTab" class="flex h-full min-h-0 flex-col gap-0">
-            <TabsList class="bg-raised h-[34px] w-full justify-start rounded-none p-[3px]">
-              <TabsTrigger value="output" data-test="playground-tab-output" class="data-[state=active]:bg-isoline h-full rounded-[2px] px-3 font-mono text-[13px] lowercase data-[state=active]:shadow-none">output</TabsTrigger>
-              <TabsTrigger value="state" data-test="playground-tab-state" class="data-[state=active]:bg-isoline h-full rounded-[2px] px-3 font-mono text-[13px] lowercase data-[state=active]:shadow-none">state</TabsTrigger>
-              <TabsTrigger value="trace" data-test="playground-tab-trace" class="data-[state=active]:bg-isoline h-full rounded-[2px] px-3 font-mono text-[13px] lowercase data-[state=active]:shadow-none">trace</TabsTrigger>
-            </TabsList>
-            <TabsContent value="output" force-mount class="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden">
-              <div id="output" data-test="resource-sections" class="flex flex-col gap-4 p-4">
-                <ResourceSection
-                  v-for="resource in resourceSections"
-                  :key="resource.name"
-                  :resource="resource"
-                  :input="resourceInputs[resource.name] ?? ''"
-                  :output="resourceOutputText(resource.name)"
-                  :attention="resourceAttention[resource.name]"
-                  :running="isBusy"
-                  :can-submit="requestedResourceName === resource.name"
-                  :show-input="showResourceInput(resource)"
-                  :show-output="showResourceOutput(resource)"
-                  @update:input="setResourceInput(resource.name, $event)"
-                  @submit="submitResource(resource.name)"
-                />
-              </div>
-            </TabsContent>
-            <TabsContent value="state" force-mount class="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden">
-              <Textarea v-model="stateText" class="border-line bg-surface h-full min-h-32 rounded-none border-0 font-mono text-[13px]" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
-            </TabsContent>
-            <TabsContent value="trace" force-mount class="min-h-0 flex-1 overflow-auto data-[state=inactive]:hidden">
-              <div id="trace" class="p-2">
-                <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <ResizablePanelGroup
+            direction="vertical"
+            auto-save-id="thuepp-playground-column"
+            data-test="playground-column"
+            class="h-full min-h-0"
+          >
+            <ResizablePanel id="resources" :order="1" :default-size="100 / 3" :min-size="8" class="flex min-h-0 flex-col">
+              <section data-test="playground-panel-resources" class="bg-surface flex h-full min-h-0 flex-col">
+                <h2 class="border-line bg-raised text-ash flex h-7 shrink-0 items-center border-b px-3 font-mono text-[13px] lowercase">resources</h2>
+                <div data-test="resource-sections" class="min-h-0 flex-1 overflow-auto">
+                  <div class="flex flex-col gap-4 p-4">
+                    <ResourceSection
+                      v-for="resource in resourceSections"
+                      :key="resource.name"
+                      :resource="resource"
+                      :input="resourceInputs[resource.name] ?? ''"
+                      :output="resourceOutputText(resource.name)"
+                      :attention="resourceAttention[resource.name]"
+                      :running="isBusy"
+                      :can-submit="requestedResourceName === resource.name"
+                      :show-input="showResourceInput(resource)"
+                      :show-output="showResourceOutput(resource)"
+                      @update:input="setResourceInput(resource.name, $event)"
+                      @submit="submitResource(resource.name)"
+                    />
+                  </div>
+                </div>
+              </section>
+            </ResizablePanel>
+            <ResizableHandle with-handle aria-label="Resize resources and state" data-test="playground-resize-resources" />
+            <ResizablePanel id="state" :order="2" :default-size="100 / 3" :min-size="8" class="flex min-h-0 flex-col">
+              <section data-test="playground-panel-state" class="bg-surface flex h-full min-h-0 flex-col">
+                <h2 class="border-line bg-raised text-ash flex h-7 shrink-0 items-center border-b px-3 font-mono text-[13px] lowercase">state</h2>
+                <div class="min-h-0 flex-1 overflow-hidden">
+                  <Textarea v-model="stateText" class="border-line bg-surface field-sizing-fixed h-full min-h-0 resize-none rounded-none border-0 font-mono text-[13px] shadow-none focus-visible:ring-0" data-test="playground-state" :readonly="!props.editable" spellcheck="false" wrap="soft" @input="clearDiffs" />
+                </div>
+              </section>
+            </ResizablePanel>
+            <ResizableHandle with-handle aria-label="Resize state and trace" data-test="playground-resize-trace" />
+            <ResizablePanel id="trace" :order="3" :default-size="100 / 3" :min-size="8" class="flex min-h-0 flex-col">
+              <section data-test="playground-panel-trace" class="bg-surface flex h-full min-h-0 flex-col">
+                <h2 class="border-line bg-raised text-ash flex h-7 shrink-0 items-center border-b px-3 font-mono text-[13px] lowercase">trace</h2>
+                <div data-test="playground-trace" class="min-h-0 flex-1 overflow-auto">
+                  <div class="p-2">
+                    <StateDiffs :entries="stateDiffs" :selected-key="selectedHistoryKey" @select="selectHistoryEntry" />
+                  </div>
+                </div>
+              </section>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </template>
       </PlaygroundSplit>
     </div>
@@ -102,11 +113,10 @@
 import { useMediaQuery } from '@vueuse/core'
 import { diffChars } from 'diff'
 import { computed, nextTick, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Textarea } from '@/components/ui/textarea'
-import Mark from '@/components/Mark.vue'
+import SiteHeader from '@/components/SiteHeader.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import PlaygroundSettings from '@/playground/PlaygroundSettings.vue'
 import PlaygroundSplit from '@/playground/PlaygroundSplit.vue'
@@ -115,6 +125,7 @@ import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
 import TestCaseMenu from './TestCaseMenu.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
+import { analyzeRules, type ResourceUsage } from './ruleResources'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
 
@@ -136,7 +147,6 @@ const props = withDefaults(defineProps<{
 const stacked = useMediaQuery('(max-width: 719px)')
 const examplesOpen = ref(false)
 const settingsOpen = ref(false)
-const outputTab = ref('output')
 const shareState = ref('')
 const appliedSteps = ref(0)
 const probeCount = ref(0)
@@ -196,7 +206,9 @@ const maxStateBytes = ref(8_388_608)
 const matchedRuleLine = ref<number | undefined>()
 const selectedTestCase = ref<TestCaseOption | undefined>()
 
-const resourceSections = computed(() => extractResources(rulesText.value))
+const ruleAnalysis = computed(() => analyzeRules(rulesText.value))
+const resourceSections = computed(() => ruleAnalysis.value.resources)
+const ruleErrors = computed(() => ruleAnalysis.value.errors)
 const selectedHistoryCursor = computed(() => stateDiffs.value.findIndex(entry => entry.key === selectedHistoryKey.value))
 const isBusy = computed(() => running.value || continuing.value)
 const canReset = computed(() => !isBusy.value && selectedHistoryCursor.value > 0)
@@ -236,12 +248,6 @@ function normalizeFileParam(value: string | null): string {
   return fallback
 }
 
-interface ResourceUsage {
-  name: string
-  reads: boolean
-  writes: boolean
-}
-
 interface DiffPart {
   key: string
   text: string
@@ -267,35 +273,6 @@ interface ChangedRange {
   end: number
 }
 
-function extractResources(rules: string): ResourceUsage[] {
-  const byName = new Map<string, ResourceUsage>()
-  markResource(byName, 'stdin', 'read')
-  markResource(byName, 'stdout', 'write')
-  markResource(byName, 'stderr', 'write')
-  for (const rawLine of rules.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')) {
-    const line = rawLine.trim()
-    if (!line) continue
-    const read = rawLine.match(/::\s*<\s+\S+\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
-    if (read) markResource(byName, read[1], 'read')
-    const write = rawLine.match(/::\s*>\s+([A-Za-z_][A-Za-z0-9_-]*)\b/)
-    if (write) markResource(byName, write[1], 'write')
-  }
-  const stdioOrder = new Map([['stdout', 0], ['stdin', 1], ['stderr', 2]])
-  return [...byName.values()].sort((a, b) => {
-    const left = stdioOrder.get(a.name)
-    const right = stdioOrder.get(b.name)
-    if (left !== undefined || right !== undefined) return (left ?? Number.MAX_SAFE_INTEGER) - (right ?? Number.MAX_SAFE_INTEGER)
-    return 0
-  })
-}
-
-function markResource(resources: Map<string, ResourceUsage>, name: string, mode: 'read' | 'write'): void {
-  const current = resources.get(name) ?? { name, reads: false, writes: false }
-  if (mode === 'read') current.reads = true
-  else current.writes = true
-  resources.set(name, current)
-}
-
 function setResourceInput(name: string, value: string): void {
   resourceInputs.value = { ...resourceInputs.value, [name]: value }
   const { [name]: _removed, ...remainingSubmitted } = resourceSubmittedInputs.value
@@ -316,18 +293,18 @@ function isResourceReady(name: string): boolean {
 }
 
 async function focusResourceInput(name: string): Promise<void> {
-  outputTab.value = 'output'
   await nextTick()
   const input = document.querySelector(`[data-test="resource-input-${name}"]`) as HTMLTextAreaElement | null
+  input?.scrollIntoView({ block: 'nearest' })
   input?.focus()
 }
 
 function showResourceInput(resource: ResourceUsage): boolean {
-  return resource.name === 'stdin' || resource.reads
+  return resource.reads
 }
 
 function showResourceOutput(resource: ResourceUsage): boolean {
-  return resource.name === 'stdout' || resource.name === 'stderr' || resource.writes
+  return resource.writes
 }
 
 function resourceOutputText(name: string): string {
