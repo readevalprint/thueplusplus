@@ -1,0 +1,19 @@
+program = "../max-state-two.tpp"
+
+[[case]]
+name = "one byte limit rejects a two byte replacement"
+args = ["--max-state-bytes", "1"]
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr_contains = ["State size (2 bytes) exceeds maximum (1 bytes)"]
+
+[[case]]
+name = "two byte limit allows the replacement"
+args = ["--max-state-bytes", "2"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""

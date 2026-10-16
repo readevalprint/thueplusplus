@@ -1,0 +1,45 @@
+program = "../max-steps.tpp"
+
+[[case]]
+name = "zero applied-step limit still applies the first rewrite"
+args = ["--max-steps", "0"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "one applied step stops before the write"
+args = ["--max-steps", "1"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "two applied steps stop before the write"
+args = ["--max-steps", "2"]
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "three applied steps include the write"
+args = ["--max-steps", "3"]
+
+[case.expect]
+exit_code = 0
+stdout = "done\n"
+stderr = ""
+
+[[case]]
+name = "no applied-step limit runs to quiescence"
+
+[case.expect]
+exit_code = 0
+stdout = "done\n"
+stderr = ""

@@ -88,6 +88,26 @@ func main() {
 			}
 			interp.MaxStateBytes = &v
 			idx++
+		case arg == "--max-steps":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --max-steps requires an argument")
+				os.Exit(1)
+			}
+			v, err := strconv.Atoi(args[idx+1])
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(2)
+			}
+			interp.MaxSteps = &v
+			idx += 2
+		case strings.HasPrefix(arg, "--max-steps="):
+			v, err := strconv.Atoi(strings.TrimPrefix(arg, "--max-steps="))
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(2)
+			}
+			interp.MaxSteps = &v
+			idx++
 		case strings.HasPrefix(arg, "--proc:"):
 			name := strings.TrimPrefix(arg, "--proc:")
 			if idx+1 >= len(args) {

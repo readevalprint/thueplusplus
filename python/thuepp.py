@@ -173,12 +173,16 @@ class ThueppInterpreter:
 
     ``max_evals`` counts each rule examined in ``run()``'s inner loop (every
     ordered rule probe across outer steps), including probes that do not match.
+    ``max_steps`` counts applied rewrites only. Once that many rules have
+    applied, ``run()`` returns 0 and does not raise. ``max_state_bytes`` is
+    checked on the UTF-8 length of the state after each replacement.
     """
 
     def __init__(
         self,
         max_evals: Optional[int] = None,
         max_state_bytes: Optional[int] = None,
+        max_steps: Optional[int] = None,
         debug: bool = False,
         rule_coverage_path: Optional[str] = None,
     ):
@@ -187,7 +191,9 @@ class ThueppInterpreter:
         self.bindings: dict[str, Binding] = {}
         self.max_evals = max_evals
         self.max_state_bytes = max_state_bytes
+        self.max_steps = max_steps
         self.eval_count = 0
+        self.applied_steps = 0
         self.debug = debug
         self.rule_coverage_path = rule_coverage_path
         self.rule_coverage_counts: dict[str, int] = {}
@@ -921,6 +927,7 @@ class ThueppInterpreter:
 
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""
+        self.applied_steps = 0
         while True:
             state_rows = []
             offset = 0
@@ -1048,6 +1055,9 @@ class ThueppInterpreter:
                     raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
 
                 self._set_state(self.state[:match.start()] + replacement + self.state[match.end():])
+                self.applied_steps += 1
+                if self.max_steps is not None and self.applied_steps >= self.max_steps:
+                    return 0
 
                 if self.debug:
                     escaped_result = self.state.replace("\n", "\\n")
@@ -1090,6 +1100,11 @@ def main():
         help="Maximum state size in bytes before aborting",
     )
     parser.add_argument(
+        "--max-steps",
+        type=int,
+        help="Stop with exit 0 after this many applied rewrites",
+    )
+    parser.add_argument(
         "--input",
         type=str,
         help="Override initial state with this value",
@@ -1116,6 +1131,7 @@ def main():
     interpreter = ThueppInterpreter(
         max_evals=args.max_evals,
         max_state_bytes=args.max_state_bytes,
+        max_steps=args.max_steps,
         debug=args.debug,
         rule_coverage_path=args.rule_coverage,
     )
