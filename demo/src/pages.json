@@ -70,29 +70,23 @@
     "path": "/guests",
     "kicker": "Guests",
     "title": "Languages written in Thue++.",
-    "description": "A guest is a language implemented as Thue++ rules. The catalog on this page is a placeholder.",
+    "description": "Languages implemented in Thue++. The leaderboard counts passes, interpreter rule lines, and applied steps across the task suite.",
     "documentTitle": "Thue++ Guests — Languages written in Thue++",
     "canonical": "https://thuelang.org/guests",
     "robots": "index,follow",
     "links": [
-      { "title": "What a guest is", "href": "#what-a-guest-is" },
-      { "title": "Lisp", "href": "#lisp" },
-      { "title": "Forth", "href": "#forth" },
-      { "title": "Catalog", "href": "#catalog" }
+      { "title": "Leaderboard", "href": "#leaderboard" },
+      { "title": "Improve a guest", "href": "#improve" }
     ]
   },
   "tasks": {
     "path": "/tasks",
     "kicker": "Tasks",
     "title": "Programs with a finish line.",
-    "description": "A task is a small Thue++ program with an expected result. The list on this page is a placeholder.",
+    "description": "Tasks are input and output contracts. The index lists every guest's status, and each task has its own page.",
     "documentTitle": "Thue++ Tasks — Programs with a finish line",
     "canonical": "https://thuelang.org/tasks",
     "robots": "index,follow",
-    "links": [
-      { "title": "What a task is", "href": "#what-a-task-is" },
-      { "title": "Finish line", "href": "#finish-line" },
-      { "title": "List", "href": "#list" }
-    ]
+    "links": []
   }
 }

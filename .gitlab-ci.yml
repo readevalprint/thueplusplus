@@ -47,6 +47,7 @@ tasks:
   image: golang:1.24.6-bookworm
   rules:
     - if: '$CI_SERVER_HOST != "gitlab.com"'
+    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   before_script:
     - mkdir -p "$UV_CACHE_DIR" "$GOCACHE" "$GOMODCACHE" /tmp/uv-bin
     - |
@@ -95,6 +96,9 @@ metrics:
 
 e2e:
   image: node:22-bookworm
+  needs:
+    - job: tasks
+      artifacts: true
   rules:
     - if: '$CI_SERVER_HOST != "gitlab.com"'
   before_script:
@@ -141,6 +145,9 @@ vscode:
 pages:
   image: node:22-bookworm
   stage: pages
+  needs:
+    - job: tasks
+      artifacts: true
   rules:
     - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   before_script:
@@ -181,6 +188,12 @@ pages:
       do
         test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
       done
+      find public/tasks -mindepth 2 -name index.html > /tmp/task-pages.txt
+      test -s /tmp/task-pages.txt || { echo "GitLab Pages site is missing task deep links" >&2; exit 1; }
+      while IFS= read -r path; do
+        test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
+        grep -q 'https://thuelang.org/tasks/' "$path" || { echo "$path is missing its canonical task URL" >&2; exit 1; }
+      done < /tmp/task-pages.txt
       cmp -s public/404.html public/index.html || { echo "public/404.html must match public/index.html" >&2; exit 1; }
       grep -q 'https://thuelang.org/playground' public/playground/index.html
       grep -q 'src="/assets/' public/playground/index.html

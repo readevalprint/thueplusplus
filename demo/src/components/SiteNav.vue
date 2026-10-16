@@ -49,6 +49,7 @@ const groups: { label: string, items: { title: string, path: string, icon: Compo
 ]
 
 function active(path: string): boolean {
+  if (path === '/tasks') return route.path === '/tasks' || route.path.startsWith('/tasks/')
   return route.path === path
 }
 </script>
