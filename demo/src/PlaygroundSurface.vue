@@ -1,44 +1,6 @@
 <template>
-  <div class="flex w-full" :class="showHero ? undefined : 'min-h-svh'">
-    <aside v-if="!isMobile" :class="[columnClass, 'border-r']" data-test="playground-examples">
-      <h2 class="px-4 pt-4 text-sm font-medium">Examples</h2>
-      <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
-    </aside>
-
-    <div class="min-w-0 flex-1">
-      <div v-if="isMobile" class="flex flex-wrap gap-2 px-6 pt-4">
-        <Sheet v-model:open="examplesOpen">
-          <SheetTrigger as-child>
-            <Button type="button" variant="outline" data-test="playground-examples-trigger">Examples</Button>
-          </SheetTrigger>
-          <SheetContent side="left" class="w-full overflow-y-auto sm:max-w-sm" data-test="playground-examples">
-            <SheetHeader>
-              <SheetTitle>Examples</SheetTitle>
-              <SheetDescription>Programs and the manifest cases that load them.</SheetDescription>
-            </SheetHeader>
-            <TestCaseMenu :options="testCaseOptions" @select="selectTestCase" />
-          </SheetContent>
-        </Sheet>
-        <Sheet v-model:open="settingsOpen">
-          <SheetTrigger as-child>
-            <Button type="button" variant="outline" data-test="playground-settings-trigger">Settings</Button>
-          </SheetTrigger>
-          <SheetContent side="right" class="w-full overflow-y-auto sm:max-w-sm" data-test="playground-settings">
-            <SheetHeader>
-              <SheetTitle>Settings</SheetTitle>
-              <SheetDescription>Step, probe, and state limits sent with every run.</SheetDescription>
-            </SheetHeader>
-            <PlaygroundSettings
-              v-model:max-steps="maxSteps"
-              v-model:max-evals="maxEvals"
-              v-model:max-state-bytes="maxStateBytes"
-              v-model:continue-speed="continueSpeed"
-              :disabled="isBusy"
-            />
-          </SheetContent>
-        </Sheet>
-      </div>
-
+  <div class="w-full" :class="showHero ? undefined : 'min-h-svh'">
+    <PageAside label="Playground">
       <PageHero v-if="showHero" :kicker="page.kicker" :title="page.title">
         <template #mark>
           <Replace />
@@ -126,38 +88,36 @@
           </Card>
         </div>
       </div>
-    </div>
-
-    <aside v-if="!isMobile" :class="[columnClass, 'border-l']" data-test="playground-settings">
-      <h2 class="px-4 pt-4 text-sm font-medium">Settings</h2>
-      <PlaygroundSettings
-        v-model:max-steps="maxSteps"
-        v-model:max-evals="maxEvals"
-        v-model:max-state-bytes="maxStateBytes"
-        v-model:continue-speed="continueSpeed"
-        :disabled="isBusy"
-      />
-    </aside>
+      <template #aside>
+        <PlaygroundAside
+          :options="testCaseOptions"
+          v-model:max-steps="maxSteps"
+          v-model:max-evals="maxEvals"
+          v-model:max-state-bytes="maxStateBytes"
+          v-model:continue-speed="continueSpeed"
+          :disabled="isBusy"
+          @select="selectTestCase"
+        />
+      </template>
+    </PageAside>
   </div>
 </template>
 
 <script setup lang="ts">
 import { Replace } from '@lucide/vue'
 import { diffChars } from 'diff'
-import { useMediaQuery } from '@vueuse/core'
 import { computed, nextTick, ref } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import Glyph from '@/components/marks/Glyph.vue'
+import PageAside from '@/components/PageAside.vue'
 import PageHero from '@/components/PageHero.vue'
-import PlaygroundSettings from '@/playground/PlaygroundSettings.vue'
+import PlaygroundAside from '@/playground/PlaygroundAside.vue'
 import ResourceSection from './ResourceSection.vue'
 import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
-import TestCaseMenu from './TestCaseMenu.vue'
 import { pages } from '@/site'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
 import { splitProgramSource } from './thueSource'
@@ -179,13 +139,7 @@ const props = withDefaults(defineProps<{
 })
 
 const page = pages.playground
-const isMobile = useMediaQuery('(max-width: 1279px)')
 const showHero = computed(() => props.chrome === 'page')
-const columnClass = computed(() => showHero.value
-  ? 'bg-sidebar sticky top-0 flex max-h-[calc(100svh-var(--header-height))] w-56 shrink-0 flex-col overflow-y-auto'
-  : 'bg-sidebar sticky top-0 flex h-svh w-56 shrink-0 flex-col overflow-y-auto')
-const examplesOpen = ref(false)
-const settingsOpen = ref(false)
 
 const routeSearchParams = new URLSearchParams(window.location.search)
 
@@ -421,7 +375,6 @@ function selectTestCase(testCase: TestCaseOption): void {
   selectedTestCase.value = testCase
   if (testCase.hasInput) stateText.value = testCase.input
   resourceInputs.value = { ...resourceInputs.value, stdin: testCase.stdin ?? '' }
-  examplesOpen.value = false
   if (props.syncUrl) {
     const url = new URL(window.location.href)
     url.searchParams.set('test', `./${testCase.manifestPath}`)

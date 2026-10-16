@@ -244,24 +244,26 @@ for (const viewport of viewports) {
     await expect(page.getByRole('heading', { level: 1, name: 'Run it in the browser.' })).toBeVisible()
     await expect(page.getByTestId('playground-rules')).toBeVisible()
     if (viewport.width >= 1280) {
+      await expect(page.getByTestId('page-sidebar')).toBeVisible()
+      await expect(page.getByTestId('aside-trigger')).toBeHidden()
       await expect(page.getByTestId('playground-examples')).toBeVisible()
       await expect(page.getByTestId('playground-settings')).toBeVisible()
-      await expect(page.getByTestId('playground-examples-trigger')).toHaveCount(0)
       await expect(page.getByTestId('test-case-menu-trigger').filter({ hasText: 'Basic rules' })).toBeVisible()
       return
     }
+    await expect(page.getByTestId('page-sidebar')).toBeHidden()
     await expect(page.getByTestId('playground-examples')).toBeHidden()
     await expect(page.getByTestId('playground-settings')).toBeHidden()
-    await page.getByTestId('playground-examples-trigger').click()
+    await page.getByTestId('aside-trigger').click()
+    await expect(page.getByTestId('page-sidebar')).toBeVisible()
     await expect(page.getByTestId('playground-examples')).toBeVisible()
-    await expect(page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Hello rewrite' })).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByTestId('playground-examples')).toBeHidden()
-    await page.getByTestId('playground-settings-trigger').click()
     await expect(page.getByTestId('playground-settings')).toBeVisible()
+    await expect(page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Hello rewrite' })).toBeVisible()
     await expect(page.getByTestId('playground-max-steps-1000000')).toBeVisible()
     await expect(page.getByTestId('playground-max-probes-1000000')).toBeVisible()
     await expect(page.getByTestId('playground-max-state-8388608')).toBeVisible()
+    await page.getByTestId('test-case-menu-case-name').filter({ hasText: 'Hello rewrite' }).click()
+    await expect(page.getByTestId('page-sidebar')).toBeHidden()
   })
 }
 
