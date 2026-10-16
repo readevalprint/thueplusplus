@@ -22,4 +22,9 @@ jobs:
         with:
           node-version: "22"
       - name: Conformance
+        env:
+          # Heaviest Go lisp case is about 3s locally and misses the 10s
+          # manifest budget on a GitHub-hosted core. This stretches that
+          # budget. Local `make test` leaves it unset.
+          THUEPP_TIMEOUT_SCALE: "2"
         run: make test

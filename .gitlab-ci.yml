@@ -59,6 +59,7 @@ test:
       node --version
   script:
     - export PATH="$CARGO_HOME/bin:$PATH"
+    - export THUEPP_TIMEOUT_SCALE=2
     - make test
 
 tasks:
