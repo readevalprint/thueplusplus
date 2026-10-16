@@ -1,8 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
 async function fillRules(page: Page, value: string): Promise<void> {
-  await page.getByTestId('playground-rules').evaluate((element, text) => {
-    const editorElement = element as HTMLElement & { __thueppSetValue?: (value: string) => void }
+  const rules = page.getByTestId('playground-rules')
+  await expect.poll(async () => rules.evaluate(element => {
+    const editorElement = element as HTMLElement & { __thueppSetValue?: (next: string) => void }
+    return typeof editorElement.__thueppSetValue === 'function'
+  }), { timeout: 10_000 }).toBe(true)
+  await rules.evaluate((element, text) => {
+    const editorElement = element as HTMLElement & { __thueppSetValue?: (next: string) => void }
     if (!editorElement.__thueppSetValue) throw new Error('rules Monaco editor is not ready')
     editorElement.__thueppSetValue(text)
   }, value)
@@ -55,7 +60,8 @@ test('step button writes stdout without a shell simulator', async ({ page }) => 
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Hello, World!\n')
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue('')
-  await expect(page.getByTestId('playground-diffs')).toContainText('#1 row 1')
+  await expect(page.locator('.state-diff-row')).toHaveCount(2)
+  await expect(page.getByTestId('playground-diffs')).toContainText('initial state')
   await expect(page.getByTestId('playground-diffs')).toContainText('hello ::> stdout Hello, World!\\n')
   await expect(page.getByTestId('terminal')).toHaveCount(0)
   await expect(page.getByTestId('playground-reset')).toBeVisible()
@@ -85,7 +91,7 @@ test('failed matched builtin appears in state history', async ({ page }) => {
   await expect(page.getByTestId('playground-status')).toContainText('exited 1')
   await expect(page.getByTestId('playground-step')).toBeEnabled()
   await expect(page.getByTestId('playground-continue')).toBeEnabled()
-  await expect(page.getByTestId('playground-diffs')).toContainText('#1 row 1')
+  await expect(page.getByTestId('playground-diffs')).toContainText('^div:(?<a>[0-9]+),(?<b>[0-9]+)$ ::! div a b')
   await expect(page.getByTestId('playground-diff-error')).toContainText("Builtin 'div' division by zero")
 
   await page.getByTestId('playground-state').fill('div:2,1')
@@ -103,7 +109,7 @@ test('parse-time builtin errors appear in state history', async ({ page }) => {
   await page.getByTestId('playground-step').click()
   await expect(page.getByTestId('playground-status')).toContainText('exited 1')
   await expect(page.getByTestId('resource-output-stderr')).toHaveValue("Line 1: Unknown builtin 'nope'")
-  await expect(page.getByTestId('playground-diffs')).toContainText('#1 row 1')
+  await expect(page.getByTestId('playground-diffs')).toContainText('initial state')
   await expect(page.getByTestId('playground-diffs')).toContainText('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
   await expect(page.getByTestId('playground-diff-error')).toContainText("Line 1: Unknown builtin 'nope'")
 
