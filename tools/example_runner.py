@@ -502,13 +502,37 @@ def collect_configs(configs: list[Path]) -> list[Path]:
     return collected
 
 
+_IMPL_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
+_RESERVED_IMPLS = frozenset({"python", "go", "wasm"})
+
+
+def parse_impl(spec: str) -> Interpreter:
+    if "=" not in spec:
+        raise RuntimeError(f"--impl requires NAME=COMMAND, got {spec!r}")
+    name, command = spec.split("=", 1)
+    name = name.strip()
+    if _IMPL_NAME.fullmatch(name) is None:
+        raise RuntimeError(f"--impl name must be an identifier, got {spec!r}")
+    if name in _RESERVED_IMPLS:
+        raise RuntimeError(f"--impl name {name!r} is reserved")
+    argv = tuple(shlex.split(command, posix=True))
+    if not argv:
+        raise RuntimeError(f"--impl command is empty: {spec!r}")
+    return Interpreter(name, argv)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run shared thue++ example manifests with mandatory Python/Go parity and rule coverage")
+    parser = argparse.ArgumentParser(description="Run shared thue++ example manifests with mandatory Python/Go/wasm parity and rule coverage")
     parser.add_argument("configs", type=Path, nargs="*", help="optional explicit example TOML manifest(s); defaults to examples/**/tests/*.toml")
+    parser.add_argument("--impl", action="append", default=[], metavar="NAME=COMMAND", help="extra command included in the parity set; COMMAND is split on shell quoting")
     args = parser.parse_args(argv)
+    extras = [parse_impl(spec) for spec in args.impl]
+    extra_names = [item.name for item in extras]
+    if len(extra_names) != len(set(extra_names)):
+        raise RuntimeError("duplicate --impl name")
     configs = collect_configs(args.configs)
     with tempfile.TemporaryDirectory(prefix="thuepp-impl-") as tmpdir:
-        interpreters = build_interpreters(Path(tmpdir))
+        interpreters = [*build_interpreters(Path(tmpdir)), *extras]
         return run_configs(interpreters, configs)
 
 

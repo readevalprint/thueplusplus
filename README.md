@@ -538,7 +538,7 @@ Before review, run the root check:
 make test
 ```
 
-`make test` runs the conformance check and shared manifest runner. The runner invokes the reference backends, checks backend parity, reports per-program rule counts, and enforces rule coverage for manifest-declared examples.
+`make test` runs the conformance check and shared manifest runner. The runner invokes Python, Go, and the wasm host, checks parity, reports per-program rule counts, and enforces rule coverage for manifest-declared examples. Spec version v0.3 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
 
 For focused debugging, pass manifest paths directly:
 
@@ -566,7 +566,7 @@ uv run python tools/check_contract.py --update-readme
 
 ## Language features
 
-- v0.2 semantics checked by executable manifests
+- v0.3 semantics checked by executable manifests
 - ordered rewrite rules over text state
 - [RE2-compatible](https://github.com/google/re2/wiki/Syntax) regex subset
 - pattern aliases with `$NAME` references
@@ -638,7 +638,7 @@ External context:
 - [Rewriting](https://grokipedia.com/page/Rewriting) — broader rewriting-system context
 - [Axel Thue](https://mathshistory.st-andrews.ac.uk/Biographies/Thue/) — historical background from MacTutor
 - [Thue esolang](https://github.com/jcolag/Thue) — John Colagioia's original language
-- [RE2 syntax](https://github.com/google/re2/wiki/Syntax) — regex syntax family targeted by both backends
+- [RE2 syntax](https://github.com/google/re2/wiki/Syntax) — regex syntax family targeted by the reference implementations
 - [RFC 3986 percent-encoding](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1) — background for PCT payloads
 - [The Floating-Point Guide](https://floating-point-gui.de/) — why exact rationals avoid decimal/binary float surprises
 

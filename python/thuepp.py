@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -u
 """
-thue++ Interpreter v0.2
+thue++ Interpreter v0.3
 A Python implementation of the thue++ esoteric programming language.
 """
 
