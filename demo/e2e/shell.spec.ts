@@ -107,7 +107,7 @@ test('deep links render their own heading', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   for (const [path, heading] of [
     ['/reference', 'Operators, resources, and limits.'],
-    ['/hosts', 'Go, Python, and JavaScript.'],
+    ['/hosts', 'Go, Python, JavaScript, Rust, and C++.'],
     ['/guests', 'Languages written in Thue++.'],
     ['/tasks', 'Programs with a finish line.'],
     ['/playground', 'playground'],

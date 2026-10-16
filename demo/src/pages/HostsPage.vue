@@ -98,7 +98,7 @@ cargo build --release --manifest-path rust/Cargo.toml
     readmeLabel: 'rust/README.md',
   },
   cpp: {
-    prose: 'The C++ host is a native implementation. The CMake target is thuepp and the command is thuepp. It uses Google RE2 and the same default limits. Process bindings stay opt-in. The library is not published.',
+    prose: 'The C++ host is a native implementation. The CMake target is thuepp and the command is thuepp. It uses the regex engine and the same default limits. Process bindings stay opt-in. The library is not published.',
     installLead: 'There is no vcpkg port and no Conan package. From a checkout of this repository:',
     install: `cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
 cmake --build build/cpp --parallel`,
