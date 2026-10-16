@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "commit": "bdf9384e14b938c828f3369137cbfe6fd6b27a27",
+  "author": "Tim Watts <tim@readevalprint.com>",
+  "timestamp": "2026-05-24T21:48:41Z",
+  "machine": null,
+  "guests": {
+    "forth": {
+      "program": "examples/forth/forth.tpp",
+      "rule_lines": 45
+    },
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 341
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

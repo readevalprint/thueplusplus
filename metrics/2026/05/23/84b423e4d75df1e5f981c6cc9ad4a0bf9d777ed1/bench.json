@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "commit": "84b423e4d75df1e5f981c6cc9ad4a0bf9d777ed1",
+  "author": "herm <project_52_bot_b0958bdc5590d3b9b8c376a85dbf083b@noreply.gitlab.backrooms.internal>",
+  "timestamp": "2026-05-23T16:02:21Z",
+  "machine": null,
+  "guests": {
+    "forth": {
+      "program": "examples/forth/forth.tpp",
+      "rule_lines": 45
+    },
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 341
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "commit": "d19b5cc9111ae5d04c60abf1c98d1f713124ec19",
+  "author": "Tim Watts <tim@readevalprint.com>",
+  "timestamp": "2026-05-19T22:13:13Z",
+  "machine": null,
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": null,
+      "error": "Error: Line 16: Invalid pattern alias token '<|NUM|>'; use '$NUM' aliases"
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

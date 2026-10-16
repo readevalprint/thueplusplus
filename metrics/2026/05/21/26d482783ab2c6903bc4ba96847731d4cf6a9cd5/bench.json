@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "commit": "26d482783ab2c6903bc4ba96847731d4cf6a9cd5",
+  "author": "Administrator <gitlab_admin_3698b5@example.com>",
+  "timestamp": "2026-05-21T07:19:05Z",
+  "machine": null,
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 379
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

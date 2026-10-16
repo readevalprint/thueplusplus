@@ -16,6 +16,7 @@ const embed = {
 }
 
 copyPublicAssets()
+copySummary()
 
 const rootIndexPath = join(dist, 'index.html')
 const built = readFileSync(rootIndexPath, 'utf8')
@@ -35,6 +36,12 @@ writeFileSync(join(dist, embed.dir, 'index.html'), renderPage(built, embed))
 
 const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...tasks.map(page => page.path.replace(/^\//, '')), embed.dir]
 console.log(`demo production dist static routes ok: ${staticRoutes.join(', ')}`)
+
+function copySummary() {
+  const summary = join(demoRoot, 'src', 'generated', 'summary.json')
+  mkdirSync(join(dist, 'metrics'), { recursive: true })
+  copyFileSync(summary, join(dist, 'metrics', 'summary.json'))
+}
 
 function copyPublicAssets() {
   const publicDir = join(demoRoot, 'public')

@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "commit": "b2b521d85dd9df75d530e3022d3ca5ff36e2e1c2",
+  "author": "herm <project_52_bot_b0958bdc5590d3b9b8c376a85dbf083b@noreply.gitlab.backrooms.internal>",
+  "timestamp": "2026-05-19T22:04:45Z",
+  "machine": null,
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": null,
+      "error": "Error: Line 16: Invalid pattern alias token '<|NUM|>'; use '$NUM' aliases"
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "commit": "55da3912b4d088b411dbcce7eab99e6d95497367",
+  "author": "Cursor Agent <cursoragent@cursor.com>",
+  "timestamp": "2026-10-16T13:16:00Z",
+  "machine": null,
+  "guests": {
+    "forth": {
+      "program": "examples/forth/forth.tpp",
+      "rule_lines": 45
+    },
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": 394
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

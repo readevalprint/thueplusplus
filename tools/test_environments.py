@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -39,25 +38,24 @@ def main() -> None:
     else:
         raise SystemExit("wasm labeled as go native was accepted")
 
-    history = json.loads((ROOT / "metrics" / "history.json").read_text(encoding="utf-8"))
-    for entry in history["entries"]:
+    for _rel, entry in historylib.iter_benches(ROOT):
         tasks = entry.get("tasks")
         if tasks:
-            for row in tasks["results"]:
-                historylib.assert_environment(row["host"], row["environment"])
+            historylib.assert_environment(tasks["host"], tasks["environment"])
         benchmarks = entry.get("benchmarks")
         if not benchmarks:
             continue
-        hosts = benchmarks["hosts"]
         known = set(historylib.host_ids())
-        if not hosts or not set(hosts) <= known:
-            raise SystemExit(f"{entry['commit']}: benchmark hosts {sorted(hosts)}")
-        for host, row in hosts.items():
-            historylib.assert_environment(host, row["environment"])
-            if host == "go" and row["environment"] != "go native":
-                raise SystemExit(f"{entry['commit']}: go duration stored as {row['environment']}")
-            if host == "wasm" and row["environment"] != "wasm (node)":
-                raise SystemExit(f"{entry['commit']}: wasm duration stored as {row['environment']}")
+        for workload in benchmarks["workloads"]:
+            hosts = workload["hosts"]
+            if not hosts or not set(hosts) <= known:
+                raise SystemExit(f"{entry['commit']} {workload['id']}: benchmark hosts {sorted(hosts)}")
+            for host, row in hosts.items():
+                historylib.assert_environment(host, row["environment"])
+                if host == "go" and row["environment"] != "go native":
+                    raise SystemExit(f"{entry['commit']}: go duration stored as {row['environment']}")
+                if host == "wasm" and row["environment"] != "wasm (node)":
+                    raise SystemExit(f"{entry['commit']}: wasm duration stored as {row['environment']}")
 
     guests = (ROOT / "demo" / "src" / "pages" / "GuestsPage.vue").read_text(encoding="utf-8")
     if "label: host.id" in guests or "{{ host.id }} ·" in guests:
@@ -70,7 +68,7 @@ def main() -> None:
     if "label: sample.environment" not in chart:
         raise SystemExit("host duration series must label with the environment")
     record = (ROOT / "metrics" / "record.py").read_text(encoding="utf-8")
-    if 'benchmark {row[\'environment\']}' not in record:
+    if "row['environment']" not in record:
         raise SystemExit("benchmark output must print the environment label")
     runner = (ROOT / "tools" / "example_runner.py").read_text(encoding="utf-8")
     if "environments.label" not in runner:

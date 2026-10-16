@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fill metrics/history.json for every commit reachable from HEAD.
+"""Fill one bench.json for every commit reachable from HEAD.
 
 Each commit gets its SHA, author, and author timestamp. Guest rule-line
 counts are filled when the current Python host can list rules for that
@@ -22,7 +22,6 @@ sys.path.insert(0, str(ROOT / "metrics"))
 import historylib  # noqa: E402
 from rules import count_rule_lines  # noqa: E402
 
-HISTORY_PATH = ROOT / historylib.HISTORY_REL
 GUESTS_PATH = ROOT / "tasks" / "guests.toml"
 
 
@@ -58,12 +57,17 @@ def parents_of(commit: str) -> list[str]:
 
 
 def bookkeeping(commit: str) -> bool:
+    subject = git_text(["log", "-1", "--format=%s", commit])
+    if subject.startswith("metrics:"):
+        return True
     parents = parents_of(commit)
     if len(parents) != 1:
         return False
     diff = git_text(["diff", "--name-only", parents[0], commit])
     paths = [line for line in diff.splitlines() if line]
-    return historylib.history_only(paths)
+    if historylib.history_only(paths):
+        return True
+    return paths == [historylib.LEGACY_HISTORY]
 
 
 def metadata() -> dict[str, tuple[str, str]]:
@@ -139,8 +143,8 @@ def _main() -> int:
                 print(f"rules {blob[:12]} lines={counted} error={error}", file=sys.stderr)
             return cache[blob]
 
-        existing = {entry["commit"]: entry for entry in historylib.load_history(HISTORY_PATH)["entries"]}
-        entries: list[dict] = []
+        existing = {entry["commit"]: entry for _rel, entry in historylib.iter_benches(ROOT)}
+        written = 0
         skipped = 0
         for commit in commits:
             if bookkeeping(commit):
@@ -162,21 +166,23 @@ def _main() -> int:
                 else:
                     guest_entries[guest["id"]] = {"program": guest["program"], "rule_lines": counted}
             previous = existing.get(commit)
-            entries.append(
+            historylib.save_bench(
+                ROOT,
                 {
+                    "schema_version": historylib.SCHEMA_VERSION,
                     "commit": commit,
                     "author": author,
                     "timestamp": timestamp,
+                    "machine": None,
                     "guests": guest_entries,
                     "tasks": None if previous is None else previous["tasks"],
                     "benchmarks": None if previous is None else previous["benchmarks"],
-                }
+                },
             )
-    document = {"schema_version": historylib.SCHEMA_VERSION, "entries": entries}
-    historylib.save_history(HISTORY_PATH, document)
+            written += 1
     unparsed = sum(1 for _counted, error in cache.values() if error is not None)
     print(
-        f"backfill: {len(entries)} commits, {skipped} bookkeeping skipped, "
+        f"backfill: {written} commits, {skipped} bookkeeping skipped, "
         f"{unparsed} guest blobs the current host could not parse"
     )
     return 0

@@ -186,13 +186,17 @@ def bounded_run(
 
     reason: str | None = None
     deadline = time.monotonic() + timeout
+    peak_rss = _process_tree_rss(proc.pid)
     while True:
         try:
             proc.wait(timeout=POLL_SECONDS)
+            peak_rss = max(peak_rss, _process_tree_rss(proc.pid))
             break
         except subprocess.TimeoutExpired:
             pass
         rss = _process_tree_rss(proc.pid)
+        if rss > peak_rss:
+            peak_rss = rss
         if rss > memory_cap:
             reason = f"memory cap ({memory_cap} bytes) exceeded (rss {rss} bytes)"
             _kill_group(proc.pid)
@@ -214,4 +218,6 @@ def bounded_run(
     # timeout(1) uses 124 when it, rather than the program, stops the run.
     if code == 124 or code == 137:
         raise RuntimeError(f"timed out after {timeout}s (timeout(1) status {code})")
-    return subprocess.CompletedProcess(argv, code, stdout, stderr)
+    completed = subprocess.CompletedProcess(argv, code, stdout, stderr)
+    completed.peak_rss_bytes = peak_rss
+    return completed

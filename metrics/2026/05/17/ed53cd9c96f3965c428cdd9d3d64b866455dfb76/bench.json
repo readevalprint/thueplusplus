@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "commit": "ed53cd9c96f3965c428cdd9d3d64b866455dfb76",
+  "author": "herm <project_52_bot_b0958bdc5590d3b9b8c376a85dbf083b@noreply.gitlab.backrooms.internal>",
+  "timestamp": "2026-05-17T12:11:15Z",
+  "machine": null,
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": null,
+      "error": "Error: Line 29: Pattern alias 'P' must not contain named captures"
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

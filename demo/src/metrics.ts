@@ -1,5 +1,5 @@
 import { parse as parseToml } from 'smol-toml'
-import rawHistory from '../../metrics/history.json'
+import rawSummary from './generated/summary.json'
 import hostsToml from '../../hosts.toml?raw'
 import environments from '../../metrics/environments.json'
 
@@ -11,13 +11,18 @@ const REQUIRED_ENVIRONMENTS = {
   rust: 'rust',
   cpp: 'cpp',
 } as const
-const TASK_STATUSES = ['pass', 'fail', 'unsupported'] as const
+const WORKLOAD_LABELS: Record<string, string> = {
+  'probe-cost': 'Probe cost',
+  'state-rewrite': 'State rewrite',
+  regex: 'Regex',
+  io: 'I/O',
+  guest: 'Guest',
+  rewrite: 'Rewrite',
+}
 const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'guests', 'tasks', 'benchmarks']
-const GUEST_KEYS = ['program', 'rule_lines', 'error']
-const TASK_KEYS = ['source', 'results']
-const TASK_ROW_KEYS = ['task', 'guest', 'host', 'environment', 'pass', 'status', 'applied_steps', 'probes']
-const BENCHMARK_KEYS = ['program', 'max_steps', 'max_evals', 'max_state_bytes', 'timeout_seconds', 'memory_cap_bytes', 'hosts']
-const BENCHMARK_HOST_KEYS = ['duration_ms', 'exit_code', 'applied_steps', 'probes', 'host_timeout_seconds', 'environment']
+const TASK_GUEST_KEYS = ['pass', 'fail', 'unsupported', 'steps']
+const WORKLOAD_KEYS = ['id', 'steps', 'probes', 'max_steps', 'max_evals', 'max_state_bytes', 'timeout_seconds', 'memory_cap_bytes', 'hosts']
+const HOST_KEYS = ['id', 'environment', 'duration_ms', 'memory_bytes', 'exit_code']
 
 export class HistoryError extends Error {
   constructor(message: string) {
@@ -56,18 +61,20 @@ export interface CommitRef {
   timestamp: string
 }
 
-export interface GuestRulePoint {
+export interface SeriesPoint {
   commit: string
+  until: string
   value: number
 }
 
 export interface NamedSeries {
   id: string
   label: string
-  points: GuestRulePoint[]
+  points: SeriesPoint[]
 }
 
 export interface RuleChart {
+  order: string[]
   commits: CommitRef[]
   series: NamedSeries[]
 }
@@ -90,10 +97,12 @@ export interface BenchmarkHost {
   id: string
   environment: string
   durationMs: number
+  memoryBytes: number | null
   exitCode: number
 }
 
-export interface BenchmarkCommit extends CommitRef {
+export interface WorkloadCommit extends CommitRef {
+  id: string
   appliedSteps: number
   probes: number
   maxSteps: number
@@ -104,33 +113,29 @@ export interface BenchmarkCommit extends CommitRef {
   hosts: BenchmarkHost[]
 }
 
-interface TaskRow {
-  task: string
-  guest: string
-  host: string
-  status: 'pass' | 'fail' | 'unsupported'
-  applied_steps: number | null
-  probes: number | null
+interface TaskGuestRow {
+  pass: number
+  fail: number
+  unsupported: number
+  steps: number
 }
 
-interface HistoryGuest {
-  program: string
-  rule_lines: number | null
+interface WorkloadRow {
+  id: string
+  appliedSteps: number
+  probes: number
+  maxSteps: number
+  maxEvals: number
+  maxStateBytes: number
+  timeoutSeconds: number
+  memoryCapBytes: number
+  hosts: BenchmarkHost[]
 }
 
 interface HistoryEntry extends CommitRef {
-  guests: Record<string, HistoryGuest>
-  tasks: { results: TaskRow[] } | null
-  benchmarks: {
-    appliedSteps: number
-    probes: number
-    maxSteps: number
-    maxEvals: number
-    maxStateBytes: number
-    timeoutSeconds: number
-    memoryCapBytes: number
-    hosts: BenchmarkHost[]
-  } | null
+  guests: Record<string, number>
+  tasks: Record<string, TaskGuestRow> | null
+  benchmarks: WorkloadRow[] | null
 }
 
 export interface History {
@@ -152,7 +157,7 @@ export interface PlacedChart {
 
 export function loadHistory(value: unknown): History {
   if (!isRecord(value) || !exactKeys(value, ['schema_version', 'entries'])) {
-    throw new HistoryError('history keys must be schema_version and entries')
+    throw new HistoryError('summary keys must be schema_version and entries')
   }
   if (value.schema_version !== 1) throw new HistoryError('schema_version must be 1')
   if (!Array.isArray(value.entries)) throw new HistoryError('entries must be an array')
@@ -180,25 +185,91 @@ export function guestName(id: string, names: ReadonlyMap<string, string>): strin
   return id.charAt(0).toUpperCase() + id.slice(1)
 }
 
+export function workloadLabel(id: string): string {
+  const label = WORKLOAD_LABELS[id]
+  if (label === undefined) throw new HistoryError(`workload ${id} has no label`)
+  return label
+}
+
 export function commitUrl(commit: string): string {
   return `https://gitlab.com/thuelang/thueplusplus/-/commit/${commit}`
 }
 
+export function collapseRuns(samples: readonly { commit: string; value: number | null }[]): SeriesPoint[] {
+  const points: SeriesPoint[] = []
+  let open: SeriesPoint | null = null
+  for (const sample of samples) {
+    if (sample.value === null) {
+      if (open) points.push(open)
+      open = null
+      continue
+    }
+    if (open && open.value === sample.value) {
+      open = { commit: open.commit, until: sample.commit, value: open.value }
+      continue
+    }
+    if (open) points.push(open)
+    open = { commit: sample.commit, until: sample.commit, value: sample.value }
+  }
+  if (open) points.push(open)
+  return points
+}
+
+export function changeAxis(order: readonly CommitRef[], series: readonly NamedSeries[]): CommitRef[] {
+  const index = new Map(order.map((commit, position) => [commit.commit, position]))
+  const changes = new Set<string>()
+  for (const item of series) {
+    for (const point of item.points) {
+      if (!index.has(point.commit)) throw new HistoryError(`change ${point.commit} is not on the chart`)
+      changes.add(point.commit)
+    }
+  }
+  return order.filter(commit => changes.has(commit.commit))
+}
+
+export function pointAt(points: readonly SeriesPoint[], commit: string, order: readonly string[]): SeriesPoint | undefined {
+  const index = order.indexOf(commit)
+  if (index < 0) throw new HistoryError(`commit ${commit} is not on the chart`)
+  return points.find(point => {
+    const start = order.indexOf(point.commit)
+    const end = order.indexOf(point.until)
+    if (start < 0 || end < 0 || end < start) throw new HistoryError(`range ${point.commit} is not on the chart`)
+    return start <= index && index <= end
+  })
+}
+
+export function rangeLabel(point: SeriesPoint): string {
+  const start = point.commit.slice(0, 12)
+  const end = point.until.slice(0, 12)
+  const span = start === end ? start : `${start}…${end}`
+  return `${span} · ${point.value}`
+}
+
+export function stepPath(points: readonly { x: number; y: number; value: number }[]): string {
+  if (points.length < 2) return ''
+  let path = `M${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]
+    const point = points[index]
+    path += `L${point.x.toFixed(1)} ${previous.y.toFixed(1)}`
+    if (point.value !== previous.value) path += `L${point.x.toFixed(1)} ${point.y.toFixed(1)}`
+  }
+  return path
+}
+
 export function guestRuleChart(history: History, order: readonly string[], names: ReadonlyMap<string, string>): RuleChart {
   const ids = guestIds(history, order)
-  const commits = history.entries.filter(entry => ids.some(id => typeof entry.guests[id]?.rule_lines === 'number'))
-  return {
-    commits: commits.map(commitRef),
-    series: ids.map(id => ({
-      id,
-      label: guestName(id, names),
-      points: commits.flatMap(entry => {
-        const ruleLines = entry.guests[id]?.rule_lines
-        if (typeof ruleLines !== 'number') return []
-        return [{ commit: entry.commit, value: ruleLines }]
-      }),
-    })).filter(series => series.points.length > 0),
-  }
+  const domain = history.entries.filter(entry => ids.some(id => typeof entry.guests[id] === 'number'))
+  const series = ids.map(id => ({
+    id,
+    label: guestName(id, names),
+    points: collapseRuns(domain.map(entry => ({
+      commit: entry.commit,
+      value: typeof entry.guests[id] === 'number' ? entry.guests[id] : null,
+    }))),
+  })).filter(item => item.points.length > 0)
+  const commits = domain.map(commitRef)
+  return { order: domain.map(entry => entry.commit), commits: changeAxis(commits, series), series }
 }
 
 export function taskCommits(history: History, order: readonly string[], names: ReadonlyMap<string, string>): TaskCommit[] {
@@ -206,15 +277,23 @@ export function taskCommits(history: History, order: readonly string[], names: R
   return history.entries.flatMap(entry => {
     if (!entry.tasks) return []
     const guests = ids.flatMap(id => {
-      const rows = entry.tasks!.results.filter(row => row.guest === id)
-      if (rows.length === 0) return []
-      return [summarizeGuest(id, guestName(id, names), rows)]
+      const row = entry.tasks?.[id]
+      if (!row) return []
+      return [{
+        id,
+        name: guestName(id, names),
+        passCount: row.pass,
+        failCount: row.fail,
+        unsupportedCount: row.unsupported,
+        taskCount: row.pass + row.fail + row.unsupported,
+        stepCount: row.steps,
+      }]
     })
     return [{ ...commitRef(entry), guests }]
   })
 }
 
-export function hostDurationSeries(commits: readonly BenchmarkCommit[]): NamedSeries[] {
+export function hostDurationSeries(commits: readonly WorkloadCommit[]): NamedSeries[] {
   const present = new Set(commits.flatMap(commit => commit.hosts.map(host => host.id)))
   return HOST_IDS.filter(id => present.has(id)).map(id => {
     const sample = commits.flatMap(commit => commit.hosts).find(host => host.id === id)
@@ -223,20 +302,48 @@ export function hostDurationSeries(commits: readonly BenchmarkCommit[]): NamedSe
     return {
       id,
       label: sample.environment,
-      points: commits.flatMap(commit => {
+      points: collapseRuns(commits.map(commit => {
         const row = commit.hosts.find(host => host.id === id)
-        if (!row) return []
-        return [{ commit: commit.commit, value: row.durationMs }]
-      }),
+        return { commit: commit.commit, value: row ? row.durationMs : null }
+      })),
     }
   })
 }
 
-export function benchmarkCommits(history: History): BenchmarkCommit[] {
-  return history.entries.flatMap(entry => {
-    if (!entry.benchmarks) return []
-    return [{ ...commitRef(entry), ...entry.benchmarks }]
+export function countSeries(commits: readonly WorkloadCommit[]): NamedSeries[] {
+  return [
+    {
+      id: 'steps',
+      label: 'Steps',
+      points: collapseRuns(commits.map(commit => ({ commit: commit.commit, value: commit.appliedSteps }))),
+    },
+    {
+      id: 'probes',
+      label: 'Probes',
+      points: collapseRuns(commits.map(commit => ({ commit: commit.commit, value: commit.probes }))),
+    },
+  ]
+}
+
+export function workloadIds(history: History): string[] {
+  const ids: string[] = []
+  for (const entry of history.entries) {
+    for (const workload of entry.benchmarks ?? []) {
+      if (!ids.includes(workload.id)) ids.push(workload.id)
+    }
+  }
+  return ids
+}
+
+export function benchmarkCommits(history: History, workloadId: string): WorkloadCommit[] {
+  if (!/^[a-z][a-z0-9-]*$/.test(workloadId)) throw new HistoryError(`workload ${workloadId}`)
+  const commits = history.entries.flatMap(entry => {
+    const workload = entry.benchmarks?.find(item => item.id === workloadId)
+    if (!workload) return []
+    return [{ ...commitRef(entry), ...workload }]
   })
+  if (commits.length === 0) throw new HistoryError(`workload ${workloadId} has no commits`)
+  return commits
 }
 
 export function seriesFromField(commits: readonly TaskCommit[], field: 'passCount' | 'stepCount'): NamedSeries[] {
@@ -249,12 +356,11 @@ export function seriesFromField(commits: readonly TaskCommit[], field: 'passCoun
   return ids.map(guest => ({
     id: guest.id,
     label: guest.label,
-    points: commits.flatMap(commit => {
+    points: collapseRuns(commits.map(commit => {
       const row = commit.guests.find(item => item.id === guest.id)
-      if (!row) return []
-      return [{ commit: commit.commit, value: row[field] }]
-    }),
-  }))
+      return { commit: commit.commit, value: row ? row[field] : null }
+    })),
+  })).filter(item => item.points.length > 0)
 }
 
 export function placeChart(count: number, maxValue: number, width = 640, height = 220): PlacedChart {
@@ -285,57 +391,17 @@ export function placeChart(count: number, maxValue: number, width = 640, height 
   }
 }
 
-export const history = loadHistory(rawHistory)
-
-function summarizeGuest(id: string, name: string, rows: TaskRow[]): TaskGuest {
-  const tasks = new Map<string, TaskRow[]>()
-  for (const row of rows) {
-    const group = tasks.get(row.task) ?? []
-    group.push(row)
-    tasks.set(row.task, group)
-  }
-  let passCount = 0
-  let failCount = 0
-  let unsupportedCount = 0
-  let stepCount = 0
-  for (const [task, group] of tasks) {
-    const outcome = taskOutcome(task, id, group)
-    if (outcome.status === 'pass') {
-      passCount += 1
-      stepCount += outcome.steps
-    } else if (outcome.status === 'fail') {
-      failCount += 1
-    } else {
-      unsupportedCount += 1
-    }
-  }
-  return { id, name, passCount, failCount, unsupportedCount, taskCount: tasks.size, stepCount }
-}
-
-function taskOutcome(task: string, guest: string, rows: TaskRow[]): { status: 'pass'; steps: number } | { status: 'fail' | 'unsupported' } {
-  if (rows.some(row => row.status === 'fail')) return { status: 'fail' }
-  if (rows.every(row => row.status === 'pass')) {
-    const steps = new Set(rows.map(row => row.applied_steps))
-    const probes = new Set(rows.map(row => row.probes))
-    if (steps.size !== 1 || probes.size !== 1 || typeof rows[0].applied_steps !== 'number') {
-      throw new HistoryError(`${task}/${guest}: hosts disagree on pass counts`)
-    }
-    return { status: 'pass', steps: rows[0].applied_steps }
-  }
-  if (rows.every(row => row.status === 'unsupported')) return { status: 'unsupported' }
-  throw new HistoryError(`${task}/${guest}: hosts disagree on status`)
-}
+export const history = loadHistory(rawSummary)
 
 function guestIds(history: History, order: readonly string[]): string[] {
   const present = new Set<string>()
   for (const entry of history.entries) {
     for (const id of Object.keys(entry.guests)) present.add(id)
+    for (const id of Object.keys(entry.tasks ?? {})) present.add(id)
   }
   const ids = order.filter(id => present.has(id))
-  for (const entry of history.entries) {
-    for (const id of Object.keys(entry.guests)) {
-      if (!ids.includes(id)) ids.push(id)
-    }
+  for (const id of present) {
+    if (!ids.includes(id)) ids.push(id)
   }
   return ids
 }
@@ -370,120 +436,98 @@ function loadEntry(value: unknown, index: number): HistoryEntry {
   }
 }
 
-function loadGuests(commit: string, value: unknown): Record<string, HistoryGuest> {
+function loadGuests(commit: string, value: unknown): Record<string, number> {
   if (!isRecord(value)) throw new HistoryError(`${commit}: guests must be an object`)
-  const guests: Record<string, HistoryGuest> = {}
-  for (const [guestId, guest] of Object.entries(value)) {
+  const guests: Record<string, number> = {}
+  for (const [guestId, ruleLines] of Object.entries(value)) {
     if (guestId.length === 0) throw new HistoryError(`${commit}: guest id must be a non-empty string`)
-    if (!isRecord(guest) || !subsetKeys(guest, GUEST_KEYS, ['program', 'rule_lines'])) {
-      throw new HistoryError(`${commit} ${guestId}: guest keys must be program, rule_lines, and optional error`)
-    }
-    if (typeof guest.program !== 'string' || !guest.program.endsWith('.tpp')) {
-      throw new HistoryError(`${commit} ${guestId}: program must be a .tpp path`)
-    }
-    const ruleLines = guest.rule_lines
-    const error = guest.error
-    if (ruleLines === null) {
-      if (typeof error !== 'string' || error.length === 0) {
-        throw new HistoryError(`${commit} ${guestId}: null rule_lines requires error`)
-      }
-      guests[guestId] = { program: guest.program, rule_lines: null }
-      continue
-    }
-    guests[guestId] = { program: guest.program, rule_lines: nonNegativeInt(ruleLines, `${commit} ${guestId} rule_lines`) }
-    if (error !== undefined) throw new HistoryError(`${commit} ${guestId}: error is only set when rule_lines is null`)
+    guests[guestId] = nonNegativeInt(ruleLines, `${commit} ${guestId} rule_lines`)
   }
   return guests
 }
 
 function loadTasks(commit: string, value: unknown): HistoryEntry['tasks'] {
   if (value === null) return null
-  if (!isRecord(value) || !exactKeys(value, TASK_KEYS)) throw new HistoryError(`${commit}: tasks keys must be source and results`)
-  if (value.source !== 'make tasks') throw new HistoryError(`${commit}: tasks source must be 'make tasks'`)
-  if (!Array.isArray(value.results) || value.results.length === 0) {
-    throw new HistoryError(`${commit}: tasks results must be a non-empty array`)
+  if (!isRecord(value) || Object.keys(value).length === 0) {
+    throw new HistoryError(`${commit}: tasks must be a non-empty object or null`)
   }
-  const seen = new Set<string>()
-  const results = value.results.map(row => loadTaskRow(commit, row, seen))
-  return { results }
-}
-
-function loadTaskRow(commit: string, value: unknown, seen: Set<string>): TaskRow {
-  if (!isRecord(value) || !exactKeys(value, TASK_ROW_KEYS)) {
-    throw new HistoryError(`${commit}: task row keys must be ${TASK_ROW_KEYS.join(', ')}`)
+  const tasks: Record<string, TaskGuestRow> = {}
+  for (const [guestId, row] of Object.entries(value)) {
+    if (guestId.length === 0) throw new HistoryError(`${commit}: guest id must be a non-empty string`)
+    if (!isRecord(row) || !exactKeys(row, TASK_GUEST_KEYS)) {
+      throw new HistoryError(`${commit} ${guestId}: task keys must be ${TASK_GUEST_KEYS.join(', ')}`)
+    }
+    const pass = nonNegativeInt(row.pass, `${commit} ${guestId} pass`)
+    const fail = nonNegativeInt(row.fail, `${commit} ${guestId} fail`)
+    const unsupported = nonNegativeInt(row.unsupported, `${commit} ${guestId} unsupported`)
+    if (pass + fail + unsupported < 1) throw new HistoryError(`${commit} ${guestId}: tasks are empty`)
+    tasks[guestId] = { pass, fail, unsupported, steps: nonNegativeInt(row.steps, `${commit} ${guestId} steps`) }
   }
-  const task = requireText(value.task, `${commit}: task`)
-  const guest = requireText(value.guest, `${commit}: guest`)
-  const host = requireText(value.host, `${commit}: host`)
-  if (!HOST_IDS.includes(host)) throw new HistoryError(`${commit}: unknown host ${host}`)
-  assertEnvironment(host, requireText(value.environment, `${commit}: environment`))
-  if (!TASK_STATUSES.includes(value.status as typeof TASK_STATUSES[number])) {
-    throw new HistoryError(`${commit}: status ${String(value.status)}`)
-  }
-  const status = value.status as TaskRow['status']
-  const applied = optionalCount(value.applied_steps, `${commit} ${task}/${guest}/${host} applied_steps`)
-  const probes = optionalCount(value.probes, `${commit} ${task}/${guest}/${host} probes`)
-  if (value.pass !== (status === 'pass')) throw new HistoryError(`${commit}: pass does not match status for ${task}/${guest}/${host}`)
-  if (status === 'pass' && (applied === null || probes === null)) {
-    throw new HistoryError(`${commit} ${task}/${guest}/${host} pass requires applied_steps and probes`)
-  }
-  if (status === 'unsupported' && (applied !== null || probes !== null)) {
-    throw new HistoryError(`${commit} ${task}/${guest}/${host} unsupported clears applied_steps and probes`)
-  }
-  const identity = `${task}/${guest}/${host}`
-  if (seen.has(identity)) throw new HistoryError(`${commit}: duplicate task row ${identity}`)
-  seen.add(identity)
-  return { task, guest, host, status, applied_steps: applied, probes }
+  return tasks
 }
 
 function loadBenchmarks(commit: string, value: unknown): HistoryEntry['benchmarks'] {
   if (value === null) return null
-  if (!isRecord(value) || !exactKeys(value, BENCHMARK_KEYS)) {
-    throw new HistoryError(`${commit}: benchmark keys must be ${BENCHMARK_KEYS.join(', ')}`)
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HistoryError(`${commit}: benchmarks must be a non-empty array or null`)
   }
-  if (typeof value.program !== 'string' || value.program.length === 0) {
-    throw new HistoryError(`${commit}: benchmark program must be a non-empty string`)
-  }
-  const hosts = value.hosts
-  if (!isRecord(hosts) || Object.keys(hosts).length === 0) {
-    throw new HistoryError(`${commit}: benchmark hosts must be a non-empty subset of ${HOST_IDS.join(', ')}`)
-  }
-  const unknown = Object.keys(hosts).filter(id => !HOST_IDS.includes(id))
-  if (unknown.length > 0) throw new HistoryError(`${commit}: unknown benchmark host(s) ${unknown.join(', ')}`)
-  const loaded = HOST_IDS.filter(id => id in hosts).map(id => {
-    const row = hosts[id]
-    if (!isRecord(row) || !exactKeys(row, BENCHMARK_HOST_KEYS)) {
-      throw new HistoryError(`${commit} ${id}: benchmark host keys must be ${BENCHMARK_HOST_KEYS.join(', ')}`)
-    }
-    const timeout = row.host_timeout_seconds
-    if (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout <= 0) {
-      throw new HistoryError(`${commit} ${id}: host_timeout_seconds must be a positive number`)
-    }
-    const environment = requireText(row.environment, `${commit} ${id} environment`)
-    assertEnvironment(id, environment)
-    return {
-      id,
-      environment,
-      durationMs: nonNegativeInt(row.duration_ms, `${commit} ${id} duration_ms`),
-      exitCode: anyInt(row.exit_code, `${commit} ${id} exit_code`),
-      appliedSteps: nonNegativeInt(row.applied_steps, `${commit} ${id} applied_steps`),
-      probes: nonNegativeInt(row.probes, `${commit} ${id} probes`),
-    }
+  const seen = new Set<string>()
+  return value.map(workload => {
+    const loaded = loadWorkload(commit, workload)
+    if (seen.has(loaded.id)) throw new HistoryError(`${commit}: duplicate workload ${loaded.id}`)
+    seen.add(loaded.id)
+    return loaded
   })
-  const steps = new Set(loaded.map(host => host.appliedSteps))
-  const probes = new Set(loaded.map(host => host.probes))
-  if (steps.size !== 1 || probes.size !== 1) {
-    throw new HistoryError(`${commit}: benchmark hosts disagree on applied_steps or probes`)
+}
+
+function loadWorkload(commit: string, value: unknown): WorkloadRow {
+  if (!isRecord(value) || !exactKeys(value, WORKLOAD_KEYS)) {
+    throw new HistoryError(`${commit}: workload keys must be ${WORKLOAD_KEYS.join(', ')}`)
   }
+  const id = value.id
+  if (typeof id !== 'string' || !/^[a-z][a-z0-9-]*$/.test(id)) {
+    throw new HistoryError(`${commit}: workload id must be a lowercase slug`)
+  }
+  if (!Array.isArray(value.hosts) || value.hosts.length === 0) {
+    throw new HistoryError(`${commit} ${id}: hosts must be a non-empty array`)
+  }
+  const seen = new Set<string>()
+  const hosts = value.hosts.map(host => loadHost(commit, id, host, seen))
   return {
-    appliedSteps: loaded[0].appliedSteps,
-    probes: loaded[0].probes,
-    maxSteps: positiveInt(value.max_steps, `${commit} benchmarks.max_steps`),
-    maxEvals: positiveInt(value.max_evals, `${commit} benchmarks.max_evals`),
-    maxStateBytes: positiveInt(value.max_state_bytes, `${commit} benchmarks.max_state_bytes`),
-    timeoutSeconds: positiveInt(value.timeout_seconds, `${commit} benchmarks.timeout_seconds`),
-    memoryCapBytes: positiveInt(value.memory_cap_bytes, `${commit} benchmarks.memory_cap_bytes`),
-    hosts: loaded.map(host => ({ id: host.id, environment: host.environment, durationMs: host.durationMs, exitCode: host.exitCode })),
+    id,
+    appliedSteps: nonNegativeInt(value.steps, `${commit} ${id} steps`),
+    probes: nonNegativeInt(value.probes, `${commit} ${id} probes`),
+    maxSteps: positiveInt(value.max_steps, `${commit} ${id} max_steps`),
+    maxEvals: positiveInt(value.max_evals, `${commit} ${id} max_evals`),
+    maxStateBytes: positiveInt(value.max_state_bytes, `${commit} ${id} max_state_bytes`),
+    timeoutSeconds: positiveInt(value.timeout_seconds, `${commit} ${id} timeout_seconds`),
+    memoryCapBytes: positiveInt(value.memory_cap_bytes, `${commit} ${id} memory_cap_bytes`),
+    hosts: HOST_IDS.filter(hostId => hosts.some(host => host.id === hostId)).map(hostId => {
+      const host = hosts.find(item => item.id === hostId)
+      if (!host) throw new HistoryError(`${commit} ${id}: missing host ${hostId}`)
+      return host
+    }),
+  }
+}
+
+function loadHost(commit: string, workload: string, value: unknown, seen: Set<string>): BenchmarkHost {
+  if (!isRecord(value) || !exactKeys(value, HOST_KEYS)) {
+    throw new HistoryError(`${commit} ${workload}: host keys must be ${HOST_KEYS.join(', ')}`)
+  }
+  const id = requireText(value.id, `${commit} ${workload} host`)
+  if (!HOST_IDS.includes(id)) throw new HistoryError(`${commit}: unknown benchmark host ${id}`)
+  if (seen.has(id)) throw new HistoryError(`${commit} ${workload}: duplicate host ${id}`)
+  seen.add(id)
+  const environment = requireText(value.environment, `${commit} ${workload} ${id} environment`)
+  assertEnvironment(id, environment)
+  const memory = value.memory_bytes
+  if (memory !== null) nonNegativeInt(memory, `${commit} ${workload} ${id} memory_bytes`)
+  return {
+    id,
+    environment,
+    durationMs: nonNegativeInt(value.duration_ms, `${commit} ${workload} ${id} duration_ms`),
+    memoryBytes: memory === null ? null : nonNegativeInt(memory, `${commit} ${workload} ${id} memory_bytes`),
+    exitCode: anyInt(value.exit_code, `${commit} ${workload} ${id} exit_code`),
   }
 }
 
@@ -508,11 +552,6 @@ function compareKey(left: [string, string], right: [string, string]): number {
   if (left[1] < right[1]) return -1
   if (left[1] > right[1]) return 1
   return 0
-}
-
-function optionalCount(value: unknown, label: string): number | null {
-  if (value === null) return null
-  return nonNegativeInt(value, label)
 }
 
 function nonNegativeInt(value: unknown, label: string): number {
@@ -546,8 +585,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const present = Object.keys(value)
   return present.length === keys.length && keys.every(key => Object.prototype.hasOwnProperty.call(value, key))
-}
-
-function subsetKeys(value: Record<string, unknown>, allowed: readonly string[], required: readonly string[]): boolean {
-  return Object.keys(value).every(key => allowed.includes(key)) && required.every(key => Object.prototype.hasOwnProperty.call(value, key))
 }

@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "commit": "2dbf150ed347eed0887987b23d4b81d3e68e35d1",
+  "author": "Tim Watts <tim@readevalprint.com>",
+  "timestamp": "2026-05-14T22:46:54Z",
+  "machine": null,
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": null,
+      "error": "Error: Line 19: Pattern alias 'P' must not contain named captures"
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}

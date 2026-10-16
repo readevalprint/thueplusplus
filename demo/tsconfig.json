@@ -13,6 +13,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "../metrics/history.json"],
+  "include": ["src/**/*.ts", "src/**/*.vue", "src/generated/summary.json"],
   "exclude": ["src/DesignLab.vue"]
 }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { HistoryError, placeChart, type CommitRef, type NamedSeries } from '@/metrics'
+import { HistoryError, placeChart, pointAt, rangeLabel, stepPath, type CommitRef, type NamedSeries } from '@/metrics'
 
 const props = withDefaults(defineProps<{
   commits: CommitRef[]
+  order: string[]
   series: NamedSeries[]
   selected: number
   label: string
@@ -33,33 +34,47 @@ interface Drawn {
   id: string
   tone: number
   d: string
-  dots: { x: number; y: number; selected: boolean }[]
+  dots: { x: number; y: number; title: string; selected: boolean }[]
+}
+
+interface PlotPoint {
+  index: number
+  x: number
+  y: number
+  value: number
+  change: boolean
+  title: string
 }
 
 const drawn = computed(() => {
   const { placed } = frame.value
   return props.series.map((series, index): Drawn => {
-    const byCommit = new Map(series.points.map(point => [point.commit, point.value]))
-    const runs: { index: number; x: number; y: number }[][] = []
-    let run: { index: number; x: number; y: number }[] = []
+    const runs: PlotPoint[][] = []
+    let run: PlotPoint[] = []
     props.commits.forEach((commit, commitIndex) => {
-      const value = byCommit.get(commit.commit)
-      if (value === undefined) {
+      const point = pointAt(series.points, commit.commit, props.order)
+      if (!point) {
         if (run.length > 0) runs.push(run)
         run = []
         return
       }
-      run.push({ index: commitIndex, x: placed.xAt(commitIndex), y: placed.yAt(value) })
+      run.push({
+        index: commitIndex,
+        x: placed.xAt(commitIndex),
+        y: placed.yAt(point.value),
+        value: point.value,
+        change: point.commit === commit.commit,
+        title: rangeLabel(point),
+      })
     })
     if (run.length > 0) runs.push(run)
-    const dots = runs.flatMap(item => item.filter(point => item.length === 1 || props.commits.length <= 24 || point.index === props.selected).map(point => ({
+    const dots = runs.flat().filter(point => point.change).map(point => ({
       x: point.x,
       y: point.y,
+      title: point.title,
       selected: point.index === props.selected,
-    })))
-    const d = runs.filter(item => item.length > 1).map(item => item.map((point, pointIndex) => {
-      return `${pointIndex === 0 ? 'M' : 'L'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`
-    }).join('')).join(' ')
+    }))
+    const d = runs.map(item => stepPath(item)).filter(path => path.length > 0).join(' ')
     return { id: series.id, tone: index % 4, d, dots }
   })
 })
@@ -138,7 +153,9 @@ function onPointer(event: PointerEvent): void {
           :cy="dot.y"
           :r="dot.selected ? 3.5 : 2.5"
           :class="['dot', `tone-${series.tone}`]"
-        />
+        >
+          <title>{{ dot.title }}</title>
+        </circle>
       </template>
       <text :x="frame.placed.plotLeft" :y="frame.placed.height - 4" fill="var(--dim)" font-size="11">{{ firstDate }}</text>
       <text v-if="commits.length > 1" :x="frame.placed.plotRight" :y="frame.placed.height - 4" fill="var(--dim)" font-size="11" text-anchor="end">{{ lastDate }}</text>

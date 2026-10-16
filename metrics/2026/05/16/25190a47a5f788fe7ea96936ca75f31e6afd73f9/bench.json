@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "commit": "25190a47a5f788fe7ea96936ca75f31e6afd73f9",
+  "author": "Tim Watts <tim@readevalprint.com>",
+  "timestamp": "2026-05-16T14:44:28Z",
+  "machine": null,
+  "guests": {
+    "lisp": {
+      "program": "examples/lisp/lisp.tpp",
+      "rule_lines": null,
+      "error": "/tmp/thuepp-rule-lines-r_b3fu1r/223a5e7f930cb33adf709a2db4d93cf5f251665d.tpp:101: coverage ignore comments are unsupported; add fixtures or delete the rule"
+    }
+  },
+  "tasks": null,
+  "benchmarks": null
+}
