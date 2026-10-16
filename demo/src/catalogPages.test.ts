@@ -5,6 +5,7 @@ import GuestsPage from './pages/GuestsPage.vue'
 import TaskPage from './pages/TaskPage.vue'
 import TasksPage from './pages/TasksPage.vue'
 import { catalog, rankGuests, taskRouteMeta } from './catalog'
+import { pageLinks } from './site'
 
 async function mountAt(path: string) {
   const router = createRouter({
@@ -87,8 +88,9 @@ describe('catalog pages', () => {
     expect(page.get('[data-test="task-io"]').text()).toContain('stdin')
     expect(page.get('[data-test="task-io"]').text()).toContain('stdout')
     expect(page.get('[data-test="task-io"]').text()).toContain(String(task.cases[0].exitCode))
-    expect(page.get('[data-test="page-sidebar"]').text()).toContain('Description')
-    expect(page.get('[data-test="page-sidebar"]').text()).toContain('Input and output')
+    const links = pageLinks(task.path).map(link => link.title)
+    expect(links).toContain('Description')
+    expect(links).toContain('Input and output')
     expect(page.findAll('[data-test="task-guest"]')).toHaveLength(catalog.guests.length)
     for (const guest of task.guests) {
       const section = page.get(`[data-test="task-guest"][data-guest="${guest.id}"]`)

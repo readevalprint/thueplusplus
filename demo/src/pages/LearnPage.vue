@@ -2,7 +2,6 @@
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
-import PageAside from '@/components/PageAside.vue'
 import RewriteArrow from '@/components/marks/RewriteArrow.vue'
 import { pages } from '@/site'
 
@@ -13,8 +12,7 @@ hello Ada`
 </script>
 
 <template>
-  <PageAside :links="page.links">
-    <DocPage :kicker="page.kicker" :title="page.title">
+  <DocPage :kicker="page.kicker" :title="page.title">
     <template #mark>
       <RewriteArrow />
     </template>
@@ -29,7 +27,7 @@ hello Ada`
     <section id="program" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">A program</h2>
       <p class="leading-7">A program is an ordered list of rules and one state string. The host tries the rules from the top. The first pattern that matches rewrites the state. That repeats until no rule matches, or a rule stops the run.</p>
-      <pre class="bg-muted overflow-x-auto rounded-md p-4 font-mono text-sm">{{ sample }}</pre>
+      <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ sample }}</pre>
       <p class="text-muted-foreground leading-7">The rule matches <code>hello Ada</code> and replaces the whole state with <code>hi Ada</code>. Nothing else matches, so the run stops.</p>
     </section>
     <section id="operators" class="flex flex-col gap-3">
@@ -44,6 +42,5 @@ hello Ada`
       <h2 class="text-xl font-semibold tracking-tight">Try it</h2>
       <p class="leading-7">The <RouterLink to="/playground" class="underline underline-offset-4">playground</RouterLink> loads the Go host compiled to WebAssembly. Step runs one rewrite, and the step limit is on before you press anything.</p>
     </section>
-    </DocPage>
-  </PageAside>
+  </DocPage>
 </template>

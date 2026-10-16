@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" class="monaco-rules-editor h-64 w-full overflow-hidden rounded-md border" :data-current-match-line="highlightLine || undefined" />
+  <div ref="container" class="monaco-rules-editor h-full min-h-0 w-full flex-1 overflow-hidden" :data-current-match-line="highlightLine || undefined" />
 </template>
 
 <script setup lang="ts">
@@ -26,7 +26,12 @@ let monaco: typeof Monaco | undefined
 let editor: Monaco.editor.IStandaloneCodeEditor | undefined
 let matchDecorations: Monaco.editor.IEditorDecorationsCollection | undefined
 let resizeObserver: ResizeObserver | undefined
+let themeObserver: MutationObserver | undefined
 let applyingExternalValue = false
+
+function editorThemeName(): 'thuepp-dark' | 'thuepp-light' {
+  return document.documentElement.classList.contains('dark') ? 'thuepp-dark' : 'thuepp-light'
+}
 
 interface RulesEditorElement extends HTMLElement {
   __thueppSetValue?: (value: string) => void
@@ -45,9 +50,9 @@ onMounted(async () => {
   editor = monaco.editor.create(container.value, {
     value: props.modelValue,
     language: 'thuepp',
-    theme: 'thuepp-dark',
+    theme: editorThemeName(),
     automaticLayout: false,
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    fontFamily: '"JetBrains Mono", ui-monospace, monospace',
     fontSize: 13,
     lineHeight: 20,
     minimap: { enabled: false },
@@ -83,6 +88,8 @@ onMounted(async () => {
   }
   resizeObserver = new ResizeObserver(() => editor?.layout())
   resizeObserver.observe(container.value)
+  themeObserver = new MutationObserver(() => monaco?.editor.setTheme(editorThemeName()))
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
 
 watch(() => props.modelValue, value => {
@@ -124,6 +131,7 @@ function updateMatchedRuleDecoration(line: number | undefined): void {
 }
 
 onBeforeUnmount(() => {
+  themeObserver?.disconnect()
   resizeObserver?.disconnect()
   if (container.value) delete (container.value as RulesEditorElement).__thueppSetValue
   editor?.dispose()
