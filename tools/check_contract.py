@@ -283,7 +283,7 @@ def check_numeric_regex(root: Path) -> list[Failure]:
     except ValueError as exc:
         return [Failure(root / "docs" / "numeric-builtins.md", str(exc))]
     if UNSUPPORTED_RE2_RE.search(grammar) is not None:
-        failures.append(Failure(root / "docs" / "numeric-builtins.md", "canonical numeric regex uses syntax outside the shared RE2 subset"))
+        failures.append(Failure(root / "docs" / "numeric-builtins.md", "canonical numeric regex uses syntax outside the regex engine subset"))
     try:
         re.compile(grammar)
     except re.error as exc:

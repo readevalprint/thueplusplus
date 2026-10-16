@@ -11,6 +11,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 - Per-commit metrics history at `metrics/history.json`. The schema is `metrics/SCHEMA.md`. `metrics/record.py` appends the current commit: SHA, author, commit timestamp, guest rule-line counts, task pass / applied steps / probes from `make tasks`, and benchmark wall-clock time for each host. `metrics/backfill.py` fills older commits with rule-line counts where the current Python host can list rules. GitHub Actions commits a new `main` measurement. GitLab CI runs the same recorder. The static site fetches `/metrics/history.json`.
 - Host CLI `--counts PATH`. After a run it writes `{"applied_steps": N, "probes": N}`. `make tasks` records `probe_count` from that file on every task, guest, and host.
+- Landing page at `/`: the header Thue++, the tagline "The safest, smallest, sandbox.", a small animated rewrite graphic, then the language line. Go, Python, and JavaScript link to their Hosts sections. cpp, erlang, ocaml, perl, ruby, haskell, and rust are plain text.
 - Forth guest words for loops (`begin`/`until`), `if`/`else`/`then`, strings (`."`, `cr`, `.`, `rev`, `rot13`), and stdin (`input`, `accept`). The golden tasks now have Forth solutions for hello world, Fibonacci, FizzBuzz, factorial, reverse, 99 bottles, guess the number, sum of input, palindrome, and ROT13.
 - `--trace` writes one JSON object per trace event to stderr, before any `Error:` line. `examples/trace` locks that text for a state-limit rejection and for a matched rule that fails before replacement.
 - Golden-program task suite in `tasks/`. Each task is an I/O transcript. Forth and Lisp solutions run on every host under the shared step, state, probe, `timeout(1)`, and 256 MiB caps. `make tasks` writes `build/tasks/results.json` with pass/fail, applied steps, guest rule count, solution size, commit, author, and timestamp. GitLab CI archives that file from the `tasks` job.
@@ -28,7 +29,8 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 - **Breaking:** the Python CLI is `uv run thuepp` / `python -m thuepp`. `python/thuepp.py` is gone.
 - **Breaking:** the wasm conformance CLI is `node js/src/cli.js`. `go/wasm/cli.cjs` and `demo/wasm` are gone. The playground imports `thuepp/worker` and `thuepp/browser-worker`.
 - **Breaking:** a manifest that passes `unlimited` without `allow_unlimited` on that one case fails before the program runs.
-- The site is a stock shadcn-vue shell: neutral theme, light and dark. The shell is the left menu plus the page. A page may render `PageAside` for a right column (a sheet below 1280px); pages without one use the full content width. Learn, Reference, Playground, Hosts, Guests, and Tasks each prerender to their own path. `/` is a placeholder. `/embed` has no chrome.
+- The site is a stock shadcn-vue shell: neutral theme, light and dark. The shell is the left menu plus the page. A page may render `PageAside` for a right column (a sheet below 1280px); pages without one use the full content width. Learn, Reference, Playground, Hosts, Guests, and Tasks each prerender to their own path. `/` is the landing page. `/embed` has no chrome.
+- Learn, Reference, and Hosts no longer name the regex implementation. Hosts calls it the regex engine.
 - Nav, hero, and card marks are rewrite and regex glyphs: a rewrite arrow, `Regex`, `Replace`, `Package`, `Boxes`, and a finish line. Generic book, library, play, server, and checklist icons are gone.
 - A host is a Thue++ implementation (Go, Python, JavaScript). A guest is a language implemented in Thue++.
 
@@ -90,7 +92,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Added
 
-- `::|` steps between a pattern and its terminal operator. A step searches the whole state and binds captures for the rest of the rule. `{{name|quote}}` inserts a RE2 literal. `quote` chains with `pctenc` and `pctdec`.
+- `::|` steps between a pattern and its terminal operator. A step searches the whole state and binds captures for the rest of the rule. `{{name|quote}}` inserts a regex literal. `quote` chains with `pctenc` and `pctdec`.
 - First numbered spec (`SPEC_VERSION`), the manifest schema (`docs/conformance.md`), and the CLI contract for another implementation (`docs/implementers.md`).
 - `tools/example_runner.py --impl NAME=COMMAND` runs that command in the same parity set as Python, Go, and wasm.
 - The wasm host is in that parity set.

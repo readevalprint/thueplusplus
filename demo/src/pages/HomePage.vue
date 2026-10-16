@@ -1,34 +1,17 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { Button } from '@/components/ui/button'
-import DocPage from '@/components/DocPage.vue'
-import RewriteArrow from '@/components/marks/RewriteArrow.vue'
-import { pages } from '@/site'
-
-const page = pages.home
+import RewriteGraphic from '@/components/landing/RewriteGraphic.vue'
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <RewriteArrow />
-    </template>
-    <template #actions>
-      <Button as-child>
-        <RouterLink to="/playground">Playground</RouterLink>
-      </Button>
-      <Button as-child variant="outline">
-        <RouterLink to="/learn">Learn</RouterLink>
-      </Button>
-      <Button as="a" variant="outline" href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">GitLab</Button>
-    </template>
-    <section id="placeholder" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Placeholder</h2>
-      <p class="text-muted-foreground leading-7">This landing page will be designed on its own later. The line above is the whole introduction for now.</p>
-    </section>
-    <section id="start" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Start</h2>
-      <p class="leading-7">Read <RouterLink to="/learn" class="underline underline-offset-4">Learn</RouterLink> for what a program is, <RouterLink to="/reference" class="underline underline-offset-4">Reference</RouterLink> for the operators, or open the <RouterLink to="/playground" class="underline underline-offset-4">Playground</RouterLink> and run one.</p>
-    </section>
-  </DocPage>
+  <div data-test="landing" class="mx-auto flex w-full max-w-prose flex-col gap-8 px-6 pt-10 pb-16">
+    <header class="flex flex-col gap-6">
+      <div>
+        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Thue++</h1>
+        <p class="mt-2 text-lg leading-7">The safest, smallest, sandbox.</p>
+      </div>
+      <RewriteGraphic />
+    </header>
+    <p data-test="landing-languages" class="leading-7">Available in <RouterLink to="/hosts#go" class="underline underline-offset-4">go</RouterLink>, <RouterLink to="/hosts#python" class="underline underline-offset-4">python</RouterLink>, <RouterLink to="/hosts#javascript" class="underline underline-offset-4">js</RouterLink>, and soon cpp, erlang, ocaml, perl, ruby, haskell, rust.</p>
+  </div>
 </template>

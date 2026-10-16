@@ -74,12 +74,22 @@ describe('Go-WASM demo UI', () => {
     })
   })
 
-  it('renders the placeholder landing inside the shell', async () => {
+  it('renders the landing page inside the shell', async () => {
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="page-hero"]').text()).toContain('A rewrite language built on RE2.')
-    expect(wrapper.get('[data-test="page-details"]').text()).toContain('Placeholder')
+    expect(wrapper.get('h1').text()).toBe('Thue++')
+    expect(wrapper.text()).toContain('The safest, smallest, sandbox.')
+    const languages = wrapper.get('[data-test="landing-languages"]')
+    expect(languages.text()).toBe('Available in go, python, js, and soon cpp, erlang, ocaml, perl, ruby, haskell, rust.')
+    expect(languages.get('a[href="/hosts#go"]').text()).toBe('go')
+    expect(languages.get('a[href="/hosts#python"]').text()).toBe('python')
+    expect(languages.get('a[href="/hosts#javascript"]').text()).toBe('js')
+    expect(languages.findAll('a')).toHaveLength(3)
+    expect(wrapper.get('[data-test="landing-rewrite"]').text()).toContain('hello Ada')
+    expect(wrapper.get('[data-test="landing-rewrite"]').text()).toContain('::=')
+    expect(wrapper.get('[data-test="landing-rewrite"]').text()).toContain('hi Ada')
+    expect(wrapper.text()).not.toContain('RE2')
     const nav = wrapper.get('[data-test="site-nav"]')
     expect(nav.text()).toContain('Learn')
     expect(nav.text()).toContain('Reference')
@@ -100,6 +110,7 @@ describe('Go-WASM demo UI', () => {
     let wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('Rewrite a string until it stops.')
     expect(wrapper.text()).toContain('A program')
+    expect(wrapper.text()).not.toContain('RE2')
     expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('A program')
     expect(wrapper.get('[data-test="site-nav"]').get('a[href="/learn"]').attributes('aria-current')).toBe('page')
 
@@ -107,12 +118,16 @@ describe('Go-WASM demo UI', () => {
     wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('Operators, resources, and limits.')
     expect(wrapper.text()).toContain('::=')
+    expect(wrapper.text()).toContain('Patterns are regular expressions.')
+    expect(wrapper.text()).not.toContain('RE2')
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
 
     window.history.pushState({}, '', '/hosts')
     wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('Go, Python, and JavaScript.')
     expect(wrapper.text()).toContain('JavaScript')
+    expect(wrapper.text()).toContain('the regex engine')
+    expect(wrapper.text()).not.toContain('RE2')
 
     window.history.pushState({}, '', '/guests')
     wrapper = await mountApp()

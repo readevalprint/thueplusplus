@@ -28,7 +28,7 @@ hello Ada`
     </template>
     <section id="program" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">A program</h2>
-      <p class="leading-7">A program is an ordered list of rules and one state string. The host tries the rules from the top. The first RE2 pattern that matches rewrites the state. That repeats until no rule matches, or a rule stops the run.</p>
+      <p class="leading-7">A program is an ordered list of rules and one state string. The host tries the rules from the top. The first pattern that matches rewrites the state. That repeats until no rule matches, or a rule stops the run.</p>
       <pre class="bg-muted overflow-x-auto rounded-md p-4 font-mono text-sm">{{ sample }}</pre>
       <p class="text-muted-foreground leading-7">The rule matches <code>hello Ada</code> and replaces the whole state with <code>hi Ada</code>. Nothing else matches, so the run stops.</p>
     </section>
