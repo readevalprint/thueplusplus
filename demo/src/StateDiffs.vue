@@ -124,7 +124,7 @@ function diffLine(parts: DiffPart[], side: 'removed' | 'added', sign: '-' | '+')
 }
 
 function partClass(part: DiffPart, side: 'removed' | 'added'): string {
-  const changed = part.changed ? (side === 'removed' ? 'state-diff-char-removed bg-destructive/30' : 'state-diff-char-added bg-foreground/15') : ''
+  const changed = part.changed ? (side === 'removed' ? 'state-diff-char-removed' : 'state-diff-char-added') : ''
   return [changed, part.ellipsis ? 'text-muted-foreground' : ''].filter(Boolean).join(' ')
 }
 </script>

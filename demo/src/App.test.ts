@@ -443,8 +443,13 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('-start')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('+middle')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('examples/hello/hello.tpp')
-    expect(wrapper.find('.state-diff-char-removed').exists()).toBe(true)
-    expect(wrapper.find('.state-diff-char-added').exists()).toBe(true)
+    expect(wrapper.find('.state-diff-line.removed').exists()).toBe(true)
+    expect(wrapper.find('.state-diff-line.added').exists()).toBe(true)
+    const removed = wrapper.get('.state-diff-char-removed')
+    const added = wrapper.get('.state-diff-char-added')
+    expect(removed.classes()).not.toContain('bg-destructive/30')
+    expect(added.classes()).not.toContain('bg-foreground/15')
+    expect(added.classes()).toContain('state-diff-char-added')
     expect(wrapper.get('[data-test="playground-status"]').text()).toContain('stepped')
   })
 
@@ -783,6 +788,59 @@ describe('Go-WASM demo UI', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('reset clears every resource transcript and the engine counters', async () => {
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    const wrapper = await mountApp()
+    await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\n\n^b$ ::> bar hi\\n')
+    await wrapper.get('[data-test="playground-state"]').setValue('a')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: 'A\n',
+      stderr: '',
+      state: 'b',
+      evalCount: 3,
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: 'b' }],
+      resourceLogs: [
+        { name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' },
+        { name: 'bar', reads: [], writes: ['hi\n'], errors: [], remainingInputText: 'kept', outputText: 'hi\n' },
+      ],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
+    expect(wrapper.get('[data-test="resource-output-bar"]').element).toHaveProperty('value', 'hi\n')
+    expect(wrapper.get('[data-test="playground-applied-limits"]').text()).toContain('steps 1/1000000')
+    expect(wrapper.get('[data-test="playground-applied-limits"]').text()).toContain('probes 3/1000000')
+
+    await wrapper.get('[data-test="playground-reset"]').trigger('click')
+
+    expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'a')
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', '')
+    expect(wrapper.get('[data-test="resource-output-bar"]').element).toHaveProperty('value', '')
+    expect(wrapper.get('[data-test="playground-applied-limits"]').text()).toContain('steps 0/1000000')
+    expect(wrapper.get('[data-test="playground-applied-limits"]').text()).toContain('probes 0/1000000')
+    expect(wrapper.get('[data-test="playground-status"]').text()).toContain('checkpoint initial')
+
+    mockedRunWithWorker.mockResolvedValueOnce({
+      exitCode: 0,
+      stdout: 'A\n',
+      stderr: '',
+      state: 'b',
+      evalCount: 1,
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: 'b' }],
+      resourceLogs: [{ name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' }],
+    })
+    await wrapper.get('[data-test="playground-step"]').trigger('click')
+    await flush()
+
+    expect(mockedRunWithWorker.mock.calls[1][0].input).toBe('a')
+    expect(mockedRunWithWorker.mock.calls[1][0].resources.find((resource: { name: string }) => resource.name === 'bar')).toEqual({ name: 'bar', inputText: '', readError: undefined })
+    expect(wrapper.get('[data-test="resource-output-stdout"]').element).toHaveProperty('value', 'A\n')
+    expect(wrapper.get('[data-test="resource-output-bar"]').element).toHaveProperty('value', '')
   })
 
   it('step pauses at resource reads and submit resumes automatically', async () => {

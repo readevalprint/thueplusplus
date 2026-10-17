@@ -588,6 +588,12 @@ function selectHistoryEntry(key: string): void {
 function resetToFirstState(): void {
   if (!canReset.value) return
   selectHistoryEntry(stateDiffs.value[0].key)
+  resourceOutputs.value = {}
+  resourceLogs.value = {}
+  resourceAttention.value = {}
+  resourceSubmittedInputs.value = {}
+  appliedSteps.value = 0
+  probeCount.value = 0
 }
 
 function undoStep(): void {
