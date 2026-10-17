@@ -13,28 +13,28 @@
       { "title": "Sandbox", "href": "#sandbox" }
     ]
   },
-  "learn": {
-    "path": "/learn",
-    "kicker": "Learn",
+  "guides": {
+    "path": "/docs/guides",
+    "kicker": "Guides",
     "title": "Rewrite a string until it stops.",
-    "description": "A short tour of Thue++: ordered rules, a state string, and a host that repeats them.",
-    "documentTitle": "Learn Thue++ — Rewrite a string until it stops",
-    "canonical": "https://thuelang.org/learn",
+    "description": "A short tour of Thue++: ordered rules, a state string, and an engine that repeats them.",
+    "documentTitle": "Thue++ Guides — Rewrite a string until it stops",
+    "canonical": "https://thuelang.org/docs/guides",
     "robots": "index,follow",
     "links": [
       { "title": "A program", "href": "#program" },
       { "title": "Operators", "href": "#operators" },
-      { "title": "Hosts and guests", "href": "#hosts-and-guests" },
+      { "title": "Programs", "href": "#programs" },
       { "title": "Try it", "href": "#try-it" }
     ]
   },
-  "reference": {
-    "path": "/reference",
-    "kicker": "Reference",
+  "language": {
+    "path": "/docs/language",
+    "kicker": "Language",
     "title": "Operators, resources, and limits.",
     "description": "The Thue++ rule operators, the resources a host binds, and the limits a new interpreter starts with.",
-    "documentTitle": "Thue++ Reference — Operators, resources, and limits",
-    "canonical": "https://thuelang.org/reference",
+    "documentTitle": "Thue++ Language — Operators, resources, and limits",
+    "canonical": "https://thuelang.org/docs/language",
     "robots": "index,follow",
     "links": [
       { "title": "Operators", "href": "#operators" },
@@ -56,47 +56,128 @@
       { "title": "Trace", "href": "#trace" }
     ]
   },
-  "hosts": {
-    "path": "/hosts",
-    "kicker": "Hosts",
-    "title": "Go, Python, JavaScript, Rust, and C++.",
-    "description": "A host is a Thue++ implementation. This site ships Go, Python, JavaScript, Rust, and C++. JavaScript is the Go interpreter compiled to WebAssembly.",
-    "documentTitle": "Thue++ Hosts — Go, Python, JavaScript, Rust, and C++",
-    "canonical": "https://thuelang.org/hosts",
+  "install": {
+    "path": "/install",
+    "kicker": "Install",
+    "title": "Install a host.",
+    "description": "A host runs the Thue++ engine. Quick start, the supported platforms, and what is coming soon.",
+    "documentTitle": "Thue++ Install — Install a host",
+    "canonical": "https://thuelang.org/install",
     "robots": "index,follow",
     "links": [
-      { "title": "Go", "href": "#go" },
-      { "title": "Python", "href": "#python" },
-      { "title": "JavaScript", "href": "#javascript" },
-      { "title": "Rust", "href": "#rust" },
-      { "title": "C++", "href": "#cpp" }
+      { "title": "Quick start", "href": "#quick-start" },
+      { "title": "Supported", "href": "#supported" },
+      { "title": "Coming soon", "href": "#coming-soon" }
     ]
   },
-  "guests": {
-    "path": "/guests",
-    "kicker": "Guests",
-    "title": "Languages written in Thue++.",
-    "description": "Languages implemented in Thue++. The leaderboard counts passes, interpreter rule lines, and applied steps. Charts show each count per commit.",
-    "documentTitle": "Thue++ Guests — Languages written in Thue++",
-    "canonical": "https://thuelang.org/guests",
+  "installGo": {
+    "path": "/install/go",
+    "kicker": "Install",
+    "title": "Go.",
+    "description": "Install the Go host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — Go",
+    "canonical": "https://thuelang.org/install/go",
     "robots": "index,follow",
     "links": [
-      { "title": "Leaderboard", "href": "#leaderboard" },
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
+  "installPython": {
+    "path": "/install/python",
+    "kicker": "Install",
+    "title": "Python.",
+    "description": "Install the Python host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — Python",
+    "canonical": "https://thuelang.org/install/python",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
+  "installJs": {
+    "path": "/install/js",
+    "kicker": "Install",
+    "title": "JavaScript.",
+    "description": "Install the JavaScript host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — JavaScript",
+    "canonical": "https://thuelang.org/install/js",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
+  "installRust": {
+    "path": "/install/rust",
+    "kicker": "Install",
+    "title": "Rust.",
+    "description": "Install the Rust host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — Rust",
+    "canonical": "https://thuelang.org/install/rust",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
+  "installCpp": {
+    "path": "/install/cpp",
+    "kicker": "Install",
+    "title": "C++.",
+    "description": "Install the C++ host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — C++",
+    "canonical": "https://thuelang.org/install/cpp",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
+  "projects": {
+    "path": "/projects",
+    "kicker": "Projects",
+    "title": "Sandboxed projects.",
+    "description": "Programs the engine runs. Some are interpreters that run scripts. Others are apps written in Thue++.",
+    "documentTitle": "Thue++ Projects — Sandboxed projects",
+    "canonical": "https://thuelang.org/projects",
+    "robots": "index,follow",
+    "links": []
+  },
+  "metrics": {
+    "path": "/metrics",
+    "kicker": "Metrics",
+    "title": "What each commit measured.",
+    "description": "Rule lines, task passes, and host benchmarks. Each host line is labeled by its environment.",
+    "documentTitle": "Thue++ Metrics — What each commit measured",
+    "canonical": "https://thuelang.org/metrics",
+    "robots": "index,follow",
+    "links": [
       { "title": "Rule lines", "href": "#rule-lines" },
       { "title": "Tasks", "href": "#tasks" },
       { "title": "Passes", "href": "#passes" },
       { "title": "Steps", "href": "#task-steps" },
       { "title": "Benchmarks", "href": "#benchmarks" },
       { "title": "Steps and probes", "href": "#steps-and-probes" },
-      { "title": "Host time", "href": "#host-time" },
-      { "title": "Improve a guest", "href": "#improve" }
+      { "title": "Host time", "href": "#host-time" }
     ]
   },
   "tasks": {
     "path": "/tasks",
     "kicker": "Tasks",
     "title": "Programs with a finish line.",
-    "description": "Tasks are input and output contracts. The index lists every guest's status, and each task has its own page.",
+    "description": "Tasks are input and output contracts. The index lists every program's status, and each task has its own page.",
     "documentTitle": "Thue++ Tasks — Programs with a finish line",
     "canonical": "https://thuelang.org/tasks",
     "robots": "index,follow",

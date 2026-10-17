@@ -24,18 +24,34 @@ const PRESENTATION: Record<string, Presentation> = {
   cpp: { landing: 'cpp', title: 'C++', anchor: 'cpp' },
 }
 
-// Landing sentence and Hosts page order. Every hosts.toml id is required.
+// Landing sentence and install page order. Every hosts.toml id is required.
 const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp']
 
 export const soonLanguages = ['erlang', 'ocaml', 'perl', 'ruby', 'haskell']
 
 export const repositoryUrl = 'https://github.com/readevalprint/thueplusplus'
 
-interface HostsPageRecord {
+interface InstallPageRecord {
+  path: string
   title: string
   documentTitle: string
   links: { title: string; href: string }[]
 }
+
+const PLATFORM_PAGE: Record<string, string> = {
+  go: 'installGo',
+  python: 'installPython',
+  wasm: 'installJs',
+  rust: 'installRust',
+  cpp: 'installCpp',
+}
+
+const PLATFORM_LINKS = [
+  { title: 'Install', href: '#install' },
+  { title: 'Library', href: '#library' },
+  { title: 'CLI', href: '#cli' },
+  { title: 'API', href: '#api' },
+]
 
 function readHostIds(text: string): string[] {
   const parsed = parseToml(text) as { host?: { id?: unknown }[] }
@@ -80,24 +96,38 @@ export const siteHosts: SiteHost[] = SITE_ORDER.map(id => {
     landing: presentation.landing,
     title: presentation.title,
     anchor: presentation.anchor,
-    href: `/hosts#${presentation.anchor}`,
+    href: `/install/${presentation.landing}`,
   }
 })
 
 const hostTitles = siteHosts.map(host => host.title)
 export const shippedHosts = englishList(hostTitles, 'and')
 export const hostProseList = englishList(hostTitles, 'or')
-export const hostsPageTitle = `${shippedHosts}.`
-export const hostsDocumentTitle = `Thue++ Hosts — ${shippedHosts}`
 
-const hostsPage = (pageRecords as { hosts: HostsPageRecord }).hosts
-if (hostsPage.title !== hostsPageTitle) {
-  throw new Error(`pages.json hosts title must be ${hostsPageTitle}`)
+const records = pageRecords as Record<string, InstallPageRecord>
+const installOverview = records.install
+if (!installOverview) throw new Error('pages.json is missing install')
+if (installOverview.path !== '/install') throw new Error('pages.json install path must be /install')
+const overviewLinks = [
+  { title: 'Quick start', href: '#quick-start' },
+  { title: 'Supported', href: '#supported' },
+  { title: 'Coming soon', href: '#coming-soon' },
+]
+if (JSON.stringify(installOverview.links) !== JSON.stringify(overviewLinks)) {
+  throw new Error(`pages.json install links must be ${JSON.stringify(overviewLinks)}`)
 }
-if (hostsPage.documentTitle !== hostsDocumentTitle) {
-  throw new Error(`pages.json hosts documentTitle must be ${hostsDocumentTitle}`)
-}
-const expectedLinks = siteHosts.map(host => ({ title: host.title, href: `#${host.anchor}` }))
-if (JSON.stringify(hostsPage.links) !== JSON.stringify(expectedLinks)) {
-  throw new Error(`pages.json hosts links must be ${JSON.stringify(expectedLinks)}`)
+
+for (const host of siteHosts) {
+  const key = PLATFORM_PAGE[host.id]
+  if (!key) throw new Error(`install page key is missing for ${host.id}`)
+  const page = records[key]
+  if (!page) throw new Error(`pages.json is missing ${key}`)
+  if (page.path !== host.href) throw new Error(`pages.json ${key} path must be ${host.href}`)
+  if (page.title !== `${host.title}.`) throw new Error(`pages.json ${key} title must be ${host.title}.`)
+  if (page.documentTitle !== `Thue++ Install — ${host.title}`) {
+    throw new Error(`pages.json ${key} documentTitle must be Thue++ Install — ${host.title}`)
+  }
+  if (JSON.stringify(page.links) !== JSON.stringify(PLATFORM_LINKS)) {
+    throw new Error(`pages.json ${key} links must be ${JSON.stringify(PLATFORM_LINKS)}`)
+  }
 }

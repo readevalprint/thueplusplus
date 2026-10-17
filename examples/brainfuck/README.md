@@ -1,4 +1,4 @@
-# Brainfuck guest
+# Brainfuck
 
 `brainfuck.tpp` is a Brainfuck interpreter written as Thue++ rewrite rules. The task runner passes a `.bf` program as `--input`.
 

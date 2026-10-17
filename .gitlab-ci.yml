@@ -162,11 +162,17 @@ pages:
       for path in \
         public/index.html \
         public/404.html \
-        public/learn/index.html \
-        public/reference/index.html \
+        public/docs/guides/index.html \
+        public/docs/language/index.html \
         public/playground/index.html \
-        public/hosts/index.html \
-        public/guests/index.html \
+        public/install/index.html \
+        public/install/go/index.html \
+        public/install/python/index.html \
+        public/install/js/index.html \
+        public/install/rust/index.html \
+        public/install/cpp/index.html \
+        public/projects/index.html \
+        public/metrics/index.html \
         public/tasks/index.html \
         public/embed/index.html \
         public/thuepp.wasm \

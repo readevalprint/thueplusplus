@@ -32,7 +32,7 @@ const paths = computed(() => {
 
 <template>
   <svg data-test="guest-rewrite" viewBox="0 0 640 280" class="text-bone h-auto w-full" fill="none" aria-hidden="true">
-    <text x="8" y="36" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" font-size="22">guest</text>
+    <text x="8" y="36" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" font-size="22">program</text>
     <text x="132" y="36" fill="#ff5a36" font-family="Martian Mono, ui-monospace, monospace" font-size="22" font-weight="600">::=</text>
     <text x="196" y="36" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" font-size="22">rules</text>
     <rect x="8" y="72" width="624" height="188" stroke="currentColor" stroke-width="1" opacity="0.28" />

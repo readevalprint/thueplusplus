@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Boxes } from '@lucide/vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useRoute } from 'vue-router'
 import DocPage from '@/components/DocPage.vue'
 import GuestRewrite from '@/components/GuestRewrite.vue'
 import MetricChart from '@/components/MetricChart.vue'
-import { catalog, rankGuests, sourceUrl } from '@/catalog'
+import RewriteArrow from '@/components/marks/RewriteArrow.vue'
+import { catalog } from '@/catalog'
 import {
   benchmarkCommits,
   changeAxis,
@@ -27,9 +24,7 @@ import {
 import { pages } from '@/site'
 
 const route = useRoute()
-const page = pages.guests
-const ranked = rankGuests(catalog.guests)
-const shortCommit = catalog.commit.slice(0, 12)
+const page = pages.metrics
 const names = new Map(catalog.guests.map(guest => [guest.id, guest.name]))
 const order = catalog.guests.map(guest => guest.id)
 const rules = guestRuleChart(history, order, names)
@@ -108,52 +103,18 @@ function last(count: number): number {
 <template>
   <DocPage fold :kicker="page.kicker" :title="page.title">
     <template #mark>
-      <Boxes />
-    </template>
-    <template #actions>
-      <Button as-child>
-        <RouterLink to="/tasks">See the tasks</RouterLink>
-      </Button>
-      <Button as-child variant="outline">
-        <a href="#improve">Improve a guest</a>
-      </Button>
+      <RewriteArrow />
     </template>
     <template #graphic>
       <GuestRewrite :commits="rules.commits" :order="rules.order" :series="rules.series" />
     </template>
-    <section id="leaderboard" data-test="guest-leaderboard" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Leaderboard</h2>
-      <p class="leading-7">A guest is a language implemented in Thue++. A host runs those rules. Each row is that guest across the whole suite.</p>
-      <Table>
-        <TableCaption>
-          Run {{ catalog.timestamp }} · {{ shortCommit }}<template v-if="catalog.commitDirty"> · dirty tree</template>.
-          Steps are applied rewrites on tasks that pass. Rule lines are the interpreter, not the solution.
-        </TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Guest</TableHead>
-            <TableHead class="text-right">Passed</TableHead>
-            <TableHead class="text-right">Rule lines</TableHead>
-            <TableHead class="text-right">Steps</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="guest in ranked" :key="guest.id" data-test="guest-row" :data-guest="guest.id">
-            <TableCell class="font-medium">{{ guest.name }}</TableCell>
-            <TableCell data-test="guest-passes" class="text-right font-mono tabular-nums">{{ guest.passCount }} / {{ guest.taskCount }}</TableCell>
-            <TableCell data-test="guest-rules" class="text-right font-mono tabular-nums">{{ guest.ruleCount }}</TableCell>
-            <TableCell data-test="guest-steps" class="text-right font-mono tabular-nums">{{ guest.stepCount }}</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </section>
     <section id="rule-lines" data-test="rule-lines" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Rule lines</h2>
-      <p class="leading-7">A point is the first commit where that guest's compiled rule-line count changed. The line stays flat through the later commits with the same count. The point tooltip is that commit through the last unchanged commit. A break is a commit where that guest was absent, or the host could not list its rules.</p>
+      <p class="leading-7">A point is the first commit where that program's compiled rule-line count changed. The line stays flat through the later commits with the same count. The point tooltip is that commit through the last unchanged commit. A break is a commit where that program was absent, or the host could not list its rules.</p>
       <MetricChart
         v-if="rules.commits.length > 0"
         test-id="rule-chart"
-        label="Guest rule lines per commit"
+        label="Program rule lines per commit"
         slider-label="Rule line commit"
         :commits="rules.commits"
         :order="rules.order"
@@ -172,7 +133,7 @@ function last(count: number): number {
     </section>
     <section id="tasks" data-test="task-trends" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Tasks</h2>
-      <p class="leading-7">A point is the first commit where that guest's count changed. The line stays flat while the count stays the same. Tasks are measured with <code>make tasks</code> on native Go. A pass is that run. Steps are applied rewrites on the passing tasks.</p>
+      <p class="leading-7">A point is the first commit where that program's count changed. The line stays flat while the count stays the same. Tasks are measured with <code>make tasks</code> on native Go. A pass is that run. Steps are applied rewrites on the passing tasks.</p>
       <h3 id="passes" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Passes</h3>
       <MetricChart
         v-if="passAxis.length > 0"
@@ -204,14 +165,14 @@ function last(count: number): number {
           <a class="underline underline-offset-4" :href="commitUrl(selectedTask.commit)" rel="noreferrer">{{ selectedTask.commit.slice(0, 12) }}</a>
           <span class="text-ash"> · {{ selectedTask.author }} · {{ selectedTask.timestamp }}</span>
         </p>
-        <p v-for="guest in selectedTask.guests" :key="guest.id" class="font-mono text-[13px] leading-6 tabular-nums">
-          {{ guest.name }} · {{ guest.passCount }} pass · {{ guest.failCount }} fail · {{ guest.unsupportedCount }} unsupported · {{ guest.stepCount }} steps
+        <p v-for="program in selectedTask.guests" :key="program.id" class="font-mono text-[13px] leading-6 tabular-nums">
+          {{ program.name }} · {{ program.passCount }} pass · {{ program.failCount }} fail · {{ program.unsupportedCount }} unsupported · {{ program.stepCount }} steps
         </p>
       </div>
     </section>
     <section id="benchmarks" data-test="benchmarks" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Benchmarks</h2>
-      <p class="leading-7">Each workload is one program. Applied steps and probes are the same on every host that ran. A host missing from an older commit is a gap. A point is the first commit where that series changed, and the line stays flat through the later commits with the same value. The point tooltip is that commit through the last unchanged commit. Duration is wall-clock milliseconds, including startup. Memory is the peak resident set size when the run recorded it.</p>
+      <p class="leading-7">Each workload is one program. Applied steps and probes are the same on every host that ran. A host missing from an older commit is a gap. A point is the first commit where that series changed, and the line stays flat through the later commits with the same value. The point tooltip is that commit through the last unchanged commit. Duration is wall-clock milliseconds, including startup. Memory is the peak resident set size when the run recorded it. Each host line is that environment.</p>
       <p v-if="workloads.length === 0">No benchmark is recorded.</p>
       <article v-for="(workload, index) in workloads" :key="workload.id" class="flex flex-col gap-3">
         <h3 class="font-display text-[18px] font-semibold tracking-[-0.03em]">{{ workload.label }}</h3>
@@ -234,7 +195,7 @@ function last(count: number): number {
         <MetricChart
           v-if="workload.hostAxis.length > 0"
           :test-id="index === 0 ? 'time-chart' : `time-chart-${workload.id}`"
-          :label="`${workload.label} host time`"
+          :label="`${workload.label} host time by environment`"
           slider-label="Host time commit"
           :commits="workload.hostAxis"
           :order="workload.order"
@@ -252,16 +213,6 @@ function last(count: number): number {
           <p class="text-ash font-mono text-[13px] leading-6 tabular-nums">max steps {{ selectedBench.maxSteps }} · max probes {{ selectedBench.maxEvals }} · state {{ selectedBench.maxStateBytes }} bytes · timeout {{ selectedBench.timeoutSeconds }} s · memory {{ selectedBench.memoryCapBytes }} bytes</p>
         </div>
       </article>
-    </section>
-    <section id="improve" data-test="guest-improve" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Improve a guest</h2>
-      <p class="leading-7">Autoresearch is a loop a person or an agent can run. Edit one guest, run <code>make tasks</code>, and keep the edit when more tasks pass, or when the same tasks pass with fewer rules or fewer steps.</p>
-      <ul class="flex flex-col gap-2">
-        <li v-for="guest in catalog.guests" :key="guest.id">
-          <a class="underline underline-offset-4" :href="sourceUrl(guest.program)" rel="noreferrer">{{ guest.name }}</a>
-          <Badge variant="secondary" class="ml-2">{{ guest.ruleCount }} rules</Badge>
-        </li>
-      </ul>
     </section>
   </DocPage>
 </template>

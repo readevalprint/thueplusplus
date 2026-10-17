@@ -349,7 +349,7 @@ function loadSources(taskOrder, guests) {
 
 function priorityFor(path) {
   if (path === '/') return '1.0'
-  if (path === '/learn' || path === '/reference' || path === '/playground') return '0.8'
+  if (path === '/docs/guides' || path === '/docs/language' || path === '/playground') return '0.8'
   if (path.startsWith('/tasks/')) return '0.5'
   return '0.6'
 }

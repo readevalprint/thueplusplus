@@ -11,11 +11,13 @@ declare module 'vue-router' {
 }
 import { taskRouteMeta } from './catalog'
 import EmbedPage from './pages/EmbedPage.vue'
-import GuestsPage from './pages/GuestsPage.vue'
 import HomePage from './pages/HomePage.vue'
-import HostsPage from './pages/HostsPage.vue'
+import InstallPage from './pages/InstallPage.vue'
+import InstallPlatformPage from './pages/InstallPlatformPage.vue'
 import LearnPage from './pages/LearnPage.vue'
+import MetricsPage from './pages/MetricsPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
+import ProjectsPage from './pages/ProjectsPage.vue'
 import ReferencePage from './pages/ReferencePage.vue'
 import TaskPage from './pages/TaskPage.vue'
 import TasksPage from './pages/TasksPage.vue'
@@ -23,10 +25,16 @@ import { pages } from './site'
 
 const shell = [
   { page: pages.home, component: HomePage },
-  { page: pages.learn, component: LearnPage },
-  { page: pages.reference, component: ReferencePage },
-  { page: pages.hosts, component: HostsPage },
-  { page: pages.guests, component: GuestsPage },
+  { page: pages.guides, component: LearnPage },
+  { page: pages.language, component: ReferencePage },
+  { page: pages.install, component: InstallPage },
+  { page: pages.installGo, component: InstallPlatformPage },
+  { page: pages.installPython, component: InstallPlatformPage },
+  { page: pages.installJs, component: InstallPlatformPage },
+  { page: pages.installRust, component: InstallPlatformPage },
+  { page: pages.installCpp, component: InstallPlatformPage },
+  { page: pages.projects, component: ProjectsPage },
+  { page: pages.metrics, component: MetricsPage },
   { page: pages.tasks, component: TasksPage },
 ]
 
@@ -73,6 +81,11 @@ export function createAppRouter() {
   const router = createRouter({
     history: createWebHistory(),
     routes,
+    scrollBehavior(to, _from, saved) {
+      if (saved) return saved
+      if (to.hash) return { el: to.hash, top: 72 }
+      return { top: 0 }
+    },
   })
   router.beforeEach((to) => {
     const taskId = to.params.taskId

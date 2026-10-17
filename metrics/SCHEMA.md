@@ -1,6 +1,6 @@
 # Metrics benches
 
-`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/guests` does not import these files one by one. `demo/scripts/build-summary.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json`. The charts and the guest leaderboard read that summary. The same summary is published at `/metrics/summary.json`.
+`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/metrics` does not import these files one by one. `demo/scripts/build-summary.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json`. The charts on `/metrics` and the task leaderboard read that summary. The same summary is published at `/metrics/summary.json`.
 
 | Path | Role |
 | --- | --- |
@@ -102,7 +102,7 @@ The workloads are:
 | `state-rewrite` | A long state copied on every rewrite |
 | `regex` | Anchored patterns and character classes that miss before a short chain hits |
 | `io` | Eight line reads and writes |
-| `guest` | The Forth guest, with the fixed input `1 2 + .` |
+| `guest` | The Forth program, with the fixed input `1 2 + .` |
 | `rewrite` | The earlier single program `metrics/benchmark.tpp`. New runs do not record it |
 
 | Field | Meaning |
@@ -180,8 +180,8 @@ The numbers above are the shape of `latest.json`, not a measurement. An archived
 
 ## Summary
 
-`summary.json` is `schema_version` 1. `entries` is every bench file plus `latest.json`, sorted by `timestamp`, then `commit`. `latest.json` uses the HEAD commit: the pull request head, or the merge commit on a checkout of the merged result. Guests whose rules could not be listed are omitted. `tasks` is one object per guest: `pass`, `fail`, `unsupported`, and `steps`. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value.
+`summary.json` is `schema_version` 1. `entries` is every bench file plus `latest.json`, sorted by `timestamp`, then `commit`. `latest.json` uses the HEAD commit: the pull request head, or the merge commit on a checkout of the merged result. Programs whose rules could not be listed are omitted. `tasks` is one object per program id: `pass`, `fail`, `unsupported`, and `steps`. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value.
 
 ## Charts
 
-A chart point is the first commit where that series changes. Later commits with the same value are not points. The line stays flat until the next change. The point's tooltip is the first SHA through the last unchanged SHA. Rule lines, task passes, and task steps are one series per guest. Host time and host memory are one series per environment and workload.
+A chart point is the first commit where that series changes. Later commits with the same value are not points. The line stays flat until the next change. The point's tooltip is the first SHA through the last unchanged SHA. Rule lines, task passes, and task steps are one series per program. Host time and host memory are one series per environment and workload. The host lines on `/metrics` use the environment label.

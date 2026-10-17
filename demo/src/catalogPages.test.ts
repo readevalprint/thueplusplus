@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import GuestsPage from './pages/GuestsPage.vue'
+import MetricsPage from './pages/MetricsPage.vue'
+import ProjectsPage from './pages/ProjectsPage.vue'
 import TaskPage from './pages/TaskPage.vue'
 import TasksPage from './pages/TasksPage.vue'
 import { catalog, rankGuests, taskRouteMeta } from './catalog'
 import { history } from './metrics'
+import { projects } from './projects'
 import { pageLinks } from './site'
 
 async function mountAt(path: string) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
-      { path: '/guests', component: GuestsPage },
+      { path: '/projects', component: ProjectsPage },
+      { path: '/metrics', component: MetricsPage },
       { path: '/tasks', component: TasksPage },
       { path: '/tasks/:taskId', component: TaskPage },
     ],
@@ -59,16 +62,25 @@ describe('catalog pages', () => {
     }
   })
 
-  it('renders the guests leaderboard and the autoresearch call', async () => {
-    const wrapper = await mountAt('/guests')
-    expect(wrapper.get('h1').text()).toBe('Languages written in Thue++.')
+  it('renders sandboxed project cards and the metrics charts', async () => {
+    const projectsPage = await mountAt('/projects')
+    expect(projectsPage.get('h1').text()).toBe('Sandboxed projects.')
+    const cards = projectsPage.findAll('[data-test="project-card"]')
+    expect(cards.map(card => card.attributes('data-project'))).toEqual(projects.map(project => project.id))
+    for (const card of cards) {
+      const project = projects.find(item => item.id === card.attributes('data-project'))
+      expect(project).toBeTruthy()
+      expect(card.text()).toContain(project!.name)
+      expect(card.text()).toContain(project!.description)
+      expect(card.find('[data-slot="badge"]').exists()).toBe(false)
+    }
+    expect(projectsPage.text()).not.toMatch(/\bguest\b/i)
+    expect(projectsPage.text()).not.toContain('RE2')
+
+    const wrapper = await mountAt('/metrics')
+    expect(wrapper.get('h1').text()).toBe('What each commit measured.')
     expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('::=')
-    expect(wrapper.get('[data-test="guest-leaderboard"]').text()).toContain('Passed')
-    expect(wrapper.get('[data-test="guest-leaderboard"]').text()).toContain('Rule lines')
-    expect(wrapper.get('[data-test="guest-leaderboard"]').text()).toContain('Steps')
-    const names = wrapper.findAll('[data-test="guest-row"]').map(row => row.attributes('data-guest'))
-    expect(names).toEqual(rankGuests(catalog.guests).map(guest => guest.id))
-    expect(wrapper.get('[data-test="guest-improve"]').text().toLowerCase()).toContain('autoresearch')
+    expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('program')
     expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('09744fa8d495')
     expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('Forth · 86')
     expect(wrapper.get('[data-test="rule-chart"]').text()).toContain(`61ec35406371…${history.entries[history.entries.length - 1].commit.slice(0, 12)} · 86`)
@@ -78,9 +90,11 @@ describe('catalog pages', () => {
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native · 607 ms')
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('rust · 468 ms')
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('cpp · 624 ms')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('python ·')
     expect(wrapper.get('[data-test="rule-chart"]').find('path').exists()).toBe(true)
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Placeholder')
+    expect(wrapper.text()).not.toMatch(/\bguest\b/i)
     expect(wrapper.text()).not.toContain('RE2')
   })
 
@@ -92,6 +106,13 @@ describe('catalog pages', () => {
     expect(statuses).toHaveLength(catalog.tasks.length * catalog.guests.length)
     expect(index.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(index.text()).not.toContain('Placeholder')
+    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Passed')
+    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Rule lines')
+    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Steps')
+    const names = index.findAll('[data-test="program-row"]').map(row => row.attributes('data-program'))
+    expect(names).toEqual(rankGuests(catalog.guests).map(program => program.id))
+    expect(index.get('[data-test="program-improve"]').text().toLowerCase()).toContain('autoresearch')
+    expect(index.get('[data-test="program-leaderboard"]').text()).not.toMatch(/\bguest\b/i)
 
     const task = catalog.tasks[0]
     const page = await mountAt(task.path)
