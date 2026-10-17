@@ -242,6 +242,9 @@ class Binding:
     is_process: bool
     path_or_command: str
     process: Optional[subprocess.Popen] = None
+    lines: Optional[list[str]] = None
+    line_at: int = 0
+    recorded: Optional[list[str]] = None
 
 
 class ThueInterpreter:
@@ -306,6 +309,40 @@ class ThueInterpreter:
     def add_proc_binding(self, name: str, command: str) -> None:
         """Bind a symbolic name to a process command."""
         self.bindings[name] = Binding(name, True, command)
+
+    def bind_scripts(self, reads: dict[str, list[str]], writes: list[str]) -> None:
+        """Replace every binding with in-memory scripts. No process is started."""
+        if not isinstance(reads, dict) or not isinstance(writes, list):
+            raise RuntimeError("resources file needs reads and writes")
+        if len(set(writes)) != len(writes):
+            raise RuntimeError("duplicate writable resource")
+        names = list(dict.fromkeys([*reads.keys(), *writes]))
+        if not names:
+            raise RuntimeError("no resources")
+        write_set = set(writes)
+        self.bindings = {}
+        for name in names:
+            if not isinstance(name, str) or py_re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
+                raise RuntimeError(f"invalid resource {name!r}")
+            binding = Binding(name, False, name)
+            if name in reads:
+                lines = reads[name]
+                if not isinstance(lines, list) or any(
+                    not isinstance(line, str) or "\n" in line or "\r" in line for line in lines
+                ):
+                    raise RuntimeError(f"resource {name} lines must be strings without newlines")
+                binding.lines = list(lines)
+            if name in write_set:
+                binding.recorded = []
+            self.bindings[name] = binding
+
+    def script_writes(self) -> dict[str, str]:
+        """Text recorded for each writable script."""
+        return {
+            name: "".join(binding.recorded)
+            for name, binding in self.bindings.items()
+            if binding.recorded is not None
+        }
 
     def load_program(self, program_path: str) -> None:
         """Load and parse a thue++ program."""
@@ -922,6 +959,15 @@ class ThueInterpreter:
 
     def _read_line(self, binding: Binding, timeout: float) -> tuple[str, Optional[str]]:
         """Read one newline-delimited message, stripping one line terminator."""
+        if binding.lines is not None:
+            if binding.line_at >= len(binding.lines):
+                return "", f"ERR:resource:{binding.name}:EOF before newline"
+            line = binding.lines[binding.line_at]
+            binding.line_at += 1
+            return line, None
+        if binding.recorded is not None:
+            return "", "ERR:resource:cannot_read_output_stream"
+
         if binding.name == "stdout" or binding.name == "stderr":
             return "", "ERR:resource:cannot_read_output_stream"
 
@@ -969,6 +1015,11 @@ class ThueInterpreter:
 
     def _write_string(self, binding: Binding, content: str) -> Optional[str]:
         """Write a string to a binding. Returns error or None."""
+        if binding.recorded is not None:
+            binding.recorded.append(content)
+            return None
+        if binding.lines is not None:
+            return f"ERR:resource:{binding.name}:write requires process or output stream binding"
         if binding.name == "stdout":
             sys.stdout.write(content)
             sys.stdout.flush()

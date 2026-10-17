@@ -1,12 +1,21 @@
 //! Thin CLI over the `thue` library.
 
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
+use serde::Deserialize;
 use thuelang::{display_path, format_trace, parse_limit, Interpreter, RunMetrics};
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ResourceFile {
+    reads: HashMap<String, Vec<String>>,
+    writes: Vec<String>,
+}
 
 fn main() -> ExitCode {
     match run() {
@@ -29,6 +38,8 @@ fn run() -> Result<u8, u8> {
     let mut rule_coverage_path = None;
     let mut counts_path = None;
     let mut metrics_path = None;
+    let mut resources_path = None;
+    let mut resource_out_path = None;
     let mut list_rules = false;
     let mut index = 1;
     while index < args.len() {
@@ -48,6 +59,10 @@ fn run() -> Result<u8, u8> {
             counts_path = Some(value);
         } else if let Some(value) = take_value(&args, &mut index, "--metrics") {
             metrics_path = Some(value);
+        } else if let Some(value) = take_value(&args, &mut index, "--resources") {
+            resources_path = Some(value);
+        } else if let Some(value) = take_value(&args, &mut index, "--resource-out") {
+            resource_out_path = Some(value);
         } else if let Some(value) = take_value(&args, &mut index, "--input") {
             input_override = Some(value);
         } else if let Some(value) = take_value(&args, &mut index, "--max-evals") {
@@ -93,6 +108,26 @@ fn run() -> Result<u8, u8> {
         if let Some(input) = input_override {
             interp.apply_input_override(&input);
         }
+        if let Some(path) = &resources_path {
+            match load_resources(path) {
+                Ok(file) => {
+                    if let Err(err) = interp.bind_scripts(&file.reads, &file.writes) {
+                        let _ = writeln!(io::stderr(), "Error: {err}");
+                        interp.cleanup();
+                        return Err(1);
+                    }
+                }
+                Err(err) => {
+                    let _ = writeln!(io::stderr(), "Error: {err}");
+                    interp.cleanup();
+                    return Err(1);
+                }
+            }
+        } else if resource_out_path.is_some() {
+            let _ = writeln!(io::stderr(), "Error: --resource-out requires --resources");
+            interp.cleanup();
+            return Err(1);
+        }
         ran = true;
         match interp.run() {
             Ok(code) => exit_code = code as u8,
@@ -128,6 +163,20 @@ fn run() -> Result<u8, u8> {
             if let Err(err) = write_metrics(&path, &interp.metrics()) {
                 let _ = writeln!(io::stderr(), "Error: failed to write metrics: {err}");
                 exit_code = 1;
+            }
+        }
+        if let Some(path) = resource_out_path {
+            match interp.script_writes() {
+                Ok(writes) => {
+                    if let Err(err) = write_resource_output(&path, &writes) {
+                        let _ = writeln!(io::stderr(), "Error: failed to write resources: {err}");
+                        exit_code = 1;
+                    }
+                }
+                Err(err) => {
+                    let _ = writeln!(io::stderr(), "Error: failed to write resources: {err}");
+                    exit_code = 1;
+                }
             }
         }
     }
@@ -179,6 +228,25 @@ fn write_metrics(path: &str, metrics: &RunMetrics) -> Result<(), String> {
         }
     }
     let mut text = serde_json::to_string(metrics).map_err(|err| err.to_string())?;
+    text.push('\n');
+    fs::write(path, text).map_err(|err| err.to_string())
+}
+
+fn load_resources(path: &str) -> Result<ResourceFile, String> {
+    let text = fs::read_to_string(path).map_err(|err| err.to_string())?;
+    serde_json::from_str(&text).map_err(|err| format!("{path}: {err}"))
+}
+
+fn write_resource_output(
+    path: &str,
+    writes: &std::collections::BTreeMap<String, String>,
+) -> Result<(), String> {
+    if let Some(parent) = Path::new(path).parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+        }
+    }
+    let mut text = serde_json::to_string_pretty(writes).map_err(|err| err.to_string())?;
     text.push('\n');
     fs::write(path, text).map_err(|err| err.to_string())
 }
