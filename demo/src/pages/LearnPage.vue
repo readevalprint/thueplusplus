@@ -2,7 +2,7 @@
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
-import RewriteArrow from '@/components/marks/RewriteArrow.vue'
+import GuideScene from '@/components/scenes/GuideScene.vue'
 import { hostProseList } from '@/hosts'
 import { pages } from '@/site'
 
@@ -13,17 +13,9 @@ hello Ada`
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <RewriteArrow />
-    </template>
-    <template #actions>
-      <Button as-child>
-        <RouterLink to="/playground?file=./examples/hello/hello.thue">Open the playground</RouterLink>
-      </Button>
-      <Button as-child variant="outline">
-        <RouterLink to="/docs/language">Operators</RouterLink>
-      </Button>
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <GuideScene />
     </template>
     <section id="program" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">A program</h2>
@@ -42,6 +34,14 @@ hello Ada`
     <section id="try-it" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Try it</h2>
       <p class="leading-7">The <RouterLink to="/playground" class="underline underline-offset-4">playground</RouterLink> loads the Go host compiled to WebAssembly. Step runs one rewrite, and the step limit is on before you press anything.</p>
+      <div class="flex flex-wrap gap-2">
+        <Button as-child>
+          <RouterLink to="/playground?file=./examples/hello/hello.thue">Open the playground</RouterLink>
+        </Button>
+        <Button as-child variant="outline">
+          <RouterLink to="/docs/language">Operators</RouterLink>
+        </Button>
+      </div>
     </section>
   </DocPage>
 </template>

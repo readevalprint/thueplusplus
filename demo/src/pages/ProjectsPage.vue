@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { Boxes } from '@lucide/vue'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import DocPage from '@/components/DocPage.vue'
+import ProjectsScene from '@/components/scenes/ProjectsScene.vue'
 import { repositoryTree } from '@/hosts'
 import { projects } from '@/projects'
 import { pages } from '@/site'
@@ -21,9 +21,9 @@ function improveHref(program: string): string {
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <Boxes />
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <ProjectsScene />
     </template>
     <p class="leading-7">A host runs the Thue++ engine. The engine runs a program, any <code>.thue</code> file, and the program handles input and output. Some programs are interpreters that run scripts. Others are apps written directly in Thue++.</p>
     <div data-test="project-cards" class="flex flex-col gap-4">

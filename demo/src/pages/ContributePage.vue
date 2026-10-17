@@ -2,7 +2,7 @@
 import { RouterLink } from 'vue-router'
 import { repositoryBlob, repositoryUrl } from '@/hosts'
 import DocPage from '@/components/DocPage.vue'
-import FinishLine from '@/components/marks/FinishLine.vue'
+import ContributeScene from '@/components/scenes/ContributeScene.vue'
 import { pages } from '@/site'
 
 const page = pages.contribute
@@ -10,9 +10,9 @@ const contributing = repositoryBlob('CONTRIBUTING.md')
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <FinishLine />
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <ContributeScene />
     </template>
     <section id="clone" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Clone</h2>

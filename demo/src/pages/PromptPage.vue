@@ -1,18 +1,29 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import DocPage from '@/components/DocPage.vue'
-import RewriteArrow from '@/components/marks/RewriteArrow.vue'
+import PromptScene from '@/components/scenes/PromptScene.vue'
 import { Button } from '@/components/ui/button'
 import { pages } from '@/site'
 
 const page = pages.prompt
+const route = useRoute()
 const copyError = ref('')
+const problem = computed(() => typeof route.query.problem === 'string' ? route.query.problem : '')
+const solution = computed(() => typeof route.query.solution === 'string' ? route.query.solution : '')
 
-const prompt = `Clone https://github.com/thuelang/thueplusplus. The site is https://thuelang.org. GitLab (https://gitlab.com/thuelang/thueplusplus) is a mirror.
+const focus = computed(() => {
+  if (problem.value && solution.value) {
+    return `Work on problems/${problem.value}/solutions/${solution.value}/. Make that solution strictly cheaper.`
+  }
+  return 'Pick one problem under problems/ or one language under langs/. A direct solution is problems/<slug>/solutions/direct/solution.thue.'
+})
 
-Read CONTRIBUTING.md. Pick one problem under problems/ or one language under langs/. A direct solution is problems/<slug>/solutions/direct/solution.thue. Cost is UTF-8 bytes: each regex eval adds len(state)+len(lhs), and each applied step adds len(rhs).
+const prompt = computed(() => `Clone https://github.com/thuelang/thueplusplus. The site is https://thuelang.org. GitLab (https://gitlab.com/thuelang/thueplusplus) is a mirror.
 
-Change one solution. Run make problems or make langs. Limits live in metrics/limits.toml. Open a pull request when the tests pass. A strictly lower Go cost is the goal. A higher cost is a warning, and a maintainer decides. Do not commit metric.json or metrics/latest.json.`
+Read CONTRIBUTING.md. ${focus.value} Cost is UTF-8 bytes: each regex eval adds len(state)+len(lhs), and each applied step adds len(rhs).
+
+Change one solution. Run make problems or make langs. Limits live in metrics/limits.toml. Open a pull request when the tests pass. A strictly lower Go cost is the goal. A higher cost is a warning, and a maintainer decides. Do not commit metric.json or metrics/latest.json.`)
 
 async function copyPrompt(): Promise<void> {
   copyError.value = ''
@@ -21,7 +32,7 @@ async function copyPrompt(): Promise<void> {
     return
   }
   try {
-    await navigator.clipboard.writeText(prompt)
+    await navigator.clipboard.writeText(prompt.value)
   } catch (error) {
     copyError.value = error instanceof Error ? error.message : String(error)
   }
@@ -29,9 +40,9 @@ async function copyPrompt(): Promise<void> {
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <RewriteArrow />
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <PromptScene :problem="problem || undefined" :solution="solution || undefined" />
     </template>
     <section id="prompt" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Prompt</h2>

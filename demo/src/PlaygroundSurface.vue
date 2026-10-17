@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-void text-bone flex h-dvh flex-col overflow-hidden font-mono" data-test="playground-standalone" :data-chrome="props.chrome">
+  <div class="bg-void text-bone flex flex-col overflow-hidden font-mono" :class="props.chrome === 'panel' ? 'h-[32rem] max-h-[70svh]' : 'h-dvh'" data-test="playground-standalone" :data-chrome="props.chrome">
     <SiteHeader v-if="props.chrome === 'page'" />
     <div data-test="playground-toolbar" role="toolbar" aria-label="Playground" class="border-line relative z-20 flex shrink-0 flex-wrap items-center gap-1 border-b px-1.5 py-1.5 text-[13px] min-[720px]:gap-2 min-[720px]:px-3">
       <div class="relative shrink-0" data-test="playground-examples">
@@ -26,12 +26,13 @@
       <Button type="button" variant="outline" data-test="playground-continue" :disabled="!canRun" :title="continueTitle" aria-label="Play" @click="() => continueProgram()">play</Button>
       <Button type="button" variant="outline" data-test="playground-step" :disabled="!canRun" :title="stepTitle" aria-label="Step forward" @click="() => stepProgram()">step</Button>
       <Button type="button" variant="outline" data-test="playground-end" :disabled="!canRun" :title="endTitle" aria-label="End" @click="() => endProgram()">end</Button>
+      <Button v-if="props.runTest" type="button" variant="outline" :data-test="props.runTest" :disabled="!canRun" aria-label="Run" @click="() => endProgram()">run</Button>
       <p v-if="selectedTestCase" data-test="playground-selected-case" class="text-dim min-w-0 text-[11px]">
         <span class="text-ash block truncate">{{ selectedTestCase.caseName }}</span>
         <span class="block truncate">{{ selectedTestCase.manifestPath }}</span>
       </p>
       <div class="flex-1" />
-      <ThemeToggle v-if="props.chrome !== 'page'" class="max-[719px]:size-8" />
+      <ThemeToggle v-if="props.chrome === 'embed'" class="max-[719px]:size-8" />
       <Button type="button" class="max-[719px]:h-8 max-[719px]:px-2" data-test="playground-share" @click="sharePlayground">share</Button>
       <Button v-if="props.showOpenFull" as="a" variant="ghost" :href="openFullHref" data-test="embed-open-full">open full</Button>
     </div>
@@ -104,6 +105,7 @@
       <span data-test="playground-status">{{ statusText }}</span>
       <span aria-hidden="true">·</span>
       <span data-test="playground-applied-limits">steps {{ appliedSteps }}/{{ maxSteps }} · probes {{ probeCount }}/{{ maxEvals }} · state {{ stateBytes }}/{{ maxStateBytes }}</span>
+      <span data-test="playground-cost">cost {{ runCost === null ? '—' : runCost }}</span>
       <span v-if="shareState" class="text-ash ml-auto">{{ shareState }}</span>
     </footer>
   </div>
@@ -125,6 +127,7 @@ import RulesMonacoEditor from './RulesMonacoEditor.vue'
 import StateDiffs from './StateDiffs.vue'
 import TestCaseMenu from './TestCaseMenu.vue'
 import { flattenTestManifests, type TestCaseOption } from './testCases'
+import { caseInput, problemById, versionById } from '@/catalog'
 import { analyzeRules, type ResourceUsage } from './ruleResources'
 import { splitProgramSource } from './thueSource'
 import { runWithWorker, type DemoTraceEvent } from './wasm'
@@ -133,10 +136,16 @@ const props = withDefaults(defineProps<{
   file?: string
   test?: string
   caseName?: string
-  chrome?: 'page' | 'embed'
+  chrome?: 'page' | 'embed' | 'panel'
   editable?: boolean
   showOpenFull?: boolean
   syncUrl?: boolean
+  program?: string
+  programPath?: string
+  reads?: Record<string, string>
+  problem?: string
+  solution?: string
+  runTest?: string
 }>(), {
   chrome: 'page',
   editable: true,
@@ -144,12 +153,17 @@ const props = withDefaults(defineProps<{
   syncUrl: true,
 })
 
+const emit = defineEmits<{
+  outcome: [mood: 'idle' | 'pass' | 'fail' | 'timeout']
+}>()
+
 const stacked = useMediaQuery('(max-width: 719px)')
 const examplesOpen = ref(false)
 const settingsOpen = ref(false)
 const shareState = ref('')
 const appliedSteps = ref(0)
 const probeCount = ref(0)
+const runCost = ref<number | null>(null)
 
 const routeSearchParams = new URLSearchParams(window.location.search)
 
@@ -389,11 +403,56 @@ function clearRun(): void {
   statusText.value = 'idle'
   appliedSteps.value = 0
   probeCount.value = 0
+  runCost.value = null
   resourceLogs.value = {}
   resourceOutputs.value = {}
   resourceAttention.value = {}
   resourceSubmittedInputs.value = {}
   clearDiffs()
+  emit('outcome', 'idle')
+}
+
+function applyReads(reads: Record<string, string> | undefined): void {
+  if (!reads) return
+  resourceInputs.value = { ...reads }
+  resourceSubmittedInputs.value = { ...reads }
+}
+
+function loadProgram(source: string, label: string, reads?: Record<string, string>): void {
+  selectedTestCase.value = undefined
+  fileParam.value = ''
+  sourcePath.value = label
+  const split = splitProgramSource(source)
+  rulesText.value = split.rules
+  stateText.value = split.state
+  loadError.value = split.error
+  clearRun()
+  applyReads(reads ?? props.reads)
+}
+
+function loadCatalogSolution(problemId: string, solutionId: string): void {
+  const problem = problemById(problemId)
+  const version = problem ? versionById(problem, solutionId) : undefined
+  const solution = version?.solutions[0]
+  if (!problem || !version || !solution) {
+    loadError.value = `No solution ${problemId}/${solutionId}`
+    rulesText.value = ''
+    stateText.value = ''
+    clearRun()
+    return
+  }
+  const item = problem.cases[0]
+  if (!item) throw new Error(`${problem.id} has no fixed case`)
+  loadProgram(solution.solution, solution.solutionPath, caseInput(item))
+}
+
+function publishOutcome(limit?: string): void {
+  const status = statusText.value
+  let mood: 'idle' | 'pass' | 'fail' | 'timeout' = 'idle'
+  if (limit === 'timeout' || status.includes('timeout') || status.includes('max steps')) mood = 'timeout'
+  else if (status.startsWith('exited 0')) mood = 'pass'
+  else if (status === 'errored' || status.startsWith('exited')) mood = 'fail'
+  emit('outcome', mood)
 }
 
 function clearDiffs(): void {
@@ -428,6 +487,7 @@ async function continueProgram(): Promise<void> {
   } finally {
     continuing.value = false
     if (pauseRequested.value) statusText.value = 'paused'
+    publishOutcome()
   }
 }
 
@@ -458,6 +518,7 @@ async function executeProgram(options: { maxSteps?: number; status: string; coll
   resourceLogs.value = {}
   resourceAttention.value = {}
   const runState = stateText.value
+  let resultLimit: string | undefined
   try {
     const result = await runWithWorker({
       sourceText: rulesText.value,
@@ -478,6 +539,11 @@ async function executeProgram(options: { maxSteps?: number; status: string; coll
     const nextState = result.state ?? result.trace?.at(-1)?.stateAfter
     if (nextState !== undefined) stateText.value = nextState
     const trace = result.trace ?? []
+    resultLimit = result.limit
+    if (result.metrics !== undefined) {
+      if (typeof result.metrics.cost !== 'number' || !Number.isFinite(result.metrics.cost)) throw new Error('run metrics have no cost')
+      runCost.value = result.metrics.cost
+    }
     if (typeof result.evalCount === 'number') probeCount.value += result.evalCount
     if (trace.length > 0) appliedSteps.value += trace.length
     else if (typeof result.appliedSteps === 'number') appliedSteps.value = result.appliedSteps
@@ -507,6 +573,7 @@ async function executeProgram(options: { maxSteps?: number; status: string; coll
     return 'errored'
   } finally {
     running.value = false
+    publishOutcome(resultLimit)
   }
 }
 
@@ -794,6 +861,14 @@ function appendErrorTranscript(current: string, next: string): string {
 }
 
 function loadInitialSelection(): void {
+  if (props.program) {
+    loadProgram(props.program, props.programPath ?? 'solution.thue')
+    return
+  }
+  if (props.problem && props.solution) {
+    loadCatalogSolution(props.problem, props.solution)
+    return
+  }
   const testParam = props.test ?? routeSearchParams.get('test')
   const caseParam = props.caseName ?? routeSearchParams.get('case')
   loadFile(fileParam.value)

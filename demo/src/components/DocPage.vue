@@ -2,29 +2,28 @@
 defineProps<{
   kicker: string
   title: string
+  summary: string
   wide?: boolean
-  fold?: boolean
 }>()
 </script>
 
 <template>
-  <article class="doc-page py-8 lg:py-10">
-    <header data-test="page-hero" :class="fold ? 'flex min-h-[calc(100svh-8rem)] flex-col justify-center' : undefined">
-      <div class="flex items-center gap-3">
-        <span v-if="$slots.mark" class="text-signal inline-flex size-5 items-center justify-center">
-          <slot name="mark" />
-        </span>
+  <article class="doc-page">
+    <div class="page-screen">
+      <header data-test="page-hero" class="page-hero">
         <p class="text-dim font-mono text-[11px] tracking-[0.08em] uppercase">{{ kicker }}</p>
-      </div>
-      <h1 class="font-display mt-3 max-w-[18ch] text-[clamp(40px,5vw,52px)] leading-[1.05] font-extrabold tracking-[-0.05em]">{{ title }}</h1>
-      <div v-if="$slots.graphic" data-test="page-hero-graphic" class="mt-6" aria-hidden="true">
-        <slot name="graphic" />
-      </div>
-      <div v-if="$slots.actions" class="mt-6 flex flex-wrap gap-2">
-        <slot name="actions" />
-      </div>
-    </header>
-    <div data-test="page-details" class="mt-10 flex w-full flex-col gap-10 pb-16" :class="wide ? 'max-w-none' : 'max-w-[65ch]'">
+        <h1 class="font-display mt-2 max-w-[18ch] text-[clamp(32px,5vw,52px)] leading-[1.02] font-extrabold tracking-[-0.045em]">{{ title }}</h1>
+        <p data-test="page-summary" class="text-ash mt-2 max-w-[48ch] text-[15px] leading-snug">{{ summary }}</p>
+        <div v-if="$slots.meta" class="mt-3 flex flex-wrap items-center gap-2">
+          <slot name="meta" />
+        </div>
+        <div data-test="page-hero-graphic" class="mt-2 min-h-0 flex-1">
+          <slot name="scene" />
+        </div>
+      </header>
+      <div class="page-screen-gap" aria-hidden="true" />
+    </div>
+    <div data-test="page-details" class="page-details flex w-full flex-col gap-10 pb-16" :class="wide ? 'max-w-none' : 'max-w-[65ch]'">
       <slot />
     </div>
   </article>

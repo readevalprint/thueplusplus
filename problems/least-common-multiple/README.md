@@ -4,6 +4,6 @@ title: Least common multiple
 
 Read two non-negative integers, one per line, and print their least common multiple and a newline. A zero argument prints 0.
 
-Each integer is in `0..40`. The Go test checks 0 and 5, 4 and 6, and 7 and 1, plus seeds 2, 8, and 15.
+Each integer is in `0..40`.
 
 Adapted from the Rosetta Code task [Least common multiple](https://rosettacode.org/wiki/Least_common_multiple). That task is available under the GNU Free Documentation License 1.3.

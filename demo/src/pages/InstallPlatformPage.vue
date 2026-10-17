@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Package } from '@lucide/vue'
 import { useRoute } from 'vue-router'
 import DocPage from '@/components/DocPage.vue'
+import InstallScene from '@/components/scenes/InstallScene.vue'
 import { installPage } from '@/install'
 import { pageByPath } from '@/site'
 
@@ -16,9 +16,9 @@ const section = computed(() => installPage(route.path))
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <Package />
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <InstallScene :host-id="section.id" />
     </template>
     <p class="leading-7">{{ section.prose }}</p>
     <section id="install" class="flex flex-col gap-3">

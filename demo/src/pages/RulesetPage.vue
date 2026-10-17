@@ -3,9 +3,9 @@ import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
-import FinishLine from '@/components/marks/FinishLine.vue'
 import MetricChart from '@/components/MetricChart.vue'
-import RewriteLine from '@/components/RewriteLine.vue'
+import RulesetScene from '@/components/scenes/RulesetScene.vue'
+import SearchScene from '@/components/scenes/SearchScene.vue'
 import { catalog, rulesetById } from '@/catalog'
 
 const route = useRoute()
@@ -31,17 +31,14 @@ const problems = computed(() => {
 </script>
 
 <template>
-  <DocPage v-if="ruleset" kicker="Rulesets" :title="ruleset.name">
-    <template #mark>
-      <FinishLine />
+  <DocPage v-if="ruleset" wide kicker="Rulesets" :title="ruleset.name" :summary="`${ruleset.passing} of ${ruleset.total} problems pass.`">
+    <template #scene>
+      <RulesetScene :ruleset-id="ruleset.id" />
     </template>
-    <template #actions>
-      <Button as-child>
+    <template #meta>
+      <Button as-child variant="outline" size="sm">
         <RouterLink to="/problems">All problems</RouterLink>
       </Button>
-    </template>
-    <template #graphic>
-      <RewriteLine before="rules" :after="ruleset.name" />
     </template>
     <section id="aggregate" data-test="ruleset-aggregate-chart" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Aggregate cost</h2>
@@ -67,17 +64,14 @@ const problems = computed(() => {
       </p>
     </section>
   </DocPage>
-  <DocPage v-else kicker="Rulesets" title="This ruleset is not in the suite.">
-    <template #mark>
-      <FinishLine />
+  <DocPage v-else kicker="Rulesets" title="This ruleset is not in the suite." summary="That name is not on the leaderboard.">
+    <template #scene>
+      <SearchScene />
     </template>
-    <template #actions>
-      <Button as-child>
+    <template #meta>
+      <Button as-child variant="outline" size="sm">
         <RouterLink to="/problems">All problems</RouterLink>
       </Button>
-    </template>
-    <template #graphic>
-      <RewriteLine before="ruleset" after="missing" />
     </template>
     <p data-test="ruleset-missing" class="leading-7">The suite has no ruleset named {{ rulesetId }}.</p>
   </DocPage>

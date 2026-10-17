@@ -1,6 +1,7 @@
 <script setup lang="ts">
+/** RexFigure is the only drawing of the mark. */
 import { computed } from 'vue'
-import type { Pose } from '@/sandbox/motion'
+import type { Pose } from '@/rex/motion'
 
 const props = defineProps<{ pose: Pose }>()
 

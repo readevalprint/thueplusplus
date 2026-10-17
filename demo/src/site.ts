@@ -35,9 +35,11 @@ export function pageLinks(path: string): PageLink[] {
 }
 
 function problemPageLinks(problem: CatalogProblem): PageLink[] {
+  if (problem.versions.length === 0) throw new Error(`${problem.id} has no solutions`)
   return [
-    { title: 'Description', href: '#description' },
     { title: 'Cost', href: '#cost' },
-    ...problem.versions.map(version => ({ title: version.name, href: `#${version.id}` })),
+    { title: 'Scoreboard', href: '#scoreboard' },
+    { title: 'Example', href: '#example' },
+    { title: 'Solutions', href: '#solutions' },
   ]
 }

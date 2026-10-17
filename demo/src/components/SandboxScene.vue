@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import GlyphMark from './GlyphMark.vue'
-import RexFigure from './RexFigure.vue'
+import Rex from './Rex.vue'
 import {
   BELT_Y,
   CAGE_BASE,
@@ -288,7 +288,7 @@ defineExpose({ scene, pose })
       </g>
 
       <g v-if="showRex" :transform="`translate(${pose.rootX} ${pose.rootY}) scale(${SCALE})`">
-        <RexFigure :pose="pose" />
+        <Rex :pose="pose" />
       </g>
 
       <g data-test="lever" :data-on="scene.beltOn ? 'yes' : 'no'">
@@ -467,7 +467,7 @@ defineExpose({ scene, pose })
       <div v-if="wandering" class="rex-wander" data-test="rex-wander" :style="wanderStyle">
         <p class="rex-wander-line">i guess we sandboxin' now</p>
         <svg viewBox="-46 -118 92 132" aria-hidden="true">
-          <RexFigure :pose="pose" />
+          <Rex :pose="pose" />
         </svg>
       </div>
       <Button
