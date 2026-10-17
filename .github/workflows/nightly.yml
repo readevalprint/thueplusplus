@@ -12,24 +12,24 @@ jobs:
   full:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.24.6"
           cache-dependency-path: go/go.sum
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
           cache-dependency-path: demo/package-lock.json
       - uses: dtolnay/rust-toolchain@1.83.0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             build/go-thuepp
