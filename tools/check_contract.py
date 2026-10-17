@@ -77,11 +77,11 @@ def playground_url(source_path: str) -> str:
     return f"https://thuelang.org/playground?file={file_param}"
 
 
-GITLAB_SOURCE_ROOT = "https://gitlab.com/thuelang/thueplusplus/-/blob/main"
+SOURCE_ROOT = "https://github.com/thuelang/thueplusplus/blob/main"
 
 
-def gitlab_source_url(source_path: str) -> str:
-    return f"{GITLAB_SOURCE_ROOT}/{quote(source_path, safe='/')}"
+def source_url(source_path: str) -> str:
+    return f"{SOURCE_ROOT}/{quote(source_path, safe='/')}"
 
 
 def render_readme_example(root: Path, source_path: str, expected_output_path: str, source_lines: str | None = None) -> str:
@@ -91,7 +91,7 @@ def render_readme_example(root: Path, source_path: str, expected_output_path: st
         f"{source_label}\n\n"
         "Run it now in the browser playground:\n"
         f"{playground_url(source_path)}\n\n"
-        f"See the source: [{source_path}]({gitlab_source_url(source_path)})\n\n"
+        f"See the source: [{source_path}]({source_url(source_path)})\n\n"
         "```thue\n"
         f"{source.rstrip(chr(10))}\n"
         "```\n\n"
@@ -203,7 +203,7 @@ def check_readme(root: Path) -> list[Failure]:
             failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/check_contract.py --update-readme"))
     except ValueError as exc:
         failures.append(Failure(path, str(exc)))
-    required = ["## Verification", "make test", "uv run thue", "pyproject.toml", "uv.lock", "github.com/thuelang/thueplusplus/go/thue"]
+    required = ["## Verification", "make test", "uv run thue", "pyproject.toml", "uv.lock", "github.com/thuelang/thueplusplus/go/thuelang", "https://thuelang.org"]
     for snippet in required:
         if snippet not in text:
             failures.append(Failure(path, f"missing README verification text: {snippet}"))
@@ -223,7 +223,7 @@ def check_contract(root: Path) -> list[Failure]:
     except SyntaxError as exc:
         failures.append(Failure(runner_path, f"shared runner is not parseable Python: {exc}"))
         runner_tree = ast.Module(body=[], type_ignores=[])
-    forbidden_modules = {"thue", "python.thue"}
+    forbidden_modules = {"thuelang", "python.thuelang"}
     for node in ast.walk(runner_tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -256,7 +256,7 @@ def check_contract(root: Path) -> list[Failure]:
     for snippet in forbidden_runner:
         if snippet in runner_text:
             failures.append(Failure(runner_path, f"shared runner must not expose stale customization layer: {snippet}"))
-    python_path = root / "python" / "thue" / "cli.py"
+    python_path = root / "python" / "thuelang" / "cli.py"
     python_text = read(python_path)
     if '"--list-rules"' not in python_text:
         failures.append(Failure(python_path, "Python external command must expose --list-rules for runner-owned coverage enumeration"))
@@ -289,8 +289,8 @@ def check_numeric_regex(root: Path) -> list[Failure]:
     except re.error as exc:
         failures.append(Failure(root / "docs" / "numeric-builtins.md", f"canonical numeric regex does not compile in Python: {exc}"))
     checks = [
-        (root / "python" / "thue" / "interpreter.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
-        (root / "go" / "thue" / "interpreter.go", 1, None),
+        (root / "python" / "thuelang" / "interpreter.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
+        (root / "go" / "thuelang" / "interpreter.go", 1, None),
         (root / "rust" / "src" / "builtin.rs", 1, None),
         (root / "examples" / "builtin" / "builtin.thue", 1, f"N <- {grammar}"),
         (root / "langs" / "lisp" / "lisp.thue", 1, None),

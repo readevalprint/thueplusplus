@@ -39,4 +39,4 @@ class ThueConan(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["thue"]
+        self.cpp_info.libs = ["thuelang"]

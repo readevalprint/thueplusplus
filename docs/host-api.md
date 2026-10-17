@@ -57,7 +57,7 @@ The reason is part of the host API:
 | --- | --- |
 | Go | `*LimitError` with `Kind`, `ExitCode`, and `Message`. `Error()` is `Message`. Use `errors.As`. |
 | Python | `LimitExceeded`, a `RuntimeError` with `.kind`, `.code`, and the message as the exception text. |
-| C++ | `thue::LimitError`, a `std::runtime_error`. `kind()` is `steps`, `evals`, `state`, or `timeout`. `code()` is 10–13. `what()` is the message. |
+| C++ | `thuelang::LimitError`, a `std::runtime_error`. `kind()` is `steps`, `evals`, `state`, or `timeout`. `code()` is 10–13. `what()` is the message. |
 | wasm | result field `limit` (`steps`, `evals`, `state`, or `timeout`) and `exitCode`. `limit` is omitted when the run did not stop for a limit. `error` is the message without the `Error: ` prefix. |
 | Rust | `RunFailure::Limit` carries `LimitError` (`kind`, `exit_code`, `message`). `limit()` returns it. `RunFailure::Message` is any other failure. |
 
@@ -115,23 +115,23 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 
 | | Package | CLI |
 | --- | --- | --- |
-| Go | `github.com/thuelang/thueplusplus/go/thue` | `go/cmd/thue` |
-| Python | PyPI `thuelang`, module `thue` | console script `thue` |
+| Go | `github.com/thuelang/thueplusplus/go/thuelang` | `go/cmd/thue` |
+| Python | PyPI `thuelang`, module `thuelang` | console script `thue` |
 | JS | npm package `thuelang` | `thue` bin, `node js/src/cli.js` in this repo |
-| Rust | crate `thuelang` (`rust/`) | `thue` bin, `rust/target/release/thue` in this repo |
-| C++ | CMake target `thue` (`thue::thue`) | `thue-cli`, output name `thue` |
+| Rust | crate and library `thuelang` (`rust/`) | `thue` bin, `rust/target/release/thue` in this repo |
+| C++ | CMake target `thuelang` (`thuelang::thuelang`) | `thue-cli`, output name `thue` |
 
 Go:
 
 ```go
-import "github.com/thuelang/thueplusplus/go/thue"
+import "github.com/thuelang/thueplusplus/go/thuelang"
 
-interp := thue.New()
+interp := thuelang.New()
 if err := interp.LoadProgram("hello.thue"); err != nil {
     panic(err)
 }
 code, err := interp.Run()
-var limit *thue.LimitError
+var limit *thuelang.LimitError
 if errors.As(err, &limit) {
     // limit.Kind is steps, evals, state, or timeout. limit.ExitCode is 10–13.
 }
@@ -143,7 +143,7 @@ _ = code
 Python:
 
 ```python
-from thue import LimitExceeded, ThueInterpreter
+from thuelang import LimitExceeded, ThueInterpreter
 
 interp = ThueInterpreter(trace_enabled=True)
 interp.load_program("hello.thue")
@@ -177,7 +177,7 @@ Browser code imports `initThueWasm` from `thuelang/browser`. A page that wants a
 Rust:
 
 ```rust
-use thue::Interpreter;
+use thuelang::Interpreter;
 
 let mut interp = Interpreter::new();
 interp.load_program("hello.thue")?;
@@ -197,19 +197,19 @@ match interp.run() {
 C++:
 
 ```cpp
-#include "thue/thue.hpp"
+#include "thuelang/thuelang.hpp"
 
-thue::Interpreter interp;
+thuelang::Interpreter interp;
 interp.set_trace_enabled(true);
 interp.LoadProgram("hello.thue");
 interp.AddProcBinding("echo", "cat");
 try {
   int code = interp.Run();
   (void)code;
-} catch (const thue::LimitError& err) {
+} catch (const thuelang::LimitError& err) {
   // err.kind() is steps, evals, state, or timeout. err.code() is 10–13.
   throw;
 }
 ```
 
-A new interpreter uses the defaults. `std::nullopt` clears a limit. `0` is a real limit. The header does not include RE2. Link the `thue` CMake target.
+A new interpreter uses the defaults. `std::nullopt` clears a limit. `0` is a real limit. The header does not include RE2. Link the `thuelang` CMake target.

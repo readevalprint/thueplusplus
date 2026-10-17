@@ -1,7 +1,6 @@
 # Thue++ for VS Code
 
 Syntax highlighting, snippets, and **Run Thue++ file** for [Thue++](https://github.com/thuelang/thueplusplus) programs (`.thue`).
-
 The extension installs in VS Code, Cursor, VSCodium, and Windsurf. Cursor installs extensions from [Open VSX](https://open-vsx.org). This repository does not publish the extension.
 
 ## What you get

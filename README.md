@@ -2,6 +2,8 @@
 
 # Thue++
 
+The site is [thuelang.org](https://thuelang.org).
+
 Start with a string and rules that rewrite it:
 
 ```text
@@ -96,7 +98,7 @@ Example source (`examples/mid/chain.thue`):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/mid/chain.thue
 
-See the source: [examples/mid/chain.thue](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/mid/chain.thue)
+See the source: [examples/mid/chain.thue](https://github.com/thuelang/thueplusplus/blob/main/examples/mid/chain.thue)
 
 ```thue
 ^MAP:.*$ ::| a=(?<ak>[^,]*) ::| b=(?<bv>[^,]*) ::= {{ak}}-{{bv}}
@@ -140,7 +142,7 @@ Example source (`examples/hello/hello.thue`):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/hello/hello.thue
 
-See the source: [examples/hello/hello.thue](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/hello/hello.thue)
+See the source: [examples/hello/hello.thue](https://github.com/thuelang/thueplusplus/blob/main/examples/hello/hello.thue)
 
 ```thue
 ^START$ ::= hello\ndone
@@ -202,7 +204,7 @@ Example source excerpt (`examples/guess-number/guess-number.thue`, lines 1-30):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/guess-number/guess-number.thue
 
-See the source: [examples/guess-number/guess-number.thue](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/guess-number/guess-number.thue)
+See the source: [examples/guess-number/guess-number.thue](https://github.com/thuelang/thueplusplus/blob/main/examples/guess-number/guess-number.thue)
 
 ```thue
 NUMBER <- [0-9]+
@@ -520,7 +522,7 @@ This repository has five current conformance backends:
 # Python package
 uv run thue <program.thue>
 
-# Go package github.com/thuelang/thueplusplus/go/thue
+# Go package github.com/thuelang/thueplusplus/go/thuelang
 (cd go && go run ./cmd/thue ../<program.thue>)
 
 # npm package thuelang
@@ -529,13 +531,13 @@ node js/src/cli.js <program.thue>
 # Rust crate thuelang
 ./rust/target/release/thue <program.thue>
 
-# C++ library thue (CMake target thue, CLI build/cpp/thue)
+# C++ library thuelang (CMake target thuelang, CLI build/cpp/thue)
 cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
 cmake --build build/cpp --parallel
 build/cpp/thue <program.thue>
 ```
 
-`uv run thue` is the Python console script. The PyPI distribution is `thuelang` and the import module is `thue`. The Go library import is `github.com/thuelang/thueplusplus/go/thue`. The npm package name is `thuelang`. The Rust crate is `thuelang` under `rust/`, and the Rust library is `thue`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
+`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package name is `thuelang`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -628,13 +630,13 @@ Coverage ignores are unsupported. Every surviving rule in manifest-declared exam
 
 ```text
 examples/        Shared Thue++ programs and manifest tests
-python/thue/   Python package. The thue console script is the CLI.
-go/thue/       Go package github.com/thuelang/thueplusplus/go/thue
-go/cmd/thue/   Thin Go CLI
-js/              npm package thue (ESM, types, Node CLI, browser worker)
-rust/            Rust crate thue and its thin CLI. Not published.
-cpp/             C++17 library thue and the thue CLI. Not published.
-demo/            Playground. It depends on the thue package.
+python/thuelang/ Python package. The thue console script is the CLI.
+go/thuelang/     Go package github.com/thuelang/thueplusplus/go/thuelang
+go/cmd/thue/     Thin Go CLI
+js/              npm package thuelang (ESM, types, Node CLI, browser worker)
+rust/            Rust library thuelang and the thue CLI. Not published.
+cpp/             C++17 library thuelang and the thue CLI. Not published.
+demo/            Playground. It depends on the thuelang package.
 docs/            Language contracts, host API, and release steps
 tools/           Repository conformance checker and shared manifest runner
 learnings/       Preserved design notes and failed attempts worth not repeating
@@ -678,7 +680,7 @@ cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/t
 build/cpp/thue <program.thue>
 ```
 
-Import `thue` in Python, `github.com/thuelang/thueplusplus/go/thue` in Go, `thuelang` from npm, and crate `thuelang` from `rust/`. C++ includes `thue/thue.hpp` and links `thue::thue`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
+Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from `rust/`. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
 
 Copy-pasteable agent prompt:
 

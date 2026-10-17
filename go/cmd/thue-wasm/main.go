@@ -11,7 +11,7 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/thuelang/thueplusplus/go/thue"
+	"github.com/thuelang/thueplusplus/go/thuelang"
 )
 
 type jsResource struct {
@@ -56,12 +56,12 @@ type wasmResult struct {
 	Error        string
 	Errors       []string
 	CoverageTSV  string
-	Trace        []thue.TraceEvent
+	Trace        []thuelang.TraceEvent
 	State        string
 	EvalCount    int
 	AppliedSteps int
 	Limit        string
-	Metrics      *thue.RunMetrics
+	Metrics      *thuelang.RunMetrics
 }
 
 func main() {
@@ -107,7 +107,7 @@ func run(args []js.Value) wasmResult {
 		return errorResult(err.Error())
 	}
 	var stdout, stderr bytes.Buffer
-	interp := thue.NewWithHostResources(thue.HostResources{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr})
+	interp := thuelang.NewWithHostResources(thuelang.HostResources{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr})
 	if err := applyIntOption(opts, "maxEvals", &interp.MaxEvals); err != nil {
 		return errorResult(err.Error())
 	}
@@ -165,11 +165,11 @@ func run(args []js.Value) wasmResult {
 	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount, AppliedSteps: interp.AppliedSteps, Metrics: &metrics}
 	if runErr != nil {
 		if res.ExitCode == 0 {
-			res.ExitCode = thue.ExitRuntime
+			res.ExitCode = thuelang.ExitRuntime
 		}
 		res.Error = runErr.Error()
 		res.Errors = []string{runErr.Error()}
-		var limit *thue.LimitError
+		var limit *thuelang.LimitError
 		if errors.As(runErr, &limit) {
 			res.Limit = limit.Kind
 			res.ExitCode = limit.ExitCode

@@ -1,6 +1,6 @@
 //go:build js
 
-package thue
+package thuelang
 
 import (
 	"fmt"

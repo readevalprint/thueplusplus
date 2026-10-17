@@ -1,6 +1,6 @@
 # Thue++ Go-WASM demo
 
-This is a small Vite/Vue browser demo shell for the Go-WASM Thue++ adapter.
+The site is [thuelang.org](https://thuelang.org). Vercel serves this demo. This is a small Vite/Vue browser demo shell for the Go-WASM Thue++ adapter.
 
 The demo is intentionally not a JavaScript implementation of Thue++. It imports the real browser worker adapter from `wasm/`, which loads the Go WASM module and supplies browser resources through callbacks.
 
@@ -32,7 +32,7 @@ The production page uses origin-root asset URLs (`/assets/...`, `/thue.wasm`). N
 
 ## Vercel
 
-Import this repository. The root `vercel.json` is the project to use:
+Vercel is production, at [thuelang.org](https://thuelang.org). Import this repository. The root `vercel.json` is the project to use:
 
 | Setting | Value |
 | --- | --- |
@@ -60,7 +60,7 @@ The state history below the State editor is a raw chronological shadcn-vue/TanSt
 
 ## Page layout
 
-The docs shell is a 52px sticky header. Docs, Install, and Projects are navigation menus. Each dropdown link has a title and a short description in a two-column grid. Metrics and Playground are direct links, with the theme toggle and a GitHub link. Below 1024px those links move into a menu button. The left column is the sticky On this page list: the page's h2 and h3 headings, a vertical rail, and a brighter segment on the section in view. Below 1024px that list collapses behind a Contents toggle at the top of the article. The article is one centered column at about 65ch. There is no right column. `/playground` uses the same header and is outside that shell.
+The docs shell is a 52px sticky header. Docs, Install, and Projects are navigation menus. Each dropdown link has a title and a short description in a two-column grid. Metrics, Playground, Contribute, and the autoresearch prompt are direct links, with the theme toggle and GitHub and GitLab links. Below 1024px those links move into a menu button. The left column is the sticky On this page list: the page's h2 and h3 headings, a vertical rail, and a brighter segment on the section in view. Below 1024px that list collapses behind a Contents toggle at the top of the article. The article is one centered column at about 65ch. There is no right column. `/playground` uses the same header and is outside that shell.
 
 ## Embeddable playground routes
 
@@ -68,7 +68,7 @@ The same shared playground surface powers the playground page and the embeddable
 
 - `/playground` is its own full-screen route: header, resizable editor and output, and a status bar. It does not use the docs shell.
 - `/embed` renders that same surface with no docs chrome. It is for iframe embeds.
-- `/`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, and `/tasks` are the other prerendered pages. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/tasks` is the problem index, and each problem is also prerendered at `/tasks/<id>`. Hash links such as `/metrics#host-time` open that section.
+- `/`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, `/tasks`, `/contribute`, and `/autoresearch` are the other prerendered pages. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/tasks` is the problem index, and each problem is also prerendered at `/tasks/<id>`. `/contribute` is the contributor loop. `/autoresearch` is the copyable agent prompt. Hash links such as `/metrics#host-time` open that section.
 
 Supported embed query parameters:
 

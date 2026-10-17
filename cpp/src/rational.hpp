@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace thue {
+namespace thuelang {
 namespace rat {
 namespace {
 
@@ -423,6 +423,6 @@ inline Rational Div(const Rational& a, const Rational& b) {
 
 }  // namespace
 }  // namespace rat
-}  // namespace thue
+}  // namespace thuelang
 
 #endif  // THUE_RATIONAL_HPP_

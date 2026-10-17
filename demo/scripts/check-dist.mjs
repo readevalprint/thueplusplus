@@ -19,7 +19,7 @@ for (const asset of requiredAssets) {
 const index = readFileSync(join(dist, 'index.html'), 'utf8')
 const fallback = readFileSync(join(dist, '404.html'), 'utf8')
 if (fallback !== index) {
-  throw new Error('demo production dist 404.html must match index.html for unknown direct SPA route fallback on GitLab Pages')
+  throw new Error('demo production dist 404.html must match index.html for unknown direct SPA route fallback')
 }
 if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
   throw new Error('demo production index must use origin-root asset URLs so nested static routes load assets from the site root')
@@ -34,7 +34,7 @@ if (index.includes('modulepreload" crossorigin href="/assets/editor-monaco-')) {
 for (const route of staticRoutes) {
   const routePath = join(dist, route, 'index.html')
   if (!existsSync(routePath)) {
-    throw new Error(`demo production dist is missing ${route}/index.html for direct route loads on GitLab Pages`)
+    throw new Error(`demo production dist is missing ${route}/index.html for direct route loads`)
   }
   const routeIndex = readFileSync(routePath, 'utf8')
   if (!routeIndex.includes('src="/assets/') || !routeIndex.includes('href="/assets/')) {

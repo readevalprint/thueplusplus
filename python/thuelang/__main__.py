@@ -1,4 +1,4 @@
-from thue.cli import main
+from thuelang.cli import main
 
 if __name__ == "__main__":
     main()

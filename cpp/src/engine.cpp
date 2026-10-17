@@ -1,4 +1,4 @@
-#include "thue/thue.hpp"
+#include "thuelang/thuelang.hpp"
 
 #include "prefix.hpp"
 #include "rational.hpp"
@@ -31,7 +31,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-namespace thue {
+namespace thuelang {
 namespace {
 
 constexpr int kMaxNumericLiteralChars = 4096;
@@ -2431,4 +2431,4 @@ void Interpreter::Cleanup() {
   }
 }
 
-}  // namespace thue
+}  // namespace thuelang

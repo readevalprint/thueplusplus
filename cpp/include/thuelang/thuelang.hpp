@@ -5,8 +5,8 @@
 // Limits default to 1000000 probes, 1000000 applied rewrites, and 8388608
 // bytes of state. nullopt clears a limit. 0 is a real limit.
 
-#ifndef THUE_THUE_HPP_
-#define THUE_THUE_HPP_
+#ifndef THUELANG_THUELANG_HPP_
+#define THUELANG_THUELANG_HPP_
 
 #include <cstdint>
 #include <map>
@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace thue {
+namespace thuelang {
 
 inline constexpr int64_t kDefaultMaxEvals = 1000000;
 inline constexpr int64_t kDefaultMaxStateBytes = 8 * 1024 * 1024;
@@ -132,6 +132,6 @@ class Interpreter {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace thue
+}  // namespace thuelang
 
-#endif  // THUE_THUE_HPP_
+#endif  // THUELANG_THUELANG_HPP_

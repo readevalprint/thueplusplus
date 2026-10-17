@@ -7,14 +7,14 @@ The hosts share the API in [host-api.md](host-api.md). The Rust crate and the C+
 | Host | Name | Version field |
 | --- | --- | --- |
 | Go | `github.com/thuelang/thueplusplus/go` | git tag `go/vX.Y.Z` |
-| Python | PyPI `thuelang` (module `thue`) | `pyproject.toml` `version` |
+| Python | PyPI `thuelang` (module `thuelang`) | `pyproject.toml` `version` |
 | npm | `thuelang` | `js/package.json` `version` |
-| Rust | crate `thuelang` | `rust/Cargo.toml` `version` |
-| C++ | CMake project `thue` | `cpp/CMakeLists.txt` `VERSION` (not published) |
+| Rust | crate and library `thuelang` | `rust/Cargo.toml` `version` |
+| C++ | CMake project and library `thuelang` | `cpp/CMakeLists.txt` `VERSION` (not published) |
 
 ## Go
 
-The module lives in `go/`. Consumers import `github.com/thuelang/thueplusplus/go/thue`.
+The module lives in `go/`. Consumers import `github.com/thuelang/thueplusplus/go/thuelang`.
 
 ```bash
 cd go && go test ./...
@@ -26,7 +26,7 @@ A tag on the repository root does not version this module. The tag must be `go/v
 
 ## Python
 
-The PyPI distribution is `thuelang`. The import module is `python/thue` (`from thue import ...`). The console script is `thue`.
+The PyPI distribution is `thuelang`. The import module is `python/thuelang` (`from thuelang import ...`). The console script is `thue`.
 
 ```bash
 uv lock
@@ -49,7 +49,7 @@ The playground depends on `file:../js`. A published release replaces that depend
 
 ## Rust
 
-The crate is `rust/`. The Cargo package name is `thuelang`. The Rust library and the CLI binary are both named `thue`. `Cargo.toml` sets `publish = false`. This repository does not publish it.
+The crate is `rust/`. The Cargo package name and the Rust library are `thuelang`. The CLI binary is `thue`. `Cargo.toml` sets `publish = false`. This repository does not publish it.
 
 `license` is `MIT`, matching the npm package. The repository has no `LICENSE` file. Add one before a real publish. Then remove `publish = false` and:
 
@@ -60,4 +60,4 @@ cargo publish --manifest-path rust/Cargo.toml   # crates.io token required; omit
 
 ## C++
 
-The library is `cpp/`. The CMake target is `thue`. The CLI installs as `thue`. This repository does not publish a vcpkg port or a Conan package. `cpp/vcpkg.json` and `cpp/conanfile.py` are the packaging sketches, and `cpp/README.md` is the build and install note. Do not upload them to a registry from this tree.
+The library is `cpp/`. The CMake target and the C++ namespace are `thuelang`. The CLI installs as `thue`. This repository does not publish a vcpkg port or a Conan package. `cpp/vcpkg.json` and `cpp/conanfile.py` are the packaging sketches, and `cpp/README.md` is the build and install note. Do not upload them to a registry from this tree.

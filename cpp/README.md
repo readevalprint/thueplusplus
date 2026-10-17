@@ -1,8 +1,8 @@
 # C++ host
 
-C++17 library and CLI for Thue++ spec v0.5. Patterns use the same regex syntax as the other hosts. The header is `include/thue/thue.hpp`. The CMake library target is `thue` (`thue::thue`). The CLI target is `thue-cli` and its output name is `thue`, so the static library and the binary do not share a filename.
+C++17 library and CLI for Thue++ spec v0.5. Patterns use the same regex syntax as the other hosts. The header is `include/thuelang/thuelang.hpp`. The CMake library target is `thuelang` (`thuelang::thuelang`). The CLI target is `thue-cli` and its output name is `thue`, so the static library and the binary do not share a filename.
 
-This tree does not publish the library. `vcpkg.json` and `conanfile.py` are packaging sketches for a later release. Both use the name `thuelang`. The CMake target and the linked library stay `thue`. Do not upload them to a registry from this repository.
+This tree does not publish the library. `vcpkg.json` and `conanfile.py` are packaging sketches for a later release. Both use the name `thuelang`, matching the CMake target. Do not upload them to a registry from this repository.
 
 ## Build
 
@@ -25,16 +25,16 @@ timeout -k 1 10 build/cpp/thue program.thue \
 ## Library
 
 ```cpp
-#include "thue/thue.hpp"
+#include "thuelang/thuelang.hpp"
 
-thue::Interpreter interp;
+thuelang::Interpreter interp;
 interp.LoadProgram("hello.thue");
 int code = interp.Run();
 ```
 
-`Run` returns the exit code on quiescence or `::-`. A limit throws `thue::LimitError` (`kind()`, `code()`, `what()`). Any other failure throws `std::runtime_error`. `std::nullopt` clears a limit. Eval count accumulates across `Run`. Applied steps and the trace reset on each `Run`.
+`Run` returns the exit code on quiescence or `::-`. A limit throws `thuelang::LimitError` (`kind()`, `code()`, `what()`). Any other failure throws `std::runtime_error`. `std::nullopt` clears a limit. Eval count accumulates across `Run`. Applied steps and the trace reset on each `Run`.
 
-Install with `cmake --install`. That installs the static library, the `thue` binary, and `include/thue/thue.hpp`.
+Install with `cmake --install`. That installs the static library `thuelang`, the `thue` binary, and `include/thuelang/thuelang.hpp`.
 
 ## Tasks and metrics
 

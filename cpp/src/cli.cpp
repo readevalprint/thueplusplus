@@ -1,4 +1,4 @@
-#include "thue/thue.hpp"
+#include "thuelang/thuelang.hpp"
 
 #include <cerrno>
 #include <csignal>
@@ -18,7 +18,7 @@ void Usage() {
 
 bool IsFlag(const std::string& arg, const std::string& name) { return arg == name || arg.rfind(name + "=", 0) == 0; }
 
-void WriteMetrics(const std::string& path, const thue::RunMetrics& metrics) {
+void WriteMetrics(const std::string& path, const thuelang::RunMetrics& metrics) {
   namespace fs = std::filesystem;
   fs::path target(path);
   if (target.has_parent_path()) {
@@ -78,9 +78,9 @@ int main(int argc, char** argv) {
   std::signal(SIGPIPE, SIG_IGN);
   if (argc < 2) {
     Usage();
-    return thue::kExitUsage;
+    return thuelang::kExitUsage;
   }
-  thue::Interpreter interp;
+  thuelang::Interpreter interp;
   const std::string program = argv[1];
   std::optional<std::string> input;
   std::string coverage;
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
       }
       if (index + 1 >= argc) {
         std::cerr << "Error: " << name << " requires an argument\n";
-        std::exit(thue::kExitRuntime);
+        std::exit(thuelang::kExitRuntime);
       }
       std::string value = argv[index + 1];
       index += 2;
@@ -125,11 +125,11 @@ int main(int argc, char** argv) {
         input = need("--input");
         saw_input = true;
       } else if (IsFlag(arg, "--max-evals")) {
-        interp.set_max_evals(thue::ParseLimit(need("--max-evals")));
+        interp.set_max_evals(thuelang::ParseLimit(need("--max-evals")));
       } else if (IsFlag(arg, "--max-state-bytes")) {
-        interp.set_max_state_bytes(thue::ParseLimit(need("--max-state-bytes")));
+        interp.set_max_state_bytes(thuelang::ParseLimit(need("--max-state-bytes")));
       } else if (IsFlag(arg, "--max-steps")) {
-        interp.set_max_steps(thue::ParseLimit(need("--max-steps")));
+        interp.set_max_steps(thuelang::ParseLimit(need("--max-steps")));
       } else if (arg.rfind("--proc:", 0) == 0) {
         std::string name = arg.substr(std::string("--proc:").size());
         if (index + 1 >= argc) {
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
       }
     } catch (const std::invalid_argument& err) {
       std::cerr << err.what() << "\n";
-      return thue::kExitUsage;
+      return thuelang::kExitUsage;
     }
   }
   if (!coverage.empty()) {
@@ -167,15 +167,15 @@ int main(int argc, char** argv) {
       ran = true;
       code = interp.Run();
     }
-  } catch (const thue::LimitError& err) {
+  } catch (const thuelang::LimitError& err) {
     error = err.what();
     code = err.code();
   } catch (const std::exception& err) {
     error = err.what();
-    code = thue::kExitRuntime;
+    code = thuelang::kExitRuntime;
   }
 
-  std::cerr << thue::FormatTrace(interp.trace());
+  std::cerr << thuelang::FormatTrace(interp.trace());
   if (!error.empty()) {
     std::cerr << "Error: " << error << "\n";
   }

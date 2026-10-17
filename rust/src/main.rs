@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use thue::{display_path, format_trace, parse_limit, Interpreter, RunMetrics};
+use thuelang::{display_path, format_trace, parse_limit, Interpreter, RunMetrics};
 
 fn main() -> ExitCode {
     match run() {

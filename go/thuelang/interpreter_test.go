@@ -1,4 +1,4 @@
-package thue
+package thuelang
 
 import (
 	"bytes"

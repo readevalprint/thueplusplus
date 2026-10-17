@@ -20,9 +20,9 @@ def expect(paths: list[str], **wanted: bool) -> None:
 def main() -> None:
     expect(["docs/host-api.md"], python=False, go=False, wasm=False, rust=False, guests=False, cpp=False)
     expect(["CHANGELOG.md", "README.md"], python=False, go=False, wasm=False, rust=False, guests=False)
-    expect(["go/thue/interpreter.go"], python=False, go=True, wasm=True, rust=False, guests=True)
+    expect(["go/thuelang/interpreter.go"], python=False, go=True, wasm=True, rust=False, guests=True)
     expect(["js/src/cli.js"], python=False, go=False, wasm=True, rust=False, guests=False)
-    expect(["python/thue/cli.py"], python=True, go=False, wasm=False, rust=False, guests=False)
+    expect(["python/thuelang/cli.py"], python=True, go=False, wasm=False, rust=False, guests=False)
     expect(["rust/src/main.rs"], python=False, go=False, wasm=False, rust=True, guests=False)
     expect(["langs/lisp/cases/core_acceptance.toml"], python=False, go=False, wasm=False, rust=False, guests=True)
     expect(["problems/factorial/problem_test.go"], python=False, go=False, wasm=False, rust=False, guests=True)

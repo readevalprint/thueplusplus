@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.scripts]
-thue = "thue.cli:main"
+thue = "thuelang.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -33,10 +33,10 @@ const copy: Record<string, InstallSection> = {
     installLead: 'The module is not a released tag. This tracks main:',
     install: 'go get github.com/thuelang/thueplusplus/go@main',
     moreInstall: [],
-    libraryLead: 'Import github.com/thuelang/thueplusplus/go/thue.',
-    library: `import "github.com/thuelang/thueplusplus/go/thue"
+    libraryLead: 'Import github.com/thuelang/thueplusplus/go/thuelang.',
+    library: `import "github.com/thuelang/thueplusplus/go/thuelang"
 
-interp := thue.New()
+interp := thuelang.New()
 if err := interp.LoadProgram("hello.thue"); err != nil {
     panic(err)
 }
@@ -54,8 +54,8 @@ _ = code`,
     installLead: 'The distribution is not on PyPI. From a checkout of this repository:',
     install: 'uv run thue program.thue',
     moreInstall: [],
-    libraryLead: 'The PyPI distribution is thuelang. The import is thue.',
-    library: `from thue import ThueInterpreter
+    libraryLead: 'The PyPI distribution is thuelang. The import is thuelang.',
+    library: `from thuelang import ThueInterpreter
 
 interp = ThueInterpreter()
 interp.load_program("hello.thue")
@@ -82,14 +82,14 @@ const result = await engine.run({
     api: [hostApi, { href: `${blob}/js/README.md`, label: 'js/README.md' }],
   },
   rust: {
-    prose: 'The Rust host is a native implementation. The crates.io package name is thuelang. The Rust library name and the command are thue. It uses the regex engine and the same default limits. Process bindings stay opt-in.',
+    prose: 'The Rust host is a native implementation. The crates.io package name and the Rust library are thuelang. The command is thue. It uses the regex engine and the same default limits. Process bindings stay opt-in.',
     installLead: 'The crate is not published, so cargo add thuelang cannot find it. Add the git dependency:',
     install: `cargo add thuelang --git ${repositoryUrl}`,
     installAfter: 'That records:',
     installAfterBody: `thuelang = { git = "${repositoryUrl}", version = "0.5.0" }`,
     moreInstall: [],
     libraryLead: 'Interpreter::new binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. None clears one.',
-    library: `use thue::Interpreter;
+    library: `use thuelang::Interpreter;
 
 let mut interp = Interpreter::new();
 interp.load_program("hello.thue")?;
@@ -102,17 +102,17 @@ cargo build --release --manifest-path rust/Cargo.toml
     api: [hostApi, { href: `${blob}/rust/README.md`, label: 'rust/README.md' }],
   },
   cpp: {
-    prose: 'The C++ host is a native implementation. The CMake target is thue and the command is thue. It uses the regex engine and the same default limits. Process bindings stay opt-in. The library is not published.',
+    prose: 'The C++ host is a native implementation. The CMake target and namespace are thuelang and the command is thue. It uses the regex engine and the same default limits. Process bindings stay opt-in. The library is not published.',
     installLead: 'The library is not published. FetchContent adds the CMake target from this repository. Install the regex library with pkg-config before configuring:',
     install: `include(FetchContent)
 FetchContent_Declare(
-  thue
+  thuelang
   GIT_REPOSITORY "${repositoryUrl}"
   GIT_TAG main
   SOURCE_SUBDIR cpp
 )
-FetchContent_MakeAvailable(thue)
-target_link_libraries(your_target PRIVATE thue::thue)`,
+FetchContent_MakeAvailable(thuelang)
+target_link_libraries(your_target PRIVATE thuelang::thuelang)`,
     moreInstall: [
       {
         lead: 'vcpkg.json in cpp/ is an unpublished manifest, not a registry port. Do not upload it. From the repository root:',
@@ -129,9 +129,9 @@ conan create . --build=missing`,
       },
     ],
     libraryLead: 'A new interpreter binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. nullopt clears one.',
-    library: `#include "thue/thue.hpp"
+    library: `#include "thuelang/thuelang.hpp"
 
-thue::Interpreter interp;
+thuelang::Interpreter interp;
 interp.LoadProgram("hello.thue");
 int code = interp.Run();`,
     cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',

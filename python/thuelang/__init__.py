@@ -1,6 +1,6 @@
 """Thue++ interpreter."""
 
-from thue.interpreter import (
+from thuelang.interpreter import (
     DEFAULT_MAX_EVALS,
     DEFAULT_MAX_STATE_BYTES,
     DEFAULT_MAX_STEPS,

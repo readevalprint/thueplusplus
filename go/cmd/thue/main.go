@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/thuelang/thueplusplus/go/thue"
+	"github.com/thuelang/thueplusplus/go/thuelang"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 		os.Exit(2)
 	}
 	program := args[0]
-	interp := thue.New()
+	interp := thuelang.New()
 	var inputOverride *string
 	ruleCoveragePath := ""
 	countsPath := ""
@@ -131,7 +131,7 @@ func main() {
 	}
 	code, err := interp.Run()
 	if interp.TraceEnabled {
-		text, traceErr := thue.FormatTrace(interp.Trace)
+		text, traceErr := thuelang.FormatTrace(interp.Trace)
 		if traceErr != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", traceErr)
 			os.Exit(1)
@@ -141,7 +141,7 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		if code == 0 {
-			code = thue.ExitRuntime
+			code = thuelang.ExitRuntime
 		}
 	}
 	if countsPath != "" {
@@ -182,7 +182,7 @@ func writeCounts(path string, appliedSteps int, probes int) error {
 	return os.WriteFile(path, append(payload, '\n'), 0o644)
 }
 
-func writeMetrics(path string, interp *thue.Interpreter) error {
+func writeMetrics(path string, interp *thuelang.Interpreter) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func writeMetrics(path string, interp *thue.Interpreter) error {
 }
 
 func applyLimit(text string, target **int) {
-	value, err := thue.ParseLimit(text)
+	value, err := thuelang.ParseLimit(text)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)

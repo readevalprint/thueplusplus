@@ -147,6 +147,63 @@ def test_memory_cap_kills() -> None:
     raise SystemExit("FAIL memory cap did not fire")
 
 
+def test_missed_sample_does_not_fail_the_run() -> None:
+    """A conformance case that exits before /proc is readable still completes.
+
+    `make metrics` is what rejects a zero peak. The runner must not.
+    """
+    import run_limits
+
+    real_tree = run_limits._process_tree_rss
+    real_peak = run_limits._tree_peak_rss
+    run_limits._process_tree_rss = lambda _pid: 0
+    run_limits._tree_peak_rss = lambda _pid: 0
+    try:
+        completed = bounded_run(
+            ["true"],
+            timeout=2,
+            cwd=ROOT,
+            memory_cap=RUN_MEMORY_CAP_BYTES,
+        )
+    finally:
+        run_limits._process_tree_rss = real_tree
+        run_limits._tree_peak_rss = real_peak
+    if completed.returncode != 0:
+        raise SystemExit(f"FAIL missed sample exited {completed.returncode}")
+    if completed.peak_rss_bytes != 0:
+        raise SystemExit(f"FAIL missed sample recorded {completed.peak_rss_bytes}")
+    print("ok missed sample stays a completed run")
+
+
+def test_fast_process_reports_peak_rss() -> None:
+    completed = bounded_run(
+        ["true"],
+        timeout=2,
+        cwd=ROOT,
+        memory_cap=RUN_MEMORY_CAP_BYTES,
+    )
+    if completed.returncode != 0:
+        raise SystemExit(f"FAIL true exited {completed.returncode}")
+    if completed.peak_rss_bytes <= 0:
+        raise SystemExit(f"FAIL true peak rss {completed.peak_rss_bytes}")
+    print(f"ok fast peak rss: {completed.peak_rss_bytes}")
+
+
+def test_allocation_is_in_the_peak() -> None:
+    completed = bounded_run(
+        ["python3", "-c", "p = bytearray(20 * 1024 * 1024)"],
+        timeout=5,
+        cwd=ROOT,
+        memory_cap=RUN_MEMORY_CAP_BYTES,
+    )
+    if completed.returncode != 0:
+        raise SystemExit(f"FAIL alloc exited {completed.returncode}: {completed.stderr}")
+    floor = 16 * 1024 * 1024
+    if completed.peak_rss_bytes < floor:
+        raise SystemExit(f"FAIL alloc peak {completed.peak_rss_bytes} < {floor}")
+    print(f"ok alloc peak rss: {completed.peak_rss_bytes}")
+
+
 def test_timeout_kills() -> None:
     try:
         bounded_run(
@@ -171,6 +228,9 @@ def main() -> None:
     test_injected_limits_are_explicit()
     test_does_not_override_manifest_budget()
     test_memory_cap_kills()
+    test_missed_sample_does_not_fail_the_run()
+    test_fast_process_reports_peak_rss()
+    test_allocation_is_in_the_peak()
     test_timeout_kills()
     print("runner limit guards passed")
 

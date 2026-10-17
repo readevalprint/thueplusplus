@@ -9,7 +9,7 @@ license = "MIT"
 readme = "README.md"
 
 [lib]
-name = "thue"
+name = "thuelang"
 path = "src/lib.rs"
 
 [[bin]]

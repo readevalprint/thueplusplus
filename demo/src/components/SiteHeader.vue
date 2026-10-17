@@ -13,6 +13,7 @@ import {
   navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { mirrorUrl, repositoryUrl } from '@/hosts'
 import { navDirect, navGroupCurrent, navGroups, navItemCurrent } from '@/nav'
 import { cn } from '@/lib/utils'
 import Mark from './Mark.vue'
@@ -77,7 +78,8 @@ const triggerClass = 'h-8 bg-transparent px-2 font-mono text-[13px] lowercase te
     </nav>
     <div class="flex-1" />
     <ThemeToggle />
-    <a class="text-ash hover:text-bone lowercase transition-colors duration-150" data-test="github-link" href="https://github.com/thuelang/thueplusplus" rel="noreferrer">github</a>
+    <a class="text-ash hover:text-bone lowercase transition-colors duration-150" data-test="github-link" :href="repositoryUrl" rel="noreferrer">github</a>
+    <a class="text-ash hover:text-bone hidden lowercase transition-colors duration-150 sm:inline" data-test="gitlab-link" :href="mirrorUrl" rel="noreferrer">gitlab</a>
     <Sheet v-model:open="menuOpen">
       <SheetTrigger as-child>
         <Button variant="ghost" size="icon" class="lg:hidden" data-test="menu-toggle" aria-label="Open menu" :aria-expanded="menuOpen">
@@ -87,7 +89,7 @@ const triggerClass = 'h-8 bg-transparent px-2 font-mono text-[13px] lowercase te
       <SheetContent side="right" class="bg-void border-line w-80 overflow-y-auto">
         <SheetHeader>
           <SheetTitle class="font-mono text-[13px] lowercase">Menu</SheetTitle>
-          <SheetDescription class="sr-only">Docs, Install, Projects, Metrics, and Playground.</SheetDescription>
+          <SheetDescription class="sr-only">Docs, Install, Projects, Metrics, Playground, Contribute, and the autoresearch prompt.</SheetDescription>
         </SheetHeader>
         <nav class="flex flex-col gap-6 px-4 pb-8 font-mono text-[13px]" data-test="site-menu" aria-label="Site">
           <div v-for="group in navGroups" :key="group.title" class="flex flex-col gap-1">
@@ -116,6 +118,10 @@ const triggerClass = 'h-8 bg-transparent px-2 font-mono text-[13px] lowercase te
             >
               {{ link.title }}
             </RouterLink>
+          </div>
+          <div class="flex gap-4 px-3 font-mono text-[13px]">
+            <a class="text-ash hover:text-bone lowercase" :href="repositoryUrl" rel="noreferrer">github</a>
+            <a class="text-ash hover:text-bone lowercase" :href="mirrorUrl" rel="noreferrer">gitlab</a>
           </div>
         </nav>
       </SheetContent>

@@ -5,8 +5,8 @@ import json
 import sys
 from pathlib import Path
 
-from thue import LimitExceeded, ThueInterpreter
-from thue.interpreter import format_trace
+from thuelang import LimitExceeded, ThueInterpreter
+from thuelang.interpreter import format_trace
 
 
 class _Unset:

@@ -1,13 +1,13 @@
-# thue
+# thuelang
 
-Rust host for Thue++ v0.5. The Cargo package name is `thuelang`. The Rust library is `thue`. The binary of the same name is a thin CLI over that library.
+Rust host for Thue++ v0.5. The Cargo package name and the Rust library are `thuelang`. The CLI binary is `thue`.
 
 This crate is not published. `publish = false` is set in `Cargo.toml`.
 
 ## Library
 
 ```rust
-use thue::Interpreter;
+use thuelang::Interpreter;
 
 let mut interp = Interpreter::new();
 interp.max_steps = Some(1_000_000);

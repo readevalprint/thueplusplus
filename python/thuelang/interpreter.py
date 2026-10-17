@@ -17,7 +17,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Optional
 
-from thue.prefix import literal_prefix
+from thuelang.prefix import literal_prefix
 
 
 DEFAULT_MAX_EVALS = 1_000_000

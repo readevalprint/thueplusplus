@@ -8,7 +8,6 @@ include:
 
 stages:
   - test
-  - pages
   - secret-detection
 
 variables:
@@ -128,71 +127,3 @@ vscode:
     expire_in: 14 days
     paths:
       - editors/vscode/*.vsix
-
-# Publishes the demo as the thuelang.org site. Known routes are real
-# index.html files. Unknown paths use 404.html, a copy of the SPA shell.
-# vercel.json stays the preview config and is not used here.
-pages:
-  image: node:22-bookworm
-  stage: pages
-  needs:
-    - job: tasks
-      artifacts: true
-  rules:
-    - if: '$CI_SERVER_HOST == "gitlab.com" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-  before_script:
-    - apt-get update
-    - apt-get install -y --no-install-recommends ca-certificates curl make
-    - |
-      case "$(uname -m)" in
-        x86_64) GO_ARCH=amd64 ;;
-        aarch64|arm64) GO_ARCH=arm64 ;;
-        *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
-      esac
-      curl -fsSL "https://go.dev/dl/go1.24.6.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tgz
-      tar -C /usr/local -xzf /tmp/go.tgz
-      export PATH="/usr/local/go/bin:$PATH"
-      go version
-    - node --version
-    - npm --version
-  script:
-    - export PATH="/usr/local/go/bin:$PATH"
-    - make demo-build
-    - rm -rf public
-    - cp -R demo/dist public
-    - mkdir -p public/metrics
-    - cp demo/src/generated/summary.json public/metrics/summary.json
-    - |
-      for path in \
-        public/index.html \
-        public/404.html \
-        public/docs/guides/index.html \
-        public/docs/language/index.html \
-        public/playground/index.html \
-        public/install/index.html \
-        public/install/go/index.html \
-        public/install/python/index.html \
-        public/install/js/index.html \
-        public/install/rust/index.html \
-        public/install/cpp/index.html \
-        public/projects/index.html \
-        public/metrics/index.html \
-        public/tasks/index.html \
-        public/embed/index.html \
-        public/thue.wasm \
-        public/metrics/summary.json
-      do
-        test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
-      done
-      find public/tasks -mindepth 2 -name index.html > /tmp/task-pages.txt
-      test -s /tmp/task-pages.txt || { echo "GitLab Pages site is missing task deep links" >&2; exit 1; }
-      while IFS= read -r path; do
-        test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
-        grep -q 'https://thuelang.org/tasks/' "$path" || { echo "$path is missing its canonical task URL" >&2; exit 1; }
-      done < /tmp/task-pages.txt
-      cmp -s public/404.html public/index.html || { echo "public/404.html must match public/index.html" >&2; exit 1; }
-      grep -q 'https://thuelang.org/playground' public/playground/index.html
-      grep -q 'src="/assets/' public/playground/index.html
-  artifacts:
-    paths:
-      - public
