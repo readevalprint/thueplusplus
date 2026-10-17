@@ -1,12 +1,14 @@
 # Metrics benches
 
-`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/metrics` does not import these files one by one. `demo/scripts/build-site.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json` from documents that contain `runs`. The host charts on `/metrics` read that summary. The same summary is published at `/metrics/summary.json`.
+`make metrics` is a local preview of schema 5 `metrics/latest.json`. Pull request CI measures the head and warns. A push to `main` commits `metrics/latest.json` and any changed `metric.json` only when the run results changed. The recorder does not add a bench file.
+
+`/metrics` does not import these files one by one. `demo/scripts/build-site.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json` from documents that contain `runs`. The host charts on `/metrics` read that summary. The same summary is published at `/metrics/summary.json`. Problem and ruleset charts read the git history of each `metric.json`.
 
 A new `latest.json` is schema 5: `schema_version`, `commit`, `machine`, and `runs`. Each run is one solution case on one host. `pass` and `cost` match the Go run. The global limits from `metrics/limits.toml` are on every run, and `host_timeout_seconds` equals `timeout_seconds`. `reads` is the scripted resource set. A schema 4 run document stores `stdin` instead of `reads` and stays valid. Older benches stay valid. A schema 4 bench without `runs` is the earlier problem and language record.
 
 | Path | Role |
 | --- | --- |
-| `metrics/latest.json` | The measurement the author committed with the change. A runs document stores the measured commit. |
+| `metrics/latest.json` | The current measurement. Main CI writes it when the runs change. A runs document stores the measured commit. |
 | `metrics/YYYY/MM/DD/{sha}/bench.json` | One archived measurement. The directory date matches `timestamp`. |
 | `demo/src/generated/summary.json` | Compact series generated from every bench file and from `latest.json`. Not committed. |
 | `/metrics/summary.json` | That summary on the published site. |
@@ -15,13 +17,15 @@ Vercel serves the site at https://thuelang.org. The demo build copies the summar
 
 ## Who writes a file
 
-The pull request author runs `make metrics` before the pull request is accepted and commits `metrics/latest.json` with the change. The script runs the host benchmarks on every host. It runs the problem suite and the language cases on native Go.
+`make metrics` runs every solution case on every host. It writes a solution's `metric.json` only when pass, cost, or a diagnostic differs, and it writes `metrics/latest.json` only when a run result differs. Commit hash, machine, duration, and resident memory are not a change. The command does not commit and does not push. It does not add a bench file.
 
-If `metrics/latest.json` already exists, the script resolves the commit that added it and moves that measurement to `metrics/YYYY/MM/DD/{sha}/bench.json`, filling in the commit, the author, and the UTC author date. It then writes a new `latest.json`. The script refuses a dirty work tree. It does not push.
+A pull request runs that measurement. The job stays green when a changed solution is not strictly cheaper, or when an interpreter's aggregate sum rises. The sticky comment shows the per-solution diff against main, the ruleset sums, and those warnings. A solution that fails, a host that disagrees with Go, or broken frontmatter fails the job. The pull request does not commit metrics files.
 
-GitHub Actions does not measure and does not push. On a pull request it checks that `latest.json` exists, that the pull request changed it, that it matches this schema, and that each archived bench matches the `latest.json` from the commit that added it. There is no single history file and no post-merge write.
+A push to `main`, other than a push by `github-actions[bot]`, runs the measurement and commits the changed files with `contents: write`. No change means no commit. Each committed `metric.json` is one point in that file's git history.
 
-`metrics/backfill.py` walks every commit reachable from `HEAD` and fills SHA, author, commit timestamp, and guest rule-line counts. It keeps tasks and benchmarks already stored for that commit. It does not run the task suite or the workloads. A historical task run would time today's hosts against an old tree, which is a different question. Those rows record `machine: null`.
+`metrics/YYYY/MM/DD/{sha}/bench.json` files already in the tree are the host-chart history. Main does not need a new one: a pull request was adding the whole archive on every run, about 15,000 lines, including runs whose costs did not change. The host chart keeps the archives on disk plus the current `metrics/latest.json`. Replacing `latest.json` when the runs change leaves the previous tip in that file's git history. The site builder does not walk that history. Problem charts do walk each `metric.json`, and those files move only when their results move.
+
+`metrics/backfill.py` walks every commit reachable from `HEAD` and fills SHA, author, commit timestamp, and guest rule-line counts. It keeps tasks and benchmarks already stored for that commit. It does not run the task suite or the workloads. A historical task run would time today's hosts against an old tree, which is a different question. Those rows record `machine: null`. It is not part of pull request CI or the main publish job.
 
 ## Safety
 

@@ -3,24 +3,98 @@ name: metrics
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   record:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
+      - name: Set the comment path
+        run: echo "METRICS_COMMENT=${RUNNER_TEMP}/metrics-comment.md" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Fetch the pull request base
-        run: git fetch --no-tags origin "${{ github.event.pull_request.base.sha }}"
+        run: git fetch --no-tags origin "$BASE_SHA"
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
-      - name: Check latest.json and archived benches
-        run: uv run python metrics/check_history.py --base "${{ github.event.pull_request.base.sha }}"
-      - name: Check solution and interpreter acceptance
-        run: uv run python metrics/accept.py --base "${{ github.event.pull_request.base.sha }}"
+      - name: Install the C++ toolchain and RE2
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
+      - name: Measure and warn
+        run: uv run python metrics/pr_check.py --base "$BASE_SHA" --comment-out "$METRICS_COMMENT"
+      - name: Update the sticky comment
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run python metrics/pr_check.py --post "$METRICS_COMMENT" --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}"
+      - name: Print the metrics comment
+        if: always() && github.event.pull_request.head.repo.full_name != github.repository
+        run: cat "$METRICS_COMMENT"
+
+  publish:
+    if: github.event_name == 'push' && github.actor != 'github-actions[bot]' && github.event.pusher.name != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - name: Install the C++ toolchain and RE2
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
+      # Commit metrics/latest.json and metric.json only when run results change.
+      - name: Commit changed metrics
+        env:
+          GITHUB_PUSHER: ${{ github.event.pusher.name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          uv run python metrics/record.py --publish
+          if [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ]; then
+            echo "metrics: no commit"
+            exit 0
+          fi
+          git push origin HEAD:main

@@ -262,16 +262,25 @@ def _require_parity(runs: list[dict]) -> None:
                 )
 
 
-def _write_metrics(solutions: list[Solution], runs: list[dict], commit: str) -> None:
+def _write_metrics(solutions: list[Solution], runs: list[dict], commit: str, *, root: Path = ROOT) -> list[str]:
+    """Write metric.json files whose pass, cost, or diagnostics changed.
+
+    `commit` is recorded on a file that is written. It is not a change by itself.
+    Returns repo-relative paths that were written. A failing Go run writes nothing.
+    """
     grouped: dict[tuple[str, str], list[dict]] = {}
     for run in runs:
         if run["host"] != "go":
             continue
         grouped.setdefault((run["problem"], run["ruleset"]), []).append(run)
+    pending: list[tuple[Solution, list[dict]]] = []
     for solution in solutions:
         rows = grouped[(solution.problem, solution.ruleset)]
         if any(row["pass"] is not True for row in rows):
             raise RunError(f"{solution.problem}/{solution.ruleset} did not pass")
+        pending.append((solution, rows))
+    written: list[str] = []
+    for solution, rows in pending:
         document = {
             "pass": True,
             "cost": sum(row["cost"] for row in rows),
@@ -284,13 +293,16 @@ def _write_metrics(solutions: list[Solution], runs: list[dict], commit: str) -> 
             "rule_count": rows[-1]["rule_count"],
             "rule_chars": rows[-1]["rule_chars"],
         }
-        path = ROOT / "problems" / solution.problem / "solutions" / solution.ruleset / "metric.json"
+        path = root / "problems" / solution.problem / "solutions" / solution.ruleset / "metric.json"
         if path.is_file():
             existing = json.loads(path.read_text(encoding="utf-8"))
             same = all(existing.get(key) == document[key] for key in METRIC_FIELDS if key != "commit")
             if same:
                 continue
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+        written.append(path.relative_to(root).as_posix())
+    return written
 
 
 def check_committed(runs: list[dict], *, root: Path = ROOT) -> None:

@@ -195,7 +195,7 @@
     "path": "/contribute",
     "kicker": "Contribute",
     "title": "Clone, measure, open a pull request.",
-    "description": "How to change a problem or a language, run the Go tests, and commit metrics.",
+    "description": "How to change a problem or a language and run the Go tests. CI records the metrics.",
     "documentTitle": "Thue++ Contribute — Clone, measure, open a pull request",
     "canonical": "https://thuelang.org/contribute",
     "robots": "index,follow",
