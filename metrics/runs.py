@@ -75,11 +75,21 @@ class RunError(RuntimeError):
     pass
 
 
-def measure(*, write_metrics: bool, commit: str) -> list[dict]:
+def selected_hosts(host: str | None = None) -> tuple[str, ...] | None:
+    """Return the one host named by HOST, or None when every host should run."""
+    if host is None:
+        host = os.environ.get("HOST", "")
+    host = host.strip()
+    if host == "":
+        return None
+    return (host,)
+
+
+def measure(*, write_metrics: bool, commit: str, hosts: tuple[str, ...] | None = None) -> list[dict]:
     limits = load_limits()
     solutions = discover()
     cases = {solution.problem: load_cases(solution.problem) for solution in solutions}
-    interpreters = build_registered(ROOT / "build")
+    interpreters = build_registered(ROOT / "build", hosts)
     jobs = [(solution, case) for solution in solutions for case in cases[solution.problem]]
     by_host: dict[str, list[dict]] = {}
     with ThreadPoolExecutor(max_workers=len(interpreters)) as pool:
@@ -95,6 +105,8 @@ def measure(*, write_metrics: bool, commit: str) -> list[dict]:
             runs.append(by_host[interpreter.name][index])
     _require_parity(runs)
     if write_metrics:
+        if hosts is not None and "go" not in hosts:
+            raise RunError("writing metrics requires the go host")
         _write_metrics(solutions, runs, commit)
     return runs
 
@@ -205,14 +217,18 @@ def _require_parity(runs: list[dict]) -> None:
     for run in runs:
         grouped.setdefault((run["problem"], run["ruleset"], run["case"]), {})[run["host"]] = run
     for key, hosts in grouped.items():
-        go = hosts.get("go")
-        if go is None:
-            raise RunError(f"{key}: no go run")
-        if go["pass"] is not True:
-            raise RunError(f"{'/'.join(key)} failed on go")
+        if not hosts:
+            raise RunError(f"{'/'.join(key)} has no runs")
+        reference_name = "go" if "go" in hosts else sorted(hosts)[0]
+        reference = hosts[reference_name]
+        if reference["pass"] is not True:
+            raise RunError(f"{'/'.join(key)} failed on {reference_name}")
         for host, run in hosts.items():
-            if run["pass"] != go["pass"] or run["cost"] != go["cost"]:
-                raise RunError(f"{'/'.join(key)} {host} pass={run['pass']} cost={run['cost']} != go pass={go['pass']} cost={go['cost']}")
+            if run["pass"] != reference["pass"] or run["cost"] != reference["cost"]:
+                raise RunError(
+                    f"{'/'.join(key)} {host} pass={run['pass']} cost={run['cost']} "
+                    f"!= {reference_name} pass={reference['pass']} cost={reference['cost']}"
+                )
 
 
 def _write_metrics(solutions: list[Solution], runs: list[dict], commit: str) -> None:
@@ -246,17 +262,21 @@ def _write_metrics(solutions: list[Solution], runs: list[dict], commit: str) -> 
         path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
 
-def check_committed(runs: list[dict]) -> None:
-    grouped: dict[tuple[str, str], list[dict]] = {}
+def check_committed(runs: list[dict], *, root: Path = ROOT) -> None:
+    grouped: dict[tuple[str, str, str], list[dict]] = {}
     for run in runs:
-        if run["host"] != "go":
-            continue
-        grouped.setdefault((run["problem"], run["ruleset"]), []).append(run)
-    for key, rows in sorted(grouped.items()):
-        path = ROOT / "problems" / key[0] / "solutions" / key[1] / "metric.json"
+        grouped.setdefault((run["problem"], run["ruleset"], run["host"]), []).append(run)
+    if not grouped:
+        raise RunError("no runs")
+    for problem, ruleset, host in sorted(grouped):
+        rows = grouped[(problem, ruleset, host)]
+        path = root / "problems" / problem / "solutions" / ruleset / "metric.json"
+        relative = path.relative_to(root)
         if not path.is_file():
-            raise RunError(f"{path.relative_to(ROOT)} is missing")
+            raise RunError(f"{relative.as_posix()} is missing")
+        if any(row["pass"] is not True for row in rows):
+            raise RunError(f"{problem}/{ruleset} failed on {host}")
         data = json.loads(path.read_text(encoding="utf-8"))
         cost = sum(row["cost"] for row in rows)
         if data.get("pass") is not True or data.get("cost") != cost:
-            raise RunError(f"{path.relative_to(ROOT)} cost {data.get('cost')} != measured {cost}")
+            raise RunError(f"{relative.as_posix()} cost {data.get('cost')} != {host} measured {cost}")

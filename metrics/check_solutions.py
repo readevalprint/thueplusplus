@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "metrics"))
 sys.path.insert(0, str(ROOT / "tools"))
 
-from runs import RunError, check_committed, measure  # noqa: E402
+from runs import RunError, check_committed, measure, selected_hosts  # noqa: E402
 
 
 def main() -> int:
@@ -21,7 +21,7 @@ def main() -> int:
         print(completed.stderr.strip(), file=sys.stderr)
         return 1
     try:
-        runs = measure(write_metrics=False, commit=completed.stdout.strip())
+        runs = measure(write_metrics=False, commit=completed.stdout.strip(), hosts=selected_hosts())
         check_committed(runs)
     except (RunError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)

@@ -50,6 +50,7 @@ test-static:
 	uv run python metrics/test_frontmatter.py
 	uv run python metrics/test_accept.py
 	uv run python metrics/check_layout.py
+	uv run python metrics/test_runs.py
 
 test-core:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }

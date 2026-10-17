@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 LANG_DIRS = frozenset({"forth", "lisp", "basic"})
-HOST_JOBS = ("python", "go", "wasm", "rust", "cpp", "guests")
+HOST_JOBS = ("python", "go", "wasm", "rust", "cpp", "guests", "solutions")
 
 
 def classify(paths: list[str], *, cpp_present: bool) -> dict[str, bool]:
@@ -45,6 +45,10 @@ def classify(paths: list[str], *, cpp_present: bool) -> dict[str, bool]:
             continue
         if path.startswith("langs/") or path.startswith("problems/"):
             jobs["guests"] = True
+            jobs["solutions"] = True
+            continue
+        if path.startswith("metrics/"):
+            jobs["solutions"] = True
     if shared:
         jobs["python"] = True
         jobs["go"] = True
