@@ -53,6 +53,8 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Fixed
 
+- Playground trace diffs. A removed line has a light red wash and the changed characters a stronger red. An added line has a light green wash and the changed characters a stronger green. Both themes use those tints.
+- Playground reset clears every resource transcript and the step and probe counters. The next run starts from that empty output instead of appending to stdout.
 - Go rule matching skips a regexp when the subject cannot contain the rule's literal prefix. Anchored Lisp rules were paying for a full regexp on every probe. A case-insensitive pattern does not use that shortcut.
 - The site build no longer fails when `build/tasks/results.json` is missing. Those guest rows are `unmeasured`. A missing file is not recorded as a pass.
 - The manifest runner returns as soon as a process exits. The 100 ms RSS check and the 256 MiB cap stay.
