@@ -37,7 +37,8 @@ def format_trace(events: list[dict[str, Any]]) -> str:
 
     ``error`` is an empty string when unset. ``exitCode`` is JSON null except
     for ``::-``. Each object is one line, and the result ends with a newline
-    when it is not empty.
+    when it is not empty. Non-ASCII text is UTF-8. U+2028 and U+2029 are
+    the escapes ``\\u2028`` and ``\\u2029``.
     """
     if not events:
         return ""
@@ -56,8 +57,14 @@ def format_trace(events: list[dict[str, Any]]) -> str:
             "stateAfter": event["stateAfter"],
             "exitCode": event.get("exitCode"),
         }
-        lines.append(json.dumps(payload, ensure_ascii=True, separators=(",", ":")))
+        lines.append(_trace_json(payload))
     return "\n".join(lines) + "\n"
+
+
+def _trace_json(payload: dict[str, Any]) -> str:
+    """JSON object in Go's encoding, with HTML escaping off."""
+    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return text.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
 class LimitExceeded(RuntimeError):
@@ -1136,6 +1143,9 @@ class ThueInterpreter:
         if not self.trace_enabled:
             return
         groups = {key: value for key, value in match.groupdict().items() if value is not None}
+        # The Python match reports code points. The trace contract is UTF-8 bytes.
+        match_start = len(state_before[: match.start()].encode("utf-8"))
+        match_end = len(state_before[: match.end()].encode("utf-8"))
         self.trace.append(
             {
                 "step": self.eval_count,
@@ -1144,8 +1154,8 @@ class ThueInterpreter:
                 "lineNumber": rule.line_number,
                 "operator": rule.operator.value,
                 "lhs": rule.lhs,
-                "matchStart": match.start(),
-                "matchEnd": match.end(),
+                "matchStart": match_start,
+                "matchEnd": match_end,
                 "groups": groups,
                 "stateBefore": state_before,
                 "replacement": replacement,

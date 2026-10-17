@@ -116,3 +116,4 @@ A host that omits `--max-evals` uses 1000000. A host that omits `--max-state-byt
 
 - A matched rule that fails before replacement records the event, leaves the state unchanged, and then returns 1.
 - A replacement that would exceed the state limit records the event, with the rejected replacement and the unchanged state, and then returns 12. The host does not return 12 with an empty trace.
+- `matchStart` and `matchEnd` are UTF-8 byte offsets into `stateBefore`. String values are UTF-8. U+2028 and U+2029 are `\u2028` and `\u2029`. Other non-ASCII characters are written as themselves.

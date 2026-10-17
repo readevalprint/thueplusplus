@@ -1,0 +1,27 @@
+program = "../unicode-state-limit.thue"
+
+[[case]]
+name = "one applied rewrite is covered then the step limit returns 10"
+args = ["--max-steps", "1", "--max-evals", "20", "--max-state-bytes", "100"]
+input = "a"
+
+[case.expect]
+exit_code = 10
+stdout = ""
+stderr = """
+Error: Applied step limit (1) exceeded
+"""
+
+[[case]]
+name = "state limit records the rejected replacement then returns 12"
+args = ["--trace", "--max-steps", "5", "--max-evals", "20", "--max-state-bytes", "4"]
+input = "é\u2028"
+
+[case.expect]
+exit_code = 12
+stdout = ""
+stderr = '''
+{"step":1,"ruleIndex":0,"lineNumber":1,"operator":"::=","matchStart":0,"matchEnd":5,"error":"State size (6 bytes) exceeds maximum (4 bytes)","stateBefore":"é\u2028","replacement":"é\u2028Z","stateAfter":"é\u2028","exitCode":null}
+Error: State size (6 bytes) exceeds maximum (4 bytes)
+'''
+

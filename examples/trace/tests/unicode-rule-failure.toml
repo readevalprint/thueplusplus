@@ -1,0 +1,24 @@
+program = "../unicode-rule-failure.thue"
+
+[[case]]
+name = "valid percent payload is decoded"
+input = "in:%41"
+
+[case.expect]
+exit_code = 0
+stdout = ""
+stderr = ""
+
+[[case]]
+name = "matched rule that fails before replacement records the event then returns 1"
+args = ["--trace", "--max-steps", "5", "--max-evals", "20", "--max-state-bytes", "100"]
+input = "in:x\u2028\u2029éy"
+
+[case.expect]
+exit_code = 1
+stdout = ""
+stderr = '''
+{"step":1,"ruleIndex":0,"lineNumber":1,"operator":"::=","matchStart":0,"matchEnd":13,"error":"PCT payload contains unencoded unsafe byte","stateBefore":"in:x\u2028\u2029éy","replacement":"","stateAfter":"in:x\u2028\u2029éy","exitCode":null}
+Error: PCT payload contains unencoded unsafe byte
+'''
+
