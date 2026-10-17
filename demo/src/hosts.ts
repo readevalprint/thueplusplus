@@ -30,7 +30,7 @@ const PRESENTATION: Record<string, Presentation> = {
 // Landing sentence and install page order. Every hosts.toml id is required.
 const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp', 'ruby', 'csharp', 'java']
 
-export const soonLanguages = ['erlang', 'ocaml', 'perl', 'haskell']
+export const soonLanguages: string[] = []
 
 export const repositoryUrl = 'https://github.com/thuelang/thueplusplus'
 export const mirrorUrl = 'https://gitlab.com/thuelang/thueplusplus'
@@ -139,7 +139,6 @@ if (installOverview.path !== '/install') throw new Error('pages.json install pat
 const overviewLinks = [
   { title: 'Quick start', href: '#quick-start' },
   { title: 'Supported', href: '#supported' },
-  { title: 'Coming soon', href: '#coming-soon' },
 ]
 if (JSON.stringify(installOverview.links) !== JSON.stringify(overviewLinks)) {
   throw new Error(`pages.json install links must be ${JSON.stringify(overviewLinks)}`)

@@ -35,7 +35,7 @@ const quickStart = `uv run thue program.thue`
         </li>
       </ul>
     </section>
-    <section id="coming-soon" class="flex flex-col gap-3">
+    <section v-if="soonLanguages.length" id="coming-soon" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Coming soon</h2>
       <p class="leading-7">{{ soonLanguages.join(', ') }}</p>
     </section>

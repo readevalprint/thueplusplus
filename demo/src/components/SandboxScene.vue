@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import Rex from './Rex.vue'
 import {
-  BELT_Y,
+  BELT_H,
+  BELT_MOUTH,
+  BELT_TOP,
+  BELT_X0,
   CAGE_BASE,
   CAGE_H,
   CAGE_W,
@@ -27,6 +30,7 @@ import {
   inZone,
   pull as pullGame,
   rebuild as rebuildGame,
+  scoreJump,
   step,
   type Box,
   type Game,
@@ -47,6 +51,7 @@ const clock = ref(0)
 const spring = ref<Spring>(settledSpring())
 const pose = ref<Pose>(restPose(false))
 const beltScroll = ref(0)
+const floatFrom = ref<{ x: number, y: number } | null>(null)
 const status = ref('Rex is waiting. Pull the lever to start.')
 let raf = 0
 let last = 0
@@ -139,11 +144,38 @@ const zone = computed(() => {
   const end = beltPoint(1)
   return { x: start.x, w: Math.max(8, end.x - start.x) }
 })
+const SCORE_X = VIEW_W - 36
+const SCORE_Y = 58
+const jump = computed(() => scoreJump(
+  game.value.pop,
+  game.value.streak,
+  Math.max(diff.value.beltRate, 0.01),
+  reduced.value,
+))
+const scoreTransform = computed(() => {
+  const scale = jump.value.scale
+  return `translate(${SCORE_X} ${SCORE_Y}) scale(${scale}) translate(${-SCORE_X} ${-SCORE_Y})`
+})
+const floatPos = computed(() => {
+  const from = floatFrom.value ?? beltPoint(1)
+  const travel = jump.value.travel
+  return {
+    x: from.x + (SCORE_X - 80 - from.x) * travel,
+    y: from.y - 36 + (SCORE_Y - 18 - (from.y - 36)) * travel,
+  }
+})
 const bubblePath = computed(() => {
-  const tipX = Math.min(220, Math.max(108, pose.value.rootX))
-  const hatY = pose.value.rootY + (Math.min(pose.value.eyeLY, pose.value.eyeRY) - 28) * SCALE
-  const tipY = Math.min(164, Math.max(142, hatY))
-  return `M40 24 H292 Q308 24 308 40 V104 Q308 120 292 120 H168 L${tipX} ${tipY} L124 120 H56 Q40 120 40 104 V40 Q40 24 56 24 Z`
+  const tipX = pose.value.rootX + 36
+  const tipY = pose.value.rootY + (Math.min(pose.value.eyeLY, pose.value.eyeRY) - 8) * SCALE
+  const right = Math.min(VIEW_W - 36, tipX + 28)
+  const left = right - 268
+  const top = 12
+  return `M${left + 16} ${top} H${right - 16} Q${right} ${top} ${right} ${top + 16} V${top + 28} L${tipX} ${tipY} L${right - 36} ${top + 64} H${left + 16} Q${left} ${top + 64} ${left} ${top + 48} V${top + 16} Q${left} ${top} ${left + 16} ${top} Z`
+})
+const speechX = computed(() => {
+  const tipX = pose.value.rootX + 36
+  const right = Math.min(VIEW_W - 36, tipX + 28)
+  return right - 252
 })
 const machineTransform = computed(() => {
   if (reduced.value || game.value.jolt === 0) return `translate(${MACHINE.x} ${MACHINE.y})`
@@ -184,12 +216,17 @@ function boxTransform(box: Box): string {
 function pull(): void {
   const before = game.value.score
   const beforeMiss = game.value.miss
+  const hot = game.value.boxes
+    .filter(box => inZone(box.progress, game.value.score, game.value.reduced))
+    .sort((a, b) => b.progress - a.progress || a.id - b.id)[0]
   commit(pullGame(game.value), 0)
+  if (hot && game.value.score !== before) floatFrom.value = beltPoint(hot.progress)
   if (game.value.score !== before || game.value.miss !== beforeMiss || game.value.phase !== 'waiting') note()
 }
 
 function onRebuild(): void {
   game.value = rebuildGame(game.value)
+  floatFrom.value = null
   spring.value = settledSpring()
   syncPose(0)
   note()
@@ -264,6 +301,7 @@ defineExpose({ game, advance })
   <div
     class="rex-scene text-bone relative h-full min-h-0 w-full"
     data-test="sandbox-scene"
+    data-side="yes"
     data-pin
     role="group"
     :aria-label="`Sandbox game. ${status}`"
@@ -274,36 +312,68 @@ defineExpose({ game, advance })
     :data-score="game.score"
     :data-miss="game.miss > 0 ? 'yes' : 'no'"
   >
-    <div class="rex-stage">
-    <div class="rex-frame">
     <svg
-      class="rex-svg"
+      class="rex-svg absolute inset-0"
       :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`"
+      preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <path :d="`M28 ${GROUND} H${VIEW_W - 24}`" stroke="currentColor" stroke-width="2" opacity="0.4" />
+      <defs>
+        <filter id="rex-belt-blur" x="-8%" y="-40%" width="116%" height="200%">
+          <feGaussianBlur stdDeviation="14" />
+        </filter>
+        <linearGradient id="rex-belt-fade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="white" />
+          <stop offset="0.34" stop-color="white" />
+          <stop offset="0.52" stop-color="black" />
+        </linearGradient>
+        <linearGradient id="rex-belt-sharp" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="black" />
+          <stop offset="0.34" stop-color="black" />
+          <stop offset="0.52" stop-color="white" />
+        </linearGradient>
+        <mask id="rex-belt-left">
+          <rect :width="VIEW_W" :height="VIEW_H" fill="url(#rex-belt-fade)" />
+        </mask>
+        <mask id="rex-belt-right">
+          <rect :width="VIEW_W" :height="VIEW_H" fill="url(#rex-belt-sharp)" />
+        </mask>
+      </defs>
+      <path :d="`M0 ${BELT_TOP + BELT_H + 18} H${VIEW_W}`" stroke="currentColor" stroke-width="2" opacity="0.28" />
 
-      <g data-test="hud" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" text-anchor="end">
-        <text x="724" y="36" font-size="14" opacity="0.7">score</text>
-        <text data-test="score" x="724" y="74" font-size="40">{{ game.score }}</text>
-        <text v-if="game.best > 0" data-test="best" x="724" y="100" font-size="16" opacity="0.75">best {{ game.best }}</text>
-        <text
-          v-if="game.pop > 0"
-          data-test="score-pop"
-          x="640"
-          :y="66 - (1 - game.pop) * 18"
-          font-size="22"
+      <g
+        data-test="score-jump"
+        :data-scale="jump.scale.toFixed(2)"
+        :data-flash="jump.flash.toFixed(2)"
+        :transform="scoreTransform"
+        fill="currentColor"
+        font-family="JetBrains Mono, ui-monospace, monospace"
+        text-anchor="end"
+      >
+        <circle
+          v-if="!reduced && jump.flash > 0"
+          :cx="SCORE_X - 18"
+          :cy="SCORE_Y - 16"
+          :r="22 + jump.flash * 18"
           fill="var(--signal)"
-          text-anchor="end"
-          :opacity="game.pop"
-        >+1</text>
+          :opacity="jump.flash * 0.28"
+        />
+        <text :x="SCORE_X" y="28" font-size="14" opacity="0.7">score</text>
+        <text
+          data-test="score"
+          :x="SCORE_X"
+          :y="SCORE_Y"
+          font-size="48"
+          :fill="jump.flash > 0.2 ? 'var(--signal)' : 'currentColor'"
+        >{{ game.score }}</text>
+        <text v-if="game.best > 0" data-test="best" :x="SCORE_X" y="84" font-size="16" opacity="0.75">best {{ game.best }}</text>
       </g>
 
       <g v-if="waiting" data-test="speech-bubble">
         <path :d="bubblePath" fill="var(--surface)" stroke="currentColor" stroke-width="2" />
-        <text data-test="speech-text" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" font-size="22">
-          <tspan x="56" y="66">i guess we </tspan>
-          <tspan x="56" y="98">sandboxin' now</tspan>
+        <text data-test="speech-text" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" font-size="20">
+          <tspan :x="speechX" y="36">i guess we </tspan>
+          <tspan :x="speechX" y="62">sandboxin' now</tspan>
         </text>
       </g>
 
@@ -322,8 +392,8 @@ defineExpose({ game, advance })
       <text
         v-if="waiting"
         data-test="start-hint"
-        x="36"
-        y="432"
+        :x="LEVER_PIVOT.x - 150"
+        :y="BELT_TOP - 28"
         fill="currentColor"
         font-family="JetBrains Mono, ui-monospace, monospace"
         font-size="16"
@@ -331,8 +401,8 @@ defineExpose({ game, advance })
       <text
         v-if="game.miss > 0"
         data-test="miss"
-        x="724"
-        y="128"
+        :x="SCORE_X"
+        y="112"
         fill="var(--signal)"
         font-family="JetBrains Mono, ui-monospace, monospace"
         font-size="18"
@@ -350,23 +420,22 @@ defineExpose({ game, advance })
         text-anchor="middle"
       >yeah</text>
 
-      <g data-test="belt" :data-running="game.beltOn ? 'yes' : 'no'">
-        <rect x="346" :y="BELT_Y - 20" width="186" height="42" rx="3" fill="var(--surface)" stroke="currentColor" stroke-width="2" />
-        <circle cx="362" :cy="BELT_Y" r="12" fill="var(--raised)" stroke="currentColor" stroke-width="2" />
-        <circle cx="516" :cy="BELT_Y" r="12" fill="var(--raised)" stroke="currentColor" stroke-width="2" />
+      <g data-test="belt" data-span="full" :data-running="game.beltOn ? 'yes' : 'no'">
+        <rect :x="BELT_X0" :y="BELT_TOP" :width="VIEW_W" :height="BELT_H" fill="var(--gutter)" stroke="currentColor" stroke-width="3" />
+        <rect data-test="belt-surface" :x="BELT_X0" :y="BELT_TOP - 14" :width="VIEW_W" height="16" fill="var(--dim)" stroke="currentColor" stroke-width="3" />
         <clipPath id="rex-belt-clip">
-          <rect x="376" :y="BELT_Y - 16" width="128" height="32" />
+          <rect :x="BELT_X0" :y="BELT_TOP + 8" :width="VIEW_W" :height="BELT_H - 16" />
         </clipPath>
         <g clip-path="url(#rex-belt-clip)">
-          <g :transform="`translate(${tickOffset} 0)`" stroke="currentColor" stroke-width="1.7" opacity="0.55">
-            <line v-for="mark in 16" :key="mark" :x1="360 + mark * 16" :y1="BELT_Y - 14" :x2="350 + mark * 16" :y2="BELT_Y + 14" />
+          <g :transform="`translate(${tickOffset} 0)`" stroke="currentColor" stroke-width="2.2" opacity="0.72">
+            <line v-for="mark in 96" :key="mark" :x1="mark * 18" :y1="BELT_TOP + 10" :x2="mark * 18 - 14" :y2="BELT_TOP + BELT_H - 6" />
           </g>
         </g>
-        <circle data-test="belt-lamp" cx="338" :cy="BELT_Y - 28" r="5" :fill="game.beltOn ? 'var(--signal)' : 'currentColor'" :opacity="game.beltOn ? 1 : 0.35" />
+        <circle data-test="belt-lamp" :cx="BELT_MOUTH - 28" :cy="BELT_TOP - 22" r="5" :fill="game.beltOn ? 'var(--signal)' : 'currentColor'" :opacity="game.beltOn ? 1 : 0.35" />
         <path
           v-if="playing"
           data-test="capture-zone"
-          :d="`M${zone.x} ${BELT_Y - 28} H${zone.x + zone.w} M${zone.x} ${BELT_Y - 28} V${BELT_Y + 28} M${zone.x + zone.w} ${BELT_Y - 28} V${BELT_Y + 28}`"
+          :d="`M${zone.x} ${BELT_TOP - 22} H${zone.x + zone.w} M${zone.x} ${BELT_TOP - 22} V${BELT_TOP + 18} M${zone.x + zone.w} ${BELT_TOP - 22} V${BELT_TOP + 18}`"
           fill="none"
           stroke="var(--signal)"
           stroke-width="2.5"
@@ -382,9 +451,29 @@ defineExpose({ game, advance })
         :data-zone="inZone(box.progress, game.score, game.reduced) ? 'yes' : 'no'"
         :transform="boxTransform(box)"
       >
-        <rect x="-16" y="-16" width="32" height="32" rx="2" fill="var(--surface)" :stroke="inZone(box.progress, game.score, game.reduced) ? 'var(--signal)' : 'currentColor'" stroke-width="2.4" />
-        <path d="M-16 0 H16 M0 -16 V16" stroke="currentColor" stroke-width="1.4" opacity="0.5" />
+        <rect x="-18" y="-36" width="36" height="36" rx="2" fill="var(--surface)" :stroke="inZone(box.progress, game.score, game.reduced) ? 'var(--signal)' : 'currentColor'" stroke-width="2.4" />
+        <path d="M-18 -18 H18 M0 -36 V0" stroke="currentColor" stroke-width="1.4" opacity="0.5" />
       </g>
+
+      <g data-test="belt-blur" filter="url(#rex-belt-blur)" mask="url(#rex-belt-left)" opacity="0.9">
+        <rect :x="BELT_X0" :y="BELT_TOP - 14" :width="VIEW_W" height="16" fill="var(--dim)" />
+        <rect :x="BELT_X0" :y="BELT_TOP" :width="VIEW_W" :height="BELT_H" fill="var(--gutter)" />
+        <g v-for="box in game.boxes" :key="`blur-${box.id}`" :transform="boxTransform(box)">
+          <rect x="-18" y="-36" width="36" height="36" fill="var(--raised)" />
+        </g>
+      </g>
+
+      <text
+        v-if="game.pop > 0 && !reduced && floatFrom"
+        data-test="score-float"
+        :x="floatPos.x"
+        :y="floatPos.y"
+        fill="var(--signal)"
+        font-family="JetBrains Mono, ui-monospace, monospace"
+        font-size="22"
+        text-anchor="middle"
+        :opacity="Math.min(1, game.pop + 0.2)"
+      >+1</text>
 
       <g data-test="machine" :transform="machineTransform">
         <path d="M16 36 H128 L150 62 V236 H0 V86 L16 36 Z" fill="var(--surface)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" />
@@ -480,8 +569,6 @@ defineExpose({ game, advance })
       @click="pull"
       @keydown="onButtonKey"
     />
-    </div>
-    </div>
     <p class="sr-only" aria-live="polite" data-test="scene-status">{{ status }}</p>
 
     <Teleport to="body">

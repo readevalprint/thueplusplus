@@ -15,6 +15,14 @@ export const GRACE = 0.8
 export const MISS_COOLDOWN = 0.42
 export const MILESTONE = 5
 export const DANGER = 0.84
+/**
+ * The page-wide belt is longer than the old machine-side belt.
+ * Progress speed and the capture fraction both divide by this, so a box
+ * takes longer to arrive and the time inside the capture zone stays put.
+ * Gaps multiply by the same factor, so the boxes keep their spacing.
+ */
+export const TRACK = 2
+const POP_LIFE = 0.85
 const CROWD = 0.18
 const REDUCED = 0.55
 
@@ -51,6 +59,9 @@ export interface Game {
   flash: number
   jolt: number
   miss: number
+  /** Consecutive scores since the last miss. */
+  streak: number
+  /** 1 at the instant of a score, then falls to 0. */
   pop: number
   brokenT: number
   showRebuild: boolean
@@ -78,14 +89,42 @@ export function difficulty(score: number, reduced: boolean): Difficulty {
   if (!Number.isFinite(score) || score < 0) throw new Error(`score must be >= 0, got ${score}`)
   if (typeof reduced !== 'boolean') throw new Error('reduced must be a boolean')
   const u = 1 - Math.exp(-score / 6)
-  const beltRate = (0.17 + u * 0.45) * (reduced ? REDUCED : 1)
+  const legacyRate = 0.17 + u * 0.45
+  const legacySpan = 0.32 - u * 0.14
   const stretch = reduced ? 1 / REDUCED : 1
   return {
-    beltRate,
-    gapLo: (1.7 - u * 1.05) * stretch,
-    gapHi: (3.1 - u * 1.15) * stretch,
-    span: 0.32 - u * 0.14,
+    beltRate: (legacyRate / TRACK) * (reduced ? REDUCED : 1),
+    gapLo: (1.7 - u * 1.05) * stretch * TRACK,
+    gapHi: (3.1 - u * 1.15) * stretch * TRACK,
+    span: legacySpan / TRACK,
   }
+}
+
+export interface ScoreJump {
+  /** 1 at rest. Peaks above 1, dips below 1, then settles. */
+  scale: number
+  /** 1 at the score, 0 once the pop is over. */
+  flash: number
+  /** 0 at the caged box, 1 at the score. Reduced motion stays at 0. */
+  travel: number
+}
+
+/** How hard the score number jumps. Bigger streak and a faster belt hit harder. */
+export function scoreJump(pop: number, streak: number, beltRate: number, reduced: boolean): ScoreJump {
+  if (!Number.isFinite(pop) || pop < 0 || pop > 1) throw new Error(`pop must be from 0 to 1, got ${pop}`)
+  if (!Number.isInteger(streak) || streak < 0) throw new Error(`streak must be an integer >= 0, got ${streak}`)
+  if (!Number.isFinite(beltRate) || beltRate <= 0) throw new Error(`beltRate must be > 0, got ${beltRate}`)
+  if (typeof reduced !== 'boolean') throw new Error('reduced must be a boolean')
+  if (pop === 0) return { scale: 1, flash: 0, travel: reduced ? 0 : 1 }
+  const t = 1 - pop
+  const punch = 0.62 + Math.min(streak, 12) * 0.07 + Math.max(0, beltRate - 0.05) * 1.1
+  let rise = 0
+  if (t < 0.16) rise = t / 0.16
+  else if (t < 0.34) rise = 1 - ((t - 0.16) / 0.18) * 1.12
+  else if (t < 0.55) rise = -0.12 + ((t - 0.34) / 0.21) * 0.28
+  else rise = 0.16 * (1 - (t - 0.55) / 0.45)
+  if (reduced) return { scale: 1, flash: pop, travel: 0 }
+  return { scale: 1 + punch * rise, flash: pop, travel: t }
 }
 
 export function inZone(progress: number, score: number, reduced: boolean): boolean {
@@ -139,6 +178,7 @@ export function createGame(options: GameOptions): Game {
     flash: 0,
     jolt: 0,
     miss: 0,
+    streak: 0,
     pop: 0,
     brokenT: 0,
     showRebuild: false,
@@ -187,6 +227,7 @@ export function pull(game: Game): Game {
       ...game,
       cooldown: MISS_COOLDOWN,
       miss: 1,
+      streak: 0,
       rex: 'yank',
       rexT: 0,
       lever: game.reduced ? 1 : 0,
@@ -203,6 +244,7 @@ export function pull(game: Game): Game {
     flash: 1,
     jolt: 1,
     pop: 1,
+    streak: game.streak + 1,
     miss: 0,
     cooldown: 0,
     rex: milestone ? 'cheer' : 'yank',
@@ -307,7 +349,7 @@ function decay(game: Game, dt: number): Game {
     ...game,
     jolt: Math.max(0, game.jolt - dt / 0.4),
     flash: Math.max(0, game.flash - dt / 0.28),
-    pop: Math.max(0, game.pop - dt / 0.55),
+    pop: Math.max(0, game.pop - dt / POP_LIFE),
     miss: Math.max(0, game.miss - dt / 0.5),
     cooldown: Math.max(0, game.cooldown - dt),
   }

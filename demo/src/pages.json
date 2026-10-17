@@ -73,14 +73,13 @@
     "path": "/install",
     "kicker": "Install",
     "title": "Install a host.",
-    "description": "A host runs the Thue++ engine. Quick start, the supported platforms, and what is coming soon.",
+    "description": "A host runs the Thue++ engine. Quick start and the supported platforms.",
     "documentTitle": "Thue++ Install — Install a host",
     "canonical": "https://thuelang.org/install",
     "robots": "index,follow",
     "links": [
       { "title": "Quick start", "href": "#quick-start" },
-      { "title": "Supported", "href": "#supported" },
-      { "title": "Coming soon", "href": "#coming-soon" }
+      { "title": "Supported", "href": "#supported" }
     ]
   },
   "installGo": {

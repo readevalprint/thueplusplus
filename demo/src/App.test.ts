@@ -83,7 +83,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('h1').text()).toBe('Thue++')
     expect(wrapper.text()).toContain('The safest, smallest, sandbox.')
     const languages = wrapper.get('[data-test="landing-languages"]')
-    expect(languages.text()).toBe('Available in go, python, js, rust, cpp, ruby, csharp, java, and soon erlang, ocaml, perl, haskell')
+    expect(languages.text()).toBe('Available in python, go, js, rust, cpp, ruby, csharp, java')
     expect(languages.get('a[href="/install/go"]').text()).toBe('go')
     expect(languages.get('a[href="/install/python"]').text()).toBe('python')
     expect(languages.get('a[href="/install/js"]').text()).toBe('js')
@@ -126,6 +126,15 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="site-header"]').find('a[href="https://github.com/thuelang/thueplusplus"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="site-footer"]').find('a[href="/playground"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="nav-progress"]').classes()).toContain('bg-primary')
+  })
+
+  it('gate hosts', async () => {
+    const wrapper = await mountApp()
+    expect(wrapper.get('[data-test="landing-languages"]').text()).toBe(
+      'Available in python, go, js, rust, cpp, ruby, csharp, java',
+    )
+    wrapper.get('[data-test="hero-veil"]')
+    wrapper.get('[data-test="belt-bleed"]')
   })
 
   it('header is four plain links', async () => {
@@ -240,7 +249,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('h1').text()).toBe('Install a host.')
     expect(wrapper.text()).toContain('Quick start')
     expect(wrapper.text()).toContain('The thuelang package with the thue CLI')
-    expect(wrapper.text()).toContain('Coming soon')
+    expect(wrapper.find('a[href="/install/java"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Coming soon')
     expect(wrapper.text()).not.toContain('the regex engine')
     expect(wrapper.text()).not.toMatch(/\bguest\b/i)
     expect(wrapper.text()).not.toContain('RE2')
