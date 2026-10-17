@@ -37,7 +37,7 @@ const graphic = computed(() => {
     </section>
     <section id="cost" data-test="problem-history" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Cost</h2>
-      <p class="leading-7">Each point is one solution at the commit that measured it. The y axis is its Go cost. Color is the version: direct, Lisp, Forth, or BASIC. The step line is that version's running best, the minimum so far. A version is absent until it has a solution. The tooltip shows the solution file, the cost, the commit, and the diagnostic counters.</p>
+      <p class="leading-7">Each point is one solution at the commit that measured it. The y axis is its Go cost. Color is the ruleset. The step line is that ruleset's running best, the minimum so far. The tooltip shows the solution file, the cost, the commit, and the diagnostic counters.</p>
       <figure data-test="problem-chart-cost">
         <ProblemHistory :commits="catalog.commits" :versions="problem.versions" />
       </figure>
@@ -45,11 +45,12 @@ const graphic = computed(() => {
     <section id="solutions" data-test="problem-solutions" class="flex flex-col gap-8">
       <div class="flex flex-col gap-3">
         <h2 class="text-xl font-semibold tracking-tight">Solutions</h2>
-        <p class="leading-7">Cost is the native Go measurement. A file stays in this directory only when it passes and its cost is strictly lower than every other passing file. Regex evals, regex matches, cumulative state size, rule count, and rule chars stay on the chart tooltip.</p>
+        <p class="leading-7">Cost is the native Go measurement. A changed solution must pass and be strictly cheaper. Regex evals, regex matches, cumulative state size, rule count, and rule chars stay on the chart tooltip.</p>
       </div>
       <section v-for="version in problem.versions" :id="version.id" :key="version.id" data-test="problem-version" :data-version="version.id" class="flex flex-col gap-3">
         <h3 class="text-lg font-semibold tracking-tight">{{ version.name }}</h3>
-        <p v-if="version.missing" data-test="problem-missing" class="leading-7">Missing.</p>
+        <p v-for="(paragraph, index) in paragraphs(version.notes)" :key="index" class="leading-7" data-test="solution-notes">{{ paragraph }}</p>
+        <p class="text-muted-foreground text-sm">{{ version.author }}</p>
         <article v-for="solution in version.solutions" :key="solution.id" data-test="problem-solution" :data-solution="solution.id" class="flex flex-col gap-3">
           <div class="flex flex-wrap items-center gap-3">
             <p class="font-medium">{{ solution.id }}</p>

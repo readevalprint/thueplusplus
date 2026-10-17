@@ -1,0 +1,7 @@
+{
+  "name": "three",
+  "stdin": "3\n10\n20\n30\n",
+  "stdout": "60\n",
+  "stderr": "",
+  "exit_code": 0
+}

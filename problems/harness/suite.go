@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -99,11 +98,6 @@ func Run(t *testing.T, problem Problem) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if os.Getenv("THUEPP_PROBLEM_RECORD") == "1" {
-		if err := writePart(part, "problems"); err != nil {
-			t.Fatal(err)
-		}
-	}
 	for _, row := range part.Rows {
 		if row.Status != "pass" && row.Error != nil {
 			t.Errorf("%s/%s\n%s", problem.ID, row.Solution, *row.Error)
@@ -113,6 +107,15 @@ func Run(t *testing.T, problem Problem) {
 
 func Execute(problem Problem) (Part, error) {
 	started := time.Now()
+	root, err := RepoRoot()
+	if err != nil {
+		return Part{}, err
+	}
+	limits, err := GlobalLimits(root)
+	if err != nil {
+		return Part{}, err
+	}
+	problem.Limits = limits
 	if err := problem.Limits.validate(); err != nil {
 		return Part{}, fmt.Errorf("%s: %w", problem.ID, err)
 	}
@@ -140,17 +143,16 @@ func Execute(problem Problem) (Part, error) {
 			Name: item.Name, Stdin: item.Stdin, Stdout: stdout, Stderr: "", ExitCode: 0,
 		})
 	}
-	root, err := RepoRoot()
-	if err != nil {
-		return Part{}, err
-	}
 	if filepath.Base(mustWd()) != problem.ID {
 		return Part{}, fmt.Errorf("test working directory must be problems/%s", problem.ID)
+	}
+	if err := syncCases(filepath.Join(mustWd(), "cases"), samples); err != nil {
+		return Part{}, err
 	}
 	if err := RequireNativeGo(root); err != nil {
 		return Part{}, err
 	}
-	title, err := Title(mustWd(), "problem.md")
+	title, err := ReadmeTitle(mustWd())
 	if err != nil {
 		return Part{}, err
 	}
@@ -282,7 +284,7 @@ func runProgram(binary, program string, input *string, stdin string, limits Limi
 	}
 	argv = append(argv, "--metrics", metrics)
 	argv = append(argv, limits.args()...)
-	run := runBounded(argv, limits.TimeoutSeconds, stdin)
+	run := runBounded(argv, limits.TimeoutSeconds, limits.MemoryCapBytes, stdin)
 	if run.Err != nil {
 		return run
 	}
@@ -420,30 +422,31 @@ func loadSolutions(root, problemID string) ([]Solution, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tpp") {
-			return nil, fmt.Errorf("%s/solutions: only .tpp files are solutions", problemID)
+		if !entry.IsDir() {
+			return nil, fmt.Errorf("%s/solutions: %s is not a ruleset directory", problemID, entry.Name())
+		}
+		program := filepath.Join(dir, entry.Name(), "solution.tpp")
+		if _, err := os.Stat(program); err != nil {
+			continue
 		}
 		names = append(names, entry.Name())
 	}
 	if len(names) == 0 {
-		return nil, fmt.Errorf("%s: no solutions", problemID)
+		return nil, fmt.Errorf("%s: no solution.tpp", problemID)
 	}
 	sort.Strings(names)
 	out := make([]Solution, 0, len(names))
 	for _, name := range names {
-		data, err := os.ReadFile(filepath.Join(dir, name))
+		program := filepath.Join(dir, name, "solution.tpp")
+		data, err := os.ReadFile(program)
 		if err != nil {
 			return nil, err
 		}
 		if len(data) == 0 || data[len(data)-1] != '\n' {
-			return nil, fmt.Errorf("%s must end with a newline", name)
+			return nil, fmt.Errorf("%s/solution.tpp must end with a newline", name)
 		}
-		if strings.TrimSpace(string(data)) == "" {
-			return nil, fmt.Errorf("%s is empty", name)
-		}
-		stem := strings.TrimSuffix(name, ".tpp")
-		rel := filepath.ToSlash(filepath.Join("problems", problemID, "solutions", name))
-		out = append(out, Solution{Name: stem, Path: rel, PathAbs: filepath.Join(dir, name)})
+		rel := filepath.ToSlash(filepath.Join("problems", problemID, "solutions", name, "solution.tpp"))
+		out = append(out, Solution{Name: name, Path: rel, PathAbs: program})
 	}
 	return out, nil
 }
@@ -505,20 +508,4 @@ func ensureBinary(root string) (string, error) {
 		return "", fmt.Errorf("build go host: %w\n%s", err, out)
 	}
 	return path, nil
-}
-
-func writePart(part Part, kind string) error {
-	root, err := RepoRoot()
-	if err != nil {
-		return err
-	}
-	dir := filepath.Join(root, "build", kind, "parts")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(part, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(dir, part.ID+".json"), append(data, '\n'), 0o644)
 }

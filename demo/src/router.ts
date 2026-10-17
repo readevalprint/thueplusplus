@@ -9,7 +9,7 @@ declare module 'vue-router' {
     robots?: string
   }
 }
-import { problemRouteMeta } from './catalog'
+import { problemRouteMeta, rulesetRouteMeta } from './catalog'
 import EmbedPage from './pages/EmbedPage.vue'
 import HomePage from './pages/HomePage.vue'
 import InstallPage from './pages/InstallPage.vue'
@@ -21,6 +21,7 @@ import ProjectsPage from './pages/ProjectsPage.vue'
 import ReferencePage from './pages/ReferencePage.vue'
 import ProblemPage from './pages/ProblemPage.vue'
 import ProblemsPage from './pages/ProblemsPage.vue'
+import RulesetPage from './pages/RulesetPage.vue'
 import { pages } from './site'
 
 const shell = [
@@ -75,6 +76,10 @@ export const routes: RouteRecordRaw[] = [
     path: '/problems/:problemId',
     component: ProblemPage,
   },
+  {
+    path: '/rulesets/:rulesetId',
+    component: RulesetPage,
+  },
 ]
 
 export function createAppRouter() {
@@ -91,6 +96,14 @@ export function createAppRouter() {
     const problemId = to.params.problemId
     if (typeof problemId === 'string') {
       const meta = problemRouteMeta(problemId)
+      to.meta.documentTitle = meta.documentTitle
+      to.meta.description = meta.description
+      to.meta.canonical = meta.canonical
+      to.meta.robots = meta.robots
+    }
+    const rulesetId = to.params.rulesetId
+    if (typeof rulesetId === 'string') {
+      const meta = rulesetRouteMeta(rulesetId)
       to.meta.documentTitle = meta.documentTitle
       to.meta.description = meta.description
       to.meta.canonical = meta.canonical

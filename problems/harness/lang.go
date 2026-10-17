@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -120,33 +119,12 @@ func parseCanonical(text string) (int, error) {
 	return value, err
 }
 
-func LangLimits() Limits {
-	return Limits{MaxSteps: 200000, MaxEvals: 3000000, MaxStateBytes: 2097152, TimeoutSeconds: 30}
-}
-
 // RunCommonLang runs the shared cases for one language interpreter.
 func RunCommonLang(t *testing.T, id, extension string) {
 	t.Helper()
 	part, err := executeLang(id, extension)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if os.Getenv("THUEPP_LANG_RECORD") == "1" {
-		root, err := RepoRoot()
-		if err != nil {
-			t.Fatal(err)
-		}
-		dir := filepath.Join(root, "build", "langs", "parts")
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		data, err := json.MarshalIndent(part, "", "  ")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, part.ID+".json"), append(data, '\n'), 0o644); err != nil {
-			t.Fatal(err)
-		}
 	}
 	for _, row := range part.Rows {
 		if row.Status != "pass" && row.Error != nil {
@@ -168,8 +146,8 @@ func executeLang(id, extension string) (LangPart, error) {
 	if err := RequireNativeGo(root); err != nil {
 		return LangPart{}, err
 	}
-	limits := LangLimits()
-	if err := limits.validate(); err != nil {
+	limits, err := GlobalLimits(root)
+	if err != nil {
 		return LangPart{}, err
 	}
 	programRel := filepath.ToSlash(filepath.Join("langs", id, id+".tpp"))
@@ -188,7 +166,7 @@ func executeLang(id, extension string) (LangPart, error) {
 		if err != nil {
 			return LangPart{}, fmt.Errorf("%s: %w", item.Name, err)
 		}
-		script := filepath.Join(wd, item.Script+"."+extension)
+		script := scriptPath(root, id, extension, item.Script)
 		text, err := os.ReadFile(script)
 		if err != nil {
 			return LangPart{}, err
@@ -220,4 +198,15 @@ func executeLang(id, extension string) (LangPart, error) {
 		rows = append(rows, row)
 	}
 	return LangPart{ID: id, Program: programRel, Rows: rows, Duration: time.Since(started).Milliseconds()}, nil
+}
+
+func scriptPath(root, id, extension, script string) string {
+	switch script {
+	case "hello":
+		return filepath.Join(root, "problems", "hello-world", "solutions", id, "solution."+extension)
+	case "factorial":
+		return filepath.Join(root, "problems", "factorial", "solutions", id, "solution."+extension)
+	default:
+		return filepath.Join(root, "langs", id, "cases", script+"."+extension)
+	}
 }

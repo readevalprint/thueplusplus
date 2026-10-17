@@ -14,7 +14,7 @@ const (
 	CeilingEvals      = 5_000_000
 	CeilingStateBytes = 8 * 1024 * 1024
 	CeilingTimeout    = 120
-	MemoryCapBytes    = 256 * 1024 * 1024
+	CeilingMemory     = 256 * 1024 * 1024
 	pollInterval      = 100 * time.Millisecond
 )
 
@@ -24,6 +24,7 @@ type Limits struct {
 	MaxEvals       int
 	MaxStateBytes  int
 	TimeoutSeconds int
+	MemoryCapBytes int
 }
 
 func (l Limits) validate() error {
@@ -38,6 +39,9 @@ func (l Limits) validate() error {
 	}
 	if l.TimeoutSeconds < 1 || l.TimeoutSeconds > CeilingTimeout {
 		return fmt.Errorf("timeout %d outside 1..%d seconds", l.TimeoutSeconds, CeilingTimeout)
+	}
+	if l.MemoryCapBytes < 1 || l.MemoryCapBytes > CeilingMemory {
+		return fmt.Errorf("memory cap %d outside 1..%d bytes", l.MemoryCapBytes, CeilingMemory)
 	}
 	return nil
 }

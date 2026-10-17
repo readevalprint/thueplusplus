@@ -179,7 +179,7 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/metrics')
     wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('What each commit measured.')
-    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Rule lines')
+    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Host time')
     expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Benchmarks')
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native')
     expect(wrapper.text()).not.toMatch(/\bguest\b/i)

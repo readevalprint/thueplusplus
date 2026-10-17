@@ -24,9 +24,6 @@ func spec() harness.Problem {
 	}
 	return harness.Problem{
 		ID: "factorial",
-		Limits: harness.Limits{
-			MaxSteps: 50000, MaxEvals: 3000000, MaxStateBytes: 2097152, TimeoutSeconds: 30,
-		},
 		Cases: cases, Reference: reference,
 	}
 }

@@ -1,0 +1,7 @@
+{
+  "name": "hello",
+  "stdin": "Hello, World!\n",
+  "stdout": "Uryyb, Jbeyq!\n",
+  "stderr": "",
+  "exit_code": 0
+}

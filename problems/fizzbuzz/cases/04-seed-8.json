@@ -1,0 +1,7 @@
+{
+  "name": "seed-8",
+  "stdin": "8\n",
+  "stdout": "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\n",
+  "stderr": "",
+  "exit_code": 0
+}

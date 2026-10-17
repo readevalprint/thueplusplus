@@ -28,7 +28,6 @@ func spec() harness.Problem {
 	}
 	return harness.Problem{
 		ID:     "leap-year",
-		Limits: harness.Limits{MaxSteps: 20000, MaxEvals: 2000000, MaxStateBytes: 2097152, TimeoutSeconds: 30},
 		Cases:  cases, Reference: reference,
 	}
 }

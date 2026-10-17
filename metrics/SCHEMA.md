@@ -1,10 +1,12 @@
 # Metrics benches
 
-`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/metrics` does not import these files one by one. `demo/scripts/build-summary.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json`. The charts on `/metrics` and the task leaderboard read that summary. The same summary is published at `/metrics/summary.json`.
+`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/metrics` does not import these files one by one. `demo/scripts/build-site.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json` from documents that contain `runs`. The host charts on `/metrics` read that summary. The same summary is published at `/metrics/summary.json`.
+
+A new `latest.json` is schema 4: `schema_version`, `commit`, `machine`, and `runs`. Each run is one solution case on one host. `pass` and `cost` match the Go run. The global limits from `metrics/limits.toml` are on every run, and `host_timeout_seconds` equals `timeout_seconds`. Older benches stay valid. A schema 4 bench without `runs` is the earlier problem and language record.
 
 | Path | Role |
 | --- | --- |
-| `metrics/latest.json` | The measurement the author committed with the change. It has no commit SHA. |
+| `metrics/latest.json` | The measurement the author committed with the change. A runs document stores the measured commit. |
 | `metrics/YYYY/MM/DD/{sha}/bench.json` | One archived measurement. The directory date matches `timestamp`. |
 | `demo/src/generated/summary.json` | Compact series generated from every bench file and from `latest.json`. Not committed. |
 | `/metrics/summary.json` | That summary on the published site. |

@@ -1,0 +1,8 @@
+# Every solution run, on every host, uses these limits.
+# A solution README cannot set or override them.
+# hosts.toml timeout_scale applies to the conformance suite, not to these runs.
+max_steps = 200000
+max_evals = 3000000
+max_state_bytes = 2097152
+timeout_seconds = 30
+memory_cap_bytes = 268435456

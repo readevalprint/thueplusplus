@@ -29,6 +29,21 @@ BENCH_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "mach
 LATEST_KEYS = frozenset({"schema_version", "machine", "guests", "tasks", "benchmarks"})
 BENCH_KEYS_V3 = BENCH_KEYS | {"problems", "langs"}
 LATEST_KEYS_V3 = LATEST_KEYS | {"problems", "langs"}
+LATEST_RUN_KEYS = frozenset({"schema_version", "commit", "machine", "runs"})
+BENCH_RUN_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "machine", "runs"})
+RUN_KEYS = frozenset({
+    "program", "problem", "ruleset", "case", "host", "environment",
+    "state", "stdin",
+    "max_steps", "max_evals", "max_state_bytes", "timeout_seconds", "memory_cap_bytes", "host_timeout_seconds",
+    "pass", "cost",
+    "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars",
+    "duration_ms", "memory_bytes", "exit_code",
+})
+RUN_DIAGNOSTICS = (
+    "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars",
+)
+RUN_LIMITS = ("max_steps", "max_evals", "max_state_bytes", "timeout_seconds", "memory_cap_bytes", "host_timeout_seconds")
+RUN_SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SUITE_KEYS = frozenset({"source", "host", "environment", "results"})
 _ROW_FIELDS = (
     "status",
@@ -358,7 +373,89 @@ def validate_machine(machine, label: str, *, allow_null: bool) -> None:
         raise HistoryError(f"{label}: machine.cpus must be a positive integer")
 
 
+def _validate_runs_document(document: dict, keys: frozenset[str], label: str, *, bench: bool) -> None:
+    if not isinstance(document, dict) or set(document) != keys:
+        raise HistoryError(f"{label}: run document keys must be {', '.join(sorted(keys))}")
+    if document["schema_version"] != SCHEMA_VERSION:
+        raise HistoryError(f"{label}: a runs document is schema {SCHEMA_VERSION}")
+    commit = _commit(document["commit"], label)
+    if bench:
+        _author(document["author"], commit)
+        _timestamp(document["timestamp"], commit)
+    validate_machine(document["machine"], label, allow_null=bench)
+    runs = document["runs"]
+    if not isinstance(runs, list) or not runs:
+        raise HistoryError(f"{label}: runs must be a non-empty array")
+    registered = host_ids()
+    seen: set[tuple[str, str, str, str]] = set()
+    grouped: dict[tuple[str, str, str], list[dict]] = {}
+    limits = None
+    for index, run in enumerate(runs):
+        _validate_run(label, index, run)
+        identity = (run["problem"], run["ruleset"], run["case"], run["host"])
+        if identity in seen:
+            raise HistoryError(f"{label}: duplicate run {'/'.join(identity)}")
+        seen.add(identity)
+        grouped.setdefault(identity[:3], []).append(run)
+        row_limits = tuple(run[key] for key in RUN_LIMITS)
+        if limits is None:
+            limits = row_limits
+        elif row_limits != limits:
+            raise HistoryError(f"{label}: run limits differ at {'/'.join(identity)}")
+        if run["host_timeout_seconds"] != run["timeout_seconds"]:
+            raise HistoryError(f"{label}: host timeout must equal the global timeout")
+    for identity, rows in grouped.items():
+        got = [row["host"] for row in rows]
+        if sorted(got) != sorted(registered) or len(got) != len(registered):
+            raise HistoryError(f"{label}: {'/'.join(identity)} hosts must be {', '.join(registered)}")
+        go = next(row for row in rows if row["host"] == "go")
+        for row in rows:
+            if row["pass"] != go["pass"] or row["cost"] != go["cost"]:
+                raise HistoryError(
+                    f"{label}: {'/'.join(identity)} {row['host']} cost {row['cost']} != go {go['cost']}"
+                )
+
+
+def _validate_run(label: str, index: int, run) -> None:
+    if not isinstance(run, dict) or set(run) != RUN_KEYS:
+        raise HistoryError(f"{label}: run #{index} keys must be {', '.join(sorted(RUN_KEYS))}")
+    where = f"{label} run #{index}"
+    _relative_program(run["program"], where)
+    for key in ("problem", "ruleset", "case"):
+        if not isinstance(run[key], str) or RUN_SLUG.fullmatch(run[key]) is None:
+            raise HistoryError(f"{where}: {key} must be a slug")
+    if run["host"] not in host_ids():
+        raise HistoryError(f"{where}: unknown host {run['host']}")
+    assert_environment(run["host"], run["environment"])
+    if not isinstance(run["state"], str) or not isinstance(run["stdin"], str):
+        raise HistoryError(f"{where}: state and stdin must be strings")
+    for key in RUN_LIMITS:
+        _positive_int(run[key], f"{where} {key}")
+    if not isinstance(run["pass"], bool):
+        raise HistoryError(f"{where}: pass must be a boolean")
+    _non_negative_int(run["duration_ms"], f"{where} duration_ms")
+    if run["memory_bytes"] is not None:
+        _non_negative_int(run["memory_bytes"], f"{where} memory_bytes")
+    if run["exit_code"] is not None and (isinstance(run["exit_code"], bool) or not isinstance(run["exit_code"], int)):
+        raise HistoryError(f"{where}: exit_code must be an integer or null")
+    if run["pass"]:
+        _non_negative_int(run["cost"], f"{where} cost")
+        for key in RUN_DIAGNOSTICS:
+            _non_negative_int(run[key], f"{where} {key}")
+        if run["exit_code"] != 0:
+            raise HistoryError(f"{where}: a passing run exits 0")
+        return
+    if run["cost"] is not None:
+        raise HistoryError(f"{where}: a failing run has no cost")
+    for key in RUN_DIAGNOSTICS:
+        if run[key] is not None:
+            raise HistoryError(f"{where}: a failing run has no {key}")
+
+
 def validate_latest(document: dict) -> None:
+    if isinstance(document, dict) and "runs" in document:
+        _validate_runs_document(document, LATEST_RUN_KEYS, LATEST_REL, bench=False)
+        return
     version = _schema_version(document)
     expected = LATEST_KEYS if version == 2 else LATEST_KEYS_V3
     if not isinstance(document, dict) or set(document) != expected:
@@ -380,6 +477,17 @@ def validate_latest(document: dict) -> None:
 
 def bench_from_latest(latest: dict, commit: str, author: str, timestamp: str) -> dict:
     validate_latest(latest)
+    if "runs" in latest:
+        document = {
+            "schema_version": latest["schema_version"],
+            "commit": commit,
+            "author": author,
+            "timestamp": timestamp,
+            "machine": latest["machine"],
+            "runs": latest["runs"],
+        }
+        validate_bench(document)
+        return document
     document = {
         "schema_version": latest["schema_version"],
         "commit": commit,
@@ -398,6 +506,9 @@ def bench_from_latest(latest: dict, commit: str, author: str, timestamp: str) ->
 
 
 def validate_bench(document: dict) -> None:
+    if isinstance(document, dict) and "runs" in document:
+        _validate_runs_document(document, BENCH_RUN_KEYS, document.get("commit", "bench"), bench=True)
+        return
     version = _schema_version(document)
     expected = BENCH_KEYS if version == 2 else BENCH_KEYS_V3
     if not isinstance(document, dict) or set(document) != expected:

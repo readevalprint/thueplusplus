@@ -47,7 +47,9 @@ test-static:
 	uv run python tools/test_environments.py
 	uv run python tools/test_ci_paths.py
 	uv run python tools/test_tiers.py
-	uv run python tools/test_pareto.py
+	uv run python metrics/test_frontmatter.py
+	uv run python metrics/test_accept.py
+	uv run python metrics/check_layout.py
 
 test-core:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }
@@ -64,6 +66,7 @@ test-core:
 	fi
 	uv run python tools/example_runner.py $(CORE_ARGS)
 	uv run python tools/test_metrics_cli.py
+	uv run python metrics/check_solutions.py
 
 test-guests:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }
@@ -85,25 +88,13 @@ problems:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the problem suite" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the problem suite" >&2; exit 127; }
 	go build -C go -o ../build/go-thuepp ./cmd/thuepp
-	rm -rf build/problems/parts
-	mkdir -p build/problems/parts
-	status=0; \
-	cd problems && THUEPP_PROBLEM_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
-	go run ./cmd/collect -o ../build/problems/results.json || exit 1; \
-	if [ $$status -eq 0 ]; then python3 ../tools/pareto.py ../build/problems/results.json || status=$$?; fi; \
-	exit $$status
+	cd problems && go test ./... -count=1 -p 2 -timeout 20m
 
 langs:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the language cases" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the language cases" >&2; exit 127; }
 	go build -C go -o ../build/go-thuepp ./cmd/thuepp
-	rm -rf build/langs/parts
-	mkdir -p build/langs/parts
-	status=0; \
-	cd langs && THUEPP_LANG_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
-	go run ./cmd/collect -o ../build/langs/results.json || exit 1; \
-	if [ $$status -eq 0 ]; then python3 ../tools/pareto.py ../build/langs/results.json || status=$$?; fi; \
-	exit $$status
+	cd langs && go test ./... -count=1 -p 2 -timeout 20m
 
 metrics:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to record metrics" >&2; exit 127; }

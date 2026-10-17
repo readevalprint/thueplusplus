@@ -1,0 +1,7 @@
+{
+  "name": "punct",
+  "stdin": "a.b\n",
+  "stdout": "n.o\n",
+  "stderr": "",
+  "exit_code": 0
+}

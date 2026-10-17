@@ -1,12 +1,14 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { problemPages, readGeneratedCatalog } from './build-catalog.mjs'
+import { problemPages, readGeneratedCatalog, rulesetPages } from './build-site.mjs'
 
 const dist = new URL('../dist/', import.meta.url).pathname
 const pages = JSON.parse(readFileSync(new URL('../src/pages.json', import.meta.url), 'utf8'))
-const problems = problemPages(readGeneratedCatalog())
+const catalog = readGeneratedCatalog()
+const problems = problemPages(catalog)
+const rulesets = rulesetPages(catalog)
 const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
-const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), 'embed']
+const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), ...rulesets.map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {
   const path = join(dist, asset)

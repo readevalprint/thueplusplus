@@ -33,7 +33,7 @@ type ProgramRun struct {
 	Err      error
 }
 
-func runBounded(argv []string, timeoutSeconds int, stdin string) ProgramRun {
+func runBounded(argv []string, timeoutSeconds int, memoryCap int, stdin string) ProgramRun {
 	started := time.Now()
 	finish := func(run ProgramRun) ProgramRun {
 		run.Duration = time.Since(started)
@@ -58,7 +58,7 @@ func runBounded(argv []string, timeoutSeconds int, stdin string) ProgramRun {
 		}
 		env = append(env, item)
 	}
-	cmd.Env = append(env, fmt.Sprintf("GOMEMLIMIT=%dB", MemoryCapBytes))
+	cmd.Env = append(env, fmt.Sprintf("GOMEMLIMIT=%dB", memoryCap))
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return finish(ProgramRun{Err: err})
@@ -106,8 +106,8 @@ func runBounded(argv []string, timeoutSeconds int, stdin string) ProgramRun {
 				killGroup(cmd.Process.Pid)
 				break
 			}
-			if rss > MemoryCapBytes {
-				reason = fmt.Errorf("memory cap (%d bytes) exceeded (rss %d bytes)", MemoryCapBytes, rss)
+			if rss > int64(memoryCap) {
+				reason = fmt.Errorf("memory cap (%d bytes) exceeded (rss %d bytes)", memoryCap, rss)
 				killGroup(cmd.Process.Pid)
 				break
 			}

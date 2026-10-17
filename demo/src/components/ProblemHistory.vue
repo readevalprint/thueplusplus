@@ -3,7 +3,7 @@ import type { ChartConfig } from '@/components/ui/chart'
 import { computed } from 'vue'
 import { ChartContainer, ChartLegendContent } from '@/components/ui/chart'
 import ProblemMetricChart from '@/components/ProblemMetricChart.vue'
-import { VERSION_COLORS, type CatalogCommit, type CatalogVersion } from '@/catalog'
+import { type CatalogCommit, type CatalogVersion } from '@/catalog'
 
 const props = withDefaults(defineProps<{
   commits: CatalogCommit[]
@@ -16,9 +16,8 @@ const active = computed(() => props.versions.filter(version => version.series.le
 const config = computed<ChartConfig>(() => {
   const next: ChartConfig = {}
   for (const version of active.value) {
-    const color = VERSION_COLORS[version.id]
-    if (color === undefined) throw new Error(`version ${version.id} has no chart color`)
-    next[version.id] = { label: version.name, color }
+    if (!version.color) throw new Error(`version ${version.id} has no chart color`)
+    next[version.id] = { label: version.name, color: version.color }
   }
   return next
 })

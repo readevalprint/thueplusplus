@@ -38,11 +38,35 @@ export interface CatalogSolution {
 }
 
 export interface CatalogVersion {
-  id: 'direct' | 'lisp' | 'forth' | 'basic'
+  id: string
   name: string
+  color: string
   missing: boolean
+  notes: string
+  author: string
   solutions: CatalogSolution[]
   series: CatalogPoint[]
+}
+
+export interface SolvedPoint extends CatalogCommit {
+  count: number
+  added: string[]
+}
+
+export interface AggregatePoint extends CatalogCommit {
+  cost: number
+}
+
+export interface CatalogRuleset {
+  id: string
+  name: string
+  color: string
+  passing: number
+  total: number
+  common: number
+  aggregate: number | null
+  solved: SolvedPoint[]
+  aggregateSeries: AggregatePoint[]
 }
 
 export interface CatalogProblem {
@@ -73,13 +97,14 @@ export interface CatalogLang {
 }
 
 export interface Catalog {
-  schemaVersion: 2
+  schemaVersion: 3
   specVersion: string
   commit: string
   author: string
   timestamp: string
+  commonProblems: string[]
+  rulesets: CatalogRuleset[]
   commits: CatalogCommit[]
-  langs: CatalogLang[]
   problems: CatalogProblem[]
 }
 
@@ -90,11 +115,10 @@ export interface RouteMetaFields {
   robots: string
 }
 
-export const VERSION_COLORS: Record<CatalogVersion['id'], string> = {
-  direct: 'var(--chart-1)',
-  lisp: 'var(--chart-2)',
-  forth: 'var(--chart-3)',
-  basic: 'var(--chart-4)',
+export function rulesetColor(id: string): string {
+  const ruleset = catalog.rulesets.find(item => item.id === id)
+  if (!ruleset) throw new Error(`ruleset ${id} has no chart color`)
+  return ruleset.color
 }
 
 export const COST_METRIC = { id: 'cost', label: 'Cost', anchor: 'cost' } as const
@@ -117,10 +141,10 @@ export function runningBest(commits: readonly string[], points: readonly Catalog
 function assertCatalog(value: unknown): Catalog {
   if (value == null || typeof value !== 'object') throw new Error('catalog.json is not an object')
   const catalog = value as Catalog
-  if (catalog.schemaVersion !== 2) throw new Error(`catalog schemaVersion must be 2, got ${String(catalog.schemaVersion)}`)
+  if (catalog.schemaVersion !== 3) throw new Error(`catalog schemaVersion must be 3, got ${String(catalog.schemaVersion)}`)
   if (!Array.isArray(catalog.problems) || catalog.problems.length === 0) throw new Error('catalog has no problems')
   if (!Array.isArray(catalog.commits) || catalog.commits.length === 0) throw new Error('catalog has no commits')
-  if (!Array.isArray(catalog.langs)) throw new Error('catalog has no langs')
+  if (!Array.isArray(catalog.rulesets) || catalog.rulesets.length === 0) throw new Error('catalog has no rulesets')
   return catalog
 }
 
@@ -128,6 +152,28 @@ export const catalog = assertCatalog(raw)
 
 export function problemById(id: string): CatalogProblem | undefined {
   return catalog.problems.find(problem => problem.id === id)
+}
+
+export function rulesetById(id: string): CatalogRuleset | undefined {
+  return catalog.rulesets.find(ruleset => ruleset.id === id)
+}
+
+export function rulesetRouteMeta(rulesetId: string): RouteMetaFields {
+  const ruleset = rulesetById(rulesetId)
+  if (!ruleset) {
+    return {
+      documentTitle: 'Ruleset not found — Thue++',
+      description: `No ruleset ${rulesetId} is in the suite.`,
+      canonical: 'https://thuelang.org/problems',
+      robots: 'noindex,follow',
+    }
+  }
+  return {
+    documentTitle: `Thue++ ${ruleset.name}`,
+    description: `${ruleset.name} aggregate cost over the common problems.`,
+    canonical: `https://thuelang.org/rulesets/${ruleset.id}`,
+    robots: 'index,follow',
+  }
 }
 
 export function problemRouteMeta(problemId: string): RouteMetaFields {

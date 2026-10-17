@@ -1,0 +1,7 @@
+{
+  "name": "seed-2",
+  "stdin": "4\n2\n22\n19\n3\n",
+  "stdout": "46\n",
+  "stderr": "",
+  "exit_code": 0
+}

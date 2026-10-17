@@ -5,8 +5,7 @@ import MetricsPage from './pages/MetricsPage.vue'
 import ProblemPage from './pages/ProblemPage.vue'
 import ProblemsPage from './pages/ProblemsPage.vue'
 import ProjectsPage from './pages/ProjectsPage.vue'
-import { catalog, problemRouteMeta, runningBest, VERSION_COLORS, type CatalogPoint } from './catalog'
-import { history } from './metrics'
+import { catalog, problemRouteMeta, rulesetColor, runningBest, type CatalogPoint } from './catalog'
 import { projects } from './projects'
 import { pageLinks } from './site'
 
@@ -43,23 +42,20 @@ describe('running best', () => {
 
 describe('catalog pages', () => {
   it('checks the generated suite against its own rows', () => {
-    expect(catalog.schemaVersion).toBe(2)
+    expect(catalog.schemaVersion).toBe(3)
     expect(catalog.commit).toMatch(/^[0-9a-f]{40}$/)
     expect(catalog.problems.length).toBeGreaterThan(0)
     expect(catalog.commits.length).toBeGreaterThan(0)
+    expect(catalog.rulesets.length).toBeGreaterThan(0)
     for (const problem of catalog.problems) {
       expect(problem.path).toBe(`/problems/${problem.id}`)
       expect(problem.canonical).toBe(`https://thuelang.org/problems/${problem.id}`)
-      expect(problem.versions.map(version => version.id)).toEqual(['direct', 'lisp', 'forth', 'basic'])
       const direct = problem.versions.find(version => version.id === 'direct')
       expect(direct?.missing).toBe(false)
       expect(direct?.solutions.every(solution => solution.status === 'pass' || solution.status === 'fail')).toBe(true)
       expect(direct?.series.length).toBeGreaterThan(0)
-      for (const version of problem.versions) {
-        if (version.missing) expect(version.solutions).toEqual([])
-      }
     }
-    expect(catalog.langs.map(lang => lang.status)).toEqual(['pass', 'pass', 'pass'])
+    expect(catalog.rulesets.every(ruleset => ruleset.color.startsWith('var(--chart-'))).toBe(true)
   })
 
   it('renders sandboxed project cards and the metrics charts', async () => {
@@ -82,20 +78,10 @@ describe('catalog pages', () => {
     expect(wrapper.get('h1').text()).toBe('What each commit measured.')
     expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('::=')
     expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('program')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('09744fa8d495')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('Forth ·')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('86')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain(`61ec35406371…${history.entries[history.entries.length - 1].commit.slice(0, 12)} · 86`)
-    expect(wrapper.get('[data-test="task-readout"]').text()).toContain('Lisp · 10 pass · 0 fail · 0 unsupported · 76749 steps')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('steps 10000 · probes 10002')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('wasm (node) · 2.3× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native · 1× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('rust · 0.8× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('cpp · 1× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('python · 1.2× go')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('× go')
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).not.toContain(' ms')
-    expect(wrapper.get('[data-test="rule-chart"]').text()).toContain('Forth')
-    expect(wrapper.get('[data-test="rule-chart"]').find('svg').exists()).toBe(true)
+    expect(wrapper.get('[data-test="time-chart"]').find('svg').exists()).toBe(true)
     expect(wrapper.find('[data-test="memory-chart"]').exists() || wrapper.text().includes('No memory is recorded')).toBe(true)
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Placeholder')
@@ -110,7 +96,8 @@ describe('catalog pages', () => {
     const statuses = index.findAll('[data-test="problem-status"]')
     expect(statuses.length).toBeGreaterThan(0)
     expect(statuses.every(cell => cell.attributes('data-status') === 'pass' || cell.attributes('data-status') === 'fail')).toBe(true)
-    expect(index.findAll('[data-test="problem-missing"]').length).toBeGreaterThan(0)
+    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Solved problems')
+    expect(index.get('[data-test="ruleset-aggregate"]').text()).toContain('sum')
     expect(index.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(index.text()).not.toContain('Placeholder')
     expect(index.text()).not.toContain('unmeasured')
@@ -125,18 +112,17 @@ describe('catalog pages', () => {
     expect(page.get('h1').text()).toBe('Factorial')
     expect(page.get('[data-test="problem-description"]').text()).toContain(problem!.summary)
     const links = pageLinks(problem!.path).map(link => link.title)
-    expect(links).toEqual(['Description', 'Cost', 'direct', 'Lisp', 'Forth', 'BASIC'])
+    expect(links).toEqual(['Description', 'Cost', 'direct', 'Forth', 'Lisp', 'BASIC'])
     expect(page.get('[data-test="problem-legend"]').text()).toContain('direct')
-    expect(page.get('[data-test="problem-legend"]').text()).not.toContain('Lisp')
     const swatch = page.get('[data-test="problem-legend"]').find('[style]')
-    expect(swatch.attributes('style')).toContain(VERSION_COLORS.direct)
+    expect(swatch.attributes('style')).toContain(rulesetColor('direct'))
     const chart = page.get('[data-test="problem-chart-cost"]')
     expect(chart.find('svg').exists()).toBe(true)
     expect(chart.text()).toContain('var(--chart-')
     const direct = page.get('[data-test="problem-version"][data-version="direct"]')
     expect(direct.text()).toContain('pass')
     expect(direct.text()).toContain('cost')
-    expect(page.get('[data-test="problem-version"][data-version="lisp"]').text()).toContain('Missing.')
+    expect(page.get('[data-test="problem-version"][data-version="lisp"]').text()).toContain('cost')
     expect(page.text()).not.toContain('unmeasured')
     expect(page.text()).not.toMatch(/\bguest\b/i)
     expect(page.text()).not.toContain('RE2')

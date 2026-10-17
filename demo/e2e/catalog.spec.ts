@@ -23,13 +23,10 @@ test('sandboxed projects are cards and metrics keep the charts', async ({ page }
   await expect(page.locator('body')).not.toContainText(/RE2/)
   await expect(page.locator('body')).not.toContainText(/\bguest\b/i)
   await expect(page.getByText('Placeholder')).toHaveCount(0)
-  await expect(page.getByTestId('rule-readout')).toContainText('09744fa8d495')
-  await expect(page.getByTestId('rule-readout')).toContainText(`61ec35406371…${summaryTip()} · 86`)
   await expect(page.getByTestId('time-chart')).toContainText('go native')
   await expect(page.getByTestId('benchmark-readout')).toContainText('× go')
   await expect(page.getByTestId('benchmark-readout')).not.toContainText(' ms')
-  await page.getByTestId('rule-chart-slider').fill('0')
-  await expect(page.getByTestId('rule-readout')).not.toContainText('09744fa8d495')
+  await expect(page.getByTestId('benchmark-readout')).toContainText(summaryTip())
 })
 
 test('problems index shows the finish line', async ({ page }) => {
@@ -37,7 +34,7 @@ test('problems index shows the finish line', async ({ page }) => {
   await page.goto('/problems')
   await expect(page.getByRole('heading', { level: 1, name: 'Programs with a finish line.' })).toBeVisible()
   await expect(page.getByTestId('page-hero-graphic')).toBeVisible()
-  await expect(page.getByTestId('task-index')).toBeVisible()
+  await expect(page.getByTestId('problem-index')).toBeVisible()
   await expect(page.getByTestId('program-leaderboard')).toBeVisible()
   await expect(page.getByTestId('program-improve')).toContainText(/autoresearch/i)
 })

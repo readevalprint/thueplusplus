@@ -180,9 +180,13 @@ def bounded_run(
     ]
     for reader in readers:
         reader.start()
-    if input_text is not None:
-        proc.stdin.write(input_text)
-    proc.stdin.close()
+    try:
+        if input_text is not None:
+            proc.stdin.write(input_text)
+        proc.stdin.close()
+    except BrokenPipeError:
+        # The program exited without reading stdin. The status is still the result.
+        pass
 
     reason: str | None = None
     deadline = time.monotonic() + timeout

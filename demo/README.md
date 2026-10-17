@@ -28,7 +28,7 @@ npm run build        # compile WASM, type-check, build, and smoke-check dist
 
 The production page uses origin-root asset URLs (`/assets/...`, `/thuepp.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
 
-`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. The problem catalog reads schema 4 `metrics/latest.json` and the archived benches. A solution with no metrics entry fails that build. Problem pages are `/problems/<id>`. Each page has one cost chart: a point per solution, colored by version, and a step line of that version's running best. Metrics charts read `demo/src/generated/summary.json`, which `make metrics` feeds through `metrics/latest.json` and the archived bench files.
+`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. `demo/scripts/build-site.mjs` reads each `problems/<slug>/solutions/<ruleset>/metric.json` and the git history of that file. Problem pages are `/problems/<id>`. Each page has one cost chart: a point per solution, colored by ruleset, and a step line of that ruleset's running best. The leaderboard has one "Solved problems" chart. Host charts read `demo/src/generated/summary.json`, built from `runs` in `metrics/latest.json` and archived benches that have `runs`.
 
 ## Vercel
 

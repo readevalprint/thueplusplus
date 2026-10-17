@@ -1,3 +1,9 @@
+---
+name: Forth
+description: A Forth-style stack machine.
+extension: fth
+---
+
 # Forth example
 
 `forth.tpp` is a Forth-style stack machine implemented as Thue++ rewrite rules. Tokens are whitespace-delimited. The program comes from `--input`. A line of standard input is read only by `input` or `accept`.

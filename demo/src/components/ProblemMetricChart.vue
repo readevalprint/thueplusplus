@@ -5,7 +5,7 @@ import { VisAxis, VisLine, VisScatter, VisXYContainer } from '@unovis/vue'
 import { useMediaQuery } from '@vueuse/core'
 import { computed } from 'vue'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
-import { VERSION_COLORS, diagnosticText, runningBest, type CatalogCommit, type CatalogVersion } from '@/catalog'
+import { diagnosticText, runningBest, type CatalogCommit, type CatalogVersion } from '@/catalog'
 
 const props = withDefaults(defineProps<{
   commits: CatalogCommit[]
@@ -28,6 +28,7 @@ interface ScatterRow {
   commit: string
   solution: string
   versionId: CatalogVersion['id']
+  color: string
   value: number
   diagnostics: string
 }
@@ -61,7 +62,7 @@ const scatterRows = computed(() => {
   const indexOf = new Map(measured.value.map((commit, index) => [commit.commit, index]))
   const rows: ScatterRow[] = []
   for (const version of active.value) {
-    if (VERSION_COLORS[version.id] === undefined) throw new Error(`version ${version.id} has no chart color`)
+    if (!version.color) throw new Error(`version ${version.id} has no chart color`)
     for (const point of version.series) {
       const index = indexOf.get(point.commit)
       if (index === undefined) throw new Error(`series commit ${point.commit} is not in the catalog`)
@@ -70,6 +71,7 @@ const scatterRows = computed(() => {
         commit: point.commit,
         solution: point.solution,
         versionId: version.id,
+        color: version.color,
         value: point.cost,
         diagnostics: diagnosticText(point),
       })
@@ -116,7 +118,7 @@ function escapeHtml(value: string): string {
 
 const triggers = {
   [Scatter.selectors.point]: (datum: ScatterRow) => {
-    const color = VERSION_COLORS[datum.versionId]
+    const color = datum.color
     return `<div class="border-border/50 bg-background grid min-w-[8rem] max-w-[min(22rem,80vw)] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-xs shadow-xl"><div class="font-medium">${escapeHtml(datum.solution)}</div><div class="flex items-center gap-2"><span class="inline-block h-2 w-2" style="background:${color}"></span><span>${datum.value.toLocaleString('en-US')}</span></div><div class="break-all">${escapeHtml(datum.commit)}</div><div class="text-muted-foreground break-words">${escapeHtml(datum.diagnostics)}</div></div>`
   },
 }
