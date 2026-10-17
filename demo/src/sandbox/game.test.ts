@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { BREAK_BEAT } from './layout'
+import { BELT_MOUTH, BELT_X0, BREAK_BEAT } from './layout'
 import { WALK_DURATION } from './motion'
 import {
   GRACE,
   MISS_COOLDOWN,
   createGame,
+  TRACK,
   difficulty,
   inZone,
   pull,
   rebuild,
   roll,
+  scoreJump,
   step,
   type Game,
 } from './game'
@@ -160,8 +162,10 @@ describe('lever game', () => {
     expect(early.phase).toBe('playing')
     expect(early.miss).toBe(1)
 
-    expect(inZone(0.7, 0, false)).toBe(true)
-    expect(inZone(0.7, 3, false)).toBe(false)
+    expect(game.streak).toBe(1)
+    expect(inZone(0.86, 0, false)).toBe(true)
+    expect(inZone(0.86, 18, false)).toBe(false)
+    expect(inZone(0.7, 0, false)).toBe(false)
     let tight = playUntil(createGame({ seed: 9, reduced: true, best: 0 }), 3)
     tight = until(tight, current => {
       const start = 1 - difficulty(current.score, true).span
@@ -187,7 +191,7 @@ describe('lever game', () => {
     expect(high.gapHi - high.gapLo).toBeGreaterThan(0.4)
     expect(difficulty(4, true).beltRate).toBeLessThan(difficulty(4, false).beltRate)
     expect(difficulty(4, true).gapLo).toBeGreaterThan(difficulty(4, false).gapLo)
-    expect(high.span).toBeGreaterThan(0.1)
+    expect(high.span).toBeGreaterThan(0.08)
     expect(high.gapLo).toBeGreaterThan(0.4)
 
     let slowGame = started(4, false)
@@ -197,6 +201,43 @@ describe('lever game', () => {
     fastGame = until(fastGame, current => current.boxes.some(box => box.progress < 0.15) && current.phase === 'playing')
     const fast = crossHalf(fastGame)
     expect(fast.dt).toBeLessThan(slow.dt * 0.75)
+  })
+
+  it('gate scale', () => {
+    expect(TRACK).toBeGreaterThan(1)
+    expect(BELT_X0).toBe(0)
+    expect(BELT_MOUTH - BELT_X0).toBeGreaterThan(1000)
+    for (const score of [0, 6, 18]) {
+      const now = difficulty(score, false)
+      const u = 1 - Math.exp(-score / 6)
+      const legacyRate = 0.17 + u * 0.45
+      const legacySpan = 0.32 - u * 0.14
+      expect(now.beltRate).toBeCloseTo(legacyRate / TRACK, 6)
+      expect(now.span).toBeCloseTo(legacySpan / TRACK, 6)
+      expect(now.span / now.beltRate).toBeCloseTo(legacySpan / legacyRate, 5)
+      expect(1 / now.beltRate).toBeCloseTo(TRACK / legacyRate, 5)
+    }
+  })
+
+  it('gate pop', () => {
+    const rate = difficulty(0, false).beltRate
+    const rest = scoreJump(1, 1, rate, false)
+    expect(rest.scale).toBe(1)
+    expect(rest.travel).toBe(0)
+    const peak = scoreJump(0.84, 1, rate, false)
+    expect(peak.scale).toBeGreaterThan(1.5)
+    const dipped = scoreJump(0.66, 1, rate, false)
+    expect(dipped.scale).toBeLessThan(1)
+    const done = scoreJump(0, 1, rate, false)
+    expect(done.scale).toBe(1)
+    expect(done.travel).toBe(1)
+    const harder = scoreJump(0.84, 8, difficulty(18, false).beltRate, false)
+    expect(harder.scale).toBeGreaterThan(peak.scale + 0.4)
+    const reduced = scoreJump(0.84, 8, difficulty(18, false).beltRate, true)
+    expect(reduced.scale).toBe(1)
+    expect(reduced.travel).toBe(0)
+    expect(reduced.flash).toBeCloseTo(0.84, 5)
+    expect(scoreJump(0, 3, rate, true).flash).toBe(0)
   })
 
   it('gate break', () => {

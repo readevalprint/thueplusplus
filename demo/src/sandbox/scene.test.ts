@@ -2,7 +2,7 @@ import { nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SandboxScene from '@/components/SandboxScene.vue'
-import { MACHINE, walkDistance } from './layout'
+import { BELT_TOP, MACHINE, VIEW_W, walkDistance } from './layout'
 import { WALK_DURATION, blinkCurve, framePose, settledSpring, stepSpring } from './motion'
 import { inZone, type Game } from './game'
 
@@ -188,6 +188,31 @@ describe('rex sandbox scene', () => {
     expect(play.game.best).toBe(1)
     expect(scored.get('[data-test="best"]').text()).toBe('best 1')
     scored.unmount()
+  })
+
+  it('gate side', async () => {
+    const wrapper = mountScene()
+    const belt = wrapper.get('[data-test="belt"]')
+    expect(belt.attributes('data-span')).toBe('full')
+    const surface = belt.get('[data-test="belt-surface"]')
+    expect(surface.attributes('x')).toBe('0')
+    expect(surface.attributes('width')).toBe(String(VIEW_W))
+    expect(wrapper.get('[data-test="sandbox-scene"]').attributes('data-side')).toBe('yes')
+    const html = wrapper.html()
+    expect(html.indexOf('data-test="rex-mark"')).toBeLessThan(html.indexOf('data-test="belt"'))
+    expect(html.indexOf('data-test="belt"')).toBeLessThan(html.indexOf('data-test="belt-blur"'))
+    await wrapper.get('[data-test="rex"]').trigger('click')
+    const api = exposed(wrapper)
+    let steps = 0
+    while (api.game.boxes.length === 0 && steps < 200) {
+      api.advance(1 / 30)
+      steps += 1
+    }
+    await nextTick()
+    const box = wrapper.get('[data-test="box"]')
+    expect(box.attributes('transform')).toContain(String(BELT_TOP))
+    expect(box.get('rect').attributes('y')).toBe('-36')
+    wrapper.unmount()
   })
 
   it('gate motion', () => {
