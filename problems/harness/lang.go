@@ -150,8 +150,8 @@ func executeLang(id, extension string) (LangPart, error) {
 	if err != nil {
 		return LangPart{}, err
 	}
-	programRel := filepath.ToSlash(filepath.Join("langs", id, id+".tpp"))
-	program := filepath.Join(root, "langs", id, id+".tpp")
+	programRel := filepath.ToSlash(filepath.Join("langs", id, id+".thue"))
+	program := filepath.Join(root, "langs", id, id+".thue")
 	if _, err := os.Stat(program); err != nil {
 		return LangPart{}, err
 	}

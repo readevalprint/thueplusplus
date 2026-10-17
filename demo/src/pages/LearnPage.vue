@@ -19,7 +19,7 @@ hello Ada`
     </template>
     <template #actions>
       <Button as-child>
-        <RouterLink to="/playground?file=./examples/hello/hello.tpp">Open the playground</RouterLink>
+        <RouterLink to="/playground?file=./examples/hello/hello.thue">Open the playground</RouterLink>
       </Button>
       <Button as-child variant="outline">
         <RouterLink to="/docs/language">Operators</RouterLink>
@@ -37,7 +37,7 @@ hello Ada`
     </section>
     <section id="programs" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Programs</h2>
-      <p class="leading-7">A <RouterLink to="/install" class="underline underline-offset-4">host</RouterLink> runs the Thue++ engine. This repository ships {{ hostProseList }}. The engine runs a program, any <code>.tpp</code> file, and the program handles input and output. Some programs are interpreters, such as Lisp and Forth, that run scripts. Others are apps written directly in Thue++. Those programs are the <RouterLink to="/projects" class="underline underline-offset-4">sandboxed projects</RouterLink>. A new interpreter binds stdin, stdout, and stderr, and it starts with limits so a run cannot go on forever.</p>
+      <p class="leading-7">A <RouterLink to="/install" class="underline underline-offset-4">host</RouterLink> runs the Thue++ engine. This repository ships {{ hostProseList }}. The engine runs a program, any <code>.thue</code> file, and the program handles input and output. Some programs are interpreters, such as Lisp and Forth, that run scripts. Others are apps written directly in Thue++. Those programs are the <RouterLink to="/projects" class="underline underline-offset-4">sandboxed projects</RouterLink>. A new interpreter binds stdin, stdout, and stderr, and it starts with limits so a run cannot go on forever.</p>
     </section>
     <section id="try-it" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Try it</h2>

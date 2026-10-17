@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace thuepp {
+namespace thuelang {
 namespace {
 
 enum class Status { kCont, kStop, kBlock, kFlags, kCap };
@@ -842,4 +842,4 @@ std::string LiteralPrefix(const std::string& lhs) {
   }
 }
 
-}  // namespace thuepp
+}  // namespace thuelang

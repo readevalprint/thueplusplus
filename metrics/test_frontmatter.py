@@ -10,7 +10,7 @@ from frontmatter import FrontmatterError, parse_frontmatter
 
 class FrontmatterTest(unittest.TestCase):
     def test_reads_flat_fields_and_body(self) -> None:
-        fields, body = parse_frontmatter("---\nruleset: direct\nentry: solution.tpp\nauthor: Ada <ada@example.com>\n---\n\nNotes.\n", "README.md")
+        fields, body = parse_frontmatter("---\nruleset: direct\nentry: solution.thue\nauthor: Ada <ada@example.com>\n---\n\nNotes.\n", "README.md")
         self.assertEqual(fields["ruleset"], "direct")
         self.assertEqual(body, "Notes.\n")
 

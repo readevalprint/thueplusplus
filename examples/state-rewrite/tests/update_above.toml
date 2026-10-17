@@ -1,4 +1,4 @@
-program = "../update-above.tpp"
+program = "../update-above.thue"
 
 [[case]]
 name = "later rule updates earlier state row"

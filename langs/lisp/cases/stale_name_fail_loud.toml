@@ -1,5 +1,5 @@
 # Old public Lisp names are deliberately not compatibility aliases.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "30000"]
 

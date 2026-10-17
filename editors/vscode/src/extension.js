@@ -6,9 +6,9 @@ const { buildRunCommand } = require("./limits");
 
 function activate(context) {
   context.subscriptions.push(
-    vscode.commands.registerCommand("thuepp.runFile", () => {
+    vscode.commands.registerCommand("thue.runFile", () => {
       const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.document.languageId !== "thuepp") {
+      if (!editor || editor.document.languageId !== "thue") {
         vscode.window.showErrorMessage("Open a Thue++ file to run it.");
         return;
       }
@@ -17,7 +17,7 @@ function activate(context) {
         vscode.window.showErrorMessage("Save the Thue++ file before running it.");
         return;
       }
-      const config = vscode.workspace.getConfiguration("thuepp");
+      const config = vscode.workspace.getConfiguration("thue");
       let command;
       try {
         command = buildRunCommand({

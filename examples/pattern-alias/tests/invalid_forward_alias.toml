@@ -1,4 +1,4 @@
-program = "../invalid-forward-alias.tpp"
+program = "../invalid-forward-alias.thue"
 
 [[case]]
 name = "alias definition rejects forward dollar alias reference"

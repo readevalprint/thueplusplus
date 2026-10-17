@@ -95,7 +95,7 @@ def check_against(base: str) -> None:
         parts = name.split("/")
         if len(parts) >= 4 and parts[0] == "problems" and parts[2] == "solutions":
             problems.setdefault((parts[1], parts[3]), set()).add(name)
-        if len(parts) >= 3 and parts[0] == "langs" and parts[2].endswith(".tpp"):
+        if len(parts) >= 3 and parts[0] == "langs" and parts[2].endswith(".thue"):
             interpreters.add(parts[1])
     for (problem, ruleset), files in sorted(problems.items()):
         metric_path = f"problems/{problem}/solutions/{ruleset}/metric.json"

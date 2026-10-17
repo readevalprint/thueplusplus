@@ -1,5 +1,5 @@
 name = "mid invalid expanded regex"
-program = "../invalid.tpp"
+program = "../invalid.thue"
 
 [[case]]
 name = "newline escape matches"

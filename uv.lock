@@ -119,8 +119,8 @@ wheels = [
 ]
 
 [[package]]
-name = "thuepp"
-version = "0.5.0"
+name = "thuelang"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-re2" },

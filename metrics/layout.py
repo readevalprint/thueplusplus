@@ -181,9 +181,9 @@ def _read_solution(problem: str, directory: Path) -> Solution:
         raise LayoutError(f"{_rel(directory)}: unexpected {', '.join(extra)}")
     direct = ruleset == "direct"
     if direct:
-        if entry != "solution.tpp":
-            raise LayoutError(f"{_rel(readme)}: a direct entry is solution.tpp")
-        program = f"problems/{problem}/solutions/direct/solution.tpp"
+        if entry != "solution.thue":
+            raise LayoutError(f"{_rel(readme)}: a direct entry is solution.thue")
+        program = f"problems/{problem}/solutions/direct/solution.thue"
         state = _program_state(entry_path)
     else:
         lang_readme = ROOT / "langs" / ruleset / "README.md"
@@ -191,10 +191,10 @@ def _read_solution(problem: str, directory: Path) -> Solution:
         require_fields(lang_fields, ("name", "description", "extension"), _rel(lang_readme))
         if not entry.endswith("." + lang_fields["extension"]):
             raise LayoutError(f"{_rel(readme)}: entry must use .{lang_fields['extension']}")
-        interpreter = ROOT / "langs" / ruleset / f"{ruleset}.tpp"
+        interpreter = ROOT / "langs" / ruleset / f"{ruleset}.thue"
         if not interpreter.is_file():
-            raise LayoutError(f"langs/{ruleset}/{ruleset}.tpp is missing")
-        program = f"langs/{ruleset}/{ruleset}.tpp"
+            raise LayoutError(f"langs/{ruleset}/{ruleset}.thue is missing")
+        program = f"langs/{ruleset}/{ruleset}.thue"
         state = _script_state(entry_path)
     if not notes.strip():
         raise LayoutError(f"{_rel(readme)}: approach notes are empty")

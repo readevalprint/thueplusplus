@@ -31,7 +31,7 @@ def entry(commit: str, timestamp: str, *, tasks=None, benchmarks=None) -> dict:
         "author": "Ada Lovelace <ada@example.com>",
         "timestamp": timestamp,
         "machine": None,
-        "guests": {"forth": {"program": "examples/forth/forth.tpp", "rule_lines": 3}},
+        "guests": {"forth": {"program": "examples/forth/forth.thue", "rule_lines": 3}},
         "tasks": tasks,
         "benchmarks": benchmarks,
     }
@@ -52,7 +52,7 @@ def _host(host: str, *, steps: int = 10, probes: int = 12, memory: int | None = 
 def _workload(*hosts: str, workload_id: str = "probe-cost", steps: int = 10, probes: int = 12) -> dict:
     return {
         "id": workload_id,
-        "program": "metrics/workloads/probe-cost.tpp",
+        "program": "metrics/workloads/probe-cost.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,
@@ -99,7 +99,7 @@ class HistoryTests(unittest.TestCase):
             )
             return built
 
-        program = "metrics/workloads/probe-cost.tpp"
+        program = "metrics/workloads/probe-cost.thue"
         with self.assertRaises(historylib.HistoryError) as caught:
             historylib._validate_hosts(
                 COMMIT_A,
@@ -256,6 +256,12 @@ class HistoryTests(unittest.TestCase):
         with self.assertRaises(historylib.HistoryError):
             historylib.validate_bench(entry(COMMIT_A, "2026-10-16T00:00:01Z", tasks=tasks))
 
+    def test_require_memory_rejects_a_missed_sample(self) -> None:
+        self.assertEqual(record.require_memory("probe-cost", "go", 4096), 4096)
+        for memory in (0, None, -1, True):
+            with self.assertRaises(record.RecordError):
+                record.require_memory("probe-cost", "go", memory)
+
     def test_null_memory_is_allowed_and_a_negative_memory_is_not(self) -> None:
         document = entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmarks("go"))
         document["benchmarks"]["workloads"][0]["hosts"]["go"]["memory_bytes"] = None
@@ -270,7 +276,7 @@ class HistoryTests(unittest.TestCase):
         ids = [row["id"] for row in suite["workloads"]]
         self.assertEqual(ids, ["probe-cost", "state-rewrite", "regex", "io", "guest"])
         guest = suite["workloads"][-1]
-        self.assertEqual(guest["program"], "langs/forth/forth.tpp")
+        self.assertEqual(guest["program"], "langs/forth/forth.thue")
         self.assertEqual(guest["input"], "1 2 + .")
         self.assertGreater(guest["max_steps"], 0)
         self.assertGreater(guest["max_evals"], 0)
@@ -290,7 +296,8 @@ class HistoryTests(unittest.TestCase):
         schema = (ROOT / "metrics" / "SCHEMA.md").read_text(encoding="utf-8")
         self.assertIn("demo/dist/metrics/summary.json", vercel)
         self.assertNotIn("history.json", vercel)
-        self.assertIn("public/metrics/summary.json", gitlab)
+        self.assertNotIn("\npages:", gitlab)
+        self.assertNotIn("public/metrics/summary.json", gitlab)
         self.assertNotIn("history.json", gitlab)
         self.assertIn("pull_request:", workflow)
         self.assertNotIn("branches: [main]", workflow)
@@ -322,14 +329,14 @@ class HistoryTests(unittest.TestCase):
     def test_python_counts_file_under_explicit_limits(self) -> None:
         program = "a ::= b\nb ::- 0\n\n::=\na\n"
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "tiny.tpp"
+            path = Path(tmp) / "tiny.thue"
             counts = Path(tmp) / "counts.json"
             path.write_text(program, encoding="utf-8")
             completed = bounded_run(
                 [
                     "uv",
                     "run",
-                    "thuepp",
+                    "thue",
                     str(path),
                     "--counts",
                     str(counts),
@@ -345,7 +352,7 @@ class HistoryTests(unittest.TestCase):
                 memory_cap=RUN_MEMORY_CAP_BYTES,
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
-            self.assertGreaterEqual(completed.peak_rss_bytes, 0)
+            self.assertGreater(completed.peak_rss_bytes, 0)
             parsed = historylib.parse_counts(counts.read_text(encoding="utf-8"))
         self.assertEqual(parsed, (1, 3))
 
@@ -354,7 +361,7 @@ def _latest_document() -> dict:
     return {
         "schema_version": 2,
         "machine": {"os": "Linux", "release": "6.12.0", "arch": "x86_64", "cpu": "Example CPU", "cpus": 2},
-        "guests": {"forth": {"program": "examples/forth/forth.tpp", "rule_lines": 3}},
+        "guests": {"forth": {"program": "examples/forth/forth.thue", "rule_lines": 3}},
         "tasks": historylib.tasks_document([historylib.task_row("factorial", "lisp", "pass", 1, 1)]),
         "benchmarks": _benchmarks("go"),
     }

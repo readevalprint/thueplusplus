@@ -1,7 +1,7 @@
 # Graduated deeply nested Lisp parser/runtime edge cases.
 # These cases stress greedy encoded-list capture, higher-order closures, lists,
 # and lexical lets together so future changes do not regress nested framing.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 30
 args = ["--max-evals", "120000"]
 

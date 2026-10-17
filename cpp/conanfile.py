@@ -8,9 +8,9 @@ from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
 from conan.tools.gnu import PkgConfigDeps
 
 
-class ThueppConan(ConanFile):
-    name = "thuepp"
-    version = "0.5.0"
+class ThueConan(ConanFile):
+    name = "thuelang"
+    version = "0.1.0"
     package_type = "library"
     settings = "os", "compiler", "build_type", "arch"
     options = {"shared": [True, False], "fPIC": [True, False]}
@@ -39,4 +39,4 @@ class ThueppConan(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["thuepp"]
+        self.cpp_info.libs = ["thuelang"]

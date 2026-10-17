@@ -1,4 +1,4 @@
-program = "../dollar-transitive.tpp"
+program = "../dollar-transitive.thue"
 
 [[case]]
 name = "dollar aliases expand transitively and preserve alternative precedence"

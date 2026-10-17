@@ -1,5 +1,5 @@
 name = "mid searches the whole state"
-program = "../search.tpp"
+program = "../search.thue"
 
 [expect]
 stdout = "ok\n"

@@ -1,5 +1,5 @@
 # Focused safety cases for the unified BNUM2 numeric primitive dispatcher.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

@@ -1,4 +1,4 @@
-program = "../max-evals.tpp"
+program = "../max-evals.thue"
 
 [[case]]
 name = "one probe then the eval limit exits 11"

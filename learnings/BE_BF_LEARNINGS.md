@@ -4,7 +4,7 @@ Date: current continuation turn.
 
 Context:
 
-- Starting point was BD (`attempt-bd-ax-az-arrays.tpp`), which passes 11/15 hard cases:
+- Starting point was BD (`attempt-bd-ax-az-arrays.thue`), which passes 11/15 hard cases:
   arbitrary parser, typed int/string/bool, n-ary math, compare, lazy `if`/`and`/`or`, arrays, `head`, `rest`.
 - BD gets stuck on parsed lambda/let forms because it has no lexical env/closure evaluator.
 
@@ -29,7 +29,7 @@ E[LIST%28ATOM%3Alet%20LIST%28LIST%28ATOM%3Axs%20VARR%5BVNUM%255B1%255D;VSTR%255B
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-be-fixed-shape-lambda-let-boundary.tpp
+/tmp/thue-lisp-pda/attempt-be-fixed-shape-lambda-let-boundary.thue
 ```
 
 What it did:
@@ -66,7 +66,7 @@ Tradeoff:
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bf-broader-boundary-adapters.tpp
+/tmp/thue-lisp-pda/attempt-bf-broader-boundary-adapters.thue
 ```
 
 What it did:

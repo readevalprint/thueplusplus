@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/readevalprint/thueplusplus/problems/harness"
+	"github.com/thuelang/thueplusplus/problems/harness"
 )
 
 func TestProblem(t *testing.T) {
@@ -16,7 +16,7 @@ func TestProblem(t *testing.T) {
 
 func TestHardcodedOutputFails(t *testing.T) {
 	dir := t.TempDir()
-	program := filepath.Join(dir, "constant.tpp")
+	program := filepath.Join(dir, "constant.thue")
 	source := "55 ::> stdout 55\n\n::=\n55\n"
 	if err := os.WriteFile(program, []byte(source), 0o644); err != nil {
 		t.Fatal(err)

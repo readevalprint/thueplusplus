@@ -5,7 +5,7 @@ const path = require("path");
 const vscodeOniguruma = require("vscode-oniguruma");
 const vscodeTextmate = require("vscode-textmate");
 
-const grammarPath = path.join(__dirname, "..", "syntaxes", "thuepp.tmLanguage.json");
+const grammarPath = path.join(__dirname, "..", "syntaxes", "thue.tmLanguage.json");
 
 let grammarPromise;
 
@@ -21,15 +21,15 @@ function loadGrammar() {
           createOnigString: (value) => new vscodeOniguruma.OnigString(value),
         }),
         loadGrammar: async (scopeName) => {
-          if (scopeName !== "source.thuepp") {
+          if (scopeName !== "source.thue") {
             return null;
           }
           return JSON.parse(fs.readFileSync(grammarPath, "utf8"));
         },
       });
-      const grammar = await registry.loadGrammar("source.thuepp");
+      const grammar = await registry.loadGrammar("source.thue");
       if (!grammar) {
-        throw new Error("source.thuepp grammar did not load");
+        throw new Error("source.thue grammar did not load");
       }
       return grammar;
     })();
@@ -113,12 +113,12 @@ function classifyLine(line) {
 }
 
 const OPERATOR_SCOPE = {
-  "|": "keyword.operator.mid.thuepp",
-  "=": "keyword.operator.rewrite.thuepp",
-  "<": "keyword.operator.read.thuepp",
-  ">": "keyword.operator.write.thuepp",
-  "-": "keyword.operator.exit.thuepp",
-  "!": "keyword.operator.builtin.thuepp",
+  "|": "keyword.operator.mid.thue",
+  "=": "keyword.operator.rewrite.thue",
+  "<": "keyword.operator.read.thue",
+  ">": "keyword.operator.write.thue",
+  "-": "keyword.operator.exit.thue",
+  "!": "keyword.operator.builtin.thue",
 };
 
 function hasScope(scopes, expected) {

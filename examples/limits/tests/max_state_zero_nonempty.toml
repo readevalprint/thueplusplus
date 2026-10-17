@@ -1,4 +1,4 @@
-program = "../max-state-zero-nonempty.tpp"
+program = "../max-state-zero-nonempty.thue"
 
 [[case]]
 name = "non-empty replacement is covered without zero limit"

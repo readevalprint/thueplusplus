@@ -176,8 +176,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "thuepp"
-version = "0.5.0"
+name = "thuelang"
+version = "0.1.0"
 dependencies = [
  "base64",
  "num-bigint",

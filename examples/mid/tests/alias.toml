@@ -1,5 +1,5 @@
 name = "mid step expands pattern aliases"
-program = "../alias.tpp"
+program = "../alias.thue"
 
 [expect]
 stdout = "7\n"

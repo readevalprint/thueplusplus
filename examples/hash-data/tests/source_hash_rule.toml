@@ -1,5 +1,5 @@
 name = "source row beginning with hash can be a rule"
-program = "../source-hash-rule.tpp"
+program = "../source-hash-rule.thue"
 timeout = 5
 input = "#x"
 

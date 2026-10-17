@@ -29,7 +29,22 @@ const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp']
 
 export const soonLanguages = ['erlang', 'ocaml', 'perl', 'ruby', 'haskell']
 
-export const repositoryUrl = 'https://github.com/readevalprint/thueplusplus'
+export const repositoryUrl = 'https://github.com/thuelang/thueplusplus'
+export const mirrorUrl = 'https://gitlab.com/thuelang/thueplusplus'
+
+export function repositoryBlob(path: string): string {
+  if (path.length === 0 || path.startsWith('/') || path.split('/').includes('..')) {
+    throw new Error(`repository path is not relative: ${path}`)
+  }
+  return `${repositoryUrl}/blob/main/${path}`
+}
+
+export function repositoryTree(path: string): string {
+  if (path.length === 0 || path.startsWith('/') || path.split('/').includes('..')) {
+    throw new Error(`repository path is not relative: ${path}`)
+  }
+  return `${repositoryUrl}/tree/main/${path}`
+}
 
 interface InstallPageRecord {
   path: string

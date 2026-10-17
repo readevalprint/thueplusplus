@@ -48,7 +48,7 @@
         <template #output>
           <ResizablePanelGroup
             direction="vertical"
-            auto-save-id="thuepp-playground-column"
+            auto-save-id="thue-playground-column"
             data-test="playground-column"
             class="h-full min-h-0"
           >
@@ -154,12 +154,12 @@ const probeCount = ref(0)
 const routeSearchParams = new URLSearchParams(window.location.search)
 
 const exampleModules = {
-  ...import.meta.glob('../../examples/**/*.tpp', {
+  ...import.meta.glob('../../examples/**/*.thue', {
     query: '?raw',
     import: 'default',
     eager: true,
   }),
-  ...import.meta.glob('../../langs/**/*.tpp', {
+  ...import.meta.glob('../../langs/**/*.thue', {
     query: '?raw',
     import: 'default',
     eager: true,
@@ -255,7 +255,7 @@ function toPublicExamplePath(globPath: string): string {
 }
 
 function normalizeFileParam(value: string | null): string {
-  const fallback = './examples/hello/hello.tpp'
+  const fallback = './examples/hello/hello.thue'
   if (!value) return fallback
   if (value.startsWith('./examples/') || value.startsWith('./langs/')) return value
   if (value.startsWith('examples/') || value.startsWith('langs/')) return `./${value}`

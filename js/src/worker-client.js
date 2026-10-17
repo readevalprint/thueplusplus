@@ -1,9 +1,9 @@
-export class ThuePPWorker {
+export class ThueWorker {
   constructor(workerURL, initOptions = {}, clientOptions = {}) {
     // browser-worker.js deliberately stays a classic worker because Go's
     // wasm_exec.js is a classic script loaded with importScripts(). Module
     // workers do not expose importScripts(), so using one here makes the real
-    // browser demo fail before the Go-WASM interpreter registers ThuePP.run.
+    // browser demo fail before the Go-WASM interpreter registers Thue.run.
     const WorkerImpl = clientOptions.Worker || globalThis.Worker;
     if (typeof WorkerImpl !== 'function') {
       throw new Error('Worker is not available in this environment');
@@ -15,17 +15,17 @@ export class ThuePPWorker {
     this.worker.onmessage = (event) => this.handleMessage(event.data || {});
     this.worker.onerror = (event) => {
       const detail = event && event.message ? event.message : 'worker script failed';
-      this.rejectAll(new Error(`ThuePPWorker error: ${detail}`));
+      this.rejectAll(new Error(`ThueWorker error: ${detail}`));
     };
     this.worker.onmessageerror = () => {
-      this.rejectAll(new Error('ThuePPWorker message error'));
+      this.rejectAll(new Error('ThueWorker message error'));
     };
     this.ready = this.request({ type: 'init', ...initOptions });
   }
 
   handleMessage(message) {
     if (message.type === 'runtime-error' && message.id === undefined) {
-      this.rejectAll(new Error(message.error || 'ThuePP WASM runtime failed'));
+      this.rejectAll(new Error(message.error || 'Thue WASM runtime failed'));
       return;
     }
 
@@ -47,7 +47,7 @@ export class ThuePPWorker {
       if (this.requestTimeoutMs > 0) {
         timer = setTimeout(() => {
           this.pending.delete(id);
-          reject(new Error(`ThuePPWorker request timed out: ${message.type}`));
+          reject(new Error(`ThueWorker request timed out: ${message.type}`));
         }, this.requestTimeoutMs);
       }
       this.pending.set(id, { resolve, reject, timer });
@@ -70,6 +70,6 @@ export class ThuePPWorker {
 
   terminate() {
     this.worker.terminate();
-    this.rejectAll(new Error('ThuePPWorker terminated'));
+    this.rejectAll(new Error('ThueWorker terminated'));
   }
 }

@@ -31,9 +31,9 @@ async function mountAt(path: string) {
 describe('running best', () => {
   it('holds the minimum cost after a version appears', () => {
     const points: CatalogPoint[] = [
-      { commit: 'a', solution: 'direct.tpp', cost: 10, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
-      { commit: 'a', solution: 'slow.tpp', cost: 4, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
-      { commit: 'c', solution: 'direct.tpp', cost: 3, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
+      { commit: 'a', solution: 'direct.thue', cost: 10, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
+      { commit: 'a', solution: 'slow.thue', cost: 4, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
+      { commit: 'c', solution: 'direct.thue', cost: 3, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
     ]
     expect(runningBest(['a', 'b', 'c'], points)).toEqual([4, 4, 3])
     expect(runningBest(['a', 'b'], [])).toEqual([undefined, undefined])

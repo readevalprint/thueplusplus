@@ -4,4 +4,4 @@ entry: solution.fth
 author: Cursor Agent <cursoragent@cursor.com>
 ---
 
-Forth script. `langs/forth/forth.tpp` runs it.
+Forth script. `langs/forth/forth.thue` runs it.

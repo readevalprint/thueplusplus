@@ -14,7 +14,7 @@ const LIMITS = [
 
 function limitError(name, value) {
   return new Error(
-    `Thue++ setting thuepp.${name} must be a non-negative integer, got ${JSON.stringify(value)}. Unlimited is not a Run command setting.`
+    `Thue++ setting thue.${name} must be a non-negative integer, got ${JSON.stringify(value)}. Unlimited is not a Run command setting.`
   );
 }
 
@@ -34,7 +34,7 @@ function buildRunCommand({ file, executable, config }) {
     throw new Error("Save the Thue++ file before running it.");
   }
   if (typeof executable !== "string" || executable.trim().length === 0) {
-    throw new Error("Thue++ setting thuepp.executable must be the thuepp command or an absolute path.");
+    throw new Error("Thue++ setting thue.executable must be the thue command or an absolute path.");
   }
   const settings = config || {};
   const args = [file];

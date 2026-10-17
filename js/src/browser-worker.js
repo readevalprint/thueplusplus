@@ -1,13 +1,13 @@
-let thueppReady;
+let thueReady;
 
 async function init(options = {}) {
-  if (thueppReady) return thueppReady;
+  if (thueReady) return thueReady;
   if (typeof globalThis.Go !== 'function') {
     if (!options.wasmExecURL) throw new Error('wasmExecURL is required when wasm_exec.js is not preloaded');
     importScripts(options.wasmExecURL);
   }
   const go = new globalThis.Go();
-  const wasmURL = options.wasmURL || 'thuepp.wasm';
+  const wasmURL = options.wasmURL || 'thue.wasm';
   const response = await fetch(wasmURL);
   if (!response.ok) {
     throw new Error(`failed to fetch ${wasmURL}: HTTP ${response.status}`);
@@ -15,16 +15,16 @@ async function init(options = {}) {
   const bytes = await response.arrayBuffer();
   const { instance } = await WebAssembly.instantiate(bytes, go.importObject);
   go.run(instance).catch((err) => postMessage({ type: 'runtime-error', error: String(err && err.stack || err) }));
-  thueppReady = waitForAPI();
-  return thueppReady;
+  thueReady = waitForAPI();
+  return thueReady;
 }
 
 async function waitForAPI() {
   for (let i = 0; i < 100; i += 1) {
-    if (globalThis.ThuePP && typeof globalThis.ThuePP.run === 'function') return globalThis.ThuePP;
+    if (globalThis.Thue && typeof globalThis.Thue.run === 'function') return globalThis.Thue;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
-  throw new Error('ThuePP.run was not registered by the Go WASM module');
+  throw new Error('Thue.run was not registered by the Go WASM module');
 }
 
 function splitLines(text) {

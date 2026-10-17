@@ -1,5 +1,5 @@
 name = "newline read timeout reports compact resource error"
-program = "../line-read.tpp"
+program = "../line-read.thue"
 timeout = 7
 
 [bindings.procs]

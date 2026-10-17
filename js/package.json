@@ -1,14 +1,23 @@
 {
-  "name": "thuepp",
-  "version": "0.5.0",
+  "name": "thuelang",
+  "version": "0.1.0",
   "description": "Thue++ interpreter for Node and the browser, backed by the Go WebAssembly build.",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://thuelang.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thuelang/thueplusplus.git",
+    "directory": "js"
+  },
+  "bugs": {
+    "url": "https://github.com/thuelang/thueplusplus/issues"
+  },
   "engines": {
     "node": ">=22"
   },
   "bin": {
-    "thuepp": "./src/cli.js"
+    "thue": "./src/cli.js"
   },
   "exports": {
     ".": {

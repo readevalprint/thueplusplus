@@ -1,7 +1,7 @@
 ---
 ruleset: direct
-entry: solution.tpp
+entry: solution.thue
 author: Cursor Agent <cursoragent@cursor.com>
 ---
 
-Direct Thue++ rules. The program is `solution.tpp`.
+Direct Thue++ rules. The program is `solution.thue`.

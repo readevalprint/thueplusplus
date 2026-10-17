@@ -2,7 +2,7 @@
 # These cases must not be silently accepted with rc 0 and empty output in the
 # production Lisp evaluator. They track behavior that is intentionally rejected
 # until a focused child card changes the language contract.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

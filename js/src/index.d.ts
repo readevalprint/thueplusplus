@@ -89,7 +89,7 @@ export interface InitOptions {
   onRuntimeError?: (error: unknown) => void
 }
 
-export function initThuePP(options?: InitOptions): Promise<Engine>
+export function initThue(options?: InitOptions): Promise<Engine>
 
 export interface BrowserInitOptions {
   wasmURL?: string
@@ -97,9 +97,9 @@ export interface BrowserInitOptions {
   onRuntimeError?: (error: unknown) => void
 }
 
-export function initThuePPWasm(options?: BrowserInitOptions): Promise<Engine>
+export function initThueWasm(options?: BrowserInitOptions): Promise<Engine>
 
-export class ThuePPWorker {
+export class ThueWorker {
   constructor(workerURL: string, initOptions?: { wasmURL: string; wasmExecURL: string }, clientOptions?: { Worker?: typeof Worker; requestTimeoutMs?: number })
   run(options: RunOptions): Promise<RunResult>
   terminate(): void

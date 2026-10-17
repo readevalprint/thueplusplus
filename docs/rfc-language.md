@@ -12,7 +12,7 @@ Thue++ is a language for writing state machines. It is a regex-based language th
 
 For example, This is a hello world program in Thue++.
 
-```thuepp
+```thue
 Aliases to match PCT-encoded strings.
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
@@ -41,7 +41,7 @@ Execution scans rules top-to-bottom. The first rule whose pattern matches acts o
 
 ## 2. Source parsing
 
-PEG Grammer Summary. See [tpp.peg](../tpp.peg) for more details.
+PEG Grammer Summary. See [thue.peg](../thue.peg) for more details.
 
 ```peg
 Language   <- PrefixRows (Sep StateText?)?
@@ -87,7 +87,7 @@ One regex must not use backreferences, lookaround, recursive patterns, or other 
 
 For example, this source has initial state `a\nb`:
 
-```thuepp
+```thue
 ^a$ ::= A
 ^b$ ::= B
 
@@ -98,7 +98,7 @@ b
 
 The first rule can match only the first line, then the second rule can match only the second line. A pattern can also match across the newline when it says so explicitly:
 
-```thuepp
+```thue
 a\nb ::= joined
 
 ::=
@@ -189,7 +189,7 @@ Raw insertion is the rule. An earlier revision of this section quoted every subs
 
 The replacement span stays the LHS match. This lookup replaces only the `KEY=...` span with the value found elsewhere in the state:
 
-```thuepp
+```thue
 ^KEY=(?<k>[^\n]+)\n.*$ ::| {{k}}=(?<v>[^,\n]*) ::= {{v}}
 ^hello$ ::- 0
 ^KEY= ::- 3

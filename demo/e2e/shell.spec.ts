@@ -84,7 +84,7 @@ test('playground is outside the docs shell in both themes', async ({ page }) => 
 })
 
 test('embed has no site chrome', async ({ page }) => {
-  await page.goto('/embed?file=./examples/hello/hello.tpp&section=state')
+  await page.goto('/embed?file=./examples/hello/hello.thue&section=state')
   await expect(page.getByTestId('app-shell')).toHaveCount(0)
   await expect(page.getByTestId('contents-toggle')).toHaveCount(0)
   await expect(page.getByTestId('playground-workbench')).toBeVisible()
@@ -115,6 +115,8 @@ test('deep links render their own heading', async ({ page }) => {
     ['/projects', 'Sandboxed projects.'],
     ['/metrics', 'What each commit measured.'],
     ['/problems', 'Programs with a finish line.'],
+    ['/contribute', 'Clone, measure, open a pull request.'],
+    ['/autoresearch', 'A prompt for an agent.'],
   ] as const) {
     await page.goto(path)
     await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()

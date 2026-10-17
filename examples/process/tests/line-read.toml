@@ -1,5 +1,5 @@
 name = "one newline process read"
-program = "../line-read.tpp"
+program = "../line-read.thue"
 timeout = 10
 
 [bindings.procs]

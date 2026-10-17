@@ -18,11 +18,11 @@ export interface NavDirect {
 }
 
 const installNotes: Record<string, string> = {
-  go: 'The native Go engine and the thuepp command.',
-  python: 'The Python package and the thuepp console script.',
+  go: 'The native Go engine and the thue command.',
+  python: 'The Python package and the thue console script.',
   wasm: 'The Go engine compiled to WebAssembly, and the Node command.',
-  rust: 'The thuepp crate and command.',
-  cpp: 'The CMake library and the thuepp command.',
+  rust: 'The thue crate and command.',
+  cpp: 'The CMake library and the thue command.',
 }
 
 for (const host of siteHosts) {
@@ -85,6 +85,8 @@ export const navGroups: NavGroup[] = [
 export const navDirect: NavDirect[] = [
   { title: 'Metrics', to: '/metrics' },
   { title: 'Playground', to: '/playground' },
+  { title: 'Contribute', to: '/contribute' },
+  { title: 'Autoresearch prompt', to: '/autoresearch' },
 ]
 
 export function navItemCurrent(path: string, hash: string, to: string): boolean {

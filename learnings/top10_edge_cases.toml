@@ -1,7 +1,7 @@
 # Top edge cases selected after BO hard acceptance.
 # This is intentionally a RED manifest for the currently-missing behavior.
-# Uses learnings/bo-lisp.tpp until the evaluator is promoted/cleaned up.
-program = "bo-lisp.tpp"
+# Uses learnings/bo-lisp.thue until the evaluator is promoted/cleaned up.
+program = "bo-lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

@@ -1,5 +1,5 @@
 name = "mid uses the first lhs match"
-program = "../first-match.tpp"
+program = "../first-match.thue"
 
 [[case]]
 name = "failed step does not retry a later lhs match"

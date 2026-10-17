@@ -1,4 +1,4 @@
-program = "../self-update.tpp"
+program = "../self-update.thue"
 
 [[case]]
 name = "state row enables output state"

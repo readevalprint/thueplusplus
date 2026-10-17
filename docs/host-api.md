@@ -17,7 +17,7 @@ A process binding exists only after the host opts in:
 | Rust | `add_proc_binding(name, command)` |
 | C++ | `AddProcBinding(name, command)` |
 | CLI | `--proc:NAME COMMAND` |
-| wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thuepp` package spawns a process only when it is given `--proc`. |
+| wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thue` package spawns a process only when it is given `--proc`. |
 
 Limits on a new interpreter:
 
@@ -57,7 +57,7 @@ The reason is part of the host API:
 | --- | --- |
 | Go | `*LimitError` with `Kind`, `ExitCode`, and `Message`. `Error()` is `Message`. Use `errors.As`. |
 | Python | `LimitExceeded`, a `RuntimeError` with `.kind`, `.code`, and the message as the exception text. |
-| C++ | `thuepp::LimitError`, a `std::runtime_error`. `kind()` is `steps`, `evals`, `state`, or `timeout`. `code()` is 10–13. `what()` is the message. |
+| C++ | `thuelang::LimitError`, a `std::runtime_error`. `kind()` is `steps`, `evals`, `state`, or `timeout`. `code()` is 10–13. `what()` is the message. |
 | wasm | result field `limit` (`steps`, `evals`, `state`, or `timeout`) and `exitCode`. `limit` is omitted when the run did not stop for a limit. `error` is the message without the `Error: ` prefix. |
 | Rust | `RunFailure::Limit` carries `LimitError` (`kind`, `exit_code`, `message`). `limit()` returns it. `RunFailure::Message` is any other failure. |
 
@@ -117,23 +117,23 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 
 | | Package | CLI |
 | --- | --- | --- |
-| Go | `github.com/readevalprint/thueplusplus/go/thuepp` | `go/cmd/thuepp` |
-| Python | distribution `thuepp` | console script `thuepp` |
-| JS | npm package `thuepp` | `thuepp` bin, `node js/src/cli.js` in this repo |
-| Rust | crate `thuepp` (`rust/`) | `thuepp` bin, `rust/target/release/thuepp` in this repo |
-| C++ | CMake target `thuepp` (`thuepp::thuepp`) | `thuepp-cli`, output name `thuepp` |
+| Go | `github.com/thuelang/thueplusplus/go/thuelang` | `go/cmd/thue` |
+| Python | PyPI `thuelang`, module `thuelang` | console script `thue` |
+| JS | npm package `thuelang` | `thue` bin, `node js/src/cli.js` in this repo |
+| Rust | crate and library `thuelang` (`rust/`) | `thue` bin, `rust/target/release/thue` in this repo |
+| C++ | CMake target `thuelang` (`thuelang::thuelang`) | `thue-cli`, output name `thue` |
 
 Go:
 
 ```go
-import "github.com/readevalprint/thueplusplus/go/thuepp"
+import "github.com/thuelang/thueplusplus/go/thuelang"
 
-interp := thuepp.New()
-if err := interp.LoadProgram("hello.tpp"); err != nil {
+interp := thuelang.New()
+if err := interp.LoadProgram("hello.thue"); err != nil {
     panic(err)
 }
 code, err := interp.Run()
-var limit *thuepp.LimitError
+var limit *thuelang.LimitError
 if errors.As(err, &limit) {
     // limit.Kind is steps, evals, state, or timeout. limit.ExitCode is 10–13.
 }
@@ -145,10 +145,10 @@ _ = code
 Python:
 
 ```python
-from thuepp import LimitExceeded, ThueppInterpreter
+from thuelang import LimitExceeded, ThueInterpreter
 
-interp = ThueppInterpreter(trace_enabled=True)
-interp.load_program("hello.tpp")
+interp = ThueInterpreter(trace_enabled=True)
+interp.load_program("hello.thue")
 interp.add_proc_binding("echo", "cat")
 try:
     code = interp.run()
@@ -162,11 +162,11 @@ Omit `max_evals`, `max_state_bytes`, or `max_steps` for the defaults. Pass `None
 JavaScript:
 
 ```js
-import { initThuePP } from 'thuepp'
+import { initThue } from 'thuelang'
 
-const engine = await initThuePP()
+const engine = await initThue()
 const result = await engine.run({
-  sourcePath: 'hello.tpp',
+  sourcePath: 'hello.thue',
   sourceText,
   maxSteps: null,
   trace: true,
@@ -174,15 +174,15 @@ const result = await engine.run({
 // result.limit is "steps", "evals", "state", or "timeout" when a limit stops the run.
 ```
 
-Browser code imports `initThuePPWasm` from `thuepp/browser`. A page that wants a worker imports `ThuePPWorker` from `thuepp/worker` and loads `thuepp/browser-worker` as a classic worker. JSON `null` clears a limit. Omitting the field keeps the default.
+Browser code imports `initThueWasm` from `thuelang/browser`. A page that wants a worker imports `ThueWorker` from `thuelang/worker` and loads `thuelang/browser-worker` as a classic worker. JSON `null` clears a limit. Omitting the field keeps the default.
 
 Rust:
 
 ```rust
-use thuepp::Interpreter;
+use thuelang::Interpreter;
 
 let mut interp = Interpreter::new();
-interp.load_program("hello.tpp")?;
+interp.load_program("hello.thue")?;
 interp.add_proc_binding("echo", "cat");
 match interp.run() {
     Ok(code) => { let _ = code; }
@@ -194,24 +194,24 @@ match interp.run() {
 }
 ```
 
-`None` clears `max_evals`, `max_state_bytes`, or `max_steps`. Leave them at the values from `Interpreter::new` for the defaults. The crate sets `publish = false` and is not on crates.io. See [releasing.md](releasing.md).
+`None` clears `max_evals`, `max_state_bytes`, or `max_steps`. Leave them at the values from `Interpreter::new` for the defaults. The crate publishes to crates.io from a `vX.Y.Z` tag. See [releasing.md](releasing.md).
 
 C++:
 
 ```cpp
-#include "thuepp/thuepp.hpp"
+#include "thuelang/thuelang.hpp"
 
-thuepp::Interpreter interp;
+thuelang::Interpreter interp;
 interp.set_trace_enabled(true);
-interp.LoadProgram("hello.tpp");
+interp.LoadProgram("hello.thue");
 interp.AddProcBinding("echo", "cat");
 try {
   int code = interp.Run();
   (void)code;
-} catch (const thuepp::LimitError& err) {
+} catch (const thuelang::LimitError& err) {
   // err.kind() is steps, evals, state, or timeout. err.code() is 10–13.
   throw;
 }
 ```
 
-A new interpreter uses the defaults. `std::nullopt` clears a limit. `0` is a real limit. The header does not include RE2. Link the `thuepp` CMake target.
+A new interpreter uses the defaults. `std::nullopt` clears a limit. `0` is a real limit. The header does not include RE2. Link the `thuelang` CMake target.

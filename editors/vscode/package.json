@@ -1,18 +1,18 @@
 {
-  "name": "thuepp",
+  "name": "thue",
   "displayName": "Thue++",
-  "description": "Syntax highlighting, snippets, and a Run command for Thue++ programs (.tpp).",
-  "version": "0.5.0",
-  "publisher": "readevalprint",
+  "description": "Syntax highlighting, snippets, and a Run command for Thue++ programs (.thue).",
+  "version": "0.1.0",
+  "publisher": "thuelang",
   "repository": {
     "type": "git",
-    "url": "https://github.com/readevalprint/thueplusplus.git",
+    "url": "https://github.com/thuelang/thueplusplus.git",
     "directory": "editors/vscode"
   },
   "bugs": {
-    "url": "https://github.com/readevalprint/thueplusplus/issues"
+    "url": "https://github.com/thuelang/thueplusplus/issues"
   },
-  "homepage": "https://github.com/readevalprint/thueplusplus/blob/main/editors/vscode/README.md",
+  "homepage": "https://thuelang.org",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -21,44 +21,43 @@
   ],
   "keywords": [
     "thue++",
-    "thuepp",
     "thue"
   ],
   "main": "./src/extension.js",
   "activationEvents": [
-    "onCommand:thuepp.runFile"
+    "onCommand:thue.runFile"
   ],
   "contributes": {
     "languages": [
       {
-        "id": "thuepp",
+        "id": "thue",
         "aliases": [
           "Thue++",
-          "thuepp",
+          "thue",
           "thue++"
         ],
         "extensions": [
-          ".tpp"
+          ".thue"
         ],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "thuepp",
-        "scopeName": "source.thuepp",
-        "path": "./syntaxes/thuepp.tmLanguage.json"
+        "language": "thue",
+        "scopeName": "source.thue",
+        "path": "./syntaxes/thue.tmLanguage.json"
       }
     ],
     "snippets": [
       {
-        "language": "thuepp",
-        "path": "./snippets/thuepp.code-snippets"
+        "language": "thue",
+        "path": "./snippets/thue.code-snippets"
       }
     ],
     "commands": [
       {
-        "command": "thuepp.runFile",
+        "command": "thue.runFile",
         "title": "Run Thue++ file",
         "category": "Thue++"
       }
@@ -66,38 +65,38 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "thuepp.runFile",
-          "when": "editorLangId == thuepp"
+          "command": "thue.runFile",
+          "when": "editorLangId == thue"
         }
       ],
       "editor/title/run": [
         {
-          "command": "thuepp.runFile",
-          "when": "editorLangId == thuepp"
+          "command": "thue.runFile",
+          "when": "editorLangId == thue"
         }
       ]
     },
     "configuration": {
       "title": "Thue++",
       "properties": {
-        "thuepp.executable": {
+        "thue.executable": {
           "type": "string",
-          "default": "thuepp",
-          "description": "thuepp executable to run. A command name on PATH, or an absolute path. The extension does not install the CLI."
+          "default": "thue",
+          "description": "thue executable to run. A command name on PATH, or an absolute path. The extension does not install the CLI."
         },
-        "thuepp.maxSteps": {
+        "thue.maxSteps": {
           "type": "integer",
           "minimum": 0,
           "default": 1000000,
           "description": "Applied rewrite limit. Run Thue++ file always passes this as --max-steps. There is no unlimited setting."
         },
-        "thuepp.maxProbes": {
+        "thue.maxProbes": {
           "type": "integer",
           "minimum": 0,
           "default": 1000000,
           "description": "Rule probe limit. Run Thue++ file always passes this as --max-evals. There is no unlimited setting."
         },
-        "thuepp.maxStateBytes": {
+        "thue.maxStateBytes": {
           "type": "integer",
           "minimum": 0,
           "default": 8388608,
@@ -107,8 +106,8 @@
     }
   },
   "scripts": {
-    "test": "node --test tests/*.test.js && vscode-tmgrammar-snap -g ./syntaxes/thuepp.tmLanguage.json -s source.thuepp \"./tests/snap/**/*.tpp\"",
-    "test:update-snapshots": "vscode-tmgrammar-snap -u -g ./syntaxes/thuepp.tmLanguage.json -s source.thuepp \"./tests/snap/**/*.tpp\"",
+    "test": "node --test tests/*.test.js && vscode-tmgrammar-snap -g ./syntaxes/thue.tmLanguage.json -s source.thue \"./tests/snap/**/*.thue\"",
+    "test:update-snapshots": "vscode-tmgrammar-snap -u -g ./syntaxes/thue.tmLanguage.json -s source.thue \"./tests/snap/**/*.thue\"",
     "package": "vsce package --allow-missing-repository --skip-license"
   },
   "devDependencies": {

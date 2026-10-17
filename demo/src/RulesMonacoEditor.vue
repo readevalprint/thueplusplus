@@ -6,7 +6,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import { installMonacoEnvironment } from './monacoEnvironment'
-import { registerThueppMonacoLanguage } from './thueppMonacoSetup'
+import { registerThueMonacoLanguage } from './thueMonacoSetup'
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -29,16 +29,16 @@ let resizeObserver: ResizeObserver | undefined
 let themeObserver: MutationObserver | undefined
 let applyingExternalValue = false
 
-function editorThemeName(): 'thuepp-dark' | 'thuepp-light' {
-  return document.documentElement.classList.contains('dark') ? 'thuepp-dark' : 'thuepp-light'
+function editorThemeName(): 'thue-dark' | 'thue-light' {
+  return document.documentElement.classList.contains('dark') ? 'thue-dark' : 'thue-light'
 }
 
 interface RulesEditorElement extends HTMLElement {
-  __thueppSetValue?: (value: string) => void
+  __thueSetValue?: (value: string) => void
 }
 
-function registerThueppLanguage(monacoApi: typeof Monaco): void {
-  registerThueppMonacoLanguage(monacoApi)
+function registerThueLanguage(monacoApi: typeof Monaco): void {
+  registerThueMonacoLanguage(monacoApi)
 }
 
 onMounted(async () => {
@@ -46,10 +46,10 @@ onMounted(async () => {
   await import('monaco-editor/min/vs/editor/editor.main.css')
   await installMonacoEnvironment()
   monaco = await import('monaco-editor/esm/vs/editor/editor.api.js')
-  registerThueppLanguage(monaco)
+  registerThueLanguage(monaco)
   editor = monaco.editor.create(container.value, {
     value: props.modelValue,
-    language: 'thuepp',
+    language: 'thue',
     theme: editorThemeName(),
     automaticLayout: false,
     fontFamily: '"JetBrains Mono", ui-monospace, monospace',
@@ -81,7 +81,7 @@ onMounted(async () => {
   })
   matchDecorations = editor.createDecorationsCollection()
   updateMatchedRuleDecoration(props.highlightLine)
-  ;(container.value as RulesEditorElement).__thueppSetValue = (value: string) => {
+  ;(container.value as RulesEditorElement).__thueSetValue = (value: string) => {
     if (!editor) return
     editor.setValue(value)
     emit('update:modelValue', value)
@@ -133,7 +133,7 @@ function updateMatchedRuleDecoration(line: number | undefined): void {
 onBeforeUnmount(() => {
   themeObserver?.disconnect()
   resizeObserver?.disconnect()
-  if (container.value) delete (container.value as RulesEditorElement).__thueppSetValue
+  if (container.value) delete (container.value as RulesEditorElement).__thueSetValue
   editor?.dispose()
 })
 </script>

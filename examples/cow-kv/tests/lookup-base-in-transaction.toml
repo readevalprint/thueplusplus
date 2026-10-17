@@ -1,5 +1,5 @@
 name = "transaction lookup falls through overlay to base value"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "set a base; begin; get a"
 
 [expect]

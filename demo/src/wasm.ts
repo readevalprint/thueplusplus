@@ -1,5 +1,5 @@
-import { ThuePPWorker } from 'thuepp/worker'
-import browserWorkerURL from 'thuepp/browser-worker?url'
+import { ThueWorker } from 'thuelang/worker'
+import browserWorkerURL from 'thuelang/browser-worker?url'
 
 export interface DemoResourceConfig {
   name: string
@@ -67,8 +67,8 @@ function publicAssetURL(fileName: string): string {
 }
 
 export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunResult> {
-  const client = new ThuePPWorker(browserWorkerURL, {
-    wasmURL: publicAssetURL('thuepp.wasm'),
+  const client = new ThueWorker(browserWorkerURL, {
+    wasmURL: publicAssetURL('thue.wasm'),
     wasmExecURL: publicAssetURL('wasm_exec.js'),
   })
 

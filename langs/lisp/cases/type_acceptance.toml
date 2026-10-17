@@ -1,4 +1,4 @@
-program = "../lisp.tpp"
+program = "../lisp.thue"
 args = ["--max-evals", "120000"]
 
 [[case]]

@@ -8,6 +8,7 @@ on:
 jobs:
   conformance:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.83.0
@@ -25,5 +26,5 @@ jobs:
           # Same stretch the Rust workflow uses. A heavy Lisp case misses
           # the 10s budget on a GitHub-hosted core. Local make test leaves
           # this unset.
-          THUEPP_TIMEOUT_SCALE: "2"
+          THUE_TIMEOUT_SCALE: "2"
         run: make test

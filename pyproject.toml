@@ -1,15 +1,22 @@
 [project]
-name = "thuepp"
-version = "0.5.0"
+name = "thuelang"
+version = "0.1.0"
 description = "Thue++ interpreter"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "google-re2==1.1",
 ]
 
+[project.urls]
+Homepage = "https://thuelang.org"
+Repository = "https://github.com/thuelang/thueplusplus"
+Changelog = "https://github.com/thuelang/thueplusplus/blob/main/CHANGELOG.md"
+
 [project.scripts]
-thuepp = "thuepp.cli:main"
+thue = "thuelang.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -1,9 +1,9 @@
 # Brainfuck
 
-`brainfuck.tpp` is a Brainfuck interpreter written as Thue++ rewrite rules. The task runner passes a `.bf` program as `--input`.
+`brainfuck.thue` is a Brainfuck interpreter written as Thue++ rewrite rules. The task runner passes a `.bf` program as `--input`.
 
 ```bash
-uv run thuepp examples/brainfuck/brainfuck.tpp \
+uv run thue examples/brainfuck/brainfuck.thue \
   --input '+++++++++++++++++++++++++++++++++.' \
   --max-steps 1000 --max-evals 10000 --max-state-bytes 65536
 ```
@@ -22,4 +22,4 @@ Cells are bytes. `+` and `-` wrap modulo 256. The tape grows in both directions;
 
 `[` jumps to the matching `]` when the cell is 0. `]` jumps back when the cell is not 0.
 
-`gen_bf.py` regenerates `brainfuck.tpp`.
+`gen_bf.py` regenerates `brainfuck.thue`.

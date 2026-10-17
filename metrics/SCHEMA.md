@@ -11,7 +11,7 @@ A new `latest.json` is schema 4: `schema_version`, `commit`, `machine`, and `run
 | `demo/src/generated/summary.json` | Compact series generated from every bench file and from `latest.json`. Not committed. |
 | `/metrics/summary.json` | That summary on the published site. |
 
-GitLab Pages copies the summary to `public/metrics/summary.json` after the demo build. The demo build copies it to `demo/dist/metrics/summary.json`. Both URLs are `/metrics/summary.json`.
+Vercel serves the site at https://thuelang.org. The demo build copies the summary to `demo/dist/metrics/summary.json`, and the Vercel build publishes that file at `/metrics/summary.json`. GitLab mirrors the repository and does not publish the site.
 
 ## Who writes a file
 
@@ -76,7 +76,7 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 | Field | Meaning |
 | --- | --- |
-| `program` | Path of the interpreter. Current paths are `langs/forth/forth.tpp`, `langs/lisp/lisp.tpp`, `langs/basic/basic.tpp`, and `examples/brainfuck/brainfuck.tpp` |
+| `program` | Path of the interpreter. Current paths are `langs/forth/forth.thue`, `langs/lisp/lisp.thue`, `langs/basic/basic.thue`, and `examples/brainfuck/brainfuck.thue` |
 | `rule_lines` | Rows from the current Python host `--list-rules`, or `null` |
 | `error` | Present only when `rule_lines` is `null`. The host could not parse that historical file |
 
@@ -104,8 +104,8 @@ Problem and language rows are the native Go measurement. Ranking and acceptance 
 
 | Field | Meaning |
 | --- | --- |
-| `problem`, `solution` | Problem row. `solution` is the file name without `.tpp` |
-| `lang`, `program` | Language row. `program` is the interpreter path |
+| `problem`, `solution` | Problem row. `solution` is the file name without `.thue` |
+| `lang`, `program` | Language row. `program` is a repo-relative interpreter path ending in `.thue`. The bench recorded before the rename stores the same files with a `.tpp` suffix |
 | `status` | `pass` or `fail` |
 | `cost` | Schema 4. UTF-8 bytes. Each regex eval adds `len(state) + len(lhs)`. Each applied step adds `len(rhs)`. `null` on fail. This is the only ranking field |
 | `applied_steps` | Applied rewrites. `null` on fail. Diagnostic |
@@ -131,12 +131,12 @@ The workloads are:
 | `regex` | Anchored patterns and character classes that miss before a short chain hits |
 | `io` | Eight line reads and writes |
 | `guest` | The Forth program, with the fixed input `1 2 + .` |
-| `rewrite` | The earlier single program `metrics/benchmark.tpp`. New runs do not record it |
+| `rewrite` | The earlier single program `metrics/benchmark.thue`. New runs do not record it |
 
 | Field | Meaning |
 | --- | --- |
 | `id` | Lowercase slug |
-| `program` | Repo-relative `.tpp` path |
+| `program` | Repo-relative `.thue` path |
 | `input` | `--input` text. Empty means the program's own initial state |
 | `stdin` | Bytes written to standard input. Empty means no input |
 | `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes` | The limits on the command and the process |
@@ -160,7 +160,7 @@ The workloads are:
     "cpus": 4
   },
   "guests": {
-    "forth": { "program": "langs/forth/forth.tpp", "rule_lines": 86 }
+    "forth": { "program": "langs/forth/forth.thue", "rule_lines": 86 }
   },
   "tasks": null,
   "problems": {
@@ -191,7 +191,7 @@ The workloads are:
     "results": [
       {
         "lang": "forth",
-        "program": "langs/forth/forth.tpp",
+        "program": "langs/forth/forth.thue",
         "status": "pass",
         "cost": 48,
         "applied_steps": 4,
@@ -209,7 +209,7 @@ The workloads are:
     "workloads": [
       {
         "id": "probe-cost",
-        "program": "metrics/workloads/probe-cost.tpp",
+        "program": "metrics/workloads/probe-cost.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,
@@ -245,7 +245,7 @@ The numbers above are the shape of `latest.json`, not a measurement. An archived
 
 ## Summary
 
-`summary.json` is `schema_version` 1. `entries` is every bench file plus `latest.json`, sorted by `timestamp`, then `commit`. `latest.json` uses the HEAD commit: the pull request head, or the merge commit on a checkout of the merged result. Each entry copies `machine` from the bench (`null` when that row did not record one). Programs whose rules could not be listed are omitted. `tasks` is one object per program id: `pass`, `fail`, `unsupported`, and `steps`. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value. Host time and host memory on the chart are that host divided by Go native from the same run. Raw milliseconds, resident memory, and `machine` stay in the tooltip.
+`summary.json` is `schema_version` 1. `entries` is every bench file plus `latest.json`, sorted by `timestamp`, then `commit`. `latest.json` uses the HEAD commit: the pull request head, or the merge commit on a checkout of the merged result. Each entry copies `machine` from the bench (`null` when that row did not record one). Programs whose rules could not be listed are omitted. `tasks` is one object per program id: `pass`, `fail`, `unsupported`, and `steps`. `problems` and `langs` are `null` on a schema 2 bench. On schema 3 they are the native Go rows: `problem`, `solution`, `status`, and the five minimized counters, or `lang`, `program`, `status`, and those same counters. A fail stores null counters. Duration, applied steps, and state peak stay in the bench file. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value. Host time and host memory on the chart are that host divided by Go native from the same run. Raw milliseconds, resident memory, and `machine` stay in the tooltip. The problem grid uses the lowest native Go regex evals. A language's overhead is the geometric mean of its regex evals divided by the direct solution, over every problem that passes directly and in Lisp, Forth, and BASIC.
 
 ## Charts
 

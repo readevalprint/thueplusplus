@@ -1,4 +1,4 @@
-program = "../invalid-old-syntax.tpp"
+program = "../invalid-old-syntax.thue"
 
 [[case]]
 name = "old angle-pipe alias syntax fails after dollar alias migration"

@@ -33,7 +33,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role
 </svg>
 `
 
-writeFileSync(join(brandDir, 'thuepp-mark.svg'), svg)
+writeFileSync(join(brandDir, 'thue-mark.svg'), svg)
 
 const crcTable = new Uint32Array(256)
 for (let n = 0; n < 256; n += 1) {

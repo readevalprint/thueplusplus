@@ -1,6 +1,6 @@
 [
   {
-    "path": "examples/brainfuck/brainfuck.tpp",
+    "path": "examples/brainfuck/brainfuck.thue",
     "resources": [
       {
         "name": "stdin",
@@ -21,7 +21,7 @@
     "errors": []
   },
   {
-    "path": "examples/builtin/builtin.tpp",
+    "path": "examples/builtin/builtin.thue",
     "resources": [
       {
         "name": "stdout",
@@ -32,32 +32,32 @@
     "errors": []
   },
   {
-    "path": "examples/builtin/tests/fixtures/bad-arity.tpp",
+    "path": "examples/builtin/tests/fixtures/bad-arity.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/builtin/tests/fixtures/bad-missing-capture.tpp",
+    "path": "examples/builtin/tests/fixtures/bad-missing-capture.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/builtin/tests/fixtures/bad-template-arg.tpp",
+    "path": "examples/builtin/tests/fixtures/bad-template-arg.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/builtin/tests/fixtures/bad-unknown.tpp",
+    "path": "examples/builtin/tests/fixtures/bad-unknown.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/builtin/tests/fixtures/parser-error-fixture.tpp",
+    "path": "examples/builtin/tests/fixtures/parser-error-fixture.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/counter/counter.tpp",
+    "path": "examples/counter/counter.thue",
     "resources": [
       {
         "name": "stdout",
@@ -68,7 +68,7 @@
     "errors": []
   },
   {
-    "path": "examples/cow-kv/cow-kv.tpp",
+    "path": "examples/cow-kv/cow-kv.thue",
     "resources": [
       {
         "name": "stdout",
@@ -79,7 +79,7 @@
     "errors": []
   },
   {
-    "path": "examples/echo/echo.tpp",
+    "path": "examples/echo/echo.thue",
     "resources": [
       {
         "name": "input",
@@ -95,7 +95,7 @@
     "errors": []
   },
   {
-    "path": "examples/fibonacci/fibonacci.tpp",
+    "path": "examples/fibonacci/fibonacci.thue",
     "resources": [
       {
         "name": "stdout",
@@ -106,7 +106,7 @@
     "errors": []
   },
   {
-    "path": "examples/guess-number/guess-number.tpp",
+    "path": "examples/guess-number/guess-number.thue",
     "resources": [
       {
         "name": "random",
@@ -127,7 +127,7 @@
     "errors": []
   },
   {
-    "path": "examples/hash-data/alias-metadata.tpp",
+    "path": "examples/hash-data/alias-metadata.thue",
     "resources": [
       {
         "name": "stdout",
@@ -138,7 +138,7 @@
     "errors": []
   },
   {
-    "path": "examples/hash-data/hash-data.tpp",
+    "path": "examples/hash-data/hash-data.thue",
     "resources": [
       {
         "name": "stdout",
@@ -149,7 +149,7 @@
     "errors": []
   },
   {
-    "path": "examples/hash-data/source-hash-rule.tpp",
+    "path": "examples/hash-data/source-hash-rule.thue",
     "resources": [
       {
         "name": "stdout",
@@ -160,7 +160,7 @@
     "errors": []
   },
   {
-    "path": "examples/hello/hello.tpp",
+    "path": "examples/hello/hello.thue",
     "resources": [
       {
         "name": "stdout",
@@ -171,37 +171,37 @@
     "errors": []
   },
   {
-    "path": "examples/immutable-rules/generated-rule-inert.tpp",
+    "path": "examples/immutable-rules/generated-rule-inert.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/immutable-rules/generated-substitution-inert.tpp",
+    "path": "examples/immutable-rules/generated-substitution-inert.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/limits/max-evals.tpp",
+    "path": "examples/limits/max-evals.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/limits/max-state-two.tpp",
+    "path": "examples/limits/max-state-two.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/limits/max-state-zero-empty.tpp",
+    "path": "examples/limits/max-state-zero-empty.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/limits/max-state-zero-nonempty.tpp",
+    "path": "examples/limits/max-state-zero-nonempty.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/limits/max-steps.tpp",
+    "path": "examples/limits/max-steps.thue",
     "resources": [
       {
         "name": "stdout",
@@ -212,7 +212,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/alias.tpp",
+    "path": "examples/mid/alias.thue",
     "resources": [
       {
         "name": "stdout",
@@ -223,7 +223,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/braces.tpp",
+    "path": "examples/mid/braces.thue",
     "resources": [
       {
         "name": "stdout",
@@ -234,7 +234,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/builtin.tpp",
+    "path": "examples/mid/builtin.thue",
     "resources": [
       {
         "name": "stdout",
@@ -245,7 +245,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/chain.tpp",
+    "path": "examples/mid/chain.thue",
     "resources": [
       {
         "name": "stdout",
@@ -256,7 +256,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/compose.tpp",
+    "path": "examples/mid/compose.thue",
     "resources": [
       {
         "name": "stdout",
@@ -267,12 +267,12 @@
     "errors": []
   },
   {
-    "path": "examples/mid/empty-mid.tpp",
+    "path": "examples/mid/empty-mid.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/mid/filter.tpp",
+    "path": "examples/mid/filter.thue",
     "resources": [
       {
         "name": "stdout",
@@ -283,12 +283,12 @@
     "errors": []
   },
   {
-    "path": "examples/mid/first-match.tpp",
+    "path": "examples/mid/first-match.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/mid/invalid.tpp",
+    "path": "examples/mid/invalid.thue",
     "resources": [
       {
         "name": "stdout",
@@ -299,7 +299,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/literal.tpp",
+    "path": "examples/mid/literal.thue",
     "resources": [
       {
         "name": "stdout",
@@ -310,19 +310,19 @@
     "errors": []
   },
   {
-    "path": "examples/mid/lookup.tpp",
+    "path": "examples/mid/lookup.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/mid/missing-operator.tpp",
+    "path": "examples/mid/missing-operator.thue",
     "resources": [],
     "errors": [
       "Line 1: ::| requires a terminal operator"
     ]
   },
   {
-    "path": "examples/mid/quote.tpp",
+    "path": "examples/mid/quote.thue",
     "resources": [
       {
         "name": "stdout",
@@ -333,7 +333,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/search.tpp",
+    "path": "examples/mid/search.thue",
     "resources": [
       {
         "name": "stdout",
@@ -344,7 +344,7 @@
     "errors": []
   },
   {
-    "path": "examples/mid/verbatim.tpp",
+    "path": "examples/mid/verbatim.thue",
     "resources": [
       {
         "name": "stdout",
@@ -355,7 +355,7 @@
     "errors": []
   },
   {
-    "path": "examples/multiline/multiline.tpp",
+    "path": "examples/multiline/multiline.thue",
     "resources": [
       {
         "name": "stdout",
@@ -366,7 +366,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/dollar-transitive.tpp",
+    "path": "examples/pattern-alias/dollar-transitive.thue",
     "resources": [
       {
         "name": "stdout",
@@ -377,7 +377,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/escaped-dollar-literal.tpp",
+    "path": "examples/pattern-alias/escaped-dollar-literal.thue",
     "resources": [
       {
         "name": "stdout",
@@ -388,7 +388,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/invalid-duplicate.tpp",
+    "path": "examples/pattern-alias/invalid-duplicate.thue",
     "resources": [
       {
         "name": "stdout",
@@ -399,7 +399,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/invalid-forward-alias.tpp",
+    "path": "examples/pattern-alias/invalid-forward-alias.thue",
     "resources": [
       {
         "name": "stdout",
@@ -410,7 +410,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/invalid-named-capture-p.tpp",
+    "path": "examples/pattern-alias/invalid-named-capture-p.thue",
     "resources": [
       {
         "name": "stdout",
@@ -421,7 +421,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/invalid-named-capture.tpp",
+    "path": "examples/pattern-alias/invalid-named-capture.thue",
     "resources": [
       {
         "name": "stdout",
@@ -432,7 +432,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/invalid-old-syntax.tpp",
+    "path": "examples/pattern-alias/invalid-old-syntax.thue",
     "resources": [
       {
         "name": "stdout",
@@ -443,7 +443,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/invalid-rule-forward.tpp",
+    "path": "examples/pattern-alias/invalid-rule-forward.thue",
     "resources": [
       {
         "name": "stdout",
@@ -454,7 +454,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/rhs-literal.tpp",
+    "path": "examples/pattern-alias/rhs-literal.thue",
     "resources": [
       {
         "name": "stdout",
@@ -465,7 +465,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-alias/token-boundary.tpp",
+    "path": "examples/pattern-alias/token-boundary.thue",
     "resources": [
       {
         "name": "stdout",
@@ -476,7 +476,7 @@
     "errors": []
   },
   {
-    "path": "examples/pattern-order/pattern-order.tpp",
+    "path": "examples/pattern-order/pattern-order.thue",
     "resources": [
       {
         "name": "stdout",
@@ -487,7 +487,7 @@
     "errors": []
   },
   {
-    "path": "examples/pct/pct.tpp",
+    "path": "examples/pct/pct.thue",
     "resources": [
       {
         "name": "input",
@@ -503,7 +503,7 @@
     "errors": []
   },
   {
-    "path": "examples/process/line-read.tpp",
+    "path": "examples/process/line-read.thue",
     "resources": [
       {
         "name": "worker",
@@ -519,7 +519,7 @@
     "errors": []
   },
   {
-    "path": "examples/process/process.tpp",
+    "path": "examples/process/process.thue",
     "resources": [
       {
         "name": "worker",
@@ -535,7 +535,7 @@
     "errors": []
   },
   {
-    "path": "examples/process/sequential-line-read.tpp",
+    "path": "examples/process/sequential-line-read.thue",
     "resources": [
       {
         "name": "worker",
@@ -551,7 +551,7 @@
     "errors": []
   },
   {
-    "path": "examples/process/write-read-line.tpp",
+    "path": "examples/process/write-read-line.thue",
     "resources": [
       {
         "name": "worker",
@@ -567,7 +567,7 @@
     "errors": []
   },
   {
-    "path": "examples/rule-syntax/no-whitespace.tpp",
+    "path": "examples/rule-syntax/no-whitespace.thue",
     "resources": [
       {
         "name": "stdout",
@@ -578,7 +578,7 @@
     "errors": []
   },
   {
-    "path": "examples/simple/simple.tpp",
+    "path": "examples/simple/simple.thue",
     "resources": [
       {
         "name": "stdout",
@@ -589,12 +589,12 @@
     "errors": []
   },
   {
-    "path": "examples/source-parsing/final-separator-empty.tpp",
+    "path": "examples/source-parsing/final-separator-empty.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/source-parsing/final-separator-multiline-state.tpp",
+    "path": "examples/source-parsing/final-separator-multiline-state.thue",
     "resources": [
       {
         "name": "stdout",
@@ -605,7 +605,7 @@
     "errors": []
   },
   {
-    "path": "examples/source-parsing/final-separator-one-row.tpp",
+    "path": "examples/source-parsing/final-separator-one-row.thue",
     "resources": [
       {
         "name": "stdout",
@@ -616,7 +616,7 @@
     "errors": []
   },
   {
-    "path": "examples/source-parsing/hash-state-row.tpp",
+    "path": "examples/source-parsing/hash-state-row.thue",
     "resources": [
       {
         "name": "stdout",
@@ -627,7 +627,7 @@
     "errors": []
   },
   {
-    "path": "examples/source-parsing/include-literal-state.tpp",
+    "path": "examples/source-parsing/include-literal-state.thue",
     "resources": [
       {
         "name": "stdout",
@@ -638,29 +638,29 @@
     "errors": []
   },
   {
-    "path": "examples/source-parsing/invalid-data-operator.tpp",
+    "path": "examples/source-parsing/invalid-data-operator.thue",
     "resources": [],
     "errors": [
       "Line 1: Invalid rule syntax: ^x$ ::% data"
     ]
   },
   {
-    "path": "examples/source-parsing/no-separator-empty-state.tpp",
+    "path": "examples/source-parsing/no-separator-empty-state.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/source-parsing/post-state-alias-as-state.tpp",
+    "path": "examples/source-parsing/post-state-alias-as-state.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/source-parsing/post-state-rule-as-state.tpp",
+    "path": "examples/source-parsing/post-state-rule-as-state.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "examples/state-rewrite/cycle-self.tpp",
+    "path": "examples/state-rewrite/cycle-self.thue",
     "resources": [
       {
         "name": "stdout",
@@ -671,7 +671,7 @@
     "errors": []
   },
   {
-    "path": "examples/state-rewrite/self-update.tpp",
+    "path": "examples/state-rewrite/self-update.thue",
     "resources": [
       {
         "name": "stdout",
@@ -682,7 +682,7 @@
     "errors": []
   },
   {
-    "path": "examples/state-rewrite/toggle-self.tpp",
+    "path": "examples/state-rewrite/toggle-self.thue",
     "resources": [
       {
         "name": "stdout",
@@ -693,7 +693,7 @@
     "errors": []
   },
   {
-    "path": "examples/state-rewrite/update-above.tpp",
+    "path": "examples/state-rewrite/update-above.thue",
     "resources": [
       {
         "name": "stdout",
@@ -704,7 +704,7 @@
     "errors": []
   },
   {
-    "path": "examples/template-delimiters/template-delimiters.tpp",
+    "path": "examples/template-delimiters/template-delimiters.thue",
     "resources": [
       {
         "name": "stdout",
@@ -715,7 +715,7 @@
     "errors": []
   },
   {
-    "path": "examples/tpp-process/counter-service.tpp",
+    "path": "examples/thue-process/counter-service.thue",
     "resources": [
       {
         "name": "stdout",
@@ -731,7 +731,7 @@
     "errors": []
   },
   {
-    "path": "examples/tpp-process/parent-counter.tpp",
+    "path": "examples/thue-process/parent-counter.thue",
     "resources": [
       {
         "name": "svc",
@@ -747,7 +747,7 @@
     "errors": []
   },
   {
-    "path": "examples/trace/rule-failure.tpp",
+    "path": "examples/trace/rule-failure.thue",
     "resources": [
       {
         "name": "stdout",
@@ -758,12 +758,12 @@
     "errors": []
   },
   {
-    "path": "examples/trace/state-limit.tpp",
+    "path": "examples/trace/state-limit.thue",
     "resources": [],
     "errors": []
   },
   {
-    "path": "langs/basic/basic.tpp",
+    "path": "langs/basic/basic.thue",
     "resources": [
       {
         "name": "stdin",
@@ -784,7 +784,7 @@
     "errors": []
   },
   {
-    "path": "langs/forth/forth.tpp",
+    "path": "langs/forth/forth.thue",
     "resources": [
       {
         "name": "stdout",
@@ -805,7 +805,7 @@
     "errors": []
   },
   {
-    "path": "langs/lisp/lisp.tpp",
+    "path": "langs/lisp/lisp.thue",
     "resources": [
       {
         "name": "stdout",

@@ -1,4 +1,4 @@
-program = "../invalid-named-capture-p.tpp"
+program = "../invalid-named-capture-p.thue"
 
 [[case]]
 name = "alias definitions reject python-style named captures"

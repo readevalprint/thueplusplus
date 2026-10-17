@@ -1,6 +1,6 @@
 """Count compiled rule lines of a guest program.
 
-The count is the number of rows from `thuepp --list-rules`. The process is
+The count is the number of rows from `thue --list-rules`. The process is
 wrapped in timeout(1) and the resident-memory cap, and the command line
 carries explicit step, probe, and state limits.
 """
@@ -17,7 +17,7 @@ from example_runner import Interpreter, list_rules  # noqa: E402
 
 
 def count_rule_lines(program: Path) -> tuple[int | None, str | None]:
-    interpreter = Interpreter("python", ("uv", "run", "thuepp"))
+    interpreter = Interpreter("python", ("uv", "run", "thue"))
     try:
         rules, error = list_rules(interpreter, program, False)
     except RuntimeError as exc:

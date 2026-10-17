@@ -8,6 +8,7 @@ import FinishLine from '@/components/marks/FinishLine.vue'
 import ProblemHistory from '@/components/ProblemHistory.vue'
 import RewriteLine from '@/components/RewriteLine.vue'
 import { catalog, paragraphs, previewLine, problemById, sourceUrl, statusVariant } from '@/catalog'
+import { repositoryTree } from '@/hosts'
 
 const route = useRoute()
 const problemId = computed(() => typeof route.params.problemId === 'string' ? route.params.problemId : '')
@@ -24,6 +25,7 @@ const graphic = computed(() => {
       <FinishLine />
     </template>
     <template #actions>
+      <a class="text-ash hover:text-bone w-fit font-mono text-[13px] lowercase underline underline-offset-4" data-test="improve-link" :href="repositoryTree(`problems/${problem.id}`)" rel="noreferrer">Improve this</a>
       <Button as-child>
         <RouterLink to="/problems">All problems</RouterLink>
       </Button>

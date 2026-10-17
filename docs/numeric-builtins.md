@@ -118,15 +118,15 @@ Modulo still rejects non-integral operands, division by zero, and negative opera
 
 The same contract applies to:
 
-- Python numeric builtins in `python/thuepp/interpreter.py`
-- Go numeric builtins in `go/thuepp/interpreter.go`
-- direct builtin examples in `examples/builtin/builtin.tpp`
-- target-language examples such as `langs/lisp/lisp.tpp`
+- Python numeric builtins in `python/thuelang/interpreter.py`
+- Go numeric builtins in `go/thuelang/interpreter.go`
+- direct builtin examples in `examples/builtin/builtin.thue`
+- target-language examples such as `langs/lisp/lisp.thue`
 
-Example `.tpp` programs should either use this same grammar directly or deliberately reject unsupported numeric syntax before an internal sentinel can leak to successful output.
+Example `.thue` programs should either use this same grammar directly or deliberately reject unsupported numeric syntax before an internal sentinel can leak to successful output.
 
 ## Synchronization check
 
-The fenced `regex` block above is the canonical source contract for the repository-level sync check. `tools/check_contract.py` reads that exact block and verifies that the intended numeric regex snippets in Python, Go, `examples/builtin/builtin.tpp`, and `langs/lisp/lisp.tpp` stay aligned.
+The fenced `regex` block above is the canonical source contract for the repository-level sync check. `tools/check_contract.py` reads that exact block and verifies that the intended numeric regex snippets in Python, Go, `examples/builtin/builtin.thue`, and `langs/lisp/lisp.thue` stay aligned.
 
-If this grammar changes, update this document first, then update every interpreter/example snippet in the same MR. The repository conformance check is intentionally lightweight rather than generated: `.tpp` programs need local regex text, but drift must fail loudly in CI instead of silently changing accepted numeric syntax.
+If this grammar changes, update this document first, then update every interpreter/example snippet in the same MR. The repository conformance check is intentionally lightweight rather than generated: `.thue` programs need local regex text, but drift must fail loudly in CI instead of silently changing accepted numeric syntax.

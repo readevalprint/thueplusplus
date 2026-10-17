@@ -272,7 +272,7 @@ func Failure(item Case, run ProgramRun, want string) string {
 }
 
 func runProgram(binary, program string, input *string, stdin string, limits Limits) ProgramRun {
-	dir, err := os.MkdirTemp("", "thuepp-problem-")
+	dir, err := os.MkdirTemp("", "thue-problem-")
 	if err != nil {
 		return ProgramRun{Err: err}
 	}
@@ -425,27 +425,27 @@ func loadSolutions(root, problemID string) ([]Solution, error) {
 		if !entry.IsDir() {
 			return nil, fmt.Errorf("%s/solutions: %s is not a ruleset directory", problemID, entry.Name())
 		}
-		program := filepath.Join(dir, entry.Name(), "solution.tpp")
+		program := filepath.Join(dir, entry.Name(), "solution.thue")
 		if _, err := os.Stat(program); err != nil {
 			continue
 		}
 		names = append(names, entry.Name())
 	}
 	if len(names) == 0 {
-		return nil, fmt.Errorf("%s: no solution.tpp", problemID)
+		return nil, fmt.Errorf("%s: no solution.thue", problemID)
 	}
 	sort.Strings(names)
 	out := make([]Solution, 0, len(names))
 	for _, name := range names {
-		program := filepath.Join(dir, name, "solution.tpp")
+		program := filepath.Join(dir, name, "solution.thue")
 		data, err := os.ReadFile(program)
 		if err != nil {
 			return nil, err
 		}
 		if len(data) == 0 || data[len(data)-1] != '\n' {
-			return nil, fmt.Errorf("%s/solution.tpp must end with a newline", name)
+			return nil, fmt.Errorf("%s/solution.thue must end with a newline", name)
 		}
-		rel := filepath.ToSlash(filepath.Join("problems", problemID, "solutions", name, "solution.tpp"))
+		rel := filepath.ToSlash(filepath.Join("problems", problemID, "solutions", name, "solution.thue"))
 		out = append(out, Solution{Name: name, Path: rel, PathAbs: program})
 	}
 	return out, nil
@@ -479,7 +479,7 @@ func mustWd() string {
 var binaryOnce sync.Mutex
 
 func ensureBinary(root string) (string, error) {
-	path := filepath.Join(root, "build", "go-thuepp")
+	path := filepath.Join(root, "build", "go-thue")
 	binaryOnce.Lock()
 	defer binaryOnce.Unlock()
 	if _, err := os.Stat(path); err == nil {
@@ -501,7 +501,7 @@ func ensureBinary(root string) (string, error) {
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	}
-	cmd := exec.Command("go", "build", "-o", path, "./cmd/thuepp")
+	cmd := exec.Command("go", "build", "-o", path, "./cmd/thue")
 	cmd.Dir = filepath.Join(root, "go")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

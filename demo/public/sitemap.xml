@@ -53,6 +53,14 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://thuelang.org/contribute</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/autoresearch</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://thuelang.org/problems/hello-world</loc>
     <priority>0.6</priority>
   </url>

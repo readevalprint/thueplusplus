@@ -7,7 +7,7 @@ const pages = JSON.parse(readFileSync(new URL('../src/pages.json', import.meta.u
 const catalog = readGeneratedCatalog()
 const problems = problemPages(catalog)
 const rulesets = rulesetPages(catalog)
-const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
+const requiredAssets = ['thue.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thue-mark.svg']
 const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), ...rulesets.map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {
@@ -21,7 +21,7 @@ for (const asset of requiredAssets) {
 const index = readFileSync(join(dist, 'index.html'), 'utf8')
 const fallback = readFileSync(join(dist, '404.html'), 'utf8')
 if (fallback !== index) {
-  throw new Error('demo production dist 404.html must match index.html for unknown direct SPA route fallback on GitLab Pages')
+  throw new Error('demo production dist 404.html must match index.html for unknown direct SPA route fallback')
 }
 if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
   throw new Error('demo production index must use origin-root asset URLs so nested static routes load assets from the site root')
@@ -36,7 +36,7 @@ if (index.includes('modulepreload" crossorigin href="/assets/editor-monaco-')) {
 for (const route of staticRoutes) {
   const routePath = join(dist, route, 'index.html')
   if (!existsSync(routePath)) {
-    throw new Error(`demo production dist is missing ${route}/index.html for direct route loads on GitLab Pages`)
+    throw new Error(`demo production dist is missing ${route}/index.html for direct route loads`)
   }
   const routeIndex = readFileSync(routePath, 'utf8')
   if (!routeIndex.includes('src="/assets/') || !routeIndex.includes('href="/assets/')) {
@@ -72,7 +72,7 @@ for (const problem of problems) {
 const jsFiles = readdirSync(join(dist, 'assets')).filter(name => name.endsWith('.js'))
 for (const fileName of jsFiles) {
   const text = readFileSync(join(dist, 'assets', fileName), 'utf8')
-  if (!text.includes('/thuepp.wasm') && !text.includes('/wasm_exec.js')) {
+  if (!text.includes('/thue.wasm') && !text.includes('/wasm_exec.js')) {
     continue
   }
   if (text.includes('new Worker("data:text/javascript') || text.includes("new Worker('data:text/javascript")) {

@@ -1,4 +1,5 @@
 import raw from './generated/catalog.json'
+import { repositoryBlob, repositoryTree } from './hosts'
 
 export type CatalogStatus = 'pass' | 'fail'
 export type CatalogLangStatus = CatalogStatus | 'missing'
@@ -216,7 +217,11 @@ export function previewLine(text: string): string {
 }
 
 export function sourceUrl(program: string): string {
-  return `https://gitlab.com/thuelang/thueplusplus/-/blob/main/${program}`
+  return repositoryBlob(program)
+}
+
+export function improveUrl(path: string): string {
+  return repositoryTree(path)
 }
 
 export function diagnosticText(point: Pick<CatalogPoint, 'regexEvals' | 'regexMatches' | 'stateBytes' | 'statePeak' | 'ruleCount' | 'ruleChars' | 'steps'>): string {

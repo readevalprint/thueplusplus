@@ -1,8 +1,8 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics
+.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
 
-RUST_BIN := ./rust/target/release/thuepp
+RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
 
 # HOST selects one conformance host: python, go, wasm, rust, or cpp.
@@ -16,23 +16,29 @@ else
 endif
 
 ifneq ($(wildcard cpp/CMakeLists.txt),)
-  FULL_IMPL := $(RUST_IMPL) --impl cpp=./build/cpp/thuepp
+  FULL_IMPL := $(RUST_IMPL) --impl cpp=./build/cpp/thue
   ifeq ($(HOST),)
-    CORE_ARGS += --impl cpp=./build/cpp/thuepp
+    CORE_ARGS += --impl cpp=./build/cpp/thue
   else ifeq ($(HOST),cpp)
-    CORE_ARGS := --tier core --only cpp --impl cpp=./build/cpp/thuepp
+    CORE_ARGS := --tier core --only cpp --impl cpp=./build/cpp/thue
   endif
 else
   FULL_IMPL := $(RUST_IMPL)
 endif
 
-# C++17 host. The binary is build/cpp/thuepp. g++ is required: the default c++
+# C++17 host. The binary is build/cpp/thue. g++ is required: the default c++
 # on some images is clang without libstdc++.
+# THUELANG_RE2_STATIC=1 links the static RE2 archive. The release archives use it.
+ifeq ($(THUELANG_RE2_STATIC),)
+  CPP_RE2_FLAG :=
+else
+  CPP_RE2_FLAG := -DTHUELANG_RE2_STATIC=ON
+endif
 cpp:
 	@command -v cmake >/dev/null 2>&1 || { echo "Error: cmake is required to build the C++ host" >&2; exit 127; }
 	@command -v g++ >/dev/null 2>&1 || { echo "Error: g++ is required to build the C++ host" >&2; exit 127; }
 	@command -v pkg-config >/dev/null 2>&1 || { echo "Error: pkg-config is required to build the C++ host" >&2; exit 127; }
-	cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+	cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ $(CPP_RE2_FLAG)
 	cmake --build build/cpp --parallel
 
 # Per-PR check. Core features on every host, guest programs on native Go.
@@ -47,6 +53,8 @@ test-static:
 	uv run python tools/test_environments.py
 	uv run python tools/test_ci_paths.py
 	uv run python tools/test_tiers.py
+	uv run python tools/test_check_versions.py
+	uv run python tools/test_release_workflow.py
 	uv run python metrics/test_frontmatter.py
 	uv run python metrics/test_accept.py
 	uv run python metrics/check_layout.py
@@ -88,13 +96,13 @@ test-full: test-static
 problems:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the problem suite" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the problem suite" >&2; exit 127; }
-	go build -C go -o ../build/go-thuepp ./cmd/thuepp
+	go build -C go -o ../build/go-thue ./cmd/thue
 	cd problems && go test ./... -count=1 -p 2 -timeout 20m
 
 langs:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the language cases" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the language cases" >&2; exit 127; }
-	go build -C go -o ../build/go-thuepp ./cmd/thuepp
+	go build -C go -o ../build/go-thue ./cmd/thue
 	cd langs && go test ./... -count=1 -p 2 -timeout 20m
 
 metrics:
@@ -105,17 +113,30 @@ metrics:
 	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to record metrics" >&2; exit 127; }
 	uv run python metrics/record.py
 
+# Package dry run. Does not publish. RELEASE_TAG=vX.Y.Z also requires every
+# manifest version to equal X.Y.Z.
+release-check:
+	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required for release-check" >&2; exit 127; }
+	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required for release-check" >&2; exit 127; }
+	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required for release-check" >&2; exit 127; }
+	uv run python tools/check_versions.py
+	rm -rf dist
+	uv build
+	uvx twine check dist/*
+	cd js && npm pack --dry-run
+	cargo publish --dry-run --manifest-path rust/Cargo.toml
+
 wasm:
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to build WASM" >&2; exit 127; }
 	node demo/scripts/build-wasm.mjs
 
 wasm-smoke: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM smoke tests" >&2; exit 127; }
-	GOROOT="$$(go env GOROOT)" THUEPP_WASM="$$(pwd)/build/thuepp.wasm" node go/wasm/smoke_test.js
+	GOROOT="$$(go env GOROOT)" THUE_WASM="$$(pwd)/build/thue.wasm" node go/wasm/smoke_test.js
 
 wasm-adapter-test: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM adapter tests" >&2; exit 127; }
-	GOROOT="$$(go env GOROOT)" THUEPP_WASM="$$(pwd)/build/thuepp.wasm" node go/wasm/adapter_test.js
+	GOROOT="$$(go env GOROOT)" THUE_WASM="$$(pwd)/build/thue.wasm" node go/wasm/adapter_test.js
 
 demo-test:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to run the browser demo tests" >&2; exit 127; }

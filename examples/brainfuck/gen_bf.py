@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate examples/brainfuck/brainfuck.tpp."""
+"""Generate examples/brainfuck/brainfuck.thue."""
 
 from pathlib import Path
 
@@ -228,7 +228,7 @@ def main() -> None:
     text = RULES.replace("__TABLES__", tables).replace("__MOVES__", move_rules())
     # Drop the leading newline so the file starts at the first alias.
     text = text.strip() + "\n"
-    dest = Path(__file__).resolve().parent / "brainfuck.tpp"
+    dest = Path(__file__).resolve().parent / "brainfuck.thue"
     dest.write_text(text, encoding="utf-8")
     print(f"wrote {dest} bytes={dest.stat().st_size} lines={text.count(chr(10))+1}")
 

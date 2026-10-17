@@ -71,10 +71,10 @@ COUNTER_AXES_V3 = (
 )
 COUNTER_AXES = ("cost", *COUNTER_AXES_V3)
 INTERPRETERS = (
-    {"id": "forth", "program": "langs/forth/forth.tpp"},
-    {"id": "lisp", "program": "langs/lisp/lisp.tpp"},
-    {"id": "basic", "program": "langs/basic/basic.tpp"},
-    {"id": "brainfuck", "program": "examples/brainfuck/brainfuck.tpp"},
+    {"id": "forth", "program": "langs/forth/forth.thue"},
+    {"id": "lisp", "program": "langs/lisp/lisp.thue"},
+    {"id": "basic", "program": "langs/basic/basic.thue"},
+    {"id": "brainfuck", "program": "examples/brainfuck/brainfuck.thue"},
 )
 MACHINE_KEYS = frozenset({"os", "release", "arch", "cpu", "cpus"})
 GUEST_KEYS = frozenset({"program", "rule_lines", "error"})
@@ -262,8 +262,8 @@ def load_guests(path: Path) -> list[dict[str, str]]:
         extension = guest["extension"]
         if not isinstance(guest_id, str) or not guest_id or guest_id in seen:
             raise HistoryError(f"{path} guest #{index}: id must be a new non-empty string")
-        if not isinstance(program, str) or not program.endswith(".tpp"):
-            raise HistoryError(f"{path} guest {guest_id}: program must be a .tpp path")
+        if not isinstance(program, str) or not program.endswith(".thue"):
+            raise HistoryError(f"{path} guest {guest_id}: program must be a .thue path")
         if not isinstance(extension, str) or not extension:
             raise HistoryError(f"{path} guest {guest_id}: extension must be a non-empty string")
         seen.add(guest_id)
@@ -623,8 +623,7 @@ def _validate_guest(commit: str, guest_id: str, guest: dict) -> None:
         raise HistoryError(f"{commit}: guest id must be a non-empty string")
     if not isinstance(guest, dict) or not set(guest) <= GUEST_KEYS or "program" not in guest or "rule_lines" not in guest:
         raise HistoryError(f"{commit} {guest_id}: guest keys must be program, rule_lines, and optional error")
-    if not isinstance(guest["program"], str) or not guest["program"].endswith(".tpp"):
-        raise HistoryError(f"{commit} {guest_id}: program must be a .tpp path")
+    _relative_program(guest["program"], f"{commit} {guest_id}")
     rule_lines = guest["rule_lines"]
     error = guest.get("error")
     if rule_lines is None:
@@ -806,10 +805,13 @@ def _validate_hosts(commit: str, workload_id: str, program: str, hosts, version:
 
 
 def _relative_program(program, label: str) -> str:
-    if not isinstance(program, str) or not program.endswith(".tpp"):
-        raise HistoryError(f"{label}: program must be a .tpp path")
-    if program.startswith("/") or ".." in program.split("/"):
+    # Archived benches keep the program path from the commit that measured them.
+    if not isinstance(program, str) or not program or program.startswith("/") or ".." in program.split("/"):
         raise HistoryError(f"{label}: program must be a relative path")
+    name = program.rsplit("/", 1)[-1]
+    stem, dot, suffix = name.rpartition(".")
+    if not stem or dot != "." or not suffix:
+        raise HistoryError(f"{label}: program must name a file")
     return program
 
 

@@ -2,7 +2,7 @@
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import RewriteMotif from '@/components/RewriteMotif.vue'
-import { siteHosts, soonLanguages } from '@/hosts'
+import { mirrorUrl, repositoryUrl, siteHosts, soonLanguages } from '@/hosts'
 
 const ready = siteHosts
 const soon = soonLanguages
@@ -65,8 +65,11 @@ const pillars = [
         <RouterLink to="/metrics" class="text-ash hover:text-bone lowercase">Metrics</RouterLink>
         <RouterLink to="/problems" class="text-ash hover:text-bone lowercase">Problems</RouterLink>
         <RouterLink to="/playground" class="text-ash hover:text-bone lowercase">Playground</RouterLink>
+        <RouterLink to="/contribute" class="text-ash hover:text-bone lowercase">Contribute</RouterLink>
+        <RouterLink to="/autoresearch" class="text-ash hover:text-bone lowercase">Autoresearch prompt</RouterLink>
       </nav>
-      <a class="text-ash hover:text-bone ml-auto lowercase" href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">gitlab</a>
+      <a class="text-ash hover:text-bone lowercase" :href="repositoryUrl" rel="noreferrer">github</a>
+      <a class="text-ash hover:text-bone lowercase" :href="mirrorUrl" rel="noreferrer">gitlab</a>
     </footer>
   </div>
 </template>

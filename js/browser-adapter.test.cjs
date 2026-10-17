@@ -5,7 +5,7 @@ const vm = require('vm');
 
 function loadWorkerClient() {
   const source = fs.readFileSync(path.join(__dirname, 'src', 'worker-client.js'), 'utf8')
-    .replace('export class ThuePPWorker', 'class ThuePPWorker') + '\nmodule.exports = { ThuePPWorker };\n';
+    .replace('export class ThueWorker', 'class ThueWorker') + '\nmodule.exports = { ThueWorker };\n';
   const module = { exports: {} };
   const context = {
     module,
@@ -16,7 +16,7 @@ function loadWorkerClient() {
     globalThis: {},
   };
   vm.runInNewContext(source, context, { filename: 'worker-client.js' });
-  return module.exports.ThuePPWorker;
+  return module.exports.ThueWorker;
 }
 
 function loadBrowserWorkerInternals() {
@@ -69,17 +69,17 @@ async function rejectsWith(promise, pattern) {
 }
 
 (async () => {
-  const ThuePPWorker = loadWorkerClient();
+  const ThueWorker = loadWorkerClient();
 
-  const errorClient = new ThuePPWorker('worker.js', {}, { Worker: MockWorker, requestTimeoutMs: 0 });
+  const errorClient = new ThueWorker('worker.js', {}, { Worker: MockWorker, requestTimeoutMs: 0 });
   MockWorker.last.onerror({ message: 'blocked by CSP' });
   await rejectsWith(errorClient.ready, /blocked by CSP/);
 
-  const runtimeClient = new ThuePPWorker('worker.js', {}, { Worker: MockWorker, requestTimeoutMs: 0 });
+  const runtimeClient = new ThueWorker('worker.js', {}, { Worker: MockWorker, requestTimeoutMs: 0 });
   MockWorker.last.onmessage({ data: { type: 'runtime-error', error: 'go runtime died' } });
   await rejectsWith(runtimeClient.ready, /go runtime died/);
 
-  const timeoutClient = new ThuePPWorker('worker.js', {}, { Worker: MockWorker, requestTimeoutMs: 5 });
+  const timeoutClient = new ThueWorker('worker.js', {}, { Worker: MockWorker, requestTimeoutMs: 5 });
   await rejectsWith(timeoutClient.ready, /request timed out: init/);
   assert.strictEqual(MockWorker.last.messages[0].type, 'init');
 
