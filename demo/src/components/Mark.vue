@@ -28,8 +28,12 @@ bindMascot()
   </svg>
 </template>
 
-<style scoped>
-:deep(.rex-eye) {
+<style>
+/* Unscoped on purpose. A scoped `:global(button:hover) :deep(.rex-eye)`
+   compiles to `button:hover`, and scaleY then flattens the whole figure.
+   The button is outside this component, so the hover selector cannot carry
+   Mark's scope id. Only the header svg has `.rex-mark`. */
+.rex-mark .rex-eye {
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -37,14 +41,14 @@ bindMascot()
 /* Shut scale is 0.14, from motion.ts `eyeH * (1 - 0.86 * blink)`.
    230ms is 70ms close, 30ms hold, 130ms open. */
 @media (prefers-reduced-motion: no-preference) {
-  :global(button:hover) :deep(.rex-eye),
-  :global(button:focus-visible) :deep(.rex-eye) {
+  button:hover .rex-mark .rex-eye,
+  button:focus-visible .rex-mark .rex-eye {
     animation: rex-blink 230ms linear;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :deep(.rex-eye) {
+  .rex-mark .rex-eye {
     animation: none;
   }
 }
