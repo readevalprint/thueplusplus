@@ -78,7 +78,17 @@ Repository runners do not clear these limits. Conformance passes explicit `--max
 
 The CLI flag `--counts PATH` writes those two numbers as JSON: `applied_steps` and `probes` (`probes` is the eval count). The file is written after a run, including a limit stop. `--list-rules` does not write it.
 
-`Run` resets the applied-step count and the trace log. Eval count accumulates for the lifetime of the interpreter.
+The CLI flag `--metrics PATH` writes one JSON object, the same on every host. The keys are fixed and in this order:
+
+```json
+{"applied_steps":0,"regex_evals":0,"regex_matches":0,"state_bytes":0,"state_peak":0,"rule_count":0,"rule_chars":0}
+```
+
+`regex_evals` counts regex searches. A literal-prefix miss does not search and does not count. `regex_matches` counts searches that find a match. `state_bytes` is the sum of the UTF-8 state length at the start of the run and after every applied rewrite. `state_peak` is the maximum of those lengths. `rule_count` and `rule_chars` are the trimmed rule rows and their UTF-8 bytes. An exit rule does not add a state sample and does not count as an applied step. The file is written after a run, including a limit stop. A load failure does not write it. `--list-rules` does not write it. `probes` stays on `--counts` and is not in this object.
+
+The library records the same object on every run and returns it as a value. Go is `Metrics() RunMetrics`. Python is `metrics()` on `RunMetrics`. C++ is `metrics()`. Rust is `metrics()`. The wasm result field is `metrics`. `Run` still returns the exit code.
+
+`Run` resets the applied-step count, the metrics counters, and the trace log. Eval count accumulates for the lifetime of the interpreter. Rule count and rule chars follow the loaded program and are not reset.
 
 Trace is off unless the host enables it. Every host records an event and then returns. A matched rule that fails is one event: a bad `::|` step, a bad read, a bad builtin, a template error, or a replacement rejected by the state limit. An applied rewrite and a `::-` exit are events too. A probe-limit or step-limit stop is not an event; those stops happen before the rule applies.
 
@@ -106,9 +116,9 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 | | Package | CLI |
 | --- | --- | --- |
 | Go | `github.com/thuelang/thueplusplus/go/thue` | `go/cmd/thue` |
-| Python | distribution `thue` | console script `thue` |
-| JS | npm package `thue-lang` | `thue` bin, `node js/src/cli.js` in this repo |
-| Rust | crate `thue-lang` (`rust/`) | `thue` bin, `rust/target/release/thue` in this repo |
+| Python | PyPI `thuelang`, module `thue` | console script `thue` |
+| JS | npm package `thuelang` | `thue` bin, `node js/src/cli.js` in this repo |
+| Rust | crate `thuelang` (`rust/`) | `thue` bin, `rust/target/release/thue` in this repo |
 | C++ | CMake target `thue` (`thue::thue`) | `thue-cli`, output name `thue` |
 
 Go:
@@ -150,7 +160,7 @@ Omit `max_evals`, `max_state_bytes`, or `max_steps` for the defaults. Pass `None
 JavaScript:
 
 ```js
-import { initThue } from 'thue-lang'
+import { initThue } from 'thuelang'
 
 const engine = await initThue()
 const result = await engine.run({
@@ -162,7 +172,7 @@ const result = await engine.run({
 // result.limit is "steps", "evals", "state", or "timeout" when a limit stops the run.
 ```
 
-Browser code imports `initThueWasm` from `thue-lang/browser`. A page that wants a worker imports `ThueWorker` from `thue-lang/worker` and loads `thue-lang/browser-worker` as a classic worker. JSON `null` clears a limit. Omitting the field keeps the default.
+Browser code imports `initThueWasm` from `thuelang/browser`. A page that wants a worker imports `ThueWorker` from `thuelang/worker` and loads `thuelang/browser-worker` as a classic worker. JSON `null` clears a limit. Omitting the field keeps the default.
 
 Rust:
 

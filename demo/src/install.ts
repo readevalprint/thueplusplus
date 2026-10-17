@@ -54,7 +54,7 @@ _ = code`,
     installLead: 'The distribution is not on PyPI. From a checkout of this repository:',
     install: 'uv run thue program.thue',
     moreInstall: [],
-    libraryLead: 'The package name is thue.',
+    libraryLead: 'The PyPI distribution is thuelang. The import is thue.',
     library: `from thue import ThueInterpreter
 
 interp = ThueInterpreter()
@@ -67,10 +67,10 @@ code = interp.run()`,
   wasm: {
     prose: 'The JavaScript host is the Go interpreter compiled to WebAssembly, not a second language written in JavaScript. This site\'s playground loads that module. It rejects process bindings. Runs from the page pass a step limit.',
     installLead: 'The package is not on npm. A checkout depends on the js/ directory:',
-    install: '"thue-lang": "file:../js"',
+    install: '"thuelang": "file:../js"',
     moreInstall: [],
-    libraryLead: 'The npm package name is thue-lang. sourceText is the program.',
-    library: `import { initThue } from 'thue-lang'
+    libraryLead: 'The npm package name is thuelang. sourceText is the program.',
+    library: `import { initThue } from 'thuelang'
 
 const engine = await initThue()
 const result = await engine.run({
@@ -82,11 +82,11 @@ const result = await engine.run({
     api: [hostApi, { href: `${blob}/js/README.md`, label: 'js/README.md' }],
   },
   rust: {
-    prose: 'The Rust host is a native implementation. The crates.io package name is thue-lang. The Rust library name and the command are thue. It uses the regex engine and the same default limits. Process bindings stay opt-in.',
-    installLead: 'The crate is not published, so cargo add thue-lang cannot find it. Add the git dependency:',
-    install: `cargo add thue-lang --git ${repositoryUrl}`,
+    prose: 'The Rust host is a native implementation. The crates.io package name is thuelang. The Rust library name and the command are thue. It uses the regex engine and the same default limits. Process bindings stay opt-in.',
+    installLead: 'The crate is not published, so cargo add thuelang cannot find it. Add the git dependency:',
+    install: `cargo add thuelang --git ${repositoryUrl}`,
     installAfter: 'That records:',
-    installAfterBody: `thue-lang = { git = "${repositoryUrl}", version = "0.5.0" }`,
+    installAfterBody: `thuelang = { git = "${repositoryUrl}", version = "0.5.0" }`,
     moreInstall: [],
     libraryLead: 'Interpreter::new binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. None clears one.',
     library: `use thue::Interpreter;

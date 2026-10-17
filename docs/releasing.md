@@ -7,9 +7,9 @@ The hosts share the API in [host-api.md](host-api.md). The Rust crate and the C+
 | Host | Name | Version field |
 | --- | --- | --- |
 | Go | `github.com/thuelang/thueplusplus/go` | git tag `go/vX.Y.Z` |
-| Python | `thue` | `pyproject.toml` `version` |
-| npm | `thue-lang` | `js/package.json` `version` |
-| Rust | crate `thue-lang` | `rust/Cargo.toml` `version` |
+| Python | PyPI `thuelang` (module `thue`) | `pyproject.toml` `version` |
+| npm | `thuelang` | `js/package.json` `version` |
+| Rust | crate `thuelang` | `rust/Cargo.toml` `version` |
 | C++ | CMake project `thue` | `cpp/CMakeLists.txt` `VERSION` (not published) |
 
 ## Go
@@ -26,7 +26,7 @@ A tag on the repository root does not version this module. The tag must be `go/v
 
 ## Python
 
-The package is `python/thue`. The console script is `thue`.
+The PyPI distribution is `thuelang`. The import module is `python/thue` (`from thue import ...`). The console script is `thue`.
 
 ```bash
 uv lock
@@ -38,7 +38,7 @@ uv publish   # PyPI credentials required; omit until the release is intentional
 
 ## npm
 
-The package is `js/`. It is ESM. The `thue` bin is `js/src/cli.js`. Browser code imports `thue-lang/browser`, `thue-lang/worker`, and `thue-lang/browser-worker`. The wasm binary is not inside the package; `THUE_WASM` or the default `build/thue.wasm` path supplies it.
+The package is `js/`. It is ESM. The `thue` bin is `js/src/cli.js`. Browser code imports `thuelang/browser`, `thuelang/worker`, and `thuelang/browser-worker`. The wasm binary is not inside the package; `THUE_WASM` or the default `build/thue.wasm` path supplies it.
 
 ```bash
 npm --prefix js pack --dry-run
@@ -49,7 +49,7 @@ The playground depends on `file:../js`. A published release replaces that depend
 
 ## Rust
 
-The crate is `rust/`. The Cargo package name is `thue-lang` because `thue` is already on crates.io. The Rust library and the CLI binary are both named `thue`. `Cargo.toml` sets `publish = false`. This repository does not publish it.
+The crate is `rust/`. The Cargo package name is `thuelang`. The Rust library and the CLI binary are both named `thue`. `Cargo.toml` sets `publish = false`. This repository does not publish it.
 
 `license` is `MIT`, matching the npm package. The repository has no `LICENSE` file. Add one before a real publish. Then remove `publish = false` and:
 

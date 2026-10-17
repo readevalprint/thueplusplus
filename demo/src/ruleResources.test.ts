@@ -3,11 +3,18 @@ import catalog from './ruleResources.catalog.json'
 import { analyzeRules } from './ruleResources'
 import { splitProgramSource } from './thueSource'
 
-const exampleSources = import.meta.glob('../../examples/**/*.thue', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>
+const exampleSources = {
+  ...import.meta.glob('../../examples/**/*.thue', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+  ...import.meta.glob('../../langs/**/*.thue', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+} as Record<string, string>
 
 describe('playground rule resources', () => {
   it('rejects a read with only a name and keeps the write resource', () => {

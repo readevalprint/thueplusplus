@@ -33,6 +33,21 @@ def _write_counts(path: str, applied_steps: int, probes: int) -> None:
     target.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
 
 
+def _write_metrics(path: str, metrics) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "applied_steps": metrics.applied_steps,
+        "regex_evals": metrics.regex_evals,
+        "regex_matches": metrics.regex_matches,
+        "state_bytes": metrics.state_bytes,
+        "state_peak": metrics.state_peak,
+        "rule_count": metrics.rule_count,
+        "rule_chars": metrics.rule_chars,
+    }
+    target.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="thue++ interpreter",
@@ -82,6 +97,14 @@ def main() -> None:
         "--counts",
         type=str,
         help='After a run, write {"applied_steps": N, "probes": N} JSON to this path',
+    )
+    parser.add_argument(
+        "--metrics",
+        type=str,
+        help=(
+            "After a run, write applied_steps, regex_evals, regex_matches, "
+            "state_bytes, state_peak, rule_count, and rule_chars JSON to this path"
+        ),
     )
     args, remaining = parser.parse_known_args()
 
@@ -144,6 +167,7 @@ def main() -> None:
     finally:
         coverage_error = None
         counts_error = None
+        metrics_error = None
         try:
             interpreter.write_rule_coverage()
         except OSError as exc:
@@ -153,6 +177,11 @@ def main() -> None:
                 _write_counts(args.counts, interpreter.applied_steps, interpreter.eval_count)
             except OSError as exc:
                 counts_error = exc
+        if ran and args.metrics:
+            try:
+                _write_metrics(args.metrics, interpreter.metrics())
+            except OSError as exc:
+                metrics_error = exc
         interpreter.cleanup()
 
     if args.trace:
@@ -166,5 +195,8 @@ def main() -> None:
         exit_code = 1
     if counts_error is not None:
         print(f"Error: failed to write counts: {counts_error}", file=sys.stderr)
+        exit_code = 1
+    if metrics_error is not None:
+        print(f"Error: failed to write metrics: {metrics_error}", file=sys.stderr)
         exit_code = 1
     sys.exit(exit_code)

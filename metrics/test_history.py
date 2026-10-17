@@ -73,6 +73,43 @@ class HistoryTests(unittest.TestCase):
         text = '{"applied_steps":2,"probes":5}\n'
         self.assertEqual(historylib.parse_counts(text), (2, 5))
 
+    def test_parse_metrics_requires_the_shared_object(self) -> None:
+        text = (
+            '{"applied_steps":1,"regex_evals":2,"regex_matches":1,'
+            '"state_bytes":3,"state_peak":3,"rule_count":1,"rule_chars":4}\n'
+        )
+        parsed = historylib.parse_metrics(text)
+        self.assertEqual(parsed["regex_evals"], 2)
+        self.assertEqual(list(parsed), list(historylib.METRIC_KEYS))
+        with self.assertRaises(historylib.HistoryError):
+            historylib.parse_metrics(text.replace("regex_evals", "probes"))
+
+    def test_schema3_host_metrics_must_match_go(self) -> None:
+        def row(host: str, evals: int) -> dict:
+            built = _host(host)
+            built.update(
+                {
+                    "regex_evals": evals,
+                    "regex_matches": 1,
+                    "state_bytes": 3,
+                    "state_peak": 3,
+                    "rule_count": 1,
+                    "rule_chars": 4,
+                }
+            )
+            return built
+
+        program = "metrics/workloads/probe-cost.thue"
+        with self.assertRaises(historylib.HistoryError) as caught:
+            historylib._validate_hosts(
+                COMMIT_A,
+                "probe-cost",
+                program,
+                {"go": row("go", 2), "rust": row("rust", 9)},
+                3,
+            )
+        self.assertEqual(str(caught.exception), f"rust {program} regex_evals: 9, go 2")
+
     def test_parse_counts_rejects_extra_fields_and_bools(self) -> None:
         with self.assertRaises(historylib.HistoryError):
             historylib.parse_counts('{"applied_steps":1,"probes":1,"extra":0}')
@@ -233,7 +270,7 @@ class HistoryTests(unittest.TestCase):
         ids = [row["id"] for row in suite["workloads"]]
         self.assertEqual(ids, ["probe-cost", "state-rewrite", "regex", "io", "guest"])
         guest = suite["workloads"][-1]
-        self.assertEqual(guest["program"], "examples/forth/forth.thue")
+        self.assertEqual(guest["program"], "langs/forth/forth.thue")
         self.assertEqual(guest["input"], "1 2 + .")
         self.assertGreater(guest["max_steps"], 0)
         self.assertGreater(guest["max_evals"], 0)

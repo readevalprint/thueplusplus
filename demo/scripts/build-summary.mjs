@@ -54,7 +54,7 @@ function summarizeFile(file, ids) {
   if (!match) throw new SummaryError(`${file.rel} is not metrics/YYYY/MM/DD/{sha}/bench.json`)
   const [, year, month, day, sha] = match
   const bench = file.document
-  if (bench?.schema_version !== 2) throw new SummaryError(`${file.rel}: schema_version must be 2`)
+  if (bench?.schema_version !== 2 && bench?.schema_version !== 3) throw new SummaryError(`${file.rel}: schema_version must be 2 or 3`)
   if (bench.commit !== sha) throw new SummaryError(`${file.rel}: commit does not match the directory`)
   const timestamp = requireText(bench.timestamp, `${sha} timestamp`)
   if (timestamp.slice(0, 10) !== `${year}-${month}-${day}`) {
@@ -199,7 +199,7 @@ function utcTimestamp(iso) {
 }
 
 function headMeasurement(latest) {
-  if (latest?.schema_version !== 2) throw new SummaryError('metrics/latest.json schema_version must be 2')
+  if (latest?.schema_version !== 2 && latest?.schema_version !== 3) throw new SummaryError('metrics/latest.json schema_version must be 2 or 3')
   if ('commit' in latest || 'author' in latest || 'timestamp' in latest) {
     throw new SummaryError('metrics/latest.json must not store a commit; the summary uses HEAD')
   }

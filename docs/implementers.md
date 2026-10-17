@@ -4,7 +4,7 @@ Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
-The reference implementations are the Python package `thue` (`uv run thue`), the Go package `github.com/thuelang/thueplusplus/go/thue` (`go/cmd/thue`), the npm package `thue-lang` (`node js/src/cli.js`), the Rust crate `thue-lang` (`rust/target/release/thue`), and the C++ library `thue` (`cpp/`, CLI `build/cpp/thue`). `make test` runs the core suite on all five and the guest programs on native Go. `make test-full` runs every manifest on all five. Both require identical results. The embedder API is [host-api.md](host-api.md).
+The reference implementations are the Python distribution `thuelang` (module `thue`, `uv run thue`), the Go package `github.com/thuelang/thueplusplus/go/thue` (`go/cmd/thue`), the npm package `thuelang` (`node js/src/cli.js`), the Rust crate `thuelang` (`rust/target/release/thue`), and the C++ library `thue` (`cpp/`, CLI `build/cpp/thue`). `make test` runs the core suite on all five and the guest programs on native Go. `make test-full` runs every manifest on all five. Both require identical results. The embedder API is [host-api.md](host-api.md).
 
 Patterns are compiled by the regex engine. The syntax reference is <https://github.com/google/re2/wiki/Syntax>. Do not use backreferences, lookaround, or recursion.
 
@@ -29,6 +29,7 @@ Required flags, including the `--flag=value` form:
 | `--proc:NAME COMMAND` | Bind resource `NAME` to a host process. The next argument is the command. This is the only subprocess opt-in. |
 | `--rule-coverage PATH` | Write TSV `source.thue:line<TAB>count` for applied rules. Required of the Python coverage oracle. |
 | `--counts PATH` | After a run, write `{"applied_steps": N, "probes": N}` JSON. `probes` is the eval count. `--list-rules` does not write it. |
+| `--metrics PATH` | After a run, write the shared counters JSON from [host-api.md](host-api.md). The keys, in order, are `applied_steps`, `regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars`. `--list-rules` does not write it. |
 | `--list-rules` | Write TSV `source.thue:line<TAB>lhs` and do not run. Required of the Python coverage oracle. |
 
 The program path is the first argument. Standard input is the `stdin` resource. Standard output and standard error are captured and compared to `expect`. Exit `0` is quiescence or `::-`. Every resource-limit stop prints `Error: <message>` and uses its own code:

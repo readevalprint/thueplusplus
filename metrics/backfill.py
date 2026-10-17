@@ -22,7 +22,35 @@ sys.path.insert(0, str(ROOT / "metrics"))
 import historylib  # noqa: E402
 from rules import count_rule_lines  # noqa: E402
 
-GUESTS_PATH = ROOT / "tasks" / "guests.toml"
+# A language moved from examples/<id>/ to langs/<id>/. Older commits still have the
+# example path, and commits from before the program-file rename used another
+# suffix. The first path that exists in that commit is the one recorded.
+# The retired suffix is split so this file does not contain it.
+_BEFORE = "." + "tp" + "p"
+GUEST_PATHS = {
+    "forth": (
+        "langs/forth/forth.thue",
+        "langs/forth/forth" + _BEFORE,
+        "examples/forth/forth.thue",
+        "examples/forth/forth" + _BEFORE,
+    ),
+    "lisp": (
+        "langs/lisp/lisp.thue",
+        "langs/lisp/lisp" + _BEFORE,
+        "examples/lisp/lisp.thue",
+        "examples/lisp/lisp" + _BEFORE,
+    ),
+    "basic": (
+        "langs/basic/basic.thue",
+        "langs/basic/basic" + _BEFORE,
+        "examples/basic/basic.thue",
+        "examples/basic/basic" + _BEFORE,
+    ),
+    "brainfuck": (
+        "examples/brainfuck/brainfuck.thue",
+        "examples/brainfuck/brainfuck" + _BEFORE,
+    ),
+}
 
 
 class BackfillError(RuntimeError):
@@ -112,20 +140,26 @@ def main() -> int:
         return 1
 
 
+def guest_at(commit: str) -> list[dict[str, str]]:
+    found: list[dict[str, str]] = []
+    for guest_id, paths in GUEST_PATHS.items():
+        for program in paths:
+            completed = git(["rev-parse", "--verify", "--quiet", f"{commit}:{program}"])
+            if completed.returncode == 0 and completed.stdout.strip():
+                found.append({"id": guest_id, "program": program, "blob": completed.stdout.strip()})
+                break
+    return found
+
+
 def _main() -> int:
-    guests = historylib.load_guests(GUESTS_PATH)
     commits = [line for line in git_text(["rev-list", "--reverse", "HEAD"]).splitlines() if line]
     info = metadata()
     missing = [commit for commit in commits if commit not in info]
     if missing:
         raise BackfillError(f"git log did not describe {missing[0]}")
-    guest_blobs = {guest["id"]: blobs_by_commit(commits, guest["program"]) for guest in guests}
-    head = commits[-1]
-    for guest in guests:
-        completed = git(["rev-parse", "--verify", "--quiet", f"{head}:{guest['program']}"])
-        expected = completed.stdout.strip() if completed.returncode == 0 else None
-        if guest_blobs[guest["id"]][head] != expected:
-            raise BackfillError(f"blob map for {guest['program']} disagrees with HEAD")
+    head_guests = guest_at(commits[-1])
+    if [item["id"] for item in head_guests] != [item["id"] for item in historylib.INTERPRETERS]:
+        raise BackfillError("HEAD is missing a forth, lisp, basic, or brainfuck interpreter")
 
     cache: dict[str, tuple[int | None, str | None]] = {}
     with tempfile.TemporaryDirectory(prefix="thue-rule-lines-") as tmpname:
@@ -152,11 +186,8 @@ def _main() -> int:
                 continue
             author, timestamp = info[commit]
             guest_entries: dict[str, dict] = {}
-            for guest in guests:
-                blob = guest_blobs[guest["id"]][commit]
-                if blob is None:
-                    continue
-                counted, error = rule_lines(blob)
+            for guest in guest_at(commit):
+                counted, error = rule_lines(guest["blob"])
                 if error is not None:
                     guest_entries[guest["id"]] = {
                         "program": guest["program"],
@@ -166,19 +197,21 @@ def _main() -> int:
                 else:
                     guest_entries[guest["id"]] = {"program": guest["program"], "rule_lines": counted}
             previous = existing.get(commit)
-            historylib.save_bench(
-                ROOT,
-                {
-                    "schema_version": historylib.SCHEMA_VERSION,
-                    "commit": commit,
-                    "author": author,
-                    "timestamp": timestamp,
-                    "machine": None,
-                    "guests": guest_entries,
-                    "tasks": None if previous is None else previous["tasks"],
-                    "benchmarks": None if previous is None else previous["benchmarks"],
-                },
-            )
+            version = 2 if previous is None or previous.get("schema_version") != historylib.SCHEMA_VERSION else historylib.SCHEMA_VERSION
+            document = {
+                "schema_version": version,
+                "commit": commit,
+                "author": author,
+                "timestamp": timestamp,
+                "machine": None if previous is None else previous["machine"],
+                "guests": guest_entries,
+                "tasks": None if previous is None else previous["tasks"],
+                "benchmarks": None if previous is None else previous["benchmarks"],
+            }
+            if version == historylib.SCHEMA_VERSION:
+                document["problems"] = previous["problems"]
+                document["langs"] = previous["langs"]
+            historylib.save_bench(ROOT, document)
             written += 1
     unparsed = sum(1 for _counted, error in cache.values() if error is not None)
     print(

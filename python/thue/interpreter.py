@@ -17,6 +17,8 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Optional
 
+from thue.prefix import literal_prefix
+
 
 DEFAULT_MAX_EVALS = 1_000_000
 DEFAULT_MAX_STATE_BYTES = 8 * 1024 * 1024
@@ -203,6 +205,19 @@ class Mid:
     pattern: str
 
 
+@dataclass(frozen=True)
+class RunMetrics:
+    """Counters for one run. The same fields as `thue --metrics`."""
+
+    applied_steps: int
+    regex_evals: int
+    regex_matches: int
+    state_bytes: int
+    state_peak: int
+    rule_count: int
+    rule_chars: int
+
+
 @dataclass
 class Rule:
     """A single thue++ rule."""
@@ -215,6 +230,8 @@ class Rule:
     builtin_name: str = ""
     builtin_args: tuple[str, ...] = ()
     mids: tuple[Mid, ...] = ()
+    source: str = ""
+    literal_prefix: str = ""
 
 
 @dataclass
@@ -265,6 +282,10 @@ class ThueInterpreter:
         self.max_steps = max_steps
         self.eval_count = 0
         self.applied_steps = 0
+        self.regex_evals = 0
+        self.regex_matches = 0
+        self.state_bytes = 0
+        self.state_peak = 0
         self.trace_enabled = trace_enabled
         self.trace: list[dict[str, Any]] = []
         self.debug = debug
@@ -511,7 +532,17 @@ class ThueInterpreter:
             )
 
         return Rule(
-            lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args, tuple(mids)
+            lhs,
+            pattern,
+            op,
+            rhs,
+            line_number,
+            source_path,
+            builtin_name,
+            builtin_args,
+            tuple(mids),
+            line.strip(),
+            literal_prefix(lhs),
         )
 
     def _parse_builtin_call(
@@ -853,9 +884,11 @@ class ThueInterpreter:
                 compiled = re.compile("(?m)" + self._translate_lhs(expanded), options=options)
             except re.error:
                 raise RuntimeError(f"Line {rule.line_number}: Invalid ::| regex '{expanded}'")
+            self.regex_evals += 1
             found = compiled.search(self.state)
             if not found:
                 return groups, False
+            self.regex_matches += 1
             for name in compiled.groupindex:
                 value = found.group(name)
                 if value is not None:
@@ -998,7 +1031,32 @@ class ThueInterpreter:
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
     def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
-        return rule.lhs_pattern.search(self.state)
+        if rule.literal_prefix and rule.literal_prefix not in self.state:
+            return None
+        self.regex_evals += 1
+        found = rule.lhs_pattern.search(self.state)
+        if not found:
+            return None
+        self.regex_matches += 1
+        return found
+
+    def _note_state(self) -> None:
+        size = len(self.state.encode("utf-8"))
+        self.state_bytes += size
+        if size > self.state_peak:
+            self.state_peak = size
+
+    def metrics(self) -> RunMetrics:
+        """Counters recorded by the most recent ``run``. Rule rows are the source."""
+        return RunMetrics(
+            applied_steps=self.applied_steps,
+            regex_evals=self.regex_evals,
+            regex_matches=self.regex_matches,
+            state_bytes=self.state_bytes,
+            state_peak=self.state_peak,
+            rule_count=len(self.rules),
+            rule_chars=sum(len(rule.source.encode("utf-8")) for rule in self.rules),
+        )
 
     def _record_trace(
         self,
@@ -1035,7 +1093,12 @@ class ThueInterpreter:
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""
         self.applied_steps = 0
+        self.regex_evals = 0
+        self.regex_matches = 0
+        self.state_bytes = 0
+        self.state_peak = 0
         self.trace = []
+        self._note_state()
         while True:
             state_rows = []
             offset = 0
@@ -1182,6 +1245,7 @@ class ThueInterpreter:
                 except RuntimeError as exc:
                     self._record_trace(rule, rule_index, match, state_before, replacement or "", error=str(exc))
                     raise
+                self._note_state()
                 self._record_trace(rule, rule_index, match, state_before, replacement or "")
                 self.applied_steps += 1
                 if self.max_steps is not None and self.applied_steps >= self.max_steps:

@@ -52,6 +52,16 @@ export interface TraceEvent {
   error?: string
 }
 
+export interface RunMetrics {
+  applied_steps: number
+  regex_evals: number
+  regex_matches: number
+  state_bytes: number
+  state_peak: number
+  rule_count: number
+  rule_chars: number
+}
+
 export interface RunResult {
   exitCode: number
   stdout: string
@@ -61,6 +71,7 @@ export interface RunResult {
   state?: string
   evalCount?: number
   appliedSteps?: number
+  metrics?: RunMetrics
   trace?: TraceEvent[]
   coverageTSV?: string
   resourceLogs?: ResourceLog[]

@@ -153,17 +153,31 @@ const probeCount = ref(0)
 
 const routeSearchParams = new URLSearchParams(window.location.search)
 
-const exampleModules = import.meta.glob('../../examples/**/*.thue', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>
+const exampleModules = {
+  ...import.meta.glob('../../examples/**/*.thue', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+  ...import.meta.glob('../../langs/**/*.thue', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+} as Record<string, string>
 
-const manifestModules = import.meta.glob('../../examples/**/tests/*.toml', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>
+const manifestModules = {
+  ...import.meta.glob('../../examples/**/tests/*.toml', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+  ...import.meta.glob('../../langs/**/cases/*.toml', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+} as Record<string, string>
 
 const examplesByPublicPath = Object.fromEntries(Object.entries(exampleModules).map(([key, value]) => [toPublicExamplePath(key), value]))
 const repoFiles = Object.fromEntries([
@@ -243,8 +257,8 @@ function toPublicExamplePath(globPath: string): string {
 function normalizeFileParam(value: string | null): string {
   const fallback = './examples/hello/hello.thue'
   if (!value) return fallback
-  if (value.startsWith('./examples/')) return value
-  if (value.startsWith('examples/')) return `./${value}`
+  if (value.startsWith('./examples/') || value.startsWith('./langs/')) return value
+  if (value.startsWith('examples/') || value.startsWith('langs/')) return `./${value}`
   return fallback
 }
 

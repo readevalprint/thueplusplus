@@ -9,7 +9,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(RE2 REQUIRED IMPORTED_TARGET re2)
 find_package(Threads REQUIRED)
 
-add_library(thue src/engine.cpp)
+add_library(thue src/engine.cpp src/prefix.cpp)
 add_library(thue::thue ALIAS thue)
 target_include_directories(thue
   PUBLIC

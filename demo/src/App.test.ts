@@ -195,7 +195,8 @@ describe('Go-WASM demo UI', () => {
     wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('Factorial')
     expect(document.title).toContain('Factorial')
-    expect(wrapper.text()).toContain('3628800')
+    expect(wrapper.text()).toContain('unmeasured')
+    expect(wrapper.text()).toContain('0!')
     expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Description')
     expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Input and output')
 

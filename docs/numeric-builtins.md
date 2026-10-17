@@ -121,12 +121,12 @@ The same contract applies to:
 - Python numeric builtins in `python/thue/interpreter.py`
 - Go numeric builtins in `go/thue/interpreter.go`
 - direct builtin examples in `examples/builtin/builtin.thue`
-- target-language examples such as `examples/lisp/lisp.thue`
+- target-language examples such as `langs/lisp/lisp.thue`
 
 Example `.thue` programs should either use this same grammar directly or deliberately reject unsupported numeric syntax before an internal sentinel can leak to successful output.
 
 ## Synchronization check
 
-The fenced `regex` block above is the canonical source contract for the repository-level sync check. `tools/check_contract.py` reads that exact block and verifies that the intended numeric regex snippets in Python, Go, `examples/builtin/builtin.thue`, and `examples/lisp/lisp.thue` stay aligned.
+The fenced `regex` block above is the canonical source contract for the repository-level sync check. `tools/check_contract.py` reads that exact block and verifies that the intended numeric regex snippets in Python, Go, `examples/builtin/builtin.thue`, and `langs/lisp/lisp.thue` stay aligned.
 
 If this grammar changes, update this document first, then update every interpreter/example snippet in the same MR. The repository conformance check is intentionally lightweight rather than generated: `.thue` programs need local regex text, but drift must fail loudly in CI instead of silently changing accepted numeric syntax.

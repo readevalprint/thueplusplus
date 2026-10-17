@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build tasks metrics
+.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics
 
 RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
@@ -47,6 +47,7 @@ test-static:
 	uv run python tools/test_environments.py
 	uv run python tools/test_ci_paths.py
 	uv run python tools/test_tiers.py
+	uv run python tools/test_pareto.py
 
 test-core:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }
@@ -62,6 +63,7 @@ test-core:
 	  command -v node >/dev/null 2>&1 || { echo "Error: node is required to run repository verification" >&2; exit 127; }; \
 	fi
 	uv run python tools/example_runner.py $(CORE_ARGS)
+	uv run python tools/test_metrics_cli.py
 
 test-guests:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }
@@ -78,16 +80,29 @@ test-full: test-static
 	cargo build --release --manifest-path rust/Cargo.toml
 	uv run python tools/example_runner.py --tier full $(FULL_IMPL)
 
-# Guest tasks. Each task is a Go test. Guests run on the native Go host.
-tasks:
-	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the task suite" >&2; exit 127; }
-	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the task suite" >&2; exit 127; }
+# Problems and languages. Both are native Go tests. Hosts are not part of these counters.
+problems:
+	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the problem suite" >&2; exit 127; }
+	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the problem suite" >&2; exit 127; }
 	go build -C go -o ../build/go-thue ./cmd/thue
-	rm -rf build/tasks/parts
-	mkdir -p build/tasks/parts
+	rm -rf build/problems/parts
+	mkdir -p build/problems/parts
 	status=0; \
-	cd tasks && THUE_TASK_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
-	go run ./cmd/collect -o ../build/tasks/results.json || exit 1; \
+	cd problems && THUE_PROBLEM_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
+	go run ./cmd/collect -o ../build/problems/results.json || exit 1; \
+	if [ $$status -eq 0 ]; then python3 ../tools/pareto.py ../build/problems/results.json || status=$$?; fi; \
+	exit $$status
+
+langs:
+	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the language cases" >&2; exit 127; }
+	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the language cases" >&2; exit 127; }
+	go build -C go -o ../build/go-thue ./cmd/thue
+	rm -rf build/langs/parts
+	mkdir -p build/langs/parts
+	status=0; \
+	cd langs && THUE_LANG_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
+	go run ./cmd/collect -o ../build/langs/results.json || exit 1; \
+	if [ $$status -eq 0 ]; then python3 ../tools/pareto.py ../build/langs/results.json || status=$$?; fi; \
 	exit $$status
 
 metrics:

@@ -55,6 +55,7 @@ async function main() {
     const result = await thue.run(runOptions)
     if (options.ruleCoverage) writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
     if (options.counts && !options.listRules) writeCounts(options.counts, result)
+    if (options.metrics && !options.listRules) writeMetrics(options.metrics, result)
     process.stdout.write(result.stdout || '')
     process.stderr.write(result.stderr || '')
     if (options.trace) process.stderr.write(formatTrace(result.trace))
@@ -91,6 +92,9 @@ function parseArgs(argv) {
     } else if (arg === '--counts' || arg.startsWith('--counts=')) {
       options.counts = takeValue(argv, index, '--counts')
       index += arg.startsWith('--counts=') ? 1 : 2
+    } else if (arg === '--metrics' || arg.startsWith('--metrics=')) {
+      options.metrics = takeValue(argv, index, '--metrics')
+      index += arg.startsWith('--metrics=') ? 1 : 2
     } else if (arg === '--input' || arg.startsWith('--input=')) {
       options.input = takeValue(argv, index, '--input')
       index += arg.startsWith('--input=') ? 1 : 2
@@ -117,6 +121,25 @@ function parseArgs(argv) {
     }
   }
   return options
+}
+
+const METRIC_KEYS = ['applied_steps', 'regex_evals', 'regex_matches', 'state_bytes', 'state_peak', 'rule_count', 'rule_chars']
+
+function writeMetrics(path, result) {
+  const metrics = result.metrics
+  if (!metrics || typeof metrics !== 'object' || Object.keys(metrics).length !== METRIC_KEYS.length) {
+    process.stderr.write('Error: host result missing metrics\n')
+    process.exit(1)
+  }
+  const payload = {}
+  for (const key of METRIC_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(metrics, key) || !Number.isInteger(metrics[key]) || metrics[key] < 0) {
+      process.stderr.write('Error: host result missing metrics\n')
+      process.exit(1)
+    }
+    payload[key] = metrics[key]
+  }
+  writeFileSync(path, `${JSON.stringify(payload)}\n`)
 }
 
 function writeCounts(path, result) {

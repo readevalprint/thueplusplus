@@ -1,5 +1,5 @@
-import { ThueWorker } from 'thue-lang/worker'
-import browserWorkerURL from 'thue-lang/browser-worker?url'
+import { ThueWorker } from 'thuelang/worker'
+import browserWorkerURL from 'thuelang/browser-worker?url'
 
 export interface DemoResourceConfig {
   name: string

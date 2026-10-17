@@ -25,6 +25,18 @@ pub const EXIT_EVAL_LIMIT: i32 = 11;
 pub const EXIT_STATE_LIMIT: i32 = 12;
 pub const EXIT_READ_TIMEOUT: i32 = 13;
 
+/// Counters for one run. The same fields as `thue --metrics`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct RunMetrics {
+    pub applied_steps: i64,
+    pub regex_evals: i64,
+    pub regex_matches: i64,
+    pub state_bytes: i64,
+    pub state_peak: i64,
+    pub rule_count: i64,
+    pub rule_chars: i64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LimitKind {
     Steps,
@@ -214,6 +226,10 @@ pub struct Interpreter {
     pub trace_enabled: bool,
     pub eval_count: i64,
     pub applied_steps: i64,
+    regex_evals: i64,
+    regex_matches: i64,
+    state_bytes: i64,
+    state_peak: i64,
     pub trace: Vec<TraceEvent>,
     rule_coverage_path: Option<String>,
     rule_coverage: BTreeMap<String, i64>,
@@ -244,6 +260,10 @@ impl Interpreter {
             trace_enabled: false,
             eval_count: 0,
             applied_steps: 0,
+            regex_evals: 0,
+            regex_matches: 0,
+            state_bytes: 0,
+            state_peak: 0,
             trace: Vec::new(),
             rule_coverage_path: None,
             rule_coverage: BTreeMap::new(),
@@ -312,9 +332,30 @@ impl Interpreter {
             .collect()
     }
 
+    pub fn metrics(&self) -> RunMetrics {
+        let mut rule_chars = 0i64;
+        for rule in &self.rules {
+            rule_chars += rule.source.len() as i64;
+        }
+        RunMetrics {
+            applied_steps: self.applied_steps,
+            regex_evals: self.regex_evals,
+            regex_matches: self.regex_matches,
+            state_bytes: self.state_bytes,
+            state_peak: self.state_peak,
+            rule_count: self.rules.len() as i64,
+            rule_chars,
+        }
+    }
+
     pub fn run(&mut self) -> Result<i32, RunFailure> {
         self.applied_steps = 0;
+        self.regex_evals = 0;
+        self.regex_matches = 0;
+        self.state_bytes = 0;
+        self.state_peak = 0;
         self.trace.clear();
+        self.note_state();
         loop {
             let mut applied = false;
             let rule_count = self.rules.len();
@@ -329,7 +370,7 @@ impl Interpreter {
                     }
                 }
                 self.eval_count += 1;
-                let found = find_match(&self.rules[rule_index], &self.state);
+                let found = self.find_match(rule_index);
                 let Some(mut found) = found else {
                     continue;
                 };
@@ -534,6 +575,7 @@ impl Interpreter {
                     );
                     return Err(failure);
                 }
+                self.note_state();
                 self.record(
                     rule_index,
                     &source_path,
@@ -570,6 +612,27 @@ impl Interpreter {
                 return Ok(0);
             }
         }
+    }
+
+    fn note_state(&mut self) {
+        let size = self.state.len() as i64;
+        self.state_bytes += size;
+        if size > self.state_peak {
+            self.state_peak = size;
+        }
+    }
+
+    fn find_match(&mut self, rule_index: usize) -> Option<Match> {
+        let prefix = self.rules[rule_index].literal_prefix.clone();
+        if !prefix.is_empty() && !self.state.contains(&prefix) {
+            return None;
+        }
+        self.regex_evals += 1;
+        let found = find_match_rule(&self.rules[rule_index], &self.state);
+        if found.is_some() {
+            self.regex_matches += 1;
+        }
+        found
     }
 
     pub fn write_rule_coverage(&self) -> Result<(), Error> {
@@ -627,9 +690,11 @@ impl Interpreter {
                     }
                 }
             };
+            self.regex_evals += 1;
             let Some(caps) = compiled.captures(&self.state) else {
                 return Ok(None);
             };
+            self.regex_matches += 1;
             for name in compiled.capture_names().flatten() {
                 if let Some(found) = caps.name(name) {
                     out.insert(name.to_string(), found.as_str().to_string());
@@ -821,7 +886,7 @@ fn exceeds(len: usize, max: i64) -> bool {
     }
 }
 
-fn find_match(rule: &Rule, state: &str) -> Option<Match> {
+fn find_match_rule(rule: &Rule, state: &str) -> Option<Match> {
     let caps = rule.pattern.captures(state)?;
     let whole = caps.get(0)?;
     let mut groups = HashMap::new();

@@ -79,7 +79,7 @@ const shortCommit = catalog.commit.slice(0, 12)
     </section>
     <section id="improve" data-test="program-improve" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Improve a program</h2>
-      <p class="leading-7">Autoresearch is a loop a person or an agent can run. Edit one program, run <code>make tasks</code>, and keep the edit when more tasks pass, or when the same tasks pass with fewer rules or fewer steps.</p>
+      <p class="leading-7">Autoresearch is a loop a person or an agent can run. Edit one solution, run <code>make problems</code>, and keep the edit when the tests pass and no other solution in that problem dominates it.</p>
       <ul class="flex flex-col gap-2">
         <li v-for="program in catalog.guests" :key="program.id">
           <a class="underline underline-offset-4" :href="sourceUrl(program.program)" rel="noreferrer">{{ program.name }}</a>

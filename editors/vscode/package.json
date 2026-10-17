@@ -3,7 +3,7 @@
   "displayName": "Thue++",
   "description": "Syntax highlighting, snippets, and a Run command for Thue++ programs (.thue).",
   "version": "0.5.0",
-  "publisher": "readevalprint",
+  "publisher": "thuelang",
   "repository": {
     "type": "git",
     "url": "https://github.com/thuelang/thueplusplus.git",

@@ -9,7 +9,7 @@ from conan.tools.gnu import PkgConfigDeps
 
 
 class ThueConan(ConanFile):
-    name = "thue"
+    name = "thuelang"
     version = "0.5.0"
     package_type = "library"
     settings = "os", "compiler", "build_type", "arch"

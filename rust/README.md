@@ -1,6 +1,6 @@
 # thue
 
-Rust host for Thue++ v0.5. The Cargo package name is `thue-lang` because `thue` is already on crates.io. The Rust library is `thue`. The binary of the same name is a thin CLI over that library.
+Rust host for Thue++ v0.5. The Cargo package name is `thuelang`. The Rust library is `thue`. The binary of the same name is a thin CLI over that library.
 
 This crate is not published. `publish = false` is set in `Cargo.toml`.
 
@@ -40,6 +40,7 @@ thue <program.thue> [flags...]
 | `--proc:NAME COMMAND` | Bind `NAME` to a process. The next argument is the command. |
 | `--rule-coverage PATH` | TSV `source.thue:line<TAB>count`, sorted. |
 | `--counts PATH` | `{"applied_steps":N,"probes":N}` after a run. Not written for `--list-rules`. |
+| `--metrics PATH` | The shared counters JSON. `Interpreter::metrics` returns the same value. Not written for `--list-rules`. |
 | `--list-rules` | TSV `source.thue:line<TAB>lhs`. Does not run. |
 
 `--flag VALUE` and `--flag=value` both work. No arguments exits 2. An unknown argument exits 1 with `Error: Unknown argument: ...`. A non-integer limit exits 2 and prints the Go `strconv.Atoi` message with no `Error:` prefix. A missing program exits 1 with `Error: File not found: <absolute path>`.

@@ -54,6 +54,8 @@ pub struct Rule {
     pub rhs: String,
     pub line_number: usize,
     pub source_path: String,
+    pub source: String,
+    pub literal_prefix: String,
     pub builtin_name: String,
     pub builtin_args: Vec<String>,
 }
@@ -478,13 +480,15 @@ fn parse_rule(line: &str, line_number: usize, source_path: &str) -> Result<Optio
         builtin_args = args;
     }
     Ok(Some(Rule {
-        lhs,
+        lhs: lhs.clone(),
         pattern,
         mids,
         operator,
         rhs,
         line_number,
         source_path: source_path.to_string(),
+        source: line.trim().to_string(),
+        literal_prefix: crate::prefix::literal_prefix(&lhs),
         builtin_name,
         builtin_args,
     }))

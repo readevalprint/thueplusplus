@@ -1,12 +1,12 @@
-# thue-lang
+# thuelang
 
-Thue++ for Node and the browser. The npm package name is `thue-lang` because `thue` is already on npm. The CLI command is `thue`. The engine is the Go WebAssembly build. The CLI is a thin wrapper over `initThue`.
+Thue++ for Node and the browser. The npm package name is `thuelang`. The CLI command is `thue`. The engine is the Go WebAssembly build. The CLI is a thin wrapper over `initThue`.
 
 The shared embedder contract is [../docs/host-api.md](../docs/host-api.md). Release steps are [../docs/releasing.md](../docs/releasing.md). This package is not published yet.
 
 ## Install from a checkout
 
-The playground depends on this directory with `"thue-lang": "file:../js"`. A program that vendors the same tree can do the same. `npm publish` is described in the release doc and is not part of `make test`.
+The playground depends on this directory with `"thuelang": "file:../js"`. A program that vendors the same tree can do the same. `npm publish` is described in the release doc and is not part of `make test`.
 
 Node 22 or newer. Build the wasm module first (`make wasm` from the repository root) or set `THUE_WASM` to a `thue.wasm` built from `go/cmd/thue-wasm`.
 
@@ -21,7 +21,7 @@ The flags match the Go and Python CLIs. `unlimited` clears a limit. Omitting a l
 ## Node
 
 ```js
-import { initThue } from 'thue-lang'
+import { initThue } from 'thuelang'
 
 const engine = await initThue({ wasmPath: process.env.THUE_WASM })
 const result = await engine.run({
@@ -38,13 +38,13 @@ const result = await engine.run({
 ## Browser
 
 ```js
-import { initThueWasm } from 'thue-lang/browser'
+import { initThueWasm } from 'thuelang/browser'
 ```
 
-`thue-lang/browser-worker` is a classic script. Load it with a URL (`import workerURL from 'thue-lang/browser-worker?url'`), then:
+`thuelang/browser-worker` is a classic script. Load it with a URL (`import workerURL from 'thuelang/browser-worker?url'`), then:
 
 ```js
-import { ThueWorker } from 'thue-lang/worker'
+import { ThueWorker } from 'thuelang/worker'
 
 const worker = new ThueWorker(workerURL, {
   wasmURL: '/thue.wasm',

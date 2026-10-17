@@ -1,5 +1,5 @@
 [project]
-name = "thue"
+name = "thuelang"
 version = "0.5.0"
 description = "Thue++ interpreter"
 readme = "README.md"

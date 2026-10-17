@@ -7,7 +7,6 @@ const STATUSES = new Set(['pass', 'fail', 'unsupported'])
 const demoRoot = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 const catalogPath = join(demoRoot, 'src', 'generated', 'catalog.json')
-const resultsPath = join(repoRoot, 'build', 'tasks', 'results.json')
 
 export class CatalogError extends Error {}
 
@@ -168,7 +167,7 @@ function requireCoverage(results, taskIds, guestIds) {
 function buildTask(results, sources, taskId, guestIds) {
   const file = sources.files?.[taskId]
   if (!file) throw new CatalogError(`${taskId}: missing task files`)
-  const described = taskDescription(file.markdown, `${taskId}/task.md`)
+  const described = taskDescription(file.markdown, `${taskId}/problem.md`)
   const resultTask = results.tasks.find(task => task.id === taskId)
   if (described.title !== resultTask.title) {
     throw new CatalogError(`${taskId}: task.md title ${described.title} does not match results title ${resultTask.title}`)
@@ -310,21 +309,19 @@ function escapeXml(value) {
 }
 
 function loadSuite() {
-  const suite = parseToml(readFileSync(join(repoRoot, 'tasks', 'suite.toml'), 'utf8'))
-  const guestFile = parseToml(readFileSync(join(repoRoot, 'tasks', 'guests.toml'), 'utf8'))
-  const taskOrder = requireStringList(suite.order, 'tasks/suite.toml order')
-  const guests = guestFile.guest
-  if (!Array.isArray(guests)) throw new CatalogError('tasks/guests.toml is missing [[guest]]')
+  const suite = parseToml(readFileSync(join(repoRoot, 'problems', 'suite.toml'), 'utf8'))
+  const taskOrder = requireStringList(suite.order, 'problems/suite.toml order')
+  const guests = [{ id: 'direct', program: 'solutions/direct.thue', extension: 'tpp' }]
   return { taskOrder, guests }
 }
 
 function loadSources(taskOrder, guests) {
   const files = {}
   for (const taskId of taskOrder) {
-    const directory = join(repoRoot, 'tasks', taskId)
-    const markdownPath = join(directory, 'task.md')
+    const directory = join(repoRoot, 'problems', taskId)
+    const markdownPath = join(directory, 'problem.md')
     if (!existsSync(markdownPath)) {
-      throw new CatalogError(`${taskId}: missing task.md`)
+      throw new CatalogError(`${taskId}: missing problem.md`)
     }
     const solutions = {}
     for (const guest of guests) {
@@ -385,7 +382,7 @@ export function catalogFromSources(sources) {
 function buildUnmeasuredTask(sources, taskId, guests) {
   const file = sources.files?.[taskId]
   if (!file) throw new CatalogError(`${taskId}: missing task files`)
-  const described = taskDescription(file.markdown, `${taskId}/task.md`)
+  const described = taskDescription(file.markdown, `${taskId}/problem.md`)
   const summary = described.description.split(/\n\n+/)[0].replace(/\s+/g, ' ').trim()
   const path = `/tasks/${taskId}`
   return {
@@ -414,7 +411,7 @@ function unmeasuredGuestResult(file, taskId, guestId) {
     status: 'unmeasured',
     stepCount: null,
     solution: solution.text,
-    solutionPath: `tasks/${taskId}/solutions/${guestId}`,
+    solutionPath: `problems/${taskId}/solutions/${guestId}.thue`,
     reason: null,
     error: null,
   }
@@ -435,14 +432,8 @@ function buildUnmeasuredGuest(guest, tasks) {
 function main() {
   const { taskOrder, guests } = loadSuite()
   const sources = { taskOrder, guests, files: loadSources(taskOrder, guests) }
-  let catalog
-  if (!existsSync(resultsPath)) {
-    console.log('catalog: build/tasks/results.json is missing; statuses are unmeasured')
-    catalog = catalogFromSources(sources)
-  } else {
-    const results = JSON.parse(readFileSync(resultsPath, 'utf8'))
-    catalog = buildCatalog(results, sources)
-  }
+  const catalog = catalogFromSources(sources)
+  console.log('catalog: problems/ sources; statuses are unmeasured')
   mkdirSync(dirname(catalogPath), { recursive: true })
   writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`)
   writeSitemap(catalog)

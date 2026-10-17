@@ -64,12 +64,12 @@ npm --prefix editors/vscode test
 
 Do this yourself, from a machine that holds the publisher token. Do not put the token in the repository or in CI, and do not publish as part of a pull request.
 
-1. Create a publisher at [Visual Studio Marketplace](https://marketplace.visualstudio.com/manage). The `publisher` field in `package.json` is `readevalprint`. Change it if you use another publisher id.
+1. Create a publisher at [Visual Studio Marketplace](https://marketplace.visualstudio.com/manage). The `publisher` field in `package.json` is `thuelang`.
 2. Create an Azure DevOps personal access token with the **Marketplace (manage)** scope.
 3. From `editors/vscode`:
 
 ```bash
-npx @vscode/vsce login readevalprint
+npx @vscode/vsce login thuelang
 npm test
 npm run package
 npx @vscode/vsce publish

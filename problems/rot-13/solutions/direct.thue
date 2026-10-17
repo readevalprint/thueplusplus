@@ -1,0 +1,61 @@
+^r:%(?<h>[0-9A-F][0-9A-F])(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}%{{h}}
+^r:a(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}n
+^r:A(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}N
+^r:b(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}o
+^r:B(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}O
+^r:c(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}p
+^r:C(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}P
+^r:d(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}q
+^r:D(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}Q
+^r:e(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}r
+^r:E(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}R
+^r:f(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}s
+^r:F(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}S
+^r:g(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}t
+^r:G(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}T
+^r:h(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}u
+^r:H(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}U
+^r:i(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}v
+^r:I(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}V
+^r:j(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}w
+^r:J(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}W
+^r:k(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}x
+^r:K(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}X
+^r:l(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}y
+^r:L(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}Y
+^r:m(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}z
+^r:M(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}Z
+^r:n(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}a
+^r:N(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}A
+^r:o(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}b
+^r:O(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}B
+^r:p(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}c
+^r:P(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}C
+^r:q(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}d
+^r:Q(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}D
+^r:r(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}e
+^r:R(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}E
+^r:s(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}f
+^r:S(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}F
+^r:t(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}g
+^r:T(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}G
+^r:u(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}h
+^r:U(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}H
+^r:v(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}i
+^r:V(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}I
+^r:w(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}j
+^r:W(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}J
+^r:x(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}k
+^r:X(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}K
+^r:y(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}l
+^r:Y(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}L
+^r:z(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}m
+^r:Z(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}M
+^r:(?<c>[^A-Za-z%])(?<rest>.*)\|(?<out>.*)$ ::= r:{{rest}}|{{out}}{{c}}
+^r:\|(?<out>.*)\n?$ ::> stdout {{out|pctdec}}\n
+^$ ::- 0
+^in\n?$ ::< 30 stdin
+^(?<s>.*)\n?$ ::= r:{{s}}|
+
+::=
+in

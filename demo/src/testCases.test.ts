@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { flattenTestManifests } from './testCases'
 
 describe('manifest test case helpers', () => {
-  const manifestPath = './examples/lisp/tests/closure_binding_flattening.toml'
+  const manifestPath = './langs/lisp/cases/closure_binding_flattening.toml'
   const manifestText = `program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
@@ -27,8 +27,8 @@ stdout_stripped = "13"
 
     expect(cases).toHaveLength(2)
     expect(cases[0]).toMatchObject({
-      manifestPath: 'examples/lisp/tests/closure_binding_flattening.toml',
-      programPath: 'examples/lisp/lisp.thue',
+      manifestPath: 'langs/lisp/cases/closure_binding_flattening.toml',
+      programPath: 'langs/lisp/lisp.thue',
       caseName: 'zero arg closure call still evaluates body',
       input: '((fn () 7))',
       hasInput: true,
