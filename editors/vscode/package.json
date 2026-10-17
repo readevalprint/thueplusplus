@@ -2,7 +2,7 @@
   "name": "thue",
   "displayName": "Thue++",
   "description": "Syntax highlighting, snippets, and a Run command for Thue++ programs (.thue).",
-  "version": "0.5.0",
+  "version": "0.1.0",
   "publisher": "thuelang",
   "repository": {
     "type": "git",

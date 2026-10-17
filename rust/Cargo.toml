@@ -1,11 +1,12 @@
 [package]
 name = "thuelang"
-version = "0.5.0"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.83"
-publish = false
 description = "Thue++ interpreter: ordered regex rewrites over one state string"
 license = "MIT"
+repository = "https://github.com/thuelang/thueplusplus"
+homepage = "https://thuelang.org"
 readme = "README.md"
 
 [lib]

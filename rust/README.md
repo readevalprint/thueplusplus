@@ -2,7 +2,7 @@
 
 Rust host for Thue++ v0.5. The Cargo package name and the Rust library are `thuelang`. The CLI binary is `thue`.
 
-This crate is not published. `publish = false` is set in `Cargo.toml`.
+Package version `0.1.0` is published to crates.io when a `vX.Y.Z` tag is pushed. See [../docs/releasing.md](../docs/releasing.md).
 
 ## Library
 
@@ -87,12 +87,4 @@ uv run python tools/example_runner.py --impl 'rust=./rust/target/release/thue'
 
 ## Publishing
 
-This repository does not publish the crate. `Cargo.toml` sets `publish = false`. The package version is `0.5.0`, matching the spec. `license` is `MIT`, which matches the npm package. The repository has no `LICENSE` file. Add one before a real publish, then:
-
-```bash
-# remove `publish = false` from rust/Cargo.toml
-cargo publish --dry-run --manifest-path rust/Cargo.toml
-cargo publish --manifest-path rust/Cargo.toml   # crates.io token required
-```
-
-Do not run `cargo publish` from this repository until that is an intentional release.
+`license` is `MIT`. A pushed `vX.Y.Z` tag publishes this crate. `make release-check` runs `cargo publish --dry-run`. Do not run `cargo publish` from a laptop. See [../docs/releasing.md](../docs/releasing.md).

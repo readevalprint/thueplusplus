@@ -122,7 +122,8 @@ vscode:
     - npm --prefix editors/vscode ci
     - npm --prefix editors/vscode test
     - npm --prefix editors/vscode run package
-    - test -s editors/vscode/thue-0.5.0.vsix
+    - version=$(node -p "require('./editors/vscode/package.json').version")
+    - test -s "editors/vscode/thue-${version}.vsix"
   artifacts:
     expire_in: 14 days
     paths:

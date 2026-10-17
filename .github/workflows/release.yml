@@ -1,0 +1,221 @@
+# Publishes only when a vX.Y.Z tag is pushed. Pull requests run make release-check
+# and do not publish. A tag that is not vX.Y.Z, or that disagrees with the
+# manifests, fails in the test job before any registry upload.
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - name: Install the C++ toolchain and RE2
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
+      - name: Dry-run the packages and require the tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: make release-check
+      - name: Test
+        env:
+          THUE_TIMEOUT_SCALE: "2"
+        run: make test
+
+  pypi:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi
+      url: https://pypi.org/project/thuelang/
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - name: Build the distributions
+        run: uv build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  npm:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish thuelang
+        working-directory: js
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  crates:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - name: Publish thuelang
+        run: cargo publish --manifest-path rust/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  binaries:
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            triple: linux-x86_64
+          - os: ubuntu-24.04-arm
+            triple: linux-arm64
+          - os: macos-15
+            triple: darwin-arm64
+          - os: macos-15-intel
+            triple: darwin-x86_64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - name: Install the C++ toolchain
+        run: |
+          set -eu
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config
+          else
+            brew install cmake pkg-config
+          fi
+          command -v g++
+          command -v cmake
+          command -v pkg-config
+      - name: Build thue archives
+        run: sh tools/release_binaries.sh "${{ matrix.triple }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binaries-${{ matrix.triple }}
+          path: build/release/*.tar.gz
+          if-no-files-found: error
+
+  vsix:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Package the extension
+        run: |
+          npm --prefix editors/vscode ci
+          npm --prefix editors/vscode test
+          npm --prefix editors/vscode run package
+          version=$(node -p "require('./editors/vscode/package.json').version")
+          test -s "editors/vscode/thue-${version}.vsix"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vsix
+          path: editors/vscode/*.vsix
+          if-no-files-found: error
+
+  github-release:
+    needs: [pypi, npm, crates, binaries, vsix]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Refuse a tag that does not match the manifests
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 tools/check_versions.py
+      - uses: actions/download-artifact@v7
+        with:
+          path: release-assets
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          mkdir -p assets
+          find release-assets -type f \( -name '*.tar.gz' -o -name '*.vsix' \) -exec cp {} assets/ \;
+          archives=$(find assets -name 'thue-*.tar.gz' | wc -l | tr -d ' ')
+          vsix=$(find assets -name '*.vsix' | wc -l | tr -d ' ')
+          if [ "$archives" -ne 12 ] || [ "$vsix" -ne 1 ]; then
+            echo "expected 12 archives and 1 vsix, found ${archives} archives and ${vsix} vsix" >&2
+            find assets -type f -print >&2
+            exit 1
+          fi
+          (
+            cd assets
+            sha256sum -- *.tar.gz *.vsix | sort -k 2 > SHA256SUMS
+          )
+          version=${GITHUB_REF_NAME#v}
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          Thue++ ${version}.
+
+          ## Packages
+
+          - PyPI: \`pip install thuelang\` — import \`thuelang\`, command \`thue\`
+          - npm: \`npm install thuelang\` — package \`thuelang\`, command \`thue\`
+          - crates.io: \`cargo add thuelang\` — library \`thuelang\`, binary \`thue\`
+
+          ## Binaries
+
+          Each \`thue-${version}-<host>-<os>-<arch>.tar.gz\` contains one \`thue\` executable. Hosts are \`go\`, \`rust\`, and \`cpp\`. Targets are \`linux-x86_64\`, \`linux-arm64\`, \`darwin-x86_64\`, and \`darwin-arm64\`.
+
+          The Go binary is built with \`CGO_ENABLED=0\`. The C++ binary links RE2 and Abseil statically and still links the system C++ runtime. Linux binaries are built on Ubuntu 24.04.
+
+          \`thue-${version}.vsix\` is the editor extension. This workflow does not publish it to the Marketplace or Open VSX.
+
+          \`SHA256SUMS\` covers the archives and the vsix.
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            assets/*

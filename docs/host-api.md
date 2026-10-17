@@ -192,7 +192,7 @@ match interp.run() {
 }
 ```
 
-`None` clears `max_evals`, `max_state_bytes`, or `max_steps`. Leave them at the values from `Interpreter::new` for the defaults. The crate sets `publish = false` and is not on crates.io. See [releasing.md](releasing.md).
+`None` clears `max_evals`, `max_state_bytes`, or `max_steps`. Leave them at the values from `Interpreter::new` for the defaults. The crate publishes to crates.io from a `vX.Y.Z` tag. See [releasing.md](releasing.md).
 
 C++:
 

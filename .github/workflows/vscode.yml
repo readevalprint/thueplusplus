@@ -11,6 +11,7 @@ permissions:
 jobs:
   package:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -21,7 +22,8 @@ jobs:
           npm --prefix editors/vscode ci
           npm --prefix editors/vscode test
           npm --prefix editors/vscode run package
-          test -s editors/vscode/thue-0.5.0.vsix
+          version=$(node -p "require('./editors/vscode/package.json').version")
+          test -s "editors/vscode/thue-${version}.vsix"
       - uses: actions/upload-artifact@v7
         with:
           name: thue-vsix
