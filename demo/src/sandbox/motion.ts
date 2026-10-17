@@ -1,14 +1,16 @@
 /**
- * Poses for the home sandbox scene: idle, the walk to the lever, the pull, and the startle.
- * The belt and these poses are this scene. Replacing the home game replaces this module.
+ * Poses for the home lever game: idle, the walk to the lever, the ready stance,
+ * the yank, the cheer, the nervous glance, and the startle.
+ * The belt and these poses are this scene. The shared Rex drawing is not.
  */
 
 import {
+  CHEER,
   GROUND,
-  PULL,
   REX_HOME,
   REX_LEVER,
   SCALE,
+  YANK,
   leverKnob,
   walkDistance,
 } from './layout'
@@ -25,7 +27,6 @@ import {
   ease,
   finishPose,
   glanceAt,
-  mirrorWalk,
   restLimbs,
   settledSpring,
   stepSpring,
@@ -41,7 +42,8 @@ const distance = walkDistance()
 const WALK = buildWalk(distance)
 export const WALK_DURATION = WALK.duration
 
-export type PoseMode = 'idle' | 'to-lever' | 'pull' | 'from-lever' | 'startled' | 'wander'
+export const POSE_MODES = ['idle', 'to-lever', 'ready', 'yank', 'cheer', 'nervous', 'startled'] as const
+export type PoseMode = (typeof POSE_MODES)[number]
 
 export interface PoseInput {
   mode: PoseMode
@@ -57,9 +59,8 @@ function rest(rootX: number, rootY: number, squash: number): Body {
   return { rootX, rootY, travel: 0, squash, ...restLimbs() }
 }
 
-function sampleWalk(u: number, dir: 1 | -1) {
-  const frame = WALK.at(clamp(u, 0, 1) * WALK.duration)
-  return dir === 1 ? frame : mirrorWalk(frame)
+function sampleWalk(u: number) {
+  return WALK.at(clamp(u, 0, 1) * WALK.duration)
 }
 
 function knobLocal(lever: number): { x: number, y: number } {
@@ -84,50 +85,101 @@ export function framePose(input: PoseInput): Pose {
     target = { x: 0, y: breathe }
     glance = glanceAt(input.clock)
     blink = blinkAmount(input.clock)
-  } else if (input.mode === 'to-lever' || input.mode === 'wander') {
+  } else if (input.mode === 'to-lever') {
     const u = clamp(input.t / WALK_DURATION, 0, 1)
-    const frame = sampleWalk(u, 1)
+    const frame = sampleWalk(u)
     const travel = clamp(frame.x / distance, 0, 1)
-    const rootX = input.mode === 'wander' ? REX_HOME : REX_HOME + frame.x * SCALE
-    body = bodyFromWalk(frame, rootX, GROUND + frame.y * SCALE, travel)
+    body = bodyFromWalk(frame, REX_HOME + frame.x * SCALE, GROUND + frame.y * SCALE, travel)
     target = { x: frame.x, y: frame.y }
     glance = { x: 2.2, y: -0.4 }
-  } else if (input.mode === 'from-lever') {
-    const u = clamp(input.t / WALK_DURATION, 0, 1)
-    const frame = sampleWalk(u, -1)
-    const travel = clamp(frame.x / distance, 0, 1)
-    body = bodyFromWalk(frame, REX_LEVER - frame.x * SCALE, GROUND + frame.y * SCALE, 1 - travel)
-    target = { x: distance - frame.x, y: frame.y }
-    glance = { x: -1.4, y: 0 }
-  } else if (input.mode === 'pull') {
-    const u = clamp(input.t / PULL, 0, 1)
-    const reach = ease('inOut', Math.min(1, u / 0.62))
-    const knob = knobLocal(input.lever)
-    const crouch = Math.sin(u * Math.PI) * 2.4
-    const lean = reach * 2.2
+  } else if (input.mode === 'ready') {
+    const breathe = Math.sin(input.clock * 1.7) * 0.35
+    const knob = knobLocal(0)
+    const reach = 0.42
     body = {
-      rootX: REX_LEVER + lean * SCALE,
-      rootY: GROUND + crouch * SCALE,
+      rootX: REX_LEVER,
+      rootY: GROUND + breathe * SCALE,
       travel: 1,
-      handLX: -HAND_DX - reach * 5,
-      handLY: HAND_DY + reach * 6,
+      handLX: -HAND_DX,
+      handLY: HAND_DY + breathe,
       handRX: HAND_DX + (knob.x - HAND_DX) * reach,
       handRY: HAND_DY + (knob.y - HAND_DY) * reach,
       footLX: -FOOT_DX,
       footLY: -DOT_R,
       footRX: FOOT_DX,
       footRY: -DOT_R,
-      squash: 1 - Math.sin(u * Math.PI) * 0.07,
+      squash: 1 - Math.max(0, breathe) * 0.02,
     }
-    target = { x: distance + lean, y: crouch }
-    glance = { x: 3.4 * reach, y: -1.2 * reach }
-    hat = reach * 6
+    target = { x: distance, y: breathe }
+    glance = { x: 3.2, y: -0.4 }
+    blink = blinkAmount(input.clock)
+  } else if (input.mode === 'yank') {
+    const u = clamp(input.t / YANK, 0, 1)
+    const reach = ease('out', Math.min(1, u / 0.34))
+    const knob = knobLocal(input.lever)
+    const crouch = Math.sin(Math.min(1, u) * Math.PI) * 1.6
+    body = {
+      rootX: REX_LEVER + reach * 4,
+      rootY: GROUND + crouch * SCALE,
+      travel: 1,
+      handLX: -HAND_DX - reach * 4,
+      handLY: HAND_DY + reach * 4,
+      handRX: HAND_DX + (knob.x - HAND_DX) * reach,
+      handRY: HAND_DY + (knob.y - HAND_DY) * reach,
+      footLX: -FOOT_DX,
+      footLY: -DOT_R,
+      footRX: FOOT_DX,
+      footRY: -DOT_R,
+      squash: 1 - Math.sin(Math.min(1, u) * Math.PI) * 0.06,
+    }
+    target = { x: distance + reach, y: crouch }
+    glance = { x: 3.6 * reach, y: -1.1 * reach }
+    hat = reach * 7
+  } else if (input.mode === 'cheer') {
+    const u = clamp(input.t / CHEER, 0, 1)
+    const hop = Math.sin(Math.min(1, u / 0.42) * Math.PI)
+    body = {
+      rootX: REX_LEVER,
+      rootY: GROUND - hop * 14,
+      travel: 1,
+      handLX: -HAND_DX - 8,
+      handLY: HAND_DY - 28 * ease('out', Math.min(1, u / 0.25)),
+      handRX: HAND_DX + 8,
+      handRY: HAND_DY - 28 * ease('out', Math.min(1, u / 0.25)),
+      footLX: -FOOT_DX,
+      footLY: -DOT_R,
+      footRX: FOOT_DX,
+      footRY: -DOT_R,
+      squash: 1 - hop * 0.08,
+    }
+    target = { x: distance, y: -hop * 4 }
+    glance = { x: 1.2, y: -3.4 * hop }
+    hat = -8 * hop
+  } else if (input.mode === 'nervous') {
+    const wobble = Math.sin(input.clock * 14) * 1.4
+    body = {
+      rootX: REX_LEVER + wobble,
+      rootY: GROUND + 2,
+      travel: 1,
+      handLX: -HAND_DX - 3,
+      handLY: HAND_DY - 6,
+      handRX: HAND_DX + 2,
+      handRY: HAND_DY - 4,
+      footLX: -FOOT_DX - 1,
+      footLY: -DOT_R,
+      footRX: FOOT_DX + 1,
+      footRY: -DOT_R,
+      squash: 1.04,
+    }
+    target = { x: distance + wobble / SCALE, y: 1 }
+    glance = { x: 6.4, y: 1.2 }
+    hat = -4
   } else if (input.mode === 'startled') {
     const pop = ease('out', clamp(input.t / 0.18, 0, 1))
     body = {
-      rootX: REX_HOME - pop * 6,
+      rootX: REX_LEVER - pop * 10,
       rootY: GROUND + pop * 3,
-      travel: 0,
+      travel: 1,
       handLX: -HAND_DX - pop * 8,
       handLY: HAND_DY - pop * 16,
       handRX: HAND_DX + pop * 8,
@@ -138,7 +190,7 @@ export function framePose(input: PoseInput): Pose {
       footRY: -DOT_R,
       squash: 1 - pop * 0.06,
     }
-    target = { x: -pop * 2, y: pop }
+    target = { x: distance - pop * 2, y: pop }
     glance = { x: 6 * pop, y: 1.5 * pop }
     hat = -8 * pop
   } else {

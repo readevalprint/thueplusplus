@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EYE_H, actPose, settledSpring, type PoseMode } from './motion'
 import { REX_HOME } from '@/sandbox/layout'
-import { framePose } from '@/sandbox/motion'
+import { POSE_MODES, framePose } from '@/sandbox/motion'
 
 const modes: PoseMode[] = ['cheer', 'facepalm', 'duck', 'offer', 'search', 'read']
 
@@ -29,7 +29,7 @@ describe('page acts', () => {
   })
 
   it('keeps the home poster still for every sandbox mode', () => {
-    for (const mode of ['idle', 'to-lever', 'pull', 'from-lever', 'startled', 'wander'] as const) {
+    for (const mode of POSE_MODES) {
       const pose = framePose({ mode, t: 0.4, clock: 2, lever: 0.8, reduced: true, spring: settledSpring(), dt: 0.016 })
       expect(pose.rootX).toBe(REX_HOME)
       expect(pose.eyeH).toBe(EYE_H)
