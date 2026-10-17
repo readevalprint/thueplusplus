@@ -8,7 +8,7 @@
       .ink { fill: #ffffff; }
     }
   </style>
-  <g class="hat" transform="translate(8 5.93) scale(0.17)">
+  <g class="hat" transform="translate(8 5.93) scale(0.17) translate(2.4 0.8) rotate(-6)">
     <path d="M-16 -13 C-20 -34 20 -34 16 -13 Z"/>
     <ellipse cx="0" cy="-12" rx="24" ry="5.2"/>
   </g>

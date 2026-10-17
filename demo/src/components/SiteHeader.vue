@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref } from 'vue'
 import { RouterLink, isNavigationFailure, useRoute, useRouter } from 'vue-router'
 import { headerLinkCurrent, headerLinks } from '@/nav'
 import { createNavProgress, type NavProgressSnapshot } from '@/navProgress'
+import { reachSide, swapHat } from '@/rex/mascot'
 import Mark from './Mark.vue'
 import ThemeToggle from './ThemeToggle.vue'
 
@@ -79,14 +80,27 @@ onBeforeUnmount(() => {
   removeError()
   stop()
 })
+
+function onSwap(): void {
+  const side = reachSide()
+  swapHat(side === 'left' ? 'left' : 'right')
+}
 </script>
 
 <template>
   <header data-shard data-test="site-header" class="bg-void border-line sticky top-0 z-30 flex h-[52px] items-center gap-2 border-b px-3 font-mono text-[13px] sm:gap-3 sm:px-6">
-    <RouterLink to="/" class="flex shrink-0 items-center gap-2 text-bone" :aria-current="route.path === '/' ? 'page' : undefined">
-      <Mark />
-      <span class="font-display font-semibold tracking-[-0.03em] max-[640px]:sr-only">Thue++</span>
-    </RouterLink>
+    <div class="text-bone flex shrink-0 items-center gap-2">
+      <button
+        type="button"
+        class="-m-1 shrink-0 cursor-pointer border-0 bg-transparent p-1 text-inherit"
+        aria-label="Swap Rex's hat"
+        data-test="swap-hat"
+        @click="onSwap"
+      >
+        <Mark />
+      </button>
+      <RouterLink to="/" class="font-display font-semibold tracking-[-0.03em] max-[640px]:sr-only" :aria-current="route.path === '/' ? 'page' : undefined">Thue++</RouterLink>
+    </div>
     <nav class="ml-1 flex min-w-0 items-center gap-x-2 sm:gap-x-3" data-test="site-nav" aria-label="Site">
       <RouterLink
         v-for="link in headerLinks"

@@ -152,7 +152,8 @@ function source() {
   ]
   assert(JSON.stringify(hits) === JSON.stringify(allowed), `crown path lives in ${hits.join(', ')}`)
   const figure = read('demo/src/components/RexFigure.vue')
-  assert(figure.includes('hat.crown'), 'RexFigure does not use the shared crown')
+  assert(figure.includes('hatShape('), 'RexFigure does not draw the shared wardrobe')
+  assert(figure.includes('shape.tilt'), 'RexFigure does not use the shared hat tilt')
   assert(figure.includes('MARK.eyeW') && figure.includes('MARK.dotR'), 'RexFigure still inlines mark sizes')
   console.log('single-source: geometry.mjs')
 }
