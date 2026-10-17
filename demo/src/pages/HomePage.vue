@@ -43,31 +43,37 @@ const pillars = [
 
 <template>
   <div class="mx-auto w-full max-w-[1320px]">
-    <section data-test="page-hero" class="grid items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,680px)_minmax(0,1fr)] lg:px-14 lg:py-24">
-      <div>
-        <h1 data-shard class="font-display text-[15px] font-semibold tracking-[-0.03em]">Thue++</h1>
-        <p data-shard class="font-display mt-4 text-[clamp(40px,6vw,72px)] leading-[1.02] font-extrabold tracking-[-0.05em]">The safest, smallest, sandbox.</p>
-        <p data-shard data-test="landing-languages" class="text-ash mt-6 max-w-[640px] font-sans text-[18px] leading-[1.5]">
-          Available in
-          <template v-for="(language, index) in ready" :key="language.id">
-            <RouterLink :to="language.href" class="text-bone hover:text-signal transition-colors duration-150">{{ language.landing }}</RouterLink><span v-if="index < ready.length - 1">, </span>
-          </template>, and soon {{ soon.join(', ') }}
-        </p>
-        <div class="mt-8 flex flex-wrap gap-2">
-          <Button as-child size="lg" data-shard>
-            <RouterLink to="/playground">playground</RouterLink>
-          </Button>
-          <Button as-child size="lg" variant="outline" data-shard>
-            <RouterLink to="/docs/guides">guides</RouterLink>
-          </Button>
+    <div class="page-screen page-screen-bare">
+      <section data-test="page-hero" class="page-hero px-4 sm:px-6 lg:px-14">
+        <div class="grid min-h-0 flex-1 items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)]">
+          <div class="min-w-0">
+            <h1 data-shard class="font-display text-[15px] font-semibold tracking-[-0.03em]">Thue++</h1>
+            <p data-shard class="font-display mt-3 text-[clamp(32px,5vw,64px)] leading-[1.02] font-extrabold tracking-[-0.05em]">The safest, smallest, sandbox.</p>
+            <p data-shard data-test="page-summary" class="text-ash mt-3 max-w-[640px] font-sans text-[15px] leading-snug">A program is rules and one string. The host decides what it can touch.</p>
+            <p data-shard data-test="landing-languages" class="text-ash mt-3 max-w-[640px] font-sans text-[15px] leading-snug">
+              Available in
+              <template v-for="(language, index) in ready" :key="language.id">
+                <RouterLink :to="language.href" class="text-bone hover:text-signal transition-colors duration-150">{{ language.landing }}</RouterLink><span v-if="index < ready.length - 1">, </span>
+              </template>, and soon {{ soon.join(', ') }}
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <Button as-child size="lg" data-shard>
+                <RouterLink to="/playground">playground</RouterLink>
+              </Button>
+              <Button as-child size="lg" variant="outline" data-shard>
+                <RouterLink to="/docs/guides">guides</RouterLink>
+              </Button>
+            </div>
+          </div>
+          <div data-test="page-hero-graphic" class="mx-auto h-full min-h-0 w-full max-w-[640px]">
+            <SandboxScene @break="onBreak" @rebuilt="onRebuilt" />
+          </div>
         </div>
-      </div>
-      <div data-test="page-hero-graphic" class="mx-auto w-full max-w-[640px]">
-        <SandboxScene @break="onBreak" @rebuilt="onRebuilt" />
-      </div>
-    </section>
+      </section>
+      <div class="page-screen-gap" aria-hidden="true" />
+    </div>
 
-    <section data-test="page-details" class="border-line grid max-w-none border-t md:grid-cols-3">
+    <section data-test="page-details" class="page-details border-line grid max-w-none border-t md:grid-cols-3">
       <article v-for="(pillar, index) in pillars" :id="pillar.title" :key="pillar.title" data-shard class="border-line px-4 py-8 sm:px-6 lg:px-8" :class="index < pillars.length - 1 ? 'md:border-r' : undefined">
         <h2 class="font-display text-[18px] font-semibold tracking-[-0.03em]">{{ pillar.title }}</h2>
         <p class="text-ash mt-3 text-[15px] leading-[1.55]">{{ pillar.body }}</p>

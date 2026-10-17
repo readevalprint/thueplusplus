@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Package } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 import DocPage from '@/components/DocPage.vue'
+import InstallScene from '@/components/scenes/InstallScene.vue'
 import { shippedHosts, siteHosts, soonLanguages } from '@/hosts'
 import { installNotes } from '@/install'
 import { pages } from '@/site'
@@ -15,9 +15,9 @@ const quickStart = `uv run thue program.thue`
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <Package />
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <InstallScene />
     </template>
     <section id="quick-start" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Quick start</h2>

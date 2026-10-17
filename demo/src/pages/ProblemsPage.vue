@@ -2,14 +2,12 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import DocPage from '@/components/DocPage.vue'
-import FinishLine from '@/components/marks/FinishLine.vue'
 import MetricChart from '@/components/MetricChart.vue'
 import ProblemHistory from '@/components/ProblemHistory.vue'
-import RewriteLine from '@/components/RewriteLine.vue'
+import LeaderboardScene from '@/components/scenes/LeaderboardScene.vue'
 import { catalog, sourceUrl, statusVariant, versionStatus, type CatalogProblem } from '@/catalog'
 import { type SeriesPoint } from '@/metrics'
 import { pages } from '@/site'
@@ -36,17 +34,9 @@ function solvedText(id: string, point: SeriesPoint): string {
 </script>
 
 <template>
-  <DocPage wide :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <FinishLine />
-    </template>
-    <template #actions>
-      <Button as-child>
-        <RouterLink to="/projects">See the programs</RouterLink>
-      </Button>
-    </template>
-    <template #graphic>
-      <RewriteLine before="stdin" after="stdout" />
+  <DocPage wide :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <LeaderboardScene />
     </template>
     <section id="rulesets" data-test="program-leaderboard" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Rulesets</h2>

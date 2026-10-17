@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { Regex } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
-import { Button } from '@/components/ui/button'
 import DocPage from '@/components/DocPage.vue'
+import LanguageScene from '@/components/scenes/LanguageScene.vue'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { pages } from '@/site'
 
@@ -25,14 +24,9 @@ const limits = [
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <Regex />
-    </template>
-    <template #actions>
-      <Button as-child>
-        <RouterLink to="/playground">Run a rule</RouterLink>
-      </Button>
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <LanguageScene />
     </template>
     <section id="operators" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Operators</h2>

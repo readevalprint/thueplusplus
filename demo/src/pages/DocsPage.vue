@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import DocPage from '@/components/DocPage.vue'
-import RewriteArrow from '@/components/marks/RewriteArrow.vue'
+import DocsScene from '@/components/scenes/DocsScene.vue'
 import { pages } from '@/site'
 
 const page = pages.docs
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <RewriteArrow />
+  <DocPage :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <DocsScene />
     </template>
     <section id="language" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Language</h2>

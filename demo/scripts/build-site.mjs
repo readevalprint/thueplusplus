@@ -66,6 +66,17 @@ export function problemPages(catalog) {
   }))
 }
 
+export function solutionPages(catalog) {
+  return catalog.problems.flatMap(problem => problem.versions.map(version => ({
+    path: `/problems/${problem.id}/${version.id}`,
+    title: `${problem.title} / ${version.name}`,
+    documentTitle: `Thue++ ${problem.title} — ${version.name}`,
+    description: `${version.name} for ${problem.title}.`,
+    canonical: `${SITE}/problems/${problem.id}/${version.id}`,
+    robots: 'index,follow',
+  })))
+}
+
 export function rulesetPages(catalog) {
   return catalog.rulesets.map(ruleset => ({
     path: `/rulesets/${ruleset.id}`,
@@ -154,9 +165,51 @@ function readMetric(text, path) {
 }
 
 function summaryOf(description) {
-  const paragraph = description.split(/\n\n+/)[0]?.replace(/\s+/g, ' ').trim() ?? ''
-  if (!paragraph) throw new CatalogError('problem description is empty')
-  return paragraph.length > 180 ? `${paragraph.slice(0, 179)}…` : paragraph
+  const paragraph = description.split(/\n\n+/)[0]?.replace(/`([^`]+)`/g, '$1').replace(/\s+/g, ' ').trim() ?? ''
+  const sentence = paragraph.split(/(?<=[.!])\s/)[0] ?? ''
+  if (!sentence) throw new CatalogError('problem summary is empty')
+  return sentence.length > 180 ? `${sentence.slice(0, 179)}…` : sentence
+}
+
+function splitDescription(body, path) {
+  const paragraphs = body.split(/\n\n+/).map(item => item.trim()).filter(item => item.length > 0)
+  const credit = paragraphs.find(item => item.startsWith('Adapted from the Rosetta Code'))
+  if (!credit) throw new CatalogError(`${path}: missing Rosetta Code credit`)
+  const prose = paragraphs.filter(item => item !== credit)
+  if (prose.length === 0) throw new CatalogError(`${path}: description is empty`)
+  return { description: prose.join('\n\n'), credit }
+}
+
+function readCases(problem) {
+  const dir = join(repoRoot, 'problems', problem, 'cases')
+  if (!existsSync(dir)) throw new CatalogError(`${problem} has no cases`)
+  const files = readdirSync(dir).filter(name => name.endsWith('.json')).sort()
+  if (files.length === 0) throw new CatalogError(`${problem} has no cases`)
+  return files.map(name => {
+    const data = JSON.parse(readFileSync(join(dir, name), 'utf8'))
+    if (typeof data.name !== 'string' || data.name.length === 0) throw new CatalogError(`${problem}/${name} needs a name`)
+    if (!data.reads || typeof data.reads !== 'object' || Array.isArray(data.reads)) throw new CatalogError(`${problem}/${name} needs reads`)
+    if (!data.writes || typeof data.writes !== 'object' || Array.isArray(data.writes)) throw new CatalogError(`${problem}/${name} needs writes`)
+    return { name: data.name, reads: data.reads, writes: data.writes }
+  })
+}
+
+function readResources(problem) {
+  const path = `problems/${problem}/problem_test.go`
+  const text = readFileSync(join(repoRoot, path), 'utf8')
+  const at = text.indexOf('Resources:')
+  if (at < 0) throw new CatalogError(`${path} has no Resources`)
+  const casesAt = text.indexOf('Cases:', at)
+  const slice = text.slice(at, casesAt > at ? casesAt : at + 600)
+  const resources = []
+  for (const match of slice.matchAll(/\{Name:\s*"([A-Za-z_][A-Za-z0-9_]*)"([^}]*)\}/g)) {
+    const read = /Read:\s*true/.test(match[2])
+    const write = /Write:\s*true/.test(match[2])
+    if (!read && !write) throw new CatalogError(`${path} resource ${match[1]} needs Read or Write`)
+    resources.push({ name: match[1], read, write })
+  }
+  if (resources.length === 0) throw new CatalogError(`${path} has no resources`)
+  return resources
 }
 
 function costsAt(sha, rulesets, problems) {
@@ -234,6 +287,7 @@ function build() {
     const readmePath = `problems/${problem}/README.md`
     const readme = parseFrontmatter(readFileSync(join(repoRoot, readmePath), 'utf8'), readmePath)
     if (!readme.fields.title) throw new CatalogError(`${readmePath}: frontmatter needs title`)
+    const prose = splitDescription(readme.body.trim(), readmePath)
     const directory = join(repoRoot, 'problems', problem, 'solutions')
     for (const entry of readdirSync(directory, { withFileTypes: true }).filter(item => item.isDirectory())) {
       present.add(entry.name)
@@ -247,7 +301,8 @@ function build() {
         ruleset: entry.name,
         name: entry.name === 'direct' ? 'direct' : langName(entry.name),
         title: readme.fields.title,
-        description: readme.body.trim(),
+        description: prose.description,
+        credit: prose.credit,
         entry: meta.fields.entry,
         author: meta.fields.author,
         notes: meta.body.trim(),
@@ -308,6 +363,9 @@ function build() {
       title: first.title,
       description: first.description,
       summary: summaryOf(first.description),
+      credit: first.credit,
+      resources: readResources(id),
+      cases: readCases(id),
       path: `/problems/${id}`,
       canonical: `${SITE}/problems/${id}`,
       documentTitle: `Thue++ ${first.title}`,
@@ -399,6 +457,7 @@ function writeSitemap(catalog) {
   const pages = JSON.parse(readFileSync(join(repoRoot, 'demo/src/pages.json'), 'utf8'))
   const entries = Object.values(pages).map(page => ({ loc: page.canonical, priority: page.path === '/' ? '1.0' : '0.7' }))
   for (const problem of catalog.problems) entries.push({ loc: problem.canonical, priority: '0.6' })
+  for (const page of solutionPages(catalog)) entries.push({ loc: page.canonical, priority: '0.5' })
   for (const ruleset of catalog.rulesets) entries.push({ loc: `${SITE}/rulesets/${ruleset.id}`, priority: '0.5' })
   writeFileSync(join(repoRoot, 'demo/public/sitemap.xml'), sitemapXml(entries))
 }

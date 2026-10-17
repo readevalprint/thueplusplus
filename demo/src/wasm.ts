@@ -57,9 +57,17 @@ export interface DemoRunResult {
   state?: string
   evalCount?: number
   appliedSteps?: number
+  metrics?: { cost: number }
   resourceLogs?: DemoResourceLog[]
   trace?: DemoTraceEvent[]
   limit?: string
+}
+
+function metricCost(metrics: object): number {
+  if (!('cost' in metrics) || typeof metrics.cost !== 'number' || !Number.isFinite(metrics.cost)) {
+    throw new Error('run metrics have no cost')
+  }
+  return metrics.cost
 }
 
 function publicAssetURL(fileName: string): string {
@@ -85,9 +93,11 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
       trace: request.trace,
       maxSteps: request.maxSteps,
     })
+    const { metrics, ...rest } = result
     return {
-      ...result,
+      ...rest,
       coverage: result.coverageTSV ?? '',
+      metrics: metrics ? { cost: metricCost(metrics) } : undefined,
     }
   } finally {
     client.terminate()

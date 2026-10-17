@@ -9,7 +9,7 @@ declare module 'vue-router' {
     robots?: string
   }
 }
-import { problemRouteMeta, rulesetRouteMeta } from './catalog'
+import { problemRouteMeta, rulesetRouteMeta, solutionRouteMeta } from './catalog'
 import ContributePage from './pages/ContributePage.vue'
 import DocsPage from './pages/DocsPage.vue'
 import EmbedPage from './pages/EmbedPage.vue'
@@ -22,9 +22,11 @@ import PlaygroundPage from './PlaygroundPage.vue'
 import PromptPage from './pages/PromptPage.vue'
 import ProjectsPage from './pages/ProjectsPage.vue'
 import ReferencePage from './pages/ReferencePage.vue'
+import NotFoundPage from './pages/NotFoundPage.vue'
 import ProblemPage from './pages/ProblemPage.vue'
 import ProblemsPage from './pages/ProblemsPage.vue'
 import RulesetPage from './pages/RulesetPage.vue'
+import SolutionPage from './pages/SolutionPage.vue'
 import { pages } from './site'
 
 const shell = [
@@ -79,12 +81,26 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/problems/:problemId/:solutionId',
+    component: SolutionPage,
+  },
+  {
     path: '/problems/:problemId',
     component: ProblemPage,
   },
   {
     path: '/rulesets/:rulesetId',
     component: RulesetPage,
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: NotFoundPage,
+    meta: {
+      documentTitle: 'Page not found — Thue++',
+      description: 'That address is not on this site.',
+      canonical: 'https://thuelang.org/',
+      robots: 'noindex,follow',
+    },
   },
 ]
 
@@ -100,7 +116,14 @@ export function createAppRouter() {
   })
   router.beforeEach((to) => {
     const problemId = to.params.problemId
-    if (typeof problemId === 'string') {
+    const solutionId = to.params.solutionId
+    if (typeof problemId === 'string' && typeof solutionId === 'string') {
+      const meta = solutionRouteMeta(problemId, solutionId)
+      to.meta.documentTitle = meta.documentTitle
+      to.meta.description = meta.description
+      to.meta.canonical = meta.canonical
+      to.meta.robots = meta.robots
+    } else if (typeof problemId === 'string') {
       const meta = problemRouteMeta(problemId)
       to.meta.documentTitle = meta.documentTitle
       to.meta.description = meta.description

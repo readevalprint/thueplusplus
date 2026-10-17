@@ -1,14 +1,15 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { problemPages, readGeneratedCatalog, rulesetPages } from './build-site.mjs'
+import { problemPages, readGeneratedCatalog, rulesetPages, solutionPages } from './build-site.mjs'
 
 const dist = new URL('../dist/', import.meta.url).pathname
 const pages = JSON.parse(readFileSync(new URL('../src/pages.json', import.meta.url), 'utf8'))
 const catalog = readGeneratedCatalog()
 const problems = problemPages(catalog)
+const solutions = solutionPages(catalog)
 const rulesets = rulesetPages(catalog)
 const requiredAssets = ['thue.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thue-mark.svg']
-const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), ...rulesets.map(page => page.path.replace(/^\//, '')), 'embed']
+const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), ...solutions.map(page => page.path.replace(/^\//, '')), ...rulesets.map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {
   const path = join(dist, asset)
@@ -52,7 +53,7 @@ const embedIndex = readFileSync(join(dist, 'embed', 'index.html'), 'utf8')
 if (!embedIndex.includes('noindex,follow')) {
   throw new Error('embed route index must be noindexed')
 }
-for (const page of [...Object.values(pages), ...problems]) {
+for (const page of [...Object.values(pages), ...problems, ...solutions]) {
   if (page.path === '/') continue
   const routeIndex = readFileSync(join(dist, page.path.replace(/^\//, ''), 'index.html'), 'utf8')
   if (!routeIndex.includes(page.title) || !routeIndex.includes(page.canonical)) {
@@ -66,6 +67,11 @@ const sitemap = readFileSync(join(dist, 'sitemap.xml'), 'utf8')
 for (const problem of problems) {
   if (!sitemap.includes(problem.canonical)) {
     throw new Error(`sitemap.xml is missing ${problem.canonical}`)
+  }
+}
+for (const solution of solutions) {
+  if (!sitemap.includes(solution.canonical)) {
+    throw new Error(`sitemap.xml is missing ${solution.canonical}`)
   }
 }
 

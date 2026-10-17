@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import DocPage from '@/components/DocPage.vue'
 import MetricChart from '@/components/MetricChart.vue'
-import RewriteArrow from '@/components/marks/RewriteArrow.vue'
+import MetricsScene from '@/components/scenes/MetricsScene.vue'
 import { commitUrl, history, hostChart, hostLine, type HostMeasure } from '@/metrics'
 import { pages } from '@/site'
 
@@ -23,12 +23,9 @@ memoryIndex.value = select('memoryBytes')
 </script>
 
 <template>
-  <DocPage :kicker="page.kicker" :title="page.title">
-    <template #mark>
-      <RewriteArrow />
-    </template>
-    <template #graphic>
-      <p data-test="page-hero-graphic" class="font-mono text-sm">program ::= output</p>
+  <DocPage wide :kicker="page.kicker" :title="page.title" :summary="page.description">
+    <template #scene>
+      <MetricsScene />
     </template>
     <p class="leading-7">Host time and host memory come from the solution runs. Each line is that host divided by Go native, so it reads python 1.2× go. Milliseconds stay off the readout.</p>
     <section id="host-time" data-test="benchmarks" class="flex flex-col gap-3">

@@ -70,14 +70,29 @@ export interface CatalogRuleset {
   aggregateSeries: AggregatePoint[]
 }
 
+export interface ProblemCase {
+  name: string
+  reads: Record<string, string[]>
+  writes: Record<string, string>
+}
+
+export interface ProblemResource {
+  name: string
+  read: boolean
+  write: boolean
+}
+
 export interface CatalogProblem {
   id: string
   title: string
   description: string
   summary: string
+  credit: string
   path: string
   canonical: string
   documentTitle: string
+  resources: ProblemResource[]
+  cases: ProblemCase[]
   versions: CatalogVersion[]
 }
 
@@ -146,6 +161,11 @@ function assertCatalog(value: unknown): Catalog {
   if (!Array.isArray(catalog.problems) || catalog.problems.length === 0) throw new Error('catalog has no problems')
   if (!Array.isArray(catalog.commits) || catalog.commits.length === 0) throw new Error('catalog has no commits')
   if (!Array.isArray(catalog.rulesets) || catalog.rulesets.length === 0) throw new Error('catalog has no rulesets')
+  for (const problem of catalog.problems) {
+    if (!Array.isArray(problem.cases) || problem.cases.length === 0) throw new Error(`${problem.id} has no cases`)
+    if (!Array.isArray(problem.resources) || problem.resources.length === 0) throw new Error(`${problem.id} has no resources`)
+    if (!problem.credit.startsWith('Adapted from the Rosetta Code')) throw new Error(`${problem.id} credit is missing`)
+  }
   return catalog
 }
 
@@ -153,6 +173,72 @@ export const catalog = assertCatalog(raw)
 
 export function problemById(id: string): CatalogProblem | undefined {
   return catalog.problems.find(problem => problem.id === id)
+}
+
+export function solutionPath(problemId: string, solutionId: string): string {
+  return `/problems/${problemId}/${solutionId}`
+}
+
+export function versionById(problem: CatalogProblem, solutionId: string): CatalogVersion | undefined {
+  return problem.versions.find(version => version.id === solutionId)
+}
+
+export function bestVersion(problem: CatalogProblem): CatalogVersion {
+  const ranked = problem.versions.filter(version => {
+    const cost = version.solutions[0]?.cost
+    return version.solutions[0]?.status === 'pass' && cost != null
+  })
+  if (ranked.length === 0) throw new Error(`${problem.id} has no passing solution`)
+  return ranked.reduce((best, version) => {
+    const cost = version.solutions[0].cost
+    const bestCost = best.solutions[0].cost
+    if (cost == null || bestCost == null) throw new Error(`${problem.id} cost is missing`)
+    if (cost < bestCost) return version
+    if (cost === bestCost && version.id === 'direct') return version
+    return best
+  })
+}
+
+export function authorName(author: string): string {
+  const match = author.match(/^(.*?)\s*</)
+  const name = match ? match[1].trim() : author.trim()
+  if (name.length === 0) throw new Error(`author is empty: ${author}`)
+  return name
+}
+
+export function measuredOn(commit: string): string {
+  const row = catalog.commits.find(item => item.commit === commit)
+  if (!row) throw new Error(`commit ${commit} is not in the catalog`)
+  return row.timestamp.slice(0, 10)
+}
+
+export function caseInput(item: ProblemCase): Record<string, string> {
+  const reads: Record<string, string> = {}
+  for (const [name, lines] of Object.entries(item.reads)) {
+    if (!Array.isArray(lines) || lines.some(line => typeof line !== 'string')) throw new Error(`case ${item.name} reads are not lines`)
+    reads[name] = lines.length === 0 ? '' : `${lines.join('\n')}\n`
+  }
+  return reads
+}
+
+export function solutionRouteMeta(problemId: string, solutionId: string): RouteMetaFields {
+  const problem = problemById(problemId)
+  const version = problem ? versionById(problem, solutionId) : undefined
+  if (!problem || !version) {
+    return {
+      documentTitle: 'Solution not found — Thue++',
+      description: `No solution ${problemId}/${solutionId} is in the suite.`,
+      canonical: 'https://thuelang.org/problems',
+      robots: 'noindex,follow',
+    }
+  }
+  const solution = version.solutions[0]
+  return {
+    documentTitle: `Thue++ ${problem.title} — ${version.name}`,
+    description: `${version.name} for ${problem.title}, cost ${solution?.cost ?? 'unknown'}.`,
+    canonical: `https://thuelang.org${solutionPath(problem.id, version.id)}`,
+    robots: 'index,follow',
+  }
 }
 
 export function rulesetById(id: string): CatalogRuleset | undefined {
