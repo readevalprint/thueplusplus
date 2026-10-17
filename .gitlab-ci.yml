@@ -177,19 +177,19 @@ pages:
         public/install/cpp/index.html \
         public/projects/index.html \
         public/metrics/index.html \
-        public/tasks/index.html \
+        public/problems/index.html \
         public/embed/index.html \
         public/thuepp.wasm \
         public/metrics/summary.json
       do
         test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
       done
-      find public/tasks -mindepth 2 -name index.html > /tmp/task-pages.txt
-      test -s /tmp/task-pages.txt || { echo "GitLab Pages site is missing task deep links" >&2; exit 1; }
+      find public/problems -mindepth 2 -name index.html > /tmp/problem-pages.txt
+      test -s /tmp/problem-pages.txt || { echo "GitLab Pages site is missing problem deep links" >&2; exit 1; }
       while IFS= read -r path; do
         test -s "$path" || { echo "GitLab Pages site is missing $path" >&2; exit 1; }
-        grep -q 'https://thuelang.org/tasks/' "$path" || { echo "$path is missing its canonical task URL" >&2; exit 1; }
-      done < /tmp/task-pages.txt
+        grep -q 'https://thuelang.org/problems/' "$path" || { echo "$path is missing its canonical problem URL" >&2; exit 1; }
+      done < /tmp/problem-pages.txt
       cmp -s public/404.html public/index.html || { echo "public/404.html must match public/index.html" >&2; exit 1; }
       grep -q 'https://thuelang.org/playground' public/playground/index.html
       grep -q 'src="/assets/' public/playground/index.html

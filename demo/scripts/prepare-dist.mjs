@@ -1,11 +1,11 @@
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { readGeneratedCatalog, taskPages } from './build-catalog.mjs'
+import { problemPages, readGeneratedCatalog } from './build-catalog.mjs'
 
 const dist = new URL('../dist/', import.meta.url).pathname
 const demoRoot = new URL('../', import.meta.url).pathname
 const pages = JSON.parse(readFileSync(new URL('../src/pages.json', import.meta.url), 'utf8'))
-const tasks = taskPages(readGeneratedCatalog())
+const problems = problemPages(readGeneratedCatalog())
 const embed = {
   dir: 'embed',
   documentTitle: 'Thue++ Embed',
@@ -24,7 +24,7 @@ const homeHtml = renderPage(built, pages.home)
 writeFileSync(rootIndexPath, homeHtml)
 copyFileSync(rootIndexPath, join(dist, '404.html'))
 
-for (const page of [...Object.values(pages), ...tasks]) {
+for (const page of [...Object.values(pages), ...problems]) {
   if (page.path === '/') continue
   const dir = page.path.replace(/^\//, '')
   mkdirSync(join(dist, dir), { recursive: true })
@@ -34,7 +34,7 @@ for (const page of [...Object.values(pages), ...tasks]) {
 mkdirSync(join(dist, embed.dir), { recursive: true })
 writeFileSync(join(dist, embed.dir, 'index.html'), renderPage(built, embed))
 
-const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...tasks.map(page => page.path.replace(/^\//, '')), embed.dir]
+const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), embed.dir]
 console.log(`demo production dist static routes ok: ${staticRoutes.join(', ')}`)
 
 function copySummary() {

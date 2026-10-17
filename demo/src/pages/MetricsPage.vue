@@ -5,7 +5,6 @@ import DocPage from '@/components/DocPage.vue'
 import GuestRewrite from '@/components/GuestRewrite.vue'
 import MetricChart from '@/components/MetricChart.vue'
 import RewriteArrow from '@/components/marks/RewriteArrow.vue'
-import { catalog } from '@/catalog'
 import {
   benchmarkCommits,
   changeAxis,
@@ -35,8 +34,8 @@ import { pages } from '@/site'
 
 const route = useRoute()
 const page = pages.metrics
-const names = new Map(catalog.guests.map(guest => [guest.id, guest.name]))
-const order = catalog.guests.map(guest => guest.id)
+const names = new Map<string, string>()
+const order = ['lisp', 'forth', 'brainfuck', 'basic']
 const rules = guestRuleChart(history, order, names)
 const tasks = taskCommits(history, order, names)
 const passSeries = seriesFromField(tasks, 'passCount')

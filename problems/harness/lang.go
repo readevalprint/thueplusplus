@@ -28,6 +28,7 @@ type LangRow struct {
 	Environment  string  `json:"environment"`
 	Status       string  `json:"status"`
 	Steps        *int    `json:"steps"`
+	Cost         *int    `json:"cost"`
 	RegexEvals   *int    `json:"regex_evals"`
 	RegexMatches *int    `json:"regex_matches"`
 	StateBytes   *int    `json:"state_bytes"`
@@ -208,6 +209,7 @@ func executeLang(id, extension string) (LangPart, error) {
 		} else {
 			row.Status = "pass"
 			row.Steps = &run.Metrics.Steps
+			row.Cost = &run.Metrics.Cost
 			row.RegexEvals = &run.Metrics.RegexEvals
 			row.RegexMatches = &run.Metrics.RegexMatches
 			row.StateBytes = &run.Metrics.StateBytes

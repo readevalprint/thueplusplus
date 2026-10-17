@@ -209,6 +209,7 @@ class Mid:
 class RunMetrics:
     """Counters for one run. The same fields as `thuepp --metrics`."""
 
+    cost: int
     applied_steps: int
     regex_evals: int
     regex_matches: int
@@ -282,6 +283,7 @@ class ThueppInterpreter:
         self.max_steps = max_steps
         self.eval_count = 0
         self.applied_steps = 0
+        self.cost = 0
         self.regex_evals = 0
         self.regex_matches = 0
         self.state_bytes = 0
@@ -884,7 +886,7 @@ class ThueppInterpreter:
                 compiled = re.compile("(?m)" + self._translate_lhs(expanded), options=options)
             except re.error:
                 raise RuntimeError(f"Line {rule.line_number}: Invalid ::| regex '{expanded}'")
-            self.regex_evals += 1
+            self._charge_eval(rule.lhs)
             found = compiled.search(self.state)
             if not found:
                 return groups, False
@@ -1033,7 +1035,7 @@ class ThueppInterpreter:
     def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
         if rule.literal_prefix and rule.literal_prefix not in self.state:
             return None
-        self.regex_evals += 1
+        self._charge_eval(rule.lhs)
         found = rule.lhs_pattern.search(self.state)
         if not found:
             return None
@@ -1046,9 +1048,21 @@ class ThueppInterpreter:
         if size > self.state_peak:
             self.state_peak = size
 
+    def _utf8_len(self, text: str) -> int:
+        return len(text.encode("utf-8"))
+
+    def _charge_eval(self, lhs: str) -> None:
+        self.regex_evals += 1
+        self.cost += self._utf8_len(self.state) + self._utf8_len(lhs)
+
+    def _charge_step(self, rhs: str) -> None:
+        self.applied_steps += 1
+        self.cost += self._utf8_len(rhs)
+
     def metrics(self) -> RunMetrics:
         """Counters recorded by the most recent ``run``. Rule rows are the source."""
         return RunMetrics(
+            cost=self.cost,
             applied_steps=self.applied_steps,
             regex_evals=self.regex_evals,
             regex_matches=self.regex_matches,
@@ -1093,6 +1107,7 @@ class ThueppInterpreter:
     def run(self) -> int:
         """Execute rules against mutable state until quiescence."""
         self.applied_steps = 0
+        self.cost = 0
         self.regex_evals = 0
         self.regex_matches = 0
         self.state_bytes = 0
@@ -1247,7 +1262,7 @@ class ThueppInterpreter:
                     raise
                 self._note_state()
                 self._record_trace(rule, rule_index, match, state_before, replacement or "")
-                self.applied_steps += 1
+                self._charge_step(rule.rhs)
                 if self.max_steps is not None and self.applied_steps >= self.max_steps:
                     raise LimitExceeded(
                         "steps",

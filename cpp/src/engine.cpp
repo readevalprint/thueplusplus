@@ -1977,6 +1977,7 @@ struct Interpreter::Impl {
   std::optional<int64_t> max_steps = kDefaultMaxSteps;
   int64_t eval_count = 0;
   int64_t applied_steps = 0;
+  int64_t cost = 0;
   int64_t regex_evals = 0;
   int64_t regex_matches = 0;
   int64_t state_bytes = 0;
@@ -2135,7 +2136,7 @@ struct Interpreter::Impl {
         throw std::runtime_error("Line " + std::to_string(rule.line_number) + ": Invalid ::| regex '" + expanded + "'");
       }
       Match mid_match;
-      ++regex_evals;
+      ChargeEval(state, rule.lhs);
       if (!FindMatch(*compiled, state, mid_match)) {
         return {out, false};
       }
@@ -2147,8 +2148,19 @@ struct Interpreter::Impl {
     return {out, true};
   }
 
+  void ChargeEval(const std::string& state_text, const std::string& lhs) {
+    ++regex_evals;
+    cost += static_cast<int64_t>(state_text.size() + lhs.size());
+  }
+
+  void ChargeStep(const std::string& rhs) {
+    ++applied_steps;
+    cost += static_cast<int64_t>(rhs.size());
+  }
+
   int Run() {
     applied_steps = 0;
+    cost = 0;
     regex_evals = 0;
     regex_matches = 0;
     state_bytes = 0;
@@ -2167,7 +2179,7 @@ struct Interpreter::Impl {
         if (!rule.literal_prefix.empty() && state.find(rule.literal_prefix) == std::string::npos) {
           continue;
         }
-        ++regex_evals;
+        ChargeEval(state, rule.lhs);
         Match match;
         if (!FindMatch(*rule.pattern, state, match)) {
           continue;
@@ -2301,7 +2313,7 @@ struct Interpreter::Impl {
         }
         NoteState();
         RecordTrace(rule, static_cast<int>(rule_index), match, state_before, repl, std::nullopt, "");
-        ++applied_steps;
+        ChargeStep(rule.rhs);
         if (max_steps && applied_steps >= *max_steps) {
           throw LimitError(LimitKind::kSteps, kExitStepLimit,
                             "Applied step limit (" + std::to_string(*max_steps) + ") exceeded");
@@ -2368,6 +2380,7 @@ int64_t Interpreter::eval_count() const { return impl_->eval_count; }
 int64_t Interpreter::applied_steps() const { return impl_->applied_steps; }
 RunMetrics Interpreter::metrics() const {
   RunMetrics metrics;
+  metrics.cost = impl_->cost;
   metrics.applied_steps = impl_->applied_steps;
   metrics.regex_evals = impl_->regex_evals;
   metrics.regex_matches = impl_->regex_matches;

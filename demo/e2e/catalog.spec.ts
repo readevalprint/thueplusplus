@@ -32,9 +32,9 @@ test('sandboxed projects are cards and metrics keep the charts', async ({ page }
   await expect(page.getByTestId('rule-readout')).not.toContainText('09744fa8d495')
 })
 
-test('tasks index shows the finish line', async ({ page }) => {
+test('problems index shows the finish line', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
-  await page.goto('/tasks')
+  await page.goto('/problems')
   await expect(page.getByRole('heading', { level: 1, name: 'Programs with a finish line.' })).toBeVisible()
   await expect(page.getByTestId('page-hero-graphic')).toBeVisible()
   await expect(page.getByTestId('task-index')).toBeVisible()

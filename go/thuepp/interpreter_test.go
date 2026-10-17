@@ -607,4 +607,12 @@ func TestRunMetrics(t *testing.T) {
 	if interp.Rules[2].literalPrefix == "miss" && interp.RegexEvals != 2 {
 		t.Fatalf("literal miss still searched: evals=%d", interp.RegexEvals)
 	}
+	// "a" against "a" is 2, the rewrite "b" is 1, "b" against "b" is 2.
+	// The exit rule and the literal miss add nothing.
+	if interp.Cost != 5 {
+		t.Fatalf("cost=%d", interp.Cost)
+	}
+	if got := interp.Metrics().Cost; got != 5 {
+		t.Fatalf("metrics cost=%d", got)
+	}
 }

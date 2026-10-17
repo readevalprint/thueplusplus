@@ -37,6 +37,7 @@ def _write_metrics(path: str, metrics) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     payload = {
+        "cost": metrics.cost,
         "applied_steps": metrics.applied_steps,
         "regex_evals": metrics.regex_evals,
         "regex_matches": metrics.regex_matches,
@@ -102,7 +103,7 @@ def main() -> None:
         "--metrics",
         type=str,
         help=(
-            "After a run, write applied_steps, regex_evals, regex_matches, "
+            "After a run, write cost, applied_steps, regex_evals, regex_matches, "
             "state_bytes, state_peak, rule_count, and rule_chars JSON to this path"
         ),
     )

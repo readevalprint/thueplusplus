@@ -9,7 +9,7 @@ declare module 'vue-router' {
     robots?: string
   }
 }
-import { taskRouteMeta } from './catalog'
+import { problemRouteMeta } from './catalog'
 import EmbedPage from './pages/EmbedPage.vue'
 import HomePage from './pages/HomePage.vue'
 import InstallPage from './pages/InstallPage.vue'
@@ -19,8 +19,8 @@ import MetricsPage from './pages/MetricsPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
 import ProjectsPage from './pages/ProjectsPage.vue'
 import ReferencePage from './pages/ReferencePage.vue'
-import TaskPage from './pages/TaskPage.vue'
-import TasksPage from './pages/TasksPage.vue'
+import ProblemPage from './pages/ProblemPage.vue'
+import ProblemsPage from './pages/ProblemsPage.vue'
 import { pages } from './site'
 
 const shell = [
@@ -35,7 +35,7 @@ const shell = [
   { page: pages.installCpp, component: InstallPlatformPage },
   { page: pages.projects, component: ProjectsPage },
   { page: pages.metrics, component: MetricsPage },
-  { page: pages.tasks, component: TasksPage },
+  { page: pages.problems, component: ProblemsPage },
 ]
 
 export const routes: RouteRecordRaw[] = [
@@ -72,8 +72,8 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/tasks/:taskId',
-    component: TaskPage,
+    path: '/problems/:problemId',
+    component: ProblemPage,
   },
 ]
 
@@ -88,9 +88,9 @@ export function createAppRouter() {
     },
   })
   router.beforeEach((to) => {
-    const taskId = to.params.taskId
-    if (typeof taskId === 'string') {
-      const meta = taskRouteMeta(taskId)
+    const problemId = to.params.problemId
+    if (typeof problemId === 'string') {
+      const meta = problemRouteMeta(problemId)
       to.meta.documentTitle = meta.documentTitle
       to.meta.description = meta.description
       to.meta.canonical = meta.canonical

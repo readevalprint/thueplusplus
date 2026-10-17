@@ -123,7 +123,7 @@ function parseArgs(argv) {
   return options
 }
 
-const METRIC_KEYS = ['applied_steps', 'regex_evals', 'regex_matches', 'state_bytes', 'state_peak', 'rule_count', 'rule_chars']
+const METRIC_KEYS = ['cost', 'applied_steps', 'regex_evals', 'regex_matches', 'state_bytes', 'state_peak', 'rule_count', 'rule_chars']
 
 function writeMetrics(path, result) {
   const metrics = result.metrics

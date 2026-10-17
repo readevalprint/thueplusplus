@@ -39,9 +39,9 @@ export const navGroups: NavGroup[] = [
         to: '/docs/language',
       },
       {
-        title: 'Tasks',
-        description: 'Input and output contracts, the suite, and the leaderboard.',
-        to: '/tasks',
+        title: 'Problems',
+        description: 'Input and output contracts, the suite, and each solution.',
+        to: '/problems',
       },
       {
         title: 'Guides',

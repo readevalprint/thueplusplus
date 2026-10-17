@@ -94,6 +94,7 @@ func problemRow(row harness.Row) map[string]any {
 		"duration_ms": row.DurationMs,
 	}
 	if row.Status == "pass" {
+		out["cost"] = *row.Cost
 		out["applied_steps"] = *row.Steps
 		out["regex_evals"] = *row.RegexEvals
 		out["regex_matches"] = *row.RegexMatches
@@ -103,7 +104,7 @@ func problemRow(row harness.Row) map[string]any {
 		out["rule_chars"] = *row.RuleChars
 		return out
 	}
-	for _, key := range []string{"applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars"} {
+	for _, key := range []string{"cost", "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars"} {
 		out[key] = nil
 	}
 	return out

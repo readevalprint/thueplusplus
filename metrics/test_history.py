@@ -75,7 +75,7 @@ class HistoryTests(unittest.TestCase):
 
     def test_parse_metrics_requires_the_shared_object(self) -> None:
         text = (
-            '{"applied_steps":1,"regex_evals":2,"regex_matches":1,'
+            '{"cost":9,"applied_steps":1,"regex_evals":2,"regex_matches":1,'
             '"state_bytes":3,"state_peak":3,"rule_count":1,"rule_chars":4}\n'
         )
         parsed = historylib.parse_metrics(text)

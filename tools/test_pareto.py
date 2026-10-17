@@ -1,48 +1,49 @@
 #!/usr/bin/env python3
+"""Cost acceptance: only a strictly cheaper file stays in the directory."""
+
+from __future__ import annotations
+
 import unittest
 
-from pareto import dominates, messages
+from pareto import messages
 
 
-def row(path: str, group: str, **axes: int) -> dict:
-    return {"path": path, "group": group, "status": "pass", **axes}
+def row(path: str, group: str, cost: int, status: str = "pass") -> dict:
+    return {"path": path, "group": group, "status": status, "cost": cost}
 
 
-class ParetoTests(unittest.TestCase):
-    def test_equal_rows_are_not_dominated(self) -> None:
-        axes = {"regex_evals": 3, "regex_matches": 2, "state_bytes": 9, "rule_count": 4, "rule_chars": 40}
-        self.assertFalse(dominates(axes, axes))
+class CostAcceptanceTests(unittest.TestCase):
+    def test_one_file_stays(self) -> None:
+        self.assertEqual(messages([row("factorial/direct.tpp", "factorial", 10)]), [])
 
-    def test_one_smaller_axis_dominates(self) -> None:
-        base = {"regex_evals": 3, "regex_matches": 2, "state_bytes": 9, "rule_count": 4, "rule_chars": 40}
-        smaller = {**base, "rule_chars": 39}
-        self.assertTrue(dominates(smaller, base))
-        self.assertFalse(dominates(base, smaller))
+    def test_a_higher_cost_names_the_cheaper_file(self) -> None:
+        found = messages([
+            row("factorial/direct.tpp", "factorial", 10),
+            row("factorial/slow.tpp", "factorial", 20),
+        ])
+        self.assertEqual(found, ["factorial/slow.tpp cost 20 is not lower than factorial/direct.tpp cost 10"])
 
-    def test_a_tradeoff_is_kept(self) -> None:
-        left = {"regex_evals": 1, "regex_matches": 9, "state_bytes": 9, "rule_count": 4, "rule_chars": 40}
-        right = {"regex_evals": 2, "regex_matches": 1, "state_bytes": 9, "rule_count": 4, "rule_chars": 40}
-        self.assertFalse(dominates(left, right))
-        self.assertFalse(dominates(right, left))
+    def test_equal_cost_is_not_lower(self) -> None:
+        found = messages([
+            row("factorial/a.tpp", "factorial", 10),
+            row("factorial/b.tpp", "factorial", 10),
+        ])
+        self.assertEqual(found, [
+            "factorial/a.tpp cost 10 is not lower than factorial/b.tpp cost 10",
+            "factorial/b.tpp cost 10 is not lower than factorial/a.tpp cost 10",
+        ])
 
-    def test_message_names_the_dominator(self) -> None:
-        axes = {"regex_evals": 5, "regex_matches": 4, "state_bytes": 30, "rule_count": 8, "rule_chars": 80}
-        better = {**axes, "regex_evals": 4}
-        found = messages(
-            [
-                row("factorial/slow.tpp", "factorial", **axes),
-                row("factorial/direct.tpp", "factorial", **better),
-                row("fizzbuzz/direct.tpp", "fizzbuzz", **axes),
-            ]
-        )
-        self.assertEqual(found, ["factorial/slow.tpp is dominated by factorial/direct.tpp"])
+    def test_a_failure_is_not_a_competitor(self) -> None:
+        failed = {"path": "factorial/broken.tpp", "group": "factorial", "status": "fail"}
+        self.assertEqual(messages([failed, row("factorial/direct.tpp", "factorial", 4)]), [])
 
-    def test_a_failure_is_not_a_dominator(self) -> None:
-        axes = {"regex_evals": 1, "regex_matches": 1, "state_bytes": 1, "rule_count": 1, "rule_chars": 1}
-        failed = row("factorial/broken.tpp", "factorial", **axes)
-        failed["status"] = "fail"
-        self.assertEqual(messages([failed, row("factorial/direct.tpp", "factorial", **{**axes, "regex_evals": 2})]), [])
+    def test_languages_are_separate_directories(self) -> None:
+        found = messages([
+            row("forth/forth.tpp", "forth", 5),
+            row("lisp/lisp.tpp", "lisp", 9),
+        ])
+        self.assertEqual(found, [])
 
 
 if __name__ == "__main__":
-    raise SystemExit(unittest.main())
+    unittest.main()

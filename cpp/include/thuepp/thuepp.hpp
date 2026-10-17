@@ -71,6 +71,7 @@ struct RuleInfo {
 
 // Counters for one run. The same fields as `thuepp --metrics`.
 struct RunMetrics {
+  int64_t cost = 0;
   int64_t applied_steps = 0;
   int64_t regex_evals = 0;
   int64_t regex_matches = 0;

@@ -173,13 +173,13 @@
       { "title": "Host time", "href": "#host-time" }
     ]
   },
-  "tasks": {
-    "path": "/tasks",
-    "kicker": "Tasks",
+  "problems": {
+    "path": "/problems",
+    "kicker": "Problems",
     "title": "Programs with a finish line.",
-    "description": "Tasks are input and output contracts. The index lists every program's status, and each task has its own page.",
-    "documentTitle": "Thue++ Tasks — Programs with a finish line",
-    "canonical": "https://thuelang.org/tasks",
+    "description": "Problems are input and output contracts. The index lists every version's status, and each problem has its own page.",
+    "documentTitle": "Thue++ Problems — Programs with a finish line",
+    "canonical": "https://thuelang.org/problems",
     "robots": "index,follow",
     "links": []
   }

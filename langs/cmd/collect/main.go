@@ -84,7 +84,7 @@ func langRow(part harness.LangPart) map[string]any {
 	out := map[string]any{
 		"lang": part.ID, "program": part.Program, "duration_ms": int64(0),
 	}
-	var steps, evals, matches, state, peak, rules, chars int
+	var steps, cost, evals, matches, state, peak, rules, chars int
 	var duration int64
 	pass := true
 	if len(part.Rows) == 0 {
@@ -100,6 +100,7 @@ func langRow(part harness.LangPart) map[string]any {
 			continue
 		}
 		steps += *row.Steps
+		cost += *row.Cost
 		evals += *row.RegexEvals
 		matches += *row.RegexMatches
 		state += *row.StateBytes
@@ -112,12 +113,13 @@ func langRow(part harness.LangPart) map[string]any {
 	out["duration_ms"] = duration
 	if !pass {
 		out["status"] = "fail"
-		for _, key := range []string{"applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars"} {
+		for _, key := range []string{"cost", "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars"} {
 			out[key] = nil
 		}
 		return out
 	}
 	out["status"] = "pass"
+	out["cost"] = cost
 	out["applied_steps"] = steps
 	out["regex_evals"] = evals
 	out["regex_matches"] = matches

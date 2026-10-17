@@ -47,6 +47,7 @@ type CaseResult struct {
 	Seed               *uint64 `json:"seed"`
 	Status             string  `json:"status"`
 	Steps              *int    `json:"steps"`
+	Cost               *int    `json:"cost"`
 	RegexEvals         *int    `json:"regex_evals"`
 	RegexMatches       *int    `json:"regex_matches"`
 	StateBytes         *int    `json:"state_bytes"`
@@ -70,6 +71,7 @@ type Row struct {
 	Environment  string       `json:"environment"`
 	Status       string       `json:"status"`
 	Steps        *int         `json:"steps"`
+	Cost         *int         `json:"cost"`
 	RegexEvals   *int         `json:"regex_evals"`
 	RegexMatches *int         `json:"regex_matches"`
 	StateBytes   *int         `json:"state_bytes"`
@@ -175,7 +177,7 @@ func runSolution(problem Problem, solution Solution, samples []Sample, binary st
 		Problem: problem.ID, Solution: solution.Name, Host: "go", Environment: "go native",
 		SolutionPath: solution.Path, Cases: []CaseResult{},
 	}
-	var steps, evals, matches, stateBytes, statePeak, rules, chars int
+	var steps, cost, evals, matches, stateBytes, statePeak, rules, chars int
 	var duration time.Duration
 	var failures []string
 	ok := true
@@ -197,6 +199,7 @@ func runSolution(problem Problem, solution Solution, samples []Sample, binary st
 		} else {
 			result.Status = "pass"
 			result.Steps = &run.Metrics.Steps
+			result.Cost = &run.Metrics.Cost
 			result.RegexEvals = &run.Metrics.RegexEvals
 			result.RegexMatches = &run.Metrics.RegexMatches
 			result.StateBytes = &run.Metrics.StateBytes
@@ -204,6 +207,7 @@ func runSolution(problem Problem, solution Solution, samples []Sample, binary st
 			result.RuleCount = &run.Metrics.RuleCount
 			result.RuleChars = &run.Metrics.RuleChars
 			steps += run.Metrics.Steps
+			cost += run.Metrics.Cost
 			evals += run.Metrics.RegexEvals
 			matches += run.Metrics.RegexMatches
 			stateBytes += run.Metrics.StateBytes
@@ -222,6 +226,7 @@ func runSolution(problem Problem, solution Solution, samples []Sample, binary st
 	if ok {
 		row.Status = "pass"
 		row.Steps = &steps
+		row.Cost = &cost
 		row.RegexEvals = &evals
 		row.RegexMatches = &matches
 		row.StateBytes = &stateBytes

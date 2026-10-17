@@ -63,7 +63,7 @@ const pillars = [
         <RouterLink to="/install" class="text-ash hover:text-bone lowercase">Install</RouterLink>
         <RouterLink to="/projects" class="text-ash hover:text-bone lowercase">Projects</RouterLink>
         <RouterLink to="/metrics" class="text-ash hover:text-bone lowercase">Metrics</RouterLink>
-        <RouterLink to="/tasks" class="text-ash hover:text-bone lowercase">Tasks</RouterLink>
+        <RouterLink to="/problems" class="text-ash hover:text-bone lowercase">Problems</RouterLink>
         <RouterLink to="/playground" class="text-ash hover:text-bone lowercase">Playground</RouterLink>
       </nav>
       <a class="text-ash hover:text-bone ml-auto lowercase" href="https://gitlab.com/thuelang/thueplusplus" rel="noreferrer">gitlab</a>

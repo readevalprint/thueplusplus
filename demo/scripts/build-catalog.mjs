@@ -1,16 +1,31 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, globSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parse as parseToml } from 'smol-toml'
 
-const STATUSES = new Set(['pass', 'fail', 'unsupported'])
+const BENCH = /^metrics\/(\d{4})\/(\d{2})\/(\d{2})\/([0-9a-f]{40})\/bench\.json$/
+const VERSION_IDS = ['direct', 'lisp', 'forth', 'basic']
+const LANGUAGE_VERSIONS = new Set(['lisp', 'forth', 'basic'])
+const VERSION_NAMES = { direct: 'direct', lisp: 'Lisp', forth: 'Forth', basic: 'BASIC' }
+const COUNTERS = [
+  ['cost', 'cost', 0],
+  ['applied_steps', 'steps', 0],
+  ['regex_evals', 'regexEvals', 0],
+  ['regex_matches', 'regexMatches', 0],
+  ['state_bytes', 'stateBytes', 0],
+  ['state_peak', 'statePeak', 0],
+  ['rule_count', 'ruleCount', 1],
+  ['rule_chars', 'ruleChars', 1],
+]
+
 const demoRoot = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 const catalogPath = join(demoRoot, 'src', 'generated', 'catalog.json')
 
 export class CatalogError extends Error {}
 
-export function taskDescription(markdown, file = 'task.md') {
+export function problemDescription(markdown, file = 'problem.md') {
   const lines = markdown.split('\n')
   const index = lines.findIndex(line => line.startsWith('# '))
   if (index < 0) throw new CatalogError(`${file}: missing '# ' title`)
@@ -21,66 +36,44 @@ export function taskDescription(markdown, file = 'task.md') {
   return { title, description }
 }
 
-export function publishedCases(taskId, cases) {
-  if (!Array.isArray(cases) || cases.length === 0) {
-    throw new CatalogError(`${taskId}: cases must be a non-empty array`)
-  }
-  return cases.map((item, index) => {
-    const name = item?.name
-    if (typeof name !== 'string' || name.length === 0) {
-      throw new CatalogError(`${taskId}: case ${index} is missing a name`)
-    }
-    for (const key of ['stdin', 'stdout', 'stderr']) {
-      if (typeof item[key] !== 'string') throw new CatalogError(`${taskId}/${name}: ${key} must be a string`)
-    }
-    if (!Number.isInteger(item.exit_code)) throw new CatalogError(`${taskId}/${name}: exit_code must be an integer`)
-    return { name, stdin: item.stdin, stdout: item.stdout, stderr: item.stderr, exitCode: item.exit_code }
-  })
+export function versionIdForSolution(solution) {
+  if (LANGUAGE_VERSIONS.has(solution)) return solution
+  return 'direct'
 }
 
-export function buildCatalog(results, sources) {
-  requireResults(results)
-  const taskIds = requireStringList(sources.taskOrder, 'suite order')
-  const guests = sources.guests
-  if (!Array.isArray(guests) || guests.length === 0) throw new CatalogError('guests.toml has no guests')
-  const guestIds = guests.map(guest => {
-    if (typeof guest?.id !== 'string' || typeof guest.program !== 'string' || typeof guest.extension !== 'string') {
-      throw new CatalogError('each guest needs id, program, and extension')
-    }
-    return guest.id
+export function buildProblemCatalog({ specVersion, head, latest, archives, problems, langs }) {
+  if (typeof specVersion !== 'string' || specVersion.length === 0) throw new CatalogError('spec version is empty')
+  requireHead(head)
+  const measured = readSchema4(latest, 'metrics/latest.json')
+  const history = archives.map(archive => ({
+    ...requireHead(archive),
+    rows: readHistory(archive.document, archive.commit),
+  }))
+  if (history.some(item => item.commit === head.commit)) {
+    throw new CatalogError(`HEAD ${head.commit} is already an archived bench`)
+  }
+  history.push({ ...head, rows: measured })
+  history.sort((left, right) => {
+    if (left.timestamp < right.timestamp) return -1
+    if (left.timestamp > right.timestamp) return 1
+    if (left.commit < right.commit) return -1
+    if (left.commit > right.commit) return 1
+    return 0
   })
-  if (!sameList(results.tasks.map(task => task.id), taskIds)) {
-    throw new CatalogError('results.tasks do not match tasks/suite.toml')
-  }
-  if (!sameList(results.guests.map(guest => guest.id), guestIds)) {
-    throw new CatalogError('results.guests do not match tasks/guests.toml')
-  }
-  for (const task of results.tasks) {
-    if (typeof task.title !== 'string' || task.title.length === 0) {
-      throw new CatalogError(`${task.id}: results title is empty`)
-    }
-  }
-  for (const guest of guests) {
-    const row = results.guests.find(item => item.id === guest.id)
-    if (row.program !== guest.program) {
-      throw new CatalogError(`${guest.id}: results program ${row.program} does not match ${guest.program}`)
-    }
-    if (!Number.isInteger(row.rule_count) || row.rule_count < 1) {
-      throw new CatalogError(`${guest.id}: rule_count must be a positive integer`)
-    }
-  }
-  requireCoverage(results, taskIds, guestIds)
 
-  const tasks = taskIds.map(taskId => buildTask(results, sources, taskId, guestIds))
+  const problemIds = problems.map(problem => problem.id)
+  if (new Set(problemIds).size !== problemIds.length) throw new CatalogError('duplicate problem id')
+  requireLatestCoverage(measured, problems, langs)
+
   return {
-    schemaVersion: 1,
-    specVersion: results.spec_version,
-    commit: results.commit,
-    commitDirty: results.commit_dirty,
-    author: results.author,
-    timestamp: results.timestamp,
-    guests: guestIds.map(guestId => buildGuest(results, sources, tasks, guestId)),
-    tasks,
+    schemaVersion: 2,
+    specVersion,
+    commit: head.commit,
+    author: head.author,
+    timestamp: head.timestamp,
+    commits: history.map(item => ({ commit: item.commit, author: item.author, timestamp: item.timestamp })),
+    langs: buildLangs(measured.langs, langs),
+    problems: problems.map(problem => buildProblem(problem, measured.problems, history)),
   }
 }
 
@@ -91,13 +84,13 @@ export function sitemapXml(entries) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`
 }
 
-export function taskPages(catalog) {
-  return catalog.tasks.map(task => ({
-    path: task.path,
-    title: task.title,
-    documentTitle: task.documentTitle,
-    description: task.summary,
-    canonical: task.canonical,
+export function problemPages(catalog) {
+  return catalog.problems.map(problem => ({
+    path: problem.path,
+    title: problem.title,
+    documentTitle: problem.documentTitle,
+    description: problem.summary,
+    canonical: problem.canonical,
     robots: 'index,follow',
   }))
 }
@@ -107,174 +100,277 @@ export function readGeneratedCatalog() {
     throw new CatalogError('demo/src/generated/catalog.json is missing. Run node demo/scripts/build-catalog.mjs')
   }
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
-  if (catalog.schemaVersion !== 1) throw new CatalogError(`catalog schemaVersion must be 1, got ${catalog.schemaVersion}`)
+  if (catalog.schemaVersion !== 2) throw new CatalogError(`catalog schemaVersion must be 2, got ${catalog.schemaVersion}`)
   return catalog
 }
 
-function requireResults(results) {
-  if (results?.schema_version !== 1) {
-    throw new CatalogError(`results schema_version must be 1, got ${results?.schema_version}`)
+function requireHead(head) {
+  if (typeof head?.commit !== 'string' || !/^[0-9a-f]{40}$/.test(head.commit)) {
+    throw new CatalogError('commit must be a 40-character hex sha')
   }
-  if (!Array.isArray(results.errors) || results.errors.length !== 0) {
-    throw new CatalogError(`results.errors must be an empty array, got ${JSON.stringify(results.errors)}`)
+  if (typeof head.author !== 'string' || head.author.length === 0) throw new CatalogError(`${head.commit}: author is empty`)
+  if (typeof head.timestamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(head.timestamp)) {
+    throw new CatalogError(`${head.commit}: timestamp must be YYYY-MM-DDTHH:MM:SSZ`)
   }
-  const registry = hostIds()
-  if (!Array.isArray(results.hosts) || results.hosts.length === 0) {
-    throw new CatalogError('results.hosts must be a non-empty array')
-  }
-  const unknown = results.hosts.filter(host => !registry.includes(host))
-  if (unknown.length > 0) {
-    throw new CatalogError(`results.hosts has unknown host(s): ${unknown.join(', ')}`)
-  }
-  const ordered = registry.filter(id => results.hosts.includes(id))
-  if (!sameList(results.hosts, ordered)) {
-    throw new CatalogError(`results.hosts must follow hosts.toml order: ${ordered.join(', ')}`)
-  }
-  if (typeof results.spec_version !== 'string' || results.spec_version.length === 0) {
-    throw new CatalogError('results.spec_version must be a non-empty string')
-  }
-  if (typeof results.commit !== 'string' || !/^[0-9a-f]{40}$/.test(results.commit)) {
-    throw new CatalogError('results.commit must be a 40-character hex sha')
-  }
-  if (typeof results.commit_dirty !== 'boolean') throw new CatalogError('results.commit_dirty must be a boolean')
-  if (typeof results.author !== 'string' || results.author.length === 0) {
-    throw new CatalogError('results.author must be a non-empty string')
-  }
-  if (typeof results.timestamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(results.timestamp)) {
-    throw new CatalogError('results.timestamp must be YYYY-MM-DDTHH:MM:SSZ')
-  }
-  if (!Array.isArray(results.tasks) || !Array.isArray(results.guests) || !Array.isArray(results.results)) {
-    throw new CatalogError('results.tasks, results.guests, and results.results must be arrays')
-  }
-  if (results.grid == null || typeof results.grid !== 'object') throw new CatalogError('results.grid is missing')
+  return { commit: head.commit, author: head.author, timestamp: head.timestamp }
 }
 
-function requireCoverage(results, taskIds, guestIds) {
-  for (const taskId of taskIds) {
-    for (const guestId of guestIds) {
-      const cell = results.grid?.[taskId]?.[guestId]
-      if (!cell || !STATUSES.has(cell.status)) {
-        throw new CatalogError(`${taskId}/${guestId}: grid status is missing`)
-      }
-      for (const host of results.hosts) {
-        const found = results.results.filter(row => row.task === taskId && row.guest === guestId && row.host === host)
-        if (found.length !== 1) throw new CatalogError(`${taskId}/${guestId}/${host}: expected one results row, found ${found.length}`)
-      }
+function readHistory(document, label) {
+  const version = document?.schema_version
+  if (version === 2 || version === 3) return null
+  if (version !== 4) throw new CatalogError(`${label}: schema_version must be 2, 3, or 4`)
+  return readSchema4(document, label)
+}
+
+function readSchema4(document, label) {
+  if (document?.schema_version !== 4) throw new CatalogError(`${label}: schema_version must be 4`)
+  return {
+    problems: readBlock(document.problems, label, 'problems', 'make problems', problemRow),
+    langs: readBlock(document.langs, label, 'langs', 'make langs', langRow),
+  }
+}
+
+function readBlock(block, label, name, source, readRow) {
+  if (block == null || typeof block !== 'object' || Array.isArray(block)) {
+    throw new CatalogError(`${label}: ${name} must be an object`)
+  }
+  if (block.source !== source || block.host !== 'go' || block.environment !== 'go native') {
+    throw new CatalogError(`${label}: ${name} must be ${source} on native Go`)
+  }
+  if (!Array.isArray(block.results) || block.results.length === 0) {
+    throw new CatalogError(`${label}: ${name}.results must be a non-empty array`)
+  }
+  return block.results.map((row, index) => readRow(row, `${label} ${name} #${index + 1}`))
+}
+
+function problemRow(row, label) {
+  const problem = requireSlug(row?.problem, `${label} problem`)
+  const solution = requireSlug(row?.solution, `${label} solution`)
+  return { problem, solution, ...statusCounters(row, `${label} ${problem}/${solution}`) }
+}
+
+function langRow(row, label) {
+  const lang = requireSlug(row?.lang, `${label} lang`)
+  const program = row?.program
+  if (typeof program !== 'string' || !program.startsWith(`langs/${lang}/`) || !program.endsWith('.tpp')) {
+    throw new CatalogError(`${label}: program must be langs/${lang}/*.tpp`)
+  }
+  return { lang, program, ...statusCounters(row, `${label} ${program}`) }
+}
+
+function statusCounters(row, label) {
+  const status = row?.status
+  if (status !== 'pass' && status !== 'fail') throw new CatalogError(`${label}: status must be pass or fail`)
+  integer(row.duration_ms, `${label} duration_ms`, 0)
+  const counters = {}
+  for (const [key, field, min] of COUNTERS) {
+    if (status === 'fail') {
+      if (row[key] !== null) throw new CatalogError(`${label}: fail ${key} must be null`)
+      counters[field] = null
+    } else {
+      counters[field] = integer(row[key], `${label} ${key}`, min)
     }
   }
+  return { status, ...counters }
 }
 
-function buildTask(results, sources, taskId, guestIds) {
-  const file = sources.files?.[taskId]
-  if (!file) throw new CatalogError(`${taskId}: missing task files`)
-  const described = taskDescription(file.markdown, `${taskId}/problem.md`)
-  const resultTask = results.tasks.find(task => task.id === taskId)
-  if (described.title !== resultTask.title) {
-    throw new CatalogError(`${taskId}: task.md title ${described.title} does not match results title ${resultTask.title}`)
+function requireLatestCoverage(measured, problems, langs) {
+  const expected = new Set()
+  for (const problem of problems) {
+    for (const solution of Object.keys(problem.solutions)) {
+      expected.add(`${problem.id}/${solution}`)
+    }
   }
-  const cases = publishedCases(taskId, resultTask.cases)
-  const summary = described.description.split(/\n\n+/)[0].replace(/\s+/g, ' ').trim()
-  const path = `/tasks/${taskId}`
+  const seen = new Set()
+  for (const row of measured.problems) {
+    const key = `${row.problem}/${row.solution}`
+    if (seen.has(key)) throw new CatalogError(`${key}: duplicate metrics row`)
+    seen.add(key)
+    if (!expected.has(key)) throw new CatalogError(`${key}: metrics entry has no solution file`)
+  }
+  for (const key of expected) {
+    if (!seen.has(key)) throw new CatalogError(`${key}: solution has no metrics entry`)
+  }
+  const programs = new Set(langs.flatMap(lang => lang.programs))
+  const seenPrograms = new Set()
+  for (const row of measured.langs) {
+    if (seenPrograms.has(row.program)) throw new CatalogError(`${row.program}: duplicate language metrics row`)
+    seenPrograms.add(row.program)
+    if (!programs.has(row.program)) throw new CatalogError(`${row.program}: metrics entry has no language file`)
+  }
+}
+
+function buildLangs(rows, langs) {
+  const byProgram = new Map(rows.map(row => [row.program, row]))
+  const built = []
+  for (const lang of langs) {
+    if (lang.programs.length === 0) {
+      if (rows.some(row => row.lang === lang.id)) throw new CatalogError(`${lang.id}: metrics entry has no language file`)
+      built.push(missingLang(lang.id, lang.id))
+      continue
+    }
+    for (const program of lang.programs) {
+      const stem = program.slice(program.lastIndexOf('/') + 1, -'.tpp'.length)
+      const row = byProgram.get(program)
+      if (!row) {
+        built.push(missingLang(stem, lang.id, program))
+        continue
+      }
+      built.push({
+        id: stem,
+        language: lang.id,
+        name: displayName(stem),
+        program,
+        status: row.status,
+        steps: row.steps,
+        cost: row.cost,
+        regexEvals: row.regexEvals,
+        regexMatches: row.regexMatches,
+        stateBytes: row.stateBytes,
+        statePeak: row.statePeak,
+        ruleCount: row.ruleCount,
+        ruleChars: row.ruleChars,
+      })
+    }
+  }
+  return built
+}
+
+function missingLang(id, language, program = null) {
   return {
-    id: taskId,
+    id,
+    language,
+    name: displayName(id),
+    program,
+    status: 'missing',
+    steps: null,
+    cost: null,
+    regexEvals: null,
+    regexMatches: null,
+    stateBytes: null,
+    statePeak: null,
+    ruleCount: null,
+    ruleChars: null,
+  }
+}
+
+function buildProblem(problem, rows, history) {
+  const described = problemDescription(problem.markdown, `${problem.id}/problem.md`)
+  const summary = described.description.split(/\n\n+/)[0].replace(/\s+/g, ' ').trim()
+  const path = `/problems/${problem.id}`
+  const current = rows.filter(row => row.problem === problem.id).map(row => {
+    const text = problem.solutions[row.solution]
+    requireSolutionText(text, `${problem.id}/${row.solution}`)
+    return {
+      ...row,
+      solutionId: row.solution,
+      versionId: versionIdForSolution(row.solution),
+      source: text,
+      solutionPath: `problems/${problem.id}/solutions/${row.solution}.tpp`,
+    }
+  })
+  const versions = VERSION_IDS.map(id => {
+    const solutions = current.filter(row => row.versionId === id).sort((left, right) => left.solutionId < right.solutionId ? -1 : 1)
+    return {
+      id,
+      name: VERSION_NAMES[id],
+      missing: solutions.length === 0,
+      solutions: solutions.map(row => ({
+        id: row.solutionId,
+        status: row.status,
+        steps: row.steps,
+        cost: row.cost,
+        regexEvals: row.regexEvals,
+        regexMatches: row.regexMatches,
+        stateBytes: row.stateBytes,
+        statePeak: row.statePeak,
+        ruleCount: row.ruleCount,
+        ruleChars: row.ruleChars,
+        solution: row.source,
+        solutionPath: row.solutionPath,
+      })),
+      series: seriesFor(problem.id, id, history),
+    }
+  })
+  return {
+    id: problem.id,
     title: described.title,
     description: described.description,
     summary,
     path,
     canonical: `https://thuelang.org${path}`,
-    documentTitle: `${described.title} — Thue++ Tasks`,
-    cases,
-    guests: guestIds.map(guestId => buildGuestResult(results, file, taskId, guestId)),
+    documentTitle: `${described.title} — Thue++ Problems`,
+    versions,
   }
 }
 
-function buildGuestResult(results, file, taskId, guestId) {
-  const cell = results.grid[taskId][guestId]
-  const solution = file.solutions?.[guestId]
-  if (!solution) throw new CatalogError(`${taskId}/${guestId}: missing solution file`)
-  const rows = results.results.filter(row => row.task === taskId && row.guest === guestId)
-  const ruleCount = results.guests.find(guest => guest.id === guestId).rule_count
-  for (const row of rows) {
-    if (row.guest_rule_count !== ruleCount) {
-      throw new CatalogError(`${taskId}/${guestId}/${row.host}: guest_rule_count does not match the guest`)
-    }
-  }
-  const name = guestName(guestId)
-  if (cell.status === 'unsupported') {
-    if (solution.kind !== 'unsupported') throw new CatalogError(`${taskId}/${guestId}: grid says unsupported but a solution file is present`)
-    if (cell.step_count !== null) throw new CatalogError(`${taskId}/${guestId}: unsupported step_count must be null`)
-    if (typeof solution.reason !== 'string' || solution.reason.length === 0) {
-      throw new CatalogError(`${taskId}/${guestId}: unsupported reason is empty`)
-    }
+function seriesFor(problemId, versionId, history) {
+  const points = []
+  for (const item of history) {
+    if (!item.rows) continue
+    const rows = item.rows.problems
+      .filter(row => row.problem === problemId && versionIdForSolution(row.solution) === versionId && row.status === 'pass')
+      .sort((left, right) => left.solution < right.solution ? -1 : left.solution > right.solution ? 1 : 0)
     for (const row of rows) {
-      if (row.status !== 'unsupported' || row.reason !== solution.reason || row.step_count !== null || row.solution_path !== null) {
-        throw new CatalogError(`${taskId}/${guestId}/${row.host}: unsupported row does not match the marker`)
-      }
-    }
-    return { id: guestId, name, status: 'unsupported', stepCount: null, solution: null, solutionPath: null, reason: solution.reason, error: null }
-  }
-  if (solution.kind !== 'solution') throw new CatalogError(`${taskId}/${guestId}: grid says ${cell.status} but the solution file is missing`)
-  if (typeof solution.text !== 'string' || solution.text.trim().length === 0 || solution.text.includes('\r') || solution.text.includes('\0')) {
-    throw new CatalogError(`${taskId}/${guestId}: solution must be non-empty LF text`)
-  }
-  const solutionPath = rows[0].solution_path
-  if (typeof solutionPath !== 'string' || solutionPath.length === 0) {
-    throw new CatalogError(`${taskId}/${guestId}: solution_path is missing`)
-  }
-  for (const row of rows) {
-    if (row.solution_path !== solutionPath) throw new CatalogError(`${taskId}/${guestId}: hosts disagree on solution_path`)
-  }
-  if (cell.status === 'pass') {
-    if (!Number.isInteger(cell.step_count) || cell.step_count < 0) {
-      throw new CatalogError(`${taskId}/${guestId}: pass step_count must be a non-negative integer`)
-    }
-    for (const row of rows) {
-      if (row.status !== 'pass' || row.step_count !== cell.step_count || row.error != null) {
-        throw new CatalogError(`${taskId}/${guestId}/${row.host}: pass row does not match the grid`)
-      }
-    }
-    return { id: guestId, name, status: 'pass', stepCount: cell.step_count, solution: solution.text, solutionPath, reason: null, error: null }
-  }
-  if (cell.status !== 'fail') throw new CatalogError(`${taskId}/${guestId}: unknown status ${cell.status}`)
-  if (cell.step_count !== null) throw new CatalogError(`${taskId}/${guestId}: fail step_count must be null on the grid`)
-  const errors = []
-  for (const row of rows) {
-    if (row.status === 'fail') {
-      if (typeof row.error !== 'string' || row.error.length === 0) {
-        throw new CatalogError(`${taskId}/${guestId}/${row.host}: fail row is missing error text`)
-      }
-      if (!errors.includes(row.error)) errors.push(row.error)
+      points.push({
+        commit: item.commit,
+        solution: `${row.solution}.tpp`,
+        cost: row.cost,
+        steps: row.steps,
+        regexEvals: row.regexEvals,
+        regexMatches: row.regexMatches,
+        stateBytes: row.stateBytes,
+        statePeak: row.statePeak,
+        ruleCount: row.ruleCount,
+        ruleChars: row.ruleChars,
+      })
     }
   }
-  if (errors.length === 0) throw new CatalogError(`${taskId}/${guestId}: fail grid cell has no failing host`)
-  return { id: guestId, name, status: 'fail', stepCount: null, solution: solution.text, solutionPath, reason: null, error: errors.join('\n') }
+  return points
 }
 
-function buildGuest(results, sources, tasks, guestId) {
-  const meta = sources.guests.find(guest => guest.id === guestId)
-  const ruleCount = results.guests.find(guest => guest.id === guestId).rule_count
-  let passCount = 0
-  let stepCount = 0
-  for (const task of tasks) {
-    const cell = task.guests.find(guest => guest.id === guestId)
-    if (cell.status === 'pass') {
-      passCount += 1
-      stepCount += cell.stepCount
-    }
-  }
-  return {
-    id: guestId,
-    name: guestName(guestId),
-    program: meta.program,
-    ruleCount,
-    passCount,
-    taskCount: tasks.length,
-    stepCount,
+function requireSolutionText(text, label) {
+  if (typeof text !== 'string' || text.trim().length === 0 || !text.endsWith('\n') || text.includes('\r') || text.includes('\0')) {
+    throw new CatalogError(`${label}: solution must be non-empty LF text ending in a newline`)
   }
 }
 
-function guestName(id) {
+function displayName(id) {
+  if (Object.hasOwn(VERSION_NAMES, id)) return VERSION_NAMES[id]
   return id.charAt(0).toUpperCase() + id.slice(1)
+}
+
+function requireSlug(value, label) {
+  if (typeof value !== 'string' || !/^[a-z][a-z0-9-]*$/.test(value)) throw new CatalogError(`${label} must be a lowercase slug`)
+  return value
+}
+
+function integer(value, label, min) {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < min) {
+    throw new CatalogError(`${label} must be an integer >= ${min}`)
+  }
+  return value
+}
+
+function escapeXml(value) {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+}
+
+function git(args) {
+  try {
+    return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim()
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    throw new CatalogError(`git ${args.join(' ')} failed: ${detail}`)
+  }
+}
+
+function utcTimestamp(iso) {
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) throw new CatalogError(`bad commit timestamp ${iso}`)
+  const stamp = parsed.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(stamp)) throw new CatalogError(`bad commit timestamp ${iso}`)
+  return stamp
 }
 
 function requireStringList(value, label) {
@@ -284,70 +380,61 @@ function requireStringList(value, label) {
   return value
 }
 
-export function hostIds() {
-  const registryPath = join(repoRoot, 'hosts.toml')
-  if (!existsSync(registryPath)) throw new CatalogError('hosts.toml is missing')
-  const parsed = parseToml(readFileSync(registryPath, 'utf8'))
-  const rows = parsed.host
-  if (!Array.isArray(rows) || rows.length === 0) throw new CatalogError('hosts.toml host must be a non-empty array')
-  const ids = rows.map((row, index) => {
-    if (typeof row?.id !== 'string' || row.id.length === 0) {
-      throw new CatalogError(`hosts.toml host #${index + 1} id is empty`)
-    }
-    return row.id
-  })
-  if (new Set(ids).size !== ids.length) throw new CatalogError('hosts.toml has a duplicate id')
-  return ids
-}
-
-function sameList(left, right) {
-  return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((item, index) => item === right[index])
-}
-
-function escapeXml(value) {
-  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
-}
-
-function loadSuite() {
-  const suite = parseToml(readFileSync(join(repoRoot, 'problems', 'suite.toml'), 'utf8'))
-  const taskOrder = requireStringList(suite.order, 'problems/suite.toml order')
-  const guests = [{ id: 'direct', program: 'solutions/direct.tpp', extension: 'tpp' }]
-  return { taskOrder, guests }
-}
-
-function loadSources(taskOrder, guests) {
-  const files = {}
-  for (const taskId of taskOrder) {
-    const directory = join(repoRoot, 'problems', taskId)
+function loadProblems(order) {
+  return order.map(id => {
+    const directory = join(repoRoot, 'problems', id)
     const markdownPath = join(directory, 'problem.md')
-    if (!existsSync(markdownPath)) {
-      throw new CatalogError(`${taskId}: missing problem.md`)
-    }
+    if (!existsSync(markdownPath)) throw new CatalogError(`${id}: missing problem.md`)
+    const solutionsDir = join(directory, 'solutions')
+    if (!existsSync(solutionsDir)) throw new CatalogError(`${id}: missing solutions`)
     const solutions = {}
-    for (const guest of guests) {
-      const program = join(directory, 'solutions', `${guest.id}.${guest.extension}`)
-      const marker = join(directory, 'solutions', `${guest.id}.unsupported`)
-      const hasProgram = existsSync(program)
-      const hasMarker = existsSync(marker)
-      if (hasProgram === hasMarker) {
-        throw new CatalogError(`${taskId}/${guest.id}: need exactly one of ${guest.extension} or unsupported`)
-      }
-      solutions[guest.id] = hasProgram
-        ? { kind: 'solution', text: readFileSync(program, 'utf8') }
-        : { kind: 'unsupported', reason: readFileSync(marker, 'utf8').trim() }
+    for (const name of readdirSync(solutionsDir).sort()) {
+      if (name.endsWith('.unsupported')) throw new CatalogError(`${id}/${name}: unsupported markers are gone`)
+      if (!name.endsWith('.tpp')) throw new CatalogError(`${id}/${name}: solution files are .tpp`)
+      const solution = name.slice(0, -'.tpp'.length)
+      requireSlug(solution, `${id} solution`)
+      solutions[solution] = readFileSync(join(solutionsDir, name), 'utf8')
     }
-    files[taskId] = {
-      markdown: readFileSync(markdownPath, 'utf8'),
-      solutions,
+    if (Object.keys(solutions).length === 0) throw new CatalogError(`${id}: no solutions`)
+    return { id, markdown: readFileSync(markdownPath, 'utf8'), solutions }
+  })
+}
+
+function loadLangs(order) {
+  return order.map(id => {
+    const directory = join(repoRoot, 'langs', id)
+    if (!existsSync(directory)) throw new CatalogError(`${id}: missing language directory`)
+    const programs = readdirSync(directory).filter(name => name.endsWith('.tpp')).sort().map(name => `langs/${id}/${name}`)
+    return { id, programs }
+  })
+}
+
+function loadArchives() {
+  const paths = globSync('metrics/**/bench.json', { cwd: repoRoot }).sort()
+  if (paths.length === 0) throw new CatalogError('metrics/**/bench.json matched nothing')
+  return paths.map(rel => {
+    const match = BENCH.exec(rel)
+    if (!match) throw new CatalogError(`${rel} is not metrics/YYYY/MM/DD/{sha}/bench.json`)
+    const [, year, month, day, sha] = match
+    const document = JSON.parse(readFileSync(join(repoRoot, rel), 'utf8'))
+    if (document.commit !== sha) throw new CatalogError(`${rel}: commit does not match the directory`)
+    const timestamp = document.timestamp
+    if (typeof timestamp !== 'string' || timestamp.slice(0, 10) !== `${year}-${month}-${day}`) {
+      throw new CatalogError(`${rel}: date does not match ${timestamp}`)
     }
-  }
-  return files
+    return {
+      commit: sha,
+      author: typeof document.author === 'string' ? document.author : '',
+      timestamp,
+      document,
+    }
+  })
 }
 
 function priorityFor(path) {
   if (path === '/') return '1.0'
   if (path === '/docs/guides' || path === '/docs/language' || path === '/playground') return '0.8'
-  if (path.startsWith('/tasks/')) return '0.5'
+  if (path.startsWith('/problems/')) return '0.5'
   return '0.6'
 }
 
@@ -355,89 +442,37 @@ function writeSitemap(catalog) {
   const pages = JSON.parse(readFileSync(join(demoRoot, 'src', 'pages.json'), 'utf8'))
   const entries = [
     ...Object.values(pages).map(page => ({ loc: `https://thuelang.org${page.path === '/' ? '/' : page.path}`, priority: priorityFor(page.path) })),
-    ...catalog.tasks.map(task => ({ loc: task.canonical, priority: priorityFor(task.path) })),
+    ...catalog.problems.map(problem => ({ loc: problem.canonical, priority: priorityFor(problem.path) })),
   ]
   writeFileSync(join(demoRoot, 'public', 'sitemap.xml'), sitemapXml(entries))
 }
 
-export function catalogFromSources(sources) {
-  const taskIds = requireStringList(sources.taskOrder, 'suite order')
-  const guests = sources.guests
-  if (!Array.isArray(guests) || guests.length === 0) throw new CatalogError('guests.toml has no guests')
-  const specVersion = readFileSync(join(repoRoot, 'SPEC_VERSION'), 'utf8').trim()
-  if (!specVersion) throw new CatalogError('SPEC_VERSION is empty')
-  const tasks = taskIds.map(taskId => buildUnmeasuredTask(sources, taskId, guests))
-  return {
-    schemaVersion: 1,
-    specVersion,
-    commit: 'unmeasured',
-    commitDirty: false,
-    author: 'unmeasured',
-    timestamp: '1970-01-01T00:00:00Z',
-    guests: guests.map(guest => buildUnmeasuredGuest(guest, tasks)),
-    tasks,
-  }
-}
-
-function buildUnmeasuredTask(sources, taskId, guests) {
-  const file = sources.files?.[taskId]
-  if (!file) throw new CatalogError(`${taskId}: missing task files`)
-  const described = taskDescription(file.markdown, `${taskId}/problem.md`)
-  const summary = described.description.split(/\n\n+/)[0].replace(/\s+/g, ' ').trim()
-  const path = `/tasks/${taskId}`
-  return {
-    id: taskId,
-    title: described.title,
-    description: described.description,
-    summary,
-    path,
-    canonical: `https://thuelang.org${path}`,
-    documentTitle: `${described.title} — Thue++ Tasks`,
-    cases: [],
-    guests: guests.map(guest => unmeasuredGuestResult(file, taskId, guest.id)),
-  }
-}
-
-function unmeasuredGuestResult(file, taskId, guestId) {
-  const solution = file.solutions?.[guestId]
-  if (!solution) throw new CatalogError(`${taskId}/${guestId}: missing solution file`)
-  const name = guestName(guestId)
-  if (solution.kind === 'unsupported') {
-    return { id: guestId, name, status: 'unsupported', stepCount: null, solution: null, solutionPath: null, reason: solution.reason, error: null }
-  }
-  return {
-    id: guestId,
-    name,
-    status: 'unmeasured',
-    stepCount: null,
-    solution: solution.text,
-    solutionPath: `problems/${taskId}/solutions/${guestId}.tpp`,
-    reason: null,
-    error: null,
-  }
-}
-
-function buildUnmeasuredGuest(guest, tasks) {
-  return {
-    id: guest.id,
-    name: guestName(guest.id),
-    program: guest.program,
-    ruleCount: 0,
-    passCount: 0,
-    taskCount: tasks.length,
-    stepCount: 0,
-  }
-}
-
 function main() {
-  const { taskOrder, guests } = loadSuite()
-  const sources = { taskOrder, guests, files: loadSources(taskOrder, guests) }
-  const catalog = catalogFromSources(sources)
-  console.log('catalog: problems/ sources; statuses are unmeasured')
+  const problemOrder = requireStringList(parseToml(readFileSync(join(repoRoot, 'problems', 'suite.toml'), 'utf8')).order, 'problems/suite.toml order')
+  const langOrder = requireStringList(parseToml(readFileSync(join(repoRoot, 'langs', 'suite.toml'), 'utf8')).order, 'langs/suite.toml order')
+  const specVersion = readFileSync(join(repoRoot, 'SPEC_VERSION'), 'utf8').trim()
+  const latest = JSON.parse(readFileSync(join(repoRoot, 'metrics', 'latest.json'), 'utf8'))
+  if ('commit' in latest || 'author' in latest || 'timestamp' in latest) {
+    throw new CatalogError('metrics/latest.json must not store a commit; the catalog uses HEAD')
+  }
+  const head = {
+    commit: git(['rev-parse', 'HEAD']),
+    author: git(['log', '-1', '--format=%an <%ae>', 'HEAD']),
+    timestamp: utcTimestamp(git(['log', '-1', '--format=%aI', 'HEAD'])),
+  }
+  const catalog = buildProblemCatalog({
+    specVersion,
+    head,
+    latest,
+    archives: loadArchives(),
+    problems: loadProblems(problemOrder),
+    langs: loadLangs(langOrder),
+  })
   mkdirSync(dirname(catalogPath), { recursive: true })
   writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`)
   writeSitemap(catalog)
-  console.log(`catalog: ${catalog.tasks.length} tasks, ${catalog.guests.length} guests, ${catalog.commit.slice(0, 12)}`)
+  const measured = catalog.problems.reduce((sum, problem) => sum + problem.versions.reduce((inner, version) => inner + version.solutions.length, 0), 0)
+  console.log(`catalog: ${catalog.problems.length} problems, ${measured} solutions, ${catalog.langs.length} language versions, ${catalog.commit.slice(0, 12)}`)
 }
 
 const entry = process.argv[1] ? pathToFileURL(process.argv[1]).href : ''

@@ -176,6 +176,7 @@ def counter_document(source: str, suite: dict) -> dict:
     for row in suite["results"]:
         built = {
             "status": row["status"],
+            "cost": row["cost"],
             "applied_steps": row["applied_steps"],
             "regex_evals": row["regex_evals"],
             "regex_matches": row["regex_matches"],
@@ -293,7 +294,7 @@ def run_benchmarks(suite: dict) -> dict:
             raise RecordError(f"benchmark {workload['id']} did not run go")
         base = rows["go"]
         for host, row in rows.items():
-            for key in ("applied_steps", "probes", *historylib.METRIC_KEYS[1:]):
+            for key in ("applied_steps", "probes", "cost", *historylib.METRIC_KEYS_V3[1:]):
                 if row[key] != base[key]:
                     raise RecordError(f"{host} {workload['program']} {key}: {row[key]}, go {base[key]}")
         recorded.append(

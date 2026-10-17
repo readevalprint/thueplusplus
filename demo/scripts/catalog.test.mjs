@@ -1,191 +1,167 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { CatalogError, buildCatalog, catalogFromSources, publishedCases, sitemapXml, taskDescription } from './build-catalog.mjs'
+import { CatalogError, buildProblemCatalog, problemDescription, sitemapXml, versionIdForSolution } from './build-catalog.mjs'
 
-const COMMIT = '0123456789abcdef0123456789abcdef01234567'
+const HEAD = '0123456789abcdef0123456789abcdef01234567'
+const OLDER = 'abcdefabcdefabcdefabcdefabcdefabcdefabcd'
 
-function row(fields) {
+function counters(fields) {
   return {
-    task: 'factorial',
-    guest: 'forth',
-    host: 'python',
     status: 'pass',
-    step_count: 52,
-    guest_rule_count: 45,
-    solution_path: 'tasks/factorial/solutions/forth.fth',
-    reason: null,
-    error: null,
+    cost: 4000,
+    applied_steps: 83,
+    regex_evals: 290,
+    regex_matches: 88,
+    state_bytes: 1232,
+    state_peak: 31,
+    rule_count: 8,
+    rule_chars: 359,
+    duration_ms: 10,
     ...fields,
   }
 }
 
-function sourcesFor(solutions) {
+function latestFor(problemRows, langRows = [counters({ lang: 'forth', program: 'langs/forth/forth.tpp' })]) {
   return {
-    taskOrder: ['factorial'],
-    guests: [
-      { id: 'forth', program: 'examples/forth/forth.tpp', extension: 'fth' },
-      { id: 'lisp', program: 'examples/lisp/lisp.tpp', extension: 'lisp' },
-    ],
-    files: {
-      factorial: {
-        markdown: '# Factorial\n\nPrint n! and a newline.\n\nRead n from stdin.\n',
-        solutions,
-      },
-    },
+    schema_version: 4,
+    problems: { source: 'make problems', host: 'go', environment: 'go native', results: problemRows },
+    langs: { source: 'make langs', host: 'go', environment: 'go native', results: langRows },
   }
 }
 
-function resultsFor() {
-  const hosts = ['python', 'go', 'wasm']
-  const forth = hosts.map(host => row({ host }))
-  const lisp = hosts.map(host => row({
-    guest: 'lisp',
-    host,
-    status: 'unsupported',
-    step_count: null,
-    guest_rule_count: 394,
-    solution_path: null,
-    reason: 'Lisp cannot print plain text.',
-  }))
+function inputFor(latest, solutions, archives = []) {
   return {
-    schema_version: 1,
-    spec_version: 'v0.5',
-    commit: COMMIT,
-    commit_dirty: false,
-    author: 'Ada Lovelace <ada@example.com>',
-    timestamp: '2026-10-16T13:40:00Z',
-    errors: [],
-    hosts,
-    guests: [
-      { id: 'forth', program: 'examples/forth/forth.tpp', rule_count: 45 },
-      { id: 'lisp', program: 'examples/lisp/lisp.tpp', rule_count: 394 },
-    ],
-    tasks: [{
+    specVersion: 'v0.5',
+    head: { commit: HEAD, author: 'Ada Lovelace <ada@example.com>', timestamp: '2026-10-17T00:00:00Z' },
+    latest,
+    archives,
+    problems: [{
       id: 'factorial',
-      title: 'Factorial',
-      cases: [{ name: 'ten', stdin: '10\n', stdout: '3628800\n', stderr: '', exit_code: 0 }],
+      markdown: '# Factorial\n\nPrint n! and a newline.\n\nRead n from stdin.\n',
+      solutions,
     }],
-    grid: {
-      factorial: {
-        forth: { status: 'pass', step_count: 52 },
-        lisp: { status: 'unsupported', step_count: null },
-      },
-    },
-    results: [...forth, ...lisp],
+    langs: [
+      { id: 'forth', programs: ['langs/forth/forth.tpp'] },
+      { id: 'basic', programs: ['langs/basic/basic.tpp'] },
+    ],
   }
 }
 
-describe('task transcripts', () => {
+describe('problem transcripts', () => {
   it('reads a title and the body under it', () => {
-    const described = taskDescription('# Hello world\n\nPrint it.\n\nThen stop.\n')
+    const described = problemDescription('# Hello world\n\nPrint it.\n\nThen stop.\n')
     assert.equal(described.title, 'Hello world')
     assert.equal(described.description, 'Print it.\n\nThen stop.')
   })
+})
 
-  it('reads the cases the Go test published', () => {
-    const cases = publishedCases('sum-numbers', [
-      { name: 'three', stdin: '3\n', stdout: '60\n', stderr: '', exit_code: 0 },
-      { name: 'none', stdin: '0\n', stdout: '0\n', stderr: '', exit_code: 0 },
+describe('version counters', () => {
+  it('maps language solutions to their version and every other file to direct', () => {
+    assert.equal(versionIdForSolution('lisp'), 'lisp')
+    assert.equal(versionIdForSolution('forth'), 'forth')
+    assert.equal(versionIdForSolution('basic'), 'basic')
+    assert.equal(versionIdForSolution('direct'), 'direct')
+    assert.equal(versionIdForSolution('slow'), 'direct')
+  })
+})
+
+describe('buildProblemCatalog', () => {
+  it('records the measuring commit, pass counters, and a missing language version', () => {
+    const catalog = buildProblemCatalog(inputFor(latestFor([
+      counters({ problem: 'factorial', solution: 'direct' }),
+    ]), { direct: '1\n' }))
+    assert.equal(catalog.schemaVersion, 2)
+    assert.equal(catalog.commit, HEAD)
+    assert.equal(catalog.problems[0].canonical, 'https://thuelang.org/problems/factorial')
+    assert.equal(catalog.problems[0].summary, 'Print n! and a newline.')
+    const direct = catalog.problems[0].versions.find(version => version.id === 'direct')
+    const lisp = catalog.problems[0].versions.find(version => version.id === 'lisp')
+    assert.equal(direct.missing, false)
+    assert.equal(direct.solutions[0].status, 'pass')
+    assert.equal(direct.solutions[0].cost, 4000)
+    assert.equal(direct.solutions[0].regexEvals, 290)
+    assert.equal(direct.solutions[0].stateBytes, 1232)
+    assert.equal(direct.solutions[0].steps, 83)
+    assert.equal(lisp.missing, true)
+    assert.equal(lisp.solutions.length, 0)
+    assert.equal(lisp.series.length, 0)
+    const basic = catalog.langs.find(lang => lang.language === 'basic')
+    assert.equal(basic.status, 'missing')
+    assert.equal(basic.program, 'langs/basic/basic.tpp')
+    assert.equal(catalog.langs.find(lang => lang.id === 'forth').status, 'pass')
+  })
+
+  it('plots every passing solution and leaves a version out until it exists', () => {
+    const older = {
+      schema_version: 4,
+      problems: {
+        source: 'make problems', host: 'go', environment: 'go native',
+        results: [
+          counters({ problem: 'factorial', solution: 'direct', cost: 10 }),
+          counters({ problem: 'factorial', solution: 'slow', cost: 4 }),
+          counters({
+            problem: 'factorial', solution: 'broken', status: 'fail',
+            cost: null, applied_steps: null, regex_evals: null, regex_matches: null,
+            state_bytes: null, state_peak: null, rule_count: null, rule_chars: null,
+          }),
+        ],
+      },
+      langs: {
+        source: 'make langs', host: 'go', environment: 'go native',
+        results: [counters({ lang: 'forth', program: 'langs/forth/forth.tpp' })],
+      },
+    }
+    const catalog = buildProblemCatalog(inputFor(
+      latestFor([
+        counters({ problem: 'factorial', solution: 'direct', cost: 290 }),
+        counters({ problem: 'factorial', solution: 'slow', cost: 400 }),
+      ]),
+      { direct: '1\n', slow: '2\n' },
+      [{ commit: OLDER, author: 'Ada Lovelace <ada@example.com>', timestamp: '2026-10-16T00:00:00Z', document: older }],
+    ))
+    const direct = catalog.problems[0].versions.find(version => version.id === 'direct')
+    assert.deepEqual(direct.series.map(point => [point.commit, point.solution, point.cost]), [
+      [OLDER, 'direct.tpp', 10],
+      [OLDER, 'slow.tpp', 4],
+      [HEAD, 'direct.tpp', 290],
+      [HEAD, 'slow.tpp', 400],
     ])
-    assert.equal(cases.length, 2)
-    assert.equal(cases[1].stdin, '0\n')
-    assert.equal(cases[0].stdout, '60\n')
+    assert.equal(catalog.commits.at(-1).commit, HEAD)
+    assert.equal(catalog.problems[0].versions.find(version => version.id === 'forth').series.length, 0)
   })
 
-  it('rejects a case that omits stdout', () => {
-    assert.throws(() => publishedCases('factorial', [{ name: 'ten', stdin: '10\n', stderr: '', exit_code: 0 }]), CatalogError)
-  })
-})
-
-describe('buildCatalog', () => {
-  it('sums passes and steps and keeps unsupported reasons', () => {
-    const catalog = buildCatalog(resultsFor(), sourcesFor({
-      forth: { kind: 'solution', text: '1 2 *\n' },
-      lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
-    }))
-    assert.equal(catalog.schemaVersion, 1)
-    assert.equal(catalog.guests[0].passCount, 1)
-    assert.equal(catalog.guests[0].stepCount, 52)
-    assert.equal(catalog.guests[0].ruleCount, 45)
-    assert.equal(catalog.guests[1].passCount, 0)
-    assert.equal(catalog.guests[1].stepCount, 0)
-    assert.equal(catalog.guests[1].ruleCount, 394)
-    assert.equal(catalog.tasks[0].guests[0].solution, '1 2 *\n')
-    assert.equal(catalog.tasks[0].guests[1].reason, 'Lisp cannot print plain text.')
-    assert.equal(catalog.tasks[0].summary, 'Print n! and a newline.')
-    assert.equal(catalog.tasks[0].cases[0].stdout, '3628800\n')
-    assert.equal(catalog.tasks[0].canonical, 'https://thuelang.org/tasks/factorial')
+  it('fails the build when a solution has no metrics entry', () => {
+    assert.throws(() => buildProblemCatalog(inputFor(
+      latestFor([counters({ problem: 'factorial', solution: 'direct' })]),
+      { direct: '1\n', lisp: '(fact)\n' },
+    )), /factorial\/lisp: solution has no metrics entry/)
   })
 
-  it('keeps a failing solution and its error', () => {
-    const results = resultsFor()
-    results.grid.factorial.forth = { status: 'fail', step_count: null }
-    results.results.filter(item => item.guest === 'forth').forEach(item => {
-      item.status = 'fail'
-      item.step_count = null
-      item.error = 'stdout mismatch'
-    })
-    const catalog = buildCatalog(results, sourcesFor({
-      forth: { kind: 'solution', text: '1\n' },
-      lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
-    }))
-    const forth = catalog.tasks[0].guests[0]
-    assert.equal(forth.status, 'fail')
-    assert.equal(forth.solution, '1\n')
-    assert.equal(forth.error, 'stdout mismatch')
-    assert.equal(catalog.guests[0].passCount, 0)
-    assert.equal(catalog.guests[0].stepCount, 0)
+  it('fails the build when a metrics row has no solution file', () => {
+    assert.throws(() => buildProblemCatalog(inputFor(
+      latestFor([
+        counters({ problem: 'factorial', solution: 'direct' }),
+        counters({ problem: 'factorial', solution: 'lisp' }),
+      ]),
+      { direct: '1\n' },
+    )), /factorial\/lisp: metrics entry has no solution file/)
   })
 
-  it('accepts a host subset and rejects an unknown or reordered host list', () => {
-    const sources = sourcesFor({
-      forth: { kind: 'solution', text: '1\n' },
-      lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
-    })
-    const subset = resultsFor()
-    subset.hosts = ['python']
-    assert.equal(buildCatalog(subset, sources).tasks[0].guests[0].status, 'pass')
-    const unknown = resultsFor()
-    unknown.hosts = ['python', 'erlang']
-    assert.throws(() => buildCatalog(unknown, sources), /unknown host/)
-    const unordered = resultsFor()
-    unordered.hosts = ['wasm', 'python', 'go']
-    assert.throws(() => buildCatalog(unordered, sources), /hosts\.toml order/)
-    const dirty = resultsFor()
-    dirty.errors = ['factorial/forth applied-step mismatch']
-    assert.throws(() => buildCatalog(dirty, sourcesFor({
-      forth: { kind: 'solution', text: '1\n' },
-      lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
-    })), /results\.errors/)
-  })
-})
-
-describe('catalogFromSources', () => {
-  it('marks solutions unmeasured and does not claim a pass', () => {
-    const catalog = catalogFromSources(sourcesFor({
-      forth: { kind: 'solution', text: '1\n' },
-      lisp: { kind: 'unsupported', reason: 'Lisp cannot print plain text.' },
-    }))
-    assert.equal(catalog.commit, 'unmeasured')
-    assert.equal(catalog.guests[0].ruleCount, 0)
-    assert.equal(catalog.guests[0].passCount, 0)
-    const forth = catalog.tasks[0].guests.find(guest => guest.id === 'forth')
-    const lisp = catalog.tasks[0].guests.find(guest => guest.id === 'lisp')
-    assert.equal(forth.status, 'unmeasured')
-    assert.equal(forth.stepCount, null)
-    assert.equal(lisp.status, 'unsupported')
-    assert.equal(lisp.reason, 'Lisp cannot print plain text.')
-    assert.equal(catalog.tasks[0].guests.some(guest => guest.status === 'pass'), false)
+  it('rejects an unmeasured status', () => {
+    assert.throws(() => buildProblemCatalog(inputFor(
+      latestFor([counters({ problem: 'factorial', solution: 'direct', status: 'unmeasured' })]),
+      { direct: '1\n' },
+    )), /status must be pass or fail/)
   })
 })
 
 describe('sitemapXml', () => {
-  it('escapes locations and keeps task urls', () => {
+  it('escapes locations and keeps problem urls', () => {
     const xml = sitemapXml([
-      { loc: 'https://thuelang.org/tasks', priority: '0.6' },
-      { loc: 'https://thuelang.org/tasks/hello-world', priority: '0.5' },
+      { loc: 'https://thuelang.org/problems', priority: '0.6' },
+      { loc: 'https://thuelang.org/problems/hello-world', priority: '0.5' },
     ])
-    assert.match(xml, /<loc>https:\/\/thuelang.org\/tasks\/hello-world<\/loc>/)
+    assert.match(xml, /<loc>https:\/\/thuelang.org\/problems\/hello-world<\/loc>/)
     assert.match(xml, /<priority>0\.5<\/priority>/)
   })
 })

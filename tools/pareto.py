@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Reject a solution whose counters are dominated by another in the same group.
+"""Reject a solution that is not strictly cheaper than the best in its directory.
 
-The five minimized counters are regex evals, regex matches, cumulative state
-size, rule count, and rule chars. Duration is not an axis. A row is dominated
-when another passing row in the same problem or language is less than or equal
-on every axis and strictly less on one. The message names the dominator.
+Ranking uses Go cost only. Cost is UTF-8 bytes: each regex eval adds the state
+length plus the pattern source length, and each applied step adds the
+replacement source length. A passing file is kept only when its cost is
+strictly lower than every other passing file in the same problem or language.
+An equal cost is not lower. The message names the cheaper file and both costs.
 """
 
 from __future__ import annotations
@@ -13,17 +14,9 @@ import json
 import sys
 from pathlib import Path
 
-AXES = ("regex_evals", "regex_matches", "state_bytes", "rule_count", "rule_chars")
-
 
 class ParetoError(RuntimeError):
     pass
-
-
-def dominates(better: dict, worse: dict) -> bool:
-    less_or_equal = all(int(better[axis]) <= int(worse[axis]) for axis in AXES)
-    strictly_less = any(int(better[axis]) < int(worse[axis]) for axis in AXES)
-    return less_or_equal and strictly_less
 
 
 def messages(rows: list[dict]) -> list[str]:
@@ -35,12 +28,15 @@ def messages(rows: list[dict]) -> list[str]:
     found: list[str] = []
     for items in groups.values():
         for left in items:
-            for right in items:
-                if left["path"] == right["path"]:
-                    continue
-                if dominates(right, left):
-                    found.append(f"{left['path']} is dominated by {right['path']}")
-                    break
+            others = [right for right in items if right["path"] != left["path"]]
+            if not others:
+                continue
+            best = min(others, key=lambda right: (int(right["cost"]), str(right["path"])))
+            if int(left["cost"]) >= int(best["cost"]):
+                found.append(
+                    f"{left['path']} cost {int(left['cost'])} is not lower than "
+                    f"{best['path']} cost {int(best['cost'])}"
+                )
     return found
 
 
@@ -62,10 +58,10 @@ def rows_from_document(document: dict) -> list[dict]:
             raise ParetoError(f"result #{index} is neither a problem solution nor a language program")
         built = {"group": group, "path": path, "status": row["status"]}
         if row["status"] == "pass":
-            for axis in AXES:
-                if axis not in row or isinstance(row[axis], bool) or not isinstance(row[axis], int):
-                    raise ParetoError(f"{path} pass is missing {axis}")
-                built[axis] = row[axis]
+            cost = row.get("cost")
+            if isinstance(cost, bool) or not isinstance(cost, int) or cost < 0:
+                raise ParetoError(f"{path} pass is missing cost")
+            built["cost"] = cost
         rows.append(built)
     return rows
 

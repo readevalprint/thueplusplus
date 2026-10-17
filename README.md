@@ -683,7 +683,7 @@ Import `thuepp` in Python, `github.com/readevalprint/thueplusplus/go/thuepp` in 
 Copy-pasteable agent prompt:
 
 ```text
-Implement Thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, exact-rational numeric builtins with no decimal/binary floats, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
+Implement Thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, exact-rational numeric builtins with no decimal/binary floats, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior. Rank a solution by Go cost: each regex eval adds the UTF-8 length of the state plus the pattern source, and each applied step adds the UTF-8 length of the replacement source. A new file must pass and must have a strictly lower cost than the other passing files in its directory.
 ```
 
 To run this repository's current reference tooling locally:

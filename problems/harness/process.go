@@ -14,6 +14,7 @@ import (
 )
 
 type Metrics struct {
+	Cost         int
 	Steps        int
 	RegexEvals   int
 	RegexMatches int
@@ -156,7 +157,7 @@ func readMetrics(path string) (Metrics, error) {
 		return Metrics{}, fmt.Errorf("metrics: %w", err)
 	}
 	keys := []string{
-		"applied_steps", "regex_evals", "regex_matches",
+		"cost", "applied_steps", "regex_evals", "regex_matches",
 		"state_bytes", "state_peak", "rule_count", "rule_chars",
 	}
 	if len(raw) != len(keys) {
@@ -175,8 +176,8 @@ func readMetrics(path string) (Metrics, error) {
 		vals[i] = n
 	}
 	return Metrics{
-		Steps: vals[0], RegexEvals: vals[1], RegexMatches: vals[2],
-		StateBytes: vals[3], StatePeak: vals[4], RuleCount: vals[5], RuleChars: vals[6],
+		Cost: vals[0], Steps: vals[1], RegexEvals: vals[2], RegexMatches: vals[3],
+		StateBytes: vals[4], StatePeak: vals[5], RuleCount: vals[6], RuleChars: vals[7],
 	}, nil
 }
 
