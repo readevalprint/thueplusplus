@@ -369,8 +369,8 @@
             "environment": "python",
             "applied_steps": 1,
             "probes": 51,
-            "duration_ms": 109,
-            "memory_bytes": 14036992,
+            "duration_ms": 107,
+            "memory_bytes": 19312640,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -378,8 +378,8 @@
             "environment": "go native",
             "applied_steps": 1,
             "probes": 51,
-            "duration_ms": 9,
-            "memory_bytes": 0,
+            "duration_ms": 10,
+            "memory_bytes": 2256896,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -387,8 +387,8 @@
             "environment": "wasm (node)",
             "applied_steps": 1,
             "probes": 51,
-            "duration_ms": 111,
-            "memory_bytes": 26570752,
+            "duration_ms": 106,
+            "memory_bytes": 25456640,
             "exit_code": 0,
             "host_timeout_seconds": 80
           },
@@ -396,8 +396,8 @@
             "environment": "rust",
             "applied_steps": 1,
             "probes": 51,
-            "duration_ms": 9,
-            "memory_bytes": 6610944,
+            "duration_ms": 5,
+            "memory_bytes": 0,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -405,8 +405,8 @@
             "environment": "cpp",
             "applied_steps": 1,
             "probes": 51,
-            "duration_ms": 7,
-            "memory_bytes": 0,
+            "duration_ms": 11,
+            "memory_bytes": 6701056,
             "exit_code": 0,
             "host_timeout_seconds": 10
           }
@@ -428,7 +428,7 @@
             "applied_steps": 8,
             "probes": 10,
             "duration_ms": 70,
-            "memory_bytes": 11665408,
+            "memory_bytes": 16375808,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -437,7 +437,7 @@
             "applied_steps": 8,
             "probes": 10,
             "duration_ms": 7,
-            "memory_bytes": 4030464,
+            "memory_bytes": 0,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -446,7 +446,7 @@
             "applied_steps": 8,
             "probes": 10,
             "duration_ms": 106,
-            "memory_bytes": 23834624,
+            "memory_bytes": 24743936,
             "exit_code": 0,
             "host_timeout_seconds": 80
           },
@@ -454,8 +454,8 @@
             "environment": "rust",
             "applied_steps": 8,
             "probes": 10,
-            "duration_ms": 6,
-            "memory_bytes": 6721536,
+            "duration_ms": 4,
+            "memory_bytes": 0,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -463,7 +463,7 @@
             "environment": "cpp",
             "applied_steps": 8,
             "probes": 10,
-            "duration_ms": 4,
+            "duration_ms": 5,
             "memory_bytes": 0,
             "exit_code": 0,
             "host_timeout_seconds": 10
@@ -485,8 +485,8 @@
             "environment": "python",
             "applied_steps": 3,
             "probes": 90,
-            "duration_ms": 68,
-            "memory_bytes": 6467584,
+            "duration_ms": 71,
+            "memory_bytes": 23719936,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -494,7 +494,7 @@
             "environment": "go native",
             "applied_steps": 3,
             "probes": 90,
-            "duration_ms": 8,
+            "duration_ms": 5,
             "memory_bytes": 0,
             "exit_code": 0,
             "host_timeout_seconds": 10
@@ -503,8 +503,8 @@
             "environment": "wasm (node)",
             "applied_steps": 3,
             "probes": 90,
-            "duration_ms": 105,
-            "memory_bytes": 16695296,
+            "duration_ms": 104,
+            "memory_bytes": 30904320,
             "exit_code": 0,
             "host_timeout_seconds": 80
           },
@@ -512,8 +512,8 @@
             "environment": "rust",
             "applied_steps": 3,
             "probes": 90,
-            "duration_ms": 9,
-            "memory_bytes": 2940928,
+            "duration_ms": 4,
+            "memory_bytes": 7254016,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -543,8 +543,8 @@
             "environment": "python",
             "applied_steps": 24,
             "probes": 87,
-            "duration_ms": 69,
-            "memory_bytes": 12771328,
+            "duration_ms": 68,
+            "memory_bytes": 6746112,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -552,8 +552,8 @@
             "environment": "go native",
             "applied_steps": 24,
             "probes": 87,
-            "duration_ms": 7,
-            "memory_bytes": 2252800,
+            "duration_ms": 5,
+            "memory_bytes": 5214208,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -561,8 +561,8 @@
             "environment": "wasm (node)",
             "applied_steps": 24,
             "probes": 87,
-            "duration_ms": 112,
-            "memory_bytes": 99368960,
+            "duration_ms": 108,
+            "memory_bytes": 96288768,
             "exit_code": 0,
             "host_timeout_seconds": 80
           },
@@ -570,8 +570,8 @@
             "environment": "rust",
             "applied_steps": 24,
             "probes": 87,
-            "duration_ms": 5,
-            "memory_bytes": 6922240,
+            "duration_ms": 3,
+            "memory_bytes": 6848512,
             "exit_code": 0,
             "host_timeout_seconds": 10
           },
@@ -580,7 +580,7 @@
             "applied_steps": 24,
             "probes": 87,
             "duration_ms": 5,
-            "memory_bytes": 3575808,
+            "memory_bytes": 6656000,
             "exit_code": 0,
             "host_timeout_seconds": 10
           }
@@ -601,8 +601,8 @@
             "environment": "python",
             "applied_steps": 7,
             "probes": 226,
-            "duration_ms": 70,
-            "memory_bytes": 5607424,
+            "duration_ms": 71,
+            "memory_bytes": 18272256,
             "exit_code": 0,
             "host_timeout_seconds": 30
           },
@@ -611,7 +611,7 @@
             "applied_steps": 7,
             "probes": 226,
             "duration_ms": 12,
-            "memory_bytes": 4722688,
+            "memory_bytes": 4075520,
             "exit_code": 0,
             "host_timeout_seconds": 30
           },
@@ -619,8 +619,8 @@
             "environment": "wasm (node)",
             "applied_steps": 7,
             "probes": 226,
-            "duration_ms": 114,
-            "memory_bytes": 102637568,
+            "duration_ms": 112,
+            "memory_bytes": 101744640,
             "exit_code": 0,
             "host_timeout_seconds": 240
           },
@@ -628,8 +628,8 @@
             "environment": "rust",
             "applied_steps": 7,
             "probes": 226,
-            "duration_ms": 19,
-            "memory_bytes": 3837952,
+            "duration_ms": 10,
+            "memory_bytes": 8835072,
             "exit_code": 0,
             "host_timeout_seconds": 30
           },
@@ -637,8 +637,8 @@
             "environment": "cpp",
             "applied_steps": 7,
             "probes": 226,
-            "duration_ms": 8,
-            "memory_bytes": 2256896,
+            "duration_ms": 11,
+            "memory_bytes": 6823936,
             "exit_code": 0,
             "host_timeout_seconds": 30
           }
