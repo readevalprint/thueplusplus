@@ -60,6 +60,10 @@ function renderPage(html, page) {
     robots: page.robots,
   })
   const body = `      <h1>${escapeHtml(page.title)}</h1>`
+  const boot = '<div id="boot" data-test="boot"><span>::=</span></div>'
+  if (withMeta.includes(boot)) {
+    return withMeta.replace(boot, `${body}\n      ${boot}`)
+  }
   return withMeta.replace('<div id="app"></div>', `<div id="app">\n${body}\n    </div>`)
 }
 
@@ -78,7 +82,7 @@ function updateMetadata(html, metadata) {
 
 function setMeta(html, attr, key, value) {
   const escaped = escapeAttribute(value)
-  const re = new RegExp(`<meta ${attr}="${escapeRegExp(key)}" content="[^"]*" \/>`)
+  const re = new RegExp(`<meta\\s+${attr}="${escapeRegExp(key)}"\\s+content="[^"]*"\\s*/>`)
   const tag = `<meta ${attr}="${key}" content="${escaped}" />`
   if (re.test(html)) return html.replace(re, tag)
   return html.replace('</head>', `    ${tag}\n  </head>`)

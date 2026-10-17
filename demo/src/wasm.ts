@@ -1,5 +1,5 @@
 import { ThueWorker } from 'thuelang/worker'
-import browserWorkerURL from 'thuelang/browser-worker?url'
+import browserWorkerURL from 'thuelang/browser-worker?worker&url'
 
 export interface DemoResourceConfig {
   name: string
@@ -73,15 +73,8 @@ function metricNumbers(metrics: object): { cost: number, state_peak: number } {
   return { cost: metrics.cost, state_peak: metrics.state_peak }
 }
 
-function publicAssetURL(fileName: string): string {
-  return new URL(`${import.meta.env.BASE_URL}${fileName}`, window.location.href).toString()
-}
-
 export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunResult> {
-  const client = new ThueWorker(browserWorkerURL, {
-    wasmURL: publicAssetURL('thue.wasm'),
-    wasmExecURL: publicAssetURL('wasm_exec.js'),
-  })
+  const client = new ThueWorker(browserWorkerURL)
 
   try {
     const result = await client.run({

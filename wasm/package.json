@@ -1,0 +1,46 @@
+{
+  "name": "@thuelang/wasm",
+  "version": "0.1.0",
+  "description": "Thue++ interpreter for Node and the browser, backed by the WebAssembly build.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://thuelang.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thuelang/thueplusplus.git",
+    "directory": "wasm"
+  },
+  "bugs": {
+    "url": "https://github.com/thuelang/thueplusplus/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "thue": "./src/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "browser": "./src/browser.js",
+      "node": "./src/node.js",
+      "default": "./src/node.js"
+    },
+    "./browser": {
+      "types": "./src/index.d.ts",
+      "default": "./src/browser.js"
+    },
+    "./worker": {
+      "types": "./src/index.d.ts",
+      "default": "./src/worker-client.js"
+    },
+    "./browser-worker": "./src/browser-worker.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node browser-adapter.test.cjs"
+  }
+}

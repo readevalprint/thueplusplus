@@ -1,9 +1,10 @@
 """Host id to environment label.
 
-Ids stay stable in bench.json (`python`, `go`, `wasm`, `rust`, `cpp`, `ruby`, `csharp`, `java`).
+Ids stay stable in bench.json (`python`, `go`, `wasm`, `js`, `rust`, `cpp`, `ruby`, `csharp`, `java`).
 The label names the runtime. `go` is the native Go binary. `wasm` is that
-same interpreter compiled to WebAssembly and run by Node. The browser
-playground is `wasm (browser)` and is not a history series.
+same interpreter compiled to WebAssembly and run by Node. `js` is the native
+JavaScript interpreter. The browser playground loads that host and is not a
+history series.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ REQUIRED = {
     "python": "python",
     "go": "go native",
     "wasm": "wasm (node)",
+    "js": "js (node)",
     "rust": "rust",
     "cpp": "cpp",
     "ruby": "ruby",

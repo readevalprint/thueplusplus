@@ -1,38 +1,11 @@
-let thueReady;
+import { run } from './engine.js'
 
-async function init(options = {}) {
-  if (thueReady) return thueReady;
-  if (typeof globalThis.Go !== 'function') {
-    if (!options.wasmExecURL) throw new Error('wasmExecURL is required when wasm_exec.js is not preloaded');
-    importScripts(options.wasmExecURL);
-  }
-  const go = new globalThis.Go();
-  const wasmURL = options.wasmURL || 'thue.wasm';
-  const response = await fetch(wasmURL);
-  if (!response.ok) {
-    throw new Error(`failed to fetch ${wasmURL}: HTTP ${response.status}`);
-  }
-  const bytes = await response.arrayBuffer();
-  const { instance } = await WebAssembly.instantiate(bytes, go.importObject);
-  go.run(instance).catch((err) => postMessage({ type: 'runtime-error', error: String(err && err.stack || err) }));
-  thueReady = waitForAPI();
-  return thueReady;
-}
-
-async function waitForAPI() {
-  for (let i = 0; i < 100; i += 1) {
-    if (globalThis.Thue && typeof globalThis.Thue.run === 'function') return globalThis.Thue;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error('Thue.run was not registered by the Go WASM module');
-}
-
-function splitLines(text) {
+export function splitLines(text) {
   if (!text) return [];
   return String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((line, index, lines) => line !== '' || index < lines.length - 1);
 }
 
-function shiftLine(buffer) {
+export function shiftLine(buffer) {
   if (!buffer.text) return '';
   const newline = buffer.text.indexOf('\n');
   if (newline < 0) {
@@ -51,7 +24,7 @@ function shiftSubmittedValue(buffer) {
   return value;
 }
 
-function buildResources(options) {
+export function buildResources(options) {
   const logs = [];
   const resources = {};
   const configsByName = new Map();
@@ -103,26 +76,26 @@ function buildResources(options) {
   return { resources, logs };
 }
 
-self.onmessage = async (event) => {
-  const message = event.data || {};
-  try {
-    if (message.type === 'init') {
-      await init(message);
-      postMessage({ type: 'ready', id: message.id });
-      return;
+if (typeof WorkerGlobalScope !== 'undefined' && globalThis instanceof WorkerGlobalScope) {
+  globalThis.onmessage = async (event) => {
+    const message = event.data || {};
+    try {
+      if (message.type === 'init') {
+        postMessage({ type: 'ready', id: message.id });
+        return;
+      }
+      if (message.type === 'run') {
+        const options = { ...(message.options || {}) };
+        const built = buildResources(options);
+        options.resources = built.resources;
+        delete options.resourceConfig;
+        const result = await run(options);
+        postMessage({ type: 'result', id: message.id, result: { ...result, resourceLogs: built.logs } });
+        return;
+      }
+      postMessage({ type: 'error', id: message.id, error: `unknown worker message type ${message.type}` });
+    } catch (err) {
+      postMessage({ type: 'error', id: message.id, error: String(err && err.stack || err) });
     }
-    if (message.type === 'run') {
-      const api = await init(message);
-      const options = { ...(message.options || {}) };
-      const built = buildResources(options);
-      options.resources = built.resources;
-      delete options.resourceConfig;
-      const result = await api.run(options);
-      postMessage({ type: 'result', id: message.id, result: { ...result, resourceLogs: built.logs } });
-      return;
-    }
-    postMessage({ type: 'error', id: message.id, error: `unknown worker message type ${message.type}` });
-  } catch (err) {
-    postMessage({ type: 'error', id: message.id, error: String(err && err.stack || err) });
-  }
-};
+  };
+}

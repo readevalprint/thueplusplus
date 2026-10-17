@@ -37,6 +37,10 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://thuelang.org/install/wasm</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://thuelang.org/install/rust</loc>
     <priority>0.7</priority>
   </url>

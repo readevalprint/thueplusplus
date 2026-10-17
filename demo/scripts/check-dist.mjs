@@ -8,7 +8,7 @@ const catalog = readGeneratedCatalog()
 const problems = problemPages(catalog)
 const solutions = solutionPages(catalog)
 const rulesets = rulesetPages(catalog)
-const requiredAssets = ['thue.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.svg', 'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'brand/thue-mark.svg']
+const requiredAssets = ['robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.svg', 'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'brand/thue-mark.svg']
 const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), ...solutions.map(page => page.path.replace(/^\//, '')), ...rulesets.map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {

@@ -2,7 +2,7 @@
 
 Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
-This is the embedder contract for the Python interpreter, the Go interpreter, the Go wasm module, the Rust crate, the C++ library, the Ruby gem, the C# library, and the Java package. The CLI is a host that follows the same rules.
+This is the embedder contract for the Python interpreter, the Go interpreter, the native JavaScript interpreter, the WebAssembly module, the Rust crate, the C++ library, the Ruby gem, the C# library, and the Java package. The CLI is a host that follows the same rules.
 
 ## Safe by default
 
@@ -144,7 +144,8 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 | --- | --- | --- |
 | Go | `github.com/thuelang/thueplusplus/go/thuelang` | `go/cmd/thue` |
 | Python | PyPI `thuelang`, module `thuelang` | console script `thue` |
-| JS | npm package `thuelang` | `thue` bin, `node js/src/cli.js` in this repo |
+| JavaScript (native) | npm package `thuelang` | `thue` bin, `node js/src/cli.js` in this repo |
+| WebAssembly | npm package `@thuelang/wasm` | `thue` bin, `node wasm/src/cli.js` in this repo |
 | Rust | crate and library `thuelang` (`rust/`) | `thue` bin, `rust/target/release/thue` in this repo |
 | C++ | CMake target `thuelang` (`thuelang::thuelang`) | `thue-cli`, output name `thue` |
 | Ruby | gem `thuelang` (`ruby/`) | `thue`, `ruby/exe/thue` in this repo |
@@ -187,7 +188,7 @@ except LimitExceeded as exc:
 
 Omit `max_evals`, `max_state_bytes`, or `max_steps` for the defaults. Pass `None` to clear one.
 
-JavaScript:
+JavaScript (native):
 
 ```js
 import { initThue } from 'thuelang'
@@ -202,7 +203,7 @@ const result = await engine.run({
 // result.limit is "steps", "evals", "state", or "timeout" when a limit stops the run.
 ```
 
-Browser code imports `initThueWasm` from `thuelang/browser`. A page that wants a worker imports `ThueWorker` from `thuelang/worker` and loads `thuelang/browser-worker` as a classic worker. JSON `null` clears a limit. Omitting the field keeps the default.
+Browser code imports `initThue` from `thuelang/browser`. A page that wants a worker imports `ThueWorker` from `thuelang/worker` and bundles `thuelang/browser-worker` (`import workerURL from 'thuelang/browser-worker?worker&url'`). JSON `null` clears a limit. Omitting the field keeps the default. The WebAssembly package `@thuelang/wasm` has the same `run` options. Its worker is a classic script because it loads the Go module support file. See `wasm/README.md`.
 
 Rust:
 

@@ -21,15 +21,16 @@ def main() -> None:
     expect(["docs/host-api.md"], python=False, go=False, wasm=False, rust=False, guests=False, cpp=False, ruby=False, csharp=False, solutions=False)
     expect(["CHANGELOG.md", "README.md"], python=False, go=False, wasm=False, rust=False, guests=False)
     expect(["go/thuelang/interpreter.go"], python=False, go=True, wasm=True, rust=False, guests=True)
-    expect(["js/src/cli.js"], python=False, go=False, wasm=True, rust=False, guests=False)
+    expect(["js/src/cli.js"], python=False, go=False, wasm=False, js=True, rust=False, guests=False)
+    expect(["wasm/src/cli.js"], python=False, go=False, wasm=True, js=False, rust=False, guests=False)
     expect(["python/thuelang/cli.py"], python=True, go=False, wasm=False, rust=False, guests=False)
     expect(["rust/src/main.rs"], python=False, go=False, wasm=False, rust=True, guests=False)
     expect(["langs/lisp/cases/core_acceptance.toml"], python=False, go=False, wasm=False, rust=False, guests=True, solutions=True)
     expect(["problems/factorial/problem_test.go"], python=False, go=False, wasm=False, rust=False, guests=True, solutions=True)
     expect(["metrics/runs.py"], python=False, go=False, wasm=False, rust=False, guests=False, solutions=True)
-    expect(["examples/brainfuck/brainfuck.thue"], python=True, go=True, wasm=True, rust=True, guests=True)
-    expect(["examples/hello/tests/basic.toml"], python=True, go=True, wasm=True, rust=True, guests=True)
-    expect(["Makefile"], python=True, go=True, wasm=True, rust=True, csharp=True, java=True, guests=True)
+    expect(["examples/brainfuck/brainfuck.thue"], python=True, go=True, wasm=True, js=True, rust=True, guests=True)
+    expect(["examples/hello/tests/basic.toml"], python=True, go=True, wasm=True, js=True, rust=True, guests=True)
+    expect(["Makefile"], python=True, go=True, wasm=True, js=True, rust=True, csharp=True, java=True, guests=True)
     expect(["csharp/src/Thuelang/Interpreter.cs"], python=False, go=False, wasm=False, rust=False, cpp=False, csharp=True, guests=False)
     expect(["cpp/CMakeLists.txt"], python=False, go=False, wasm=False, rust=False, cpp=False, guests=False)
     with_cpp = ci_paths.classify(["cpp/src/main.cpp"], cpp_present=True, ruby_present=False)
@@ -40,7 +41,7 @@ def main() -> None:
     if not with_ruby["ruby"] or with_ruby["go"] or with_ruby["java"]:
         raise SystemExit(f"ruby path: {with_ruby}")
     shared = ci_paths.classify(["Makefile"], cpp_present=True, ruby_present=True)
-    if not shared["java"] or not shared["csharp"] or not shared["ruby"] or not shared["python"]:
+    if not shared["java"] or not shared["csharp"] or not shared["js"] or not shared["ruby"] or not shared["python"]:
         raise SystemExit(f"shared path: {shared}")
     java_only = ci_paths.classify(["java/src/main/java/org/thuelang/thuelang/Cli.java"], cpp_present=True, ruby_present=True)
     if not java_only["java"] or java_only["go"] or java_only["python"] or java_only["ruby"] or java_only["csharp"]:

@@ -19,6 +19,9 @@ def write_tree(root: Path, version: str) -> None:
     js = root / "js"
     js.mkdir()
     (js / "package.json").write_text(f'{{"name":"thuelang","version":"{version}"}}\n')
+    wasm = root / "wasm"
+    wasm.mkdir()
+    (wasm / "package.json").write_text(f'{{"name":"@thuelang/wasm","version":"{version}"}}\n')
     vscode = root / "editors" / "vscode"
     vscode.mkdir(parents=True)
     (vscode / "package.json").write_text(f'{{"name":"thue","version":"{version}"}}\n')

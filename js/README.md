@@ -1,55 +1,25 @@
 # thuelang
 
-Thue++ for Node and the browser. The npm package name is `thuelang`. The CLI command is `thue`. The engine is the Go WebAssembly build. The CLI is a thin wrapper over `initThue`.
+Native JavaScript interpreter for Thue++. It runs on Node.js 22+ and in the browser. The package name is `thuelang`. The command is `thue`.
 
-The shared embedder contract is [../docs/host-api.md](../docs/host-api.md). A pushed `vX.Y.Z` tag publishes this package. See [../docs/releasing.md](../docs/releasing.md).
-
-## Install from a checkout
-
-The playground depends on this directory with `"thuelang": "file:../js"`. A program that vendors the same tree can do the same. `make release-check` runs `npm pack --dry-run`. It does not publish.
-
-Node 22 or newer. Build the wasm module first (`make wasm` from the repository root) or set `THUE_WASM` to a `thue.wasm` built from `go/cmd/thue-wasm`.
-
-## CLI
+The Go build packaged for the browser is `@thuelang/wasm`, in `wasm/`.
 
 ```bash
-node js/src/cli.js <program.thue> [--max-steps N] [--max-state-bytes N] [--max-evals N]
+node js/src/cli.js <program.thue> [--max-steps N] [--max-evals N] [--max-state-bytes N]
 ```
 
-The flags match the Go and Python CLIs. `unlimited` clears a limit. Omitting a limit uses the interpreter default (1000000 probes, 1000000 applied steps, 8388608 bytes of state). Conformance does not omit them; see [../docs/conformance.md](../docs/conformance.md).
-
-## Node
+Omitted limits use the defaults: 1000000 steps, 1000000 evaluations, and 8388608 bytes of state. `unlimited` clears a limit. `0` is a real limit.
 
 ```js
 import { initThue } from 'thuelang'
 
-const engine = await initThue({ wasmPath: process.env.THUE_WASM })
+const engine = await initThue()
 const result = await engine.run({
   sourcePath: 'hello.thue',
   sourceText,
-  maxSteps: 1000000,
-  maxStateBytes: 8388608,
-  maxEvals: 10000,
 })
 ```
 
-`result.limit` is `steps`, `evals`, `state`, or `timeout` when a limit stops the run. `result.exitCode` is the code in the host API. JSON `null` clears a limit.
+Browser code imports `initThue` from `thuelang/browser`. A page that wants a worker imports `ThueWorker` from `thuelang/worker` and bundles `thuelang/browser-worker` (`import workerURL from 'thuelang/browser-worker?worker&url'`). The worker rejects process bindings. Runs from a page pass a step limit.
 
-## Browser
-
-```js
-import { initThueWasm } from 'thuelang/browser'
-```
-
-`thuelang/browser-worker` is a classic script. Load it with a URL (`import workerURL from 'thuelang/browser-worker?url'`), then:
-
-```js
-import { ThueWorker } from 'thuelang/worker'
-
-const worker = new ThueWorker(workerURL, {
-  wasmURL: '/thue.wasm',
-  wasmExecURL: '/wasm_exec.js',
-})
-```
-
-Do not import the worker as an ES module. Go's `wasm_exec.js` needs `importScripts`.
+The regex engine is linear-time. Lookbehinds are off.

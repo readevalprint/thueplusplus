@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp ruby csharp java wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
+.PHONY: test test-static test-core test-guests test-full cpp ruby csharp java js wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
 
 RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
@@ -9,7 +9,7 @@ CSHARP_IMPL := --impl csharp=$(CSHARP_BIN)
 JAVA_BIN := ./java/build/install/thue/bin/thue
 JAVA_IMPL := --impl java=$(JAVA_BIN)
 
-# HOST selects one conformance host: python, go, wasm, rust, cpp, ruby, csharp, or java.
+# HOST selects one conformance host: python, go, js, wasm, rust, cpp, ruby, csharp, or java.
 # Empty runs every host that is present. Guest programs run on native Go.
 ifeq ($(HOST),)
   CORE_ARGS := --tier core $(RUST_IMPL) $(CSHARP_IMPL) $(JAVA_IMPL)
@@ -103,7 +103,7 @@ test-core:
 	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "go" ] || [ "$(HOST)" = "wasm" ] || [ "$(HOST)" = "java" ]; then \
 	  command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }; \
 	fi
-	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "wasm" ]; then \
+	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "js" ] || [ "$(HOST)" = "wasm" ]; then \
 	  command -v node >/dev/null 2>&1 || { echo "Error: node is required to run repository verification" >&2; exit 127; }; \
 	fi
 	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "csharp" ]; then \
@@ -164,6 +164,7 @@ release-check:
 	uv build
 	uvx twine check dist/*
 	cd js && npm pack --dry-run
+	cd wasm && npm pack --dry-run
 	cargo publish --dry-run --manifest-path rust/Cargo.toml
 	rm -rf build/csharp-nupkg
 	dotnet pack csharp/src/Thuelang/Thuelang.csproj -c Release --nologo -o build/csharp-nupkg
@@ -183,12 +184,15 @@ wasm-adapter-test: wasm
 
 demo-test:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to run the browser demo tests" >&2; exit 127; }
+	npm --prefix js ci
 	npm --prefix demo ci
 	npm --prefix demo test
 	node js/browser-adapter.test.cjs
+	node wasm/browser-adapter.test.cjs
 
 demo-build:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to build the browser demo" >&2; exit 127; }
+	npm --prefix js ci
 	npm --prefix demo ci
 	npm --prefix demo run build
 
@@ -222,4 +226,25 @@ ifeq ($(HOST),)
 test-core: java
 else ifeq ($(HOST),java)
 test-core: java
+endif
+
+ifneq ($(wildcard js/package.json),)
+FULL_IMPL += --impl js=node\ js/src/cli.js
+ifeq ($(HOST),)
+CORE_ARGS += --impl js=node\ js/src/cli.js
+else ifeq ($(HOST),js)
+CORE_ARGS := --tier core --only js --impl js=node\ js/src/cli.js
+endif
+endif
+
+js:
+	npm --prefix js ci
+
+ifneq ($(wildcard js/package.json),)
+ifeq ($(HOST),)
+test-core: js
+else ifeq ($(HOST),js)
+test-core: js
+endif
+test-full: js
 endif

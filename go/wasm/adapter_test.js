@@ -20,7 +20,7 @@ function request(worker, message) {
 }
 
 (async () => {
-  const { initThue } = await import('../../js/src/node.js');
+  const { initThue } = await import('../../wasm/src/node.js');
   const thue = await initThue({ wasmPath });
 
   const limits = { maxSteps: 1000, maxStateBytes: 1000000, maxEvals: 1000 };
