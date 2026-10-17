@@ -18,6 +18,7 @@ jobs:
       wasm: ${{ steps.filter.outputs.wasm }}
       rust: ${{ steps.filter.outputs.rust }}
       cpp: ${{ steps.filter.outputs.cpp }}
+      ruby: ${{ steps.filter.outputs.ruby }}
       guests: ${{ steps.filter.outputs.guests }}
       solutions: ${{ steps.filter.outputs.solutions }}
     steps:
@@ -34,7 +35,7 @@ jobs:
             BASE=""
           fi
           if [ -z "$BASE" ]; then
-            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nguests=true\nsolutions=true\n' >> "$GITHUB_OUTPUT"
+            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nruby=true\nguests=true\nsolutions=true\n' >> "$GITHUB_OUTPUT"
           else
             git diff --name-only "$BASE" HEAD | python3 tools/ci_paths.py >> "$GITHUB_OUTPUT"
           fi
@@ -141,6 +142,23 @@ jobs:
       - name: Install the C++ toolchain and RE2
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
       - run: make test-core HOST=cpp
+
+  ruby:
+    needs: changes
+    if: needs.changes.outputs.ruby == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ruby
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: make test-core HOST=ruby
 
   guests:
     needs: changes

@@ -29,7 +29,7 @@ PROGRAMS = (
     ("metrics/workloads/io.thue", None, "alpha\nbeta\ngamma\ndelta\nepsilon\nzeta\neta\ntheta\n"),
     ("langs/forth/forth.thue", "1 2 + .", ""),
 )
-LIST_RULES_HOSTS = frozenset({"python", "wasm", "rust", "cpp"})
+LIST_RULES_HOSTS = frozenset({"python", "wasm", "rust", "cpp", "ruby"})
 LIMIT_PROGRAM = "a ::= b\nb ::= a\n::=\na\n"
 
 

@@ -158,6 +158,21 @@
       { "title": "API", "href": "#api" }
     ]
   },
+  "installRuby": {
+    "path": "/install/ruby",
+    "kicker": "Install",
+    "title": "Ruby.",
+    "description": "Install the Ruby host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — Ruby",
+    "canonical": "https://thuelang.org/install/ruby",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
   "projects": {
     "path": "/projects",
     "kicker": "Projects",

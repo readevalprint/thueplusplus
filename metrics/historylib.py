@@ -150,6 +150,7 @@ REQUIRED_ENVIRONMENTS = {
     "wasm": "wasm (node)",
     "rust": "rust",
     "cpp": "cpp",
+    "ruby": "ruby",
 }
 ENVIRONMENTS_PATH = Path(__file__).resolve().parent / "environments.json"
 
@@ -409,8 +410,11 @@ def _validate_runs_document(document: dict, keys: frozenset[str], label: str, *,
             raise HistoryError(f"{label}: host timeout must equal the global timeout")
     for identity, rows in grouped.items():
         got = [row["host"] for row in rows]
-        if sorted(got) != sorted(registered) or len(got) != len(registered):
-            raise HistoryError(f"{label}: {'/'.join(identity)} hosts must be {', '.join(registered)}")
+        if "go" not in got:
+            raise HistoryError(f"{label}: {'/'.join(identity)} must include the go host")
+        unknown = [name for name in got if name not in registered]
+        if unknown:
+            raise HistoryError(f"{label}: {'/'.join(identity)} unknown host(s) {', '.join(unknown)}")
         go = next(row for row in rows if row["host"] == "go")
         for row in rows:
             if row["pass"] != go["pass"] or row["cost"] != go["cost"]:

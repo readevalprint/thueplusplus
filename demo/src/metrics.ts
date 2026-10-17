@@ -10,6 +10,7 @@ const REQUIRED_ENVIRONMENTS: Record<string, string> = {
   wasm: 'wasm (node)',
   rust: 'rust',
   cpp: 'cpp',
+  ruby: 'ruby',
 }
 
 export class HistoryError extends Error {

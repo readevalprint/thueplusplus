@@ -1,0 +1,19 @@
+PATH
+  remote: .
+  specs:
+    thuelang (0.1.0)
+      re2 (~> 2.15)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    re2 (2.28.0-x86_64-linux-gnu)
+
+PLATFORMS
+  x86_64-linux-gnu
+
+DEPENDENCIES
+  thuelang!
+
+BUNDLED WITH
+   2.4.20

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/chart'
 import { HistoryError, pointAt, rangeLabel, type CommitRef, type Machine, type NamedSeries, type SeriesPoint } from '@/metrics'
 
-const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'] as const
+const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'] as const
 
 const props = withDefaults(defineProps<{
   commits: CommitRef[]

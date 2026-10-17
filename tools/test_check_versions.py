@@ -27,6 +27,9 @@ def write_tree(root: Path, version: str) -> None:
     (cpp / "CMakeLists.txt").write_text(f"project(thuelang VERSION {version} LANGUAGES CXX)\n")
     (cpp / "vcpkg.json").write_text(f'{{"name":"thuelang","version":"{version}"}}\n')
     (cpp / "conanfile.py").write_text(f'class ThueConan:\n    version = "{version}"\n')
+    ruby = root / "ruby" / "lib" / "thuelang"
+    ruby.mkdir(parents=True)
+    (ruby / "version.rb").write_text(f'module Thuelang\n  VERSION = "{version}"\nend\n')
 
 
 def expect_error(fn) -> None:

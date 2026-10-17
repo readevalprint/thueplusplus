@@ -40,6 +40,11 @@ jobs:
           enable-cache: true
       - name: Install the C++ toolchain and RE2
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ruby
       - name: Dry-run the packages and require the tag
         env:
           RELEASE_TAG: ${{ github.ref_name }}

@@ -40,6 +40,7 @@ const shell = [
   { page: pages.installJs, component: InstallPlatformPage },
   { page: pages.installRust, component: InstallPlatformPage },
   { page: pages.installCpp, component: InstallPlatformPage },
+  { page: pages.installRuby, component: InstallPlatformPage },
   { page: pages.projects, component: ProjectsPage },
   { page: pages.metrics, component: MetricsPage },
   { page: pages.problems, component: ProblemsPage },

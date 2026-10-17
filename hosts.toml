@@ -11,4 +11,5 @@ host = [
   { id = "wasm", command = "node js/src/cli.js", build = "go build -o ../build/thue.wasm ./cmd/thue-wasm", cwd = "go", build_env = "GOOS=js GOARCH=wasm CGO_ENABLED=0", env = "THUE_WASM=build/thue.wasm", timeout_scale = 8, timeout_floor = 30 },
   { id = "rust", command = "rust/target/release/thue", build = "cargo build --release --manifest-path rust/Cargo.toml" },
   { id = "cpp", command = "build/cpp/thue", build = "make cpp" },
+  { id = "ruby", command = "ruby/exe/thue", build = "make ruby" },
 ]

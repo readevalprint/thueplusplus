@@ -23,6 +23,11 @@ jobs:
           node-version: "24"
       - name: Install the C++ toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ruby
       - name: Run conformance, including the C++ host
         env:
           # Same stretch the Rust workflow uses. A heavy Lisp case misses
