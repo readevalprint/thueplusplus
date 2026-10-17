@@ -103,7 +103,7 @@ Problem and language rows are the native Go measurement. Rankings and Pareto use
 | Field | Meaning |
 | --- | --- |
 | `problem`, `solution` | Problem row. `solution` is the file name without `.thue` |
-| `lang`, `program` | Language row. `program` is the interpreter path |
+| `lang`, `program` | Language row. `program` is a repo-relative interpreter path ending in `.thue`. The bench recorded before the rename stores the same files with a `.tpp` suffix |
 | `status` | `pass` or `fail` |
 | `applied_steps` | Applied rewrites. `null` on fail |
 | `regex_evals` | Regex searches. A literal-prefix miss does not count. `null` on fail |
@@ -238,7 +238,7 @@ The numbers above are the shape of `latest.json`, not a measurement. An archived
 
 ## Summary
 
-`summary.json` is `schema_version` 1. `entries` is every bench file plus `latest.json`, sorted by `timestamp`, then `commit`. `latest.json` uses the HEAD commit: the pull request head, or the merge commit on a checkout of the merged result. Each entry copies `machine` from the bench (`null` when that row did not record one). Programs whose rules could not be listed are omitted. `tasks` is one object per program id: `pass`, `fail`, `unsupported`, and `steps`. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value. Host time and host memory on the chart are that host divided by Go native from the same run. Raw milliseconds, resident memory, and `machine` stay in the tooltip.
+`summary.json` is `schema_version` 1. `entries` is every bench file plus `latest.json`, sorted by `timestamp`, then `commit`. `latest.json` uses the HEAD commit: the pull request head, or the merge commit on a checkout of the merged result. Each entry copies `machine` from the bench (`null` when that row did not record one). Programs whose rules could not be listed are omitted. `tasks` is one object per program id: `pass`, `fail`, `unsupported`, and `steps`. `problems` and `langs` are `null` on a schema 2 bench. On schema 3 they are the native Go rows: `problem`, `solution`, `status`, and the five minimized counters, or `lang`, `program`, `status`, and those same counters. A fail stores null counters. Duration, applied steps, and state peak stay in the bench file. `benchmarks` is one object per workload: the shared `steps` and `probes`, the limits, and one host row for `duration_ms`, `memory_bytes`, and `exit_code`. The chart code drops later commits whose value did not change and draws a flat step. A point's range is the first commit through the last commit that kept that value. Host time and host memory on the chart are that host divided by Go native from the same run. Raw milliseconds, resident memory, and `machine` stay in the tooltip. The problem grid uses the lowest native Go regex evals. A language's overhead is the geometric mean of its regex evals divided by the direct solution, over every problem that passes directly and in Lisp, Forth, and BASIC.
 
 ## Charts
 

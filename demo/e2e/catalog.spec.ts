@@ -18,6 +18,8 @@ test('sandboxed projects are cards and metrics keep the charts', async ({ page }
   await page.goto('/metrics')
   await expect(page.getByRole('heading', { level: 1, name: 'What each commit measured.' })).toBeVisible()
   await expect(page.getByTestId('page-hero-graphic')).toBeVisible()
+  await expect(page.getByTestId('language-card').first()).toBeVisible()
+  await expect(page.getByTestId('problem-card').first()).toBeVisible()
   await expect(page.getByTestId('benchmark-readout')).toContainText('go native')
   await expect(page.getByTestId('benchmark-readout')).toContainText('wasm (node)')
   await expect(page.locator('body')).not.toContainText(/RE2/)

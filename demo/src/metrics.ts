@@ -20,7 +20,10 @@ const WORKLOAD_LABELS: Record<string, string> = {
   guest: 'Forth',
   rewrite: 'Rewrite',
 }
-const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'machine', 'guests', 'tasks', 'benchmarks']
+const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'machine', 'guests', 'tasks', 'problems', 'langs', 'benchmarks']
+const PROBLEM_KEYS = ['problem', 'solution', 'status', 'regex_evals', 'regex_matches', 'state_bytes', 'rule_count', 'rule_chars']
+const LANG_KEYS = ['lang', 'program', 'status', 'regex_evals', 'regex_matches', 'state_bytes', 'rule_count', 'rule_chars']
+const COUNTER_KEYS = ['regex_evals', 'regex_matches', 'state_bytes', 'rule_count', 'rule_chars'] as const
 const MACHINE_KEYS = ['os', 'release', 'arch', 'cpu', 'cpus']
 const TASK_GUEST_KEYS = ['pass', 'fail', 'unsupported', 'steps']
 const WORKLOAD_KEYS = ['id', 'steps', 'probes', 'max_steps', 'max_evals', 'max_state_bytes', 'timeout_seconds', 'memory_cap_bytes', 'hosts']
@@ -143,10 +146,42 @@ interface WorkloadRow {
   hosts: BenchmarkHost[]
 }
 
+export interface PassCounters {
+  status: 'pass'
+  regexEvals: number
+  regexMatches: number
+  stateBytes: number
+  ruleCount: number
+  ruleChars: number
+}
+
+export interface FailCounters {
+  status: 'fail'
+  regexEvals: null
+  regexMatches: null
+  stateBytes: null
+  ruleCount: null
+  ruleChars: null
+}
+
+export type CounterRow = PassCounters | FailCounters
+
+export type ProblemRow = CounterRow & {
+  problem: string
+  solution: string
+}
+
+export type LangRow = CounterRow & {
+  lang: string
+  program: string
+}
+
 interface HistoryEntry extends CommitRef {
   machine: Machine | null
   guests: Record<string, number>
   tasks: Record<string, TaskGuestRow> | null
+  problems: ProblemRow[] | null
+  langs: LangRow[] | null
   benchmarks: WorkloadRow[] | null
 }
 
@@ -427,6 +462,11 @@ function loadEntry(value: unknown, index: number): HistoryEntry {
   if (typeof timestamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(timestamp)) {
     throw new HistoryError(`${commit}: timestamp must be YYYY-MM-DDTHH:MM:SSZ`)
   }
+  const problems = loadProblems(commit, value.problems)
+  const langs = loadLangs(commit, value.langs)
+  if ((problems === null) !== (langs === null)) {
+    throw new HistoryError(`${commit}: problems and langs are recorded together`)
+  }
   return {
     commit,
     author,
@@ -434,8 +474,78 @@ function loadEntry(value: unknown, index: number): HistoryEntry {
     machine: loadMachine(commit, value.machine),
     guests: loadGuests(commit, value.guests),
     tasks: loadTasks(commit, value.tasks),
+    problems,
+    langs,
     benchmarks: loadBenchmarks(commit, value.benchmarks),
   }
+}
+
+function loadProblems(commit: string, value: unknown): ProblemRow[] | null {
+  if (value === null) return null
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HistoryError(`${commit}: problems must be a non-empty array or null`)
+  }
+  const seen = new Set<string>()
+  return value.map(row => {
+    const loaded = loadCounterRow(commit, 'problem', row, PROBLEM_KEYS, (record) => {
+      const problem = requireSlug(record.problem, `${commit} problem`)
+      const solution = requireSlug(record.solution, `${commit} ${problem} solution`)
+      return { identity: `${problem}/${solution}`, names: { problem, solution } }
+    })
+    if (seen.has(`${loaded.problem}/${loaded.solution}`)) {
+      throw new HistoryError(`${commit}: duplicate problem ${loaded.problem}/${loaded.solution}`)
+    }
+    seen.add(`${loaded.problem}/${loaded.solution}`)
+    return loaded
+  })
+}
+
+function loadLangs(commit: string, value: unknown): LangRow[] | null {
+  if (value === null) return null
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HistoryError(`${commit}: langs must be a non-empty array or null`)
+  }
+  const seen = new Set<string>()
+  return value.map(row => {
+    const loaded = loadCounterRow(commit, 'lang', row, LANG_KEYS, (record) => {
+      const lang = requireLang(record.lang, `${commit} lang`)
+      const program = requireProgram(record.program, `${commit} ${lang} program`)
+      return { identity: lang, names: { lang, program } }
+    })
+    if (seen.has(loaded.lang)) throw new HistoryError(`${commit}: duplicate lang ${loaded.lang}`)
+    seen.add(loaded.lang)
+    return loaded
+  })
+}
+
+function loadCounterRow<Names extends Record<string, string>>(
+  commit: string,
+  field: string,
+  value: unknown,
+  keys: readonly string[],
+  namesOf: (record: Record<string, unknown>) => { identity: string, names: Names },
+): Names & CounterRow {
+  if (!isRecord(value) || !exactKeys(value, keys)) {
+    throw new HistoryError(`${commit}: ${field} keys must be ${keys.join(', ')}`)
+  }
+  const { identity, names } = namesOf(value)
+  const status = value.status
+  if (status !== 'pass' && status !== 'fail') throw new HistoryError(`${commit} ${identity}: status ${String(status)}`)
+  if (status === 'fail') {
+    for (const key of COUNTER_KEYS) {
+      if (value[key] !== null) throw new HistoryError(`${commit} ${identity}: fail clears ${key}`)
+    }
+    return { ...names, status, regexEvals: null, regexMatches: null, stateBytes: null, ruleCount: null, ruleChars: null }
+  }
+  const regexEvals = nonNegativeInt(value.regex_evals, `${commit} ${identity} regex_evals`)
+  const regexMatches = nonNegativeInt(value.regex_matches, `${commit} ${identity} regex_matches`)
+  const stateBytes = nonNegativeInt(value.state_bytes, `${commit} ${identity} state_bytes`)
+  const ruleCount = nonNegativeInt(value.rule_count, `${commit} ${identity} rule_count`)
+  const ruleChars = nonNegativeInt(value.rule_chars, `${commit} ${identity} rule_chars`)
+  if (ruleCount < 1 || ruleChars < 1) {
+    throw new HistoryError(`${commit} ${identity}: rule count and rule chars come from the source`)
+  }
+  return { ...names, status, regexEvals, regexMatches, stateBytes, ruleCount, ruleChars }
 }
 
 function loadMachine(commit: string, value: unknown): Machine | null {
@@ -592,6 +702,26 @@ function anyInt(value: unknown, label: string): number {
 function requireText(value: unknown, label: string): string {
   if (typeof value !== 'string' || value.length === 0) throw new HistoryError(`${label} must be a non-empty string`)
   return value
+}
+
+function requireSlug(value: unknown, label: string): string {
+  const text = requireText(value, label)
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(text)) throw new HistoryError(`${label} must be a lowercase slug`)
+  return text
+}
+
+function requireLang(value: unknown, label: string): string {
+  const text = requireText(value, label)
+  if (!/^[a-z][a-z0-9-]*$/.test(text)) throw new HistoryError(`${label} must be a lowercase slug`)
+  return text
+}
+
+function requireProgram(value: unknown, label: string): string {
+  const text = requireText(value, label)
+  if (text.includes('\\') || text.startsWith('/') || text.includes('..') || !(text.endsWith('.thue') || text.endsWith('.tpp'))) {
+    throw new HistoryError(`${label} must be a repo-relative .thue or .tpp path`)
+  }
+  return text
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
