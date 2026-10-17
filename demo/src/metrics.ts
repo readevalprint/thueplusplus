@@ -217,7 +217,13 @@ function loadMachine(commit: string, value: unknown): Machine {
   if (typeof value.cpus !== 'number' || !Number.isInteger(value.cpus) || value.cpus < 1) {
     throw new HistoryError(`${commit}: machine.cpus`)
   }
-  return { os: value.os, release: value.release, arch: value.arch, cpu: value.cpu, cpus: value.cpus }
+  return {
+    os: value.os as string,
+    release: value.release as string,
+    arch: value.arch as string,
+    cpu: value.cpu as string,
+    cpus: value.cpus,
+  }
 }
 
 function loadHost(commit: string, value: unknown): HostRow {

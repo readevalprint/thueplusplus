@@ -90,7 +90,7 @@ function git(args) {
 
 function gitShow(sha, path) {
   try {
-    return execFileSync('git', ['show', `${sha}:${path}`], { cwd: repoRoot, encoding: 'utf8' })
+    return execFileSync('git', ['show', `${sha}:${path}`], { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
   } catch {
     return null
   }
