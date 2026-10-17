@@ -28,7 +28,8 @@ void WriteMetrics(const std::string& path, const thuelang::RunMetrics& metrics) 
   if (!out) {
     throw std::runtime_error(std::strerror(errno));
   }
-  std::string body = "{\"applied_steps\":" + std::to_string(metrics.applied_steps) +
+  std::string body = "{\"cost\":" + std::to_string(metrics.cost) +
+                     ",\"applied_steps\":" + std::to_string(metrics.applied_steps) +
                      ",\"regex_evals\":" + std::to_string(metrics.regex_evals) +
                      ",\"regex_matches\":" + std::to_string(metrics.regex_matches) +
                      ",\"state_bytes\":" + std::to_string(metrics.state_bytes) +

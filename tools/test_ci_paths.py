@@ -18,14 +18,15 @@ def expect(paths: list[str], **wanted: bool) -> None:
 
 
 def main() -> None:
-    expect(["docs/host-api.md"], python=False, go=False, wasm=False, rust=False, guests=False, cpp=False)
+    expect(["docs/host-api.md"], python=False, go=False, wasm=False, rust=False, guests=False, cpp=False, solutions=False)
     expect(["CHANGELOG.md", "README.md"], python=False, go=False, wasm=False, rust=False, guests=False)
     expect(["go/thuelang/interpreter.go"], python=False, go=True, wasm=True, rust=False, guests=True)
     expect(["js/src/cli.js"], python=False, go=False, wasm=True, rust=False, guests=False)
     expect(["python/thuelang/cli.py"], python=True, go=False, wasm=False, rust=False, guests=False)
     expect(["rust/src/main.rs"], python=False, go=False, wasm=False, rust=True, guests=False)
-    expect(["langs/lisp/cases/core_acceptance.toml"], python=False, go=False, wasm=False, rust=False, guests=True)
-    expect(["problems/factorial/problem_test.go"], python=False, go=False, wasm=False, rust=False, guests=True)
+    expect(["langs/lisp/cases/core_acceptance.toml"], python=False, go=False, wasm=False, rust=False, guests=True, solutions=True)
+    expect(["problems/factorial/problem_test.go"], python=False, go=False, wasm=False, rust=False, guests=True, solutions=True)
+    expect(["metrics/runs.py"], python=False, go=False, wasm=False, rust=False, guests=False, solutions=True)
     expect(["examples/brainfuck/brainfuck.thue"], python=True, go=True, wasm=True, rust=True, guests=True)
     expect(["examples/hello/tests/basic.toml"], python=True, go=True, wasm=True, rust=True, guests=True)
     expect(["Makefile"], python=True, go=True, wasm=True, rust=True, guests=True)

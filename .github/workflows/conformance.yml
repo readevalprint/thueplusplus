@@ -19,6 +19,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
       cpp: ${{ steps.filter.outputs.cpp }}
       guests: ${{ steps.filter.outputs.guests }}
+      solutions: ${{ steps.filter.outputs.solutions }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -33,7 +34,7 @@ jobs:
             BASE=""
           fi
           if [ -z "$BASE" ]; then
-            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nguests=true\n' >> "$GITHUB_OUTPUT"
+            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nguests=true\nsolutions=true\n' >> "$GITHUB_OUTPUT"
           else
             git diff --name-only "$BASE" HEAD | python3 tools/ci_paths.py >> "$GITHUB_OUTPUT"
           fi
@@ -158,6 +159,33 @@ jobs:
           path: build/go-thue
           key: go-native-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
       - run: make test-guests
+
+  solutions:
+    needs: changes
+    if: needs.changes.outputs.solutions == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - name: Install the C++ toolchain and RE2
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
+      - run: uv run python metrics/check_solutions.py
 
   tasks:
     needs: changes

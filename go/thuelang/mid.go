@@ -146,7 +146,7 @@ func (i *Interpreter) applyMids(rule Rule, groups map[string]string) (map[string
 		if err != nil {
 			return out, false, fmt.Errorf("Line %d: Invalid ::| regex '%s'", rule.LineNumber, expanded)
 		}
-		i.RegexEvals++
+		i.chargeEval(i.State, rule.LHS)
 		idx := re.FindStringSubmatchIndex(i.State)
 		if idx == nil {
 			return out, false, nil

@@ -1,10 +1,12 @@
 # Metrics benches
 
-`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/metrics` does not import these files one by one. `demo/scripts/build-summary.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json`. The charts on `/metrics` and the task leaderboard read that summary. The same summary is published at `/metrics/summary.json`.
+`make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/metrics` does not import these files one by one. `demo/scripts/build-site.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json` from documents that contain `runs`. The host charts on `/metrics` read that summary. The same summary is published at `/metrics/summary.json`.
+
+A new `latest.json` is schema 4: `schema_version`, `commit`, `machine`, and `runs`. Each run is one solution case on one host. `pass` and `cost` match the Go run. The global limits from `metrics/limits.toml` are on every run, and `host_timeout_seconds` equals `timeout_seconds`. Older benches stay valid. A schema 4 bench without `runs` is the earlier problem and language record.
 
 | Path | Role |
 | --- | --- |
-| `metrics/latest.json` | The measurement the author committed with the change. It has no commit SHA. |
+| `metrics/latest.json` | The measurement the author committed with the change. A runs document stores the measured commit. |
 | `metrics/YYYY/MM/DD/{sha}/bench.json` | One archived measurement. The directory date matches `timestamp`. |
 | `demo/src/generated/summary.json` | Compact series generated from every bench file and from `latest.json`. Not committed. |
 | `/metrics/summary.json` | That summary on the published site. |
@@ -27,7 +29,7 @@ Every Thue++ process uses explicit `--max-steps`, `--max-evals`, and `--max-stat
 
 The host workloads are `metrics/workloads.toml`. There is no omitted-limit fallback. `memory_cap_bytes` in that file must equal `RUN_MEMORY_CAP_BYTES`. Each workload names its program, its `input`, its `stdin`, and the four limits.
 
-`make problems` and `make langs` run on the native Go host. A problem pass is an exact stdout match on every case that test chose. A language pass is the same match on the shared cases. The metrics script calls each target, wrapped in `timeout(1)` for 1200 seconds. Schema 3 stores `problems.source` as `make problems` and `langs.source` as `make langs`. Schema 2 benches still store the older `make tasks` rows. Each run keeps its own step, probe, and state limits, OS timeout, and memory cap. Host benchmark workloads are unchanged. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
+`make problems` and `make langs` run on the native Go host. A problem pass is an exact stdout match on every case that test chose. A language pass is the same match on the shared cases. The metrics script calls each target, wrapped in `timeout(1)` for 1200 seconds. Schema 4 stores `problems.source` as `make problems` and `langs.source` as `make langs`. Schema 3 benches store the same objects without `cost`. Schema 2 benches still store the older `make tasks` rows. Each run keeps its own step, probe, and state limits, OS timeout, and memory cap. Host benchmark workloads are unchanged. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
 
 Steps and probes are properties of the program and the host. Durations and resident memory are properties of the machine that ran `make metrics`. `machine` records that machine. An archived row converted from the old history has `machine: null` because that file did not record one.
 
@@ -35,12 +37,12 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | `3` for a new measurement. An archived bench may still be `2` |
+| `schema_version` | `4` for a new measurement. An archived bench may still be `2` or `3` |
 | `machine` | The machine that ran the script. Required |
 | `guests` | Object keyed by interpreter id. Rule lines for forth, lisp, basic, and brainfuck |
-| `tasks` | `null` on schema 3. Schema 2 benches still hold the old native Go task run |
-| `problems` | Schema 3. Native Go counters for each problem solution |
-| `langs` | Schema 3. Native Go counters for each language on the common cases |
+| `tasks` | `null` on schema 3 and 4. Schema 2 benches still hold the old native Go task run |
+| `problems` | Schema 3 and 4. Native Go counters for each problem solution. Schema 4 adds `cost` |
+| `langs` | Schema 3 and 4. Native Go counters for each language on the common cases. Schema 4 adds `cost` |
 | `benchmarks` | `{ "workloads": [ ... ] }`. Required on `latest.json` |
 
 `latest.json` has no `commit`, `author`, or `timestamp`. The summary stamps the pull request head, or the merge commit when the site is built from that checkout, using `git rev-parse HEAD`.
@@ -49,15 +51,15 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | `2` or `3` |
+| `schema_version` | `2`, `3`, or `4` |
 | `commit` | Full lowercase SHA of the commit that added the archived `latest.json`. It is the directory name |
 | `author` | `Name <email>` from `git log -1 --format=%an <%ae>` on that commit |
 | `timestamp` | That commit's author time, UTC, `YYYY-MM-DDTHH:MM:SSZ`. The `YYYY/MM/DD` directories are this date |
 | `machine` | The machine that produced the durations, or `null` when the row was not recorded by `make metrics` |
 | `guests` | Object keyed by guest id. Absent means that guest program was not in the commit |
-| `tasks` | Schema 2 task rows, or `null`. Schema 3 leaves this `null` |
-| `problems` | Schema 3. Native Go counters for each problem solution. Absent on schema 2 |
-| `langs` | Schema 3. Native Go counters for each language on the common cases. Absent on schema 2 |
+| `tasks` | Schema 2 task rows, or `null`. Schema 3 and 4 leave this `null` |
+| `problems` | Schema 3 and 4. Native Go counters for each problem solution. Absent on schema 2. Schema 4 adds `cost` |
+| `langs` | Schema 3 and 4. Native Go counters for each language on the common cases. Absent on schema 2. Schema 4 adds `cost` |
 | `benchmarks` | `null` when this commit was not benchmarked. Otherwise `{ "workloads": [ ... ] }` |
 
 ## Machine
@@ -82,7 +84,7 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 ## Tasks
 
-Schema 2 only. `tasks.source` is `make tasks`. `tasks.host` is `go`. `tasks.environment` is `go native`. `tasks.results` has one object per task and guest. A result whose host is not `go` is an error. Hosts are not repeated on the row. Schema 3 sets `tasks` to `null` and records `problems` and `langs` instead.
+Schema 2 only. `tasks.source` is `make tasks`. `tasks.host` is `go`. `tasks.environment` is `go native`. `tasks.results` has one object per task and guest. A result whose host is not `go` is an error. Hosts are not repeated on the row. Schema 3 and 4 set `tasks` to `null` and record `problems` and `langs` instead.
 
 | Field | Meaning |
 | --- | --- |
@@ -96,24 +98,25 @@ Schema 2 only. `tasks.source` is `make tasks`. `tasks.host` is `go`. `tasks.envi
 
 ## Problems and languages
 
-Schema 3. Both objects use `source`, `host`, `environment`, and `results`. `problems.source` is `make problems`. `langs.source` is `make langs`. `host` is `go`. `environment` is `go native`.
+Schema 4. Schema 3 is the same object without `cost`. Both objects use `source`, `host`, `environment`, and `results`. `problems.source` is `make problems`. `langs.source` is `make langs`. `host` is `go`. `environment` is `go native`.
 
-Problem and language rows are the native Go measurement. Rankings and Pareto use those numbers. Every host also reports the same counters. `--counts` on every host stays `applied_steps` and `probes`. `--metrics` writes the object below. Rule count and rule chars are the trimmed rule rows, counted when that host parses the program.
+Problem and language rows are the native Go measurement. Ranking and acceptance use Go `cost` only. Every host also reports the same counters. A host whose `cost` differs from Go fails the check. `--counts` on every host stays `applied_steps` and `probes`. `--metrics` writes `cost` first, then the diagnostic counters. Rule count and rule chars are the trimmed rule rows, counted when that host parses the program.
 
 | Field | Meaning |
 | --- | --- |
 | `problem`, `solution` | Problem row. `solution` is the file name without `.thue` |
 | `lang`, `program` | Language row. `program` is a repo-relative interpreter path ending in `.thue`. The bench recorded before the rename stores the same files with a `.tpp` suffix |
 | `status` | `pass` or `fail` |
-| `applied_steps` | Applied rewrites. `null` on fail |
-| `regex_evals` | Regex searches. A literal-prefix miss does not count. `null` on fail |
-| `regex_matches` | Searches that find a match. `null` on fail |
-| `state_bytes` | Sum of the UTF-8 state length at the start and after every applied rewrite. `null` on fail |
-| `state_peak` | Maximum of those lengths. `null` on fail |
-| `rule_count`, `rule_chars` | Trimmed rule rows and their UTF-8 bytes. A pass has both at least 1. Both are `null` on fail |
-| `duration_ms` | Wall clock. It is recorded and it is not a Pareto axis |
+| `cost` | Schema 4. UTF-8 bytes. Each regex eval adds `len(state) + len(lhs)`. Each applied step adds `len(rhs)`. `null` on fail. This is the only ranking field |
+| `applied_steps` | Applied rewrites. `null` on fail. Diagnostic |
+| `regex_evals` | Regex searches. A literal-prefix miss does not count. `null` on fail. Diagnostic |
+| `regex_matches` | Searches that find a match. `null` on fail. Diagnostic |
+| `state_bytes` | Sum of the UTF-8 state length at the start and after every applied rewrite. `null` on fail. Diagnostic |
+| `state_peak` | Maximum of those lengths. `null` on fail. Diagnostic |
+| `rule_count`, `rule_chars` | Trimmed rule rows and their UTF-8 bytes. A pass has both at least 1. Both are `null` on fail. Diagnostic |
+| `duration_ms` | Wall clock. It is recorded and it is not `cost` |
 
-A language row sums `applied_steps`, `regex_evals`, `regex_matches`, `state_bytes`, and `duration_ms` across the common cases. `state_peak` is the maximum. `rule_count` and `rule_chars` are the interpreter source.
+A language row sums `cost`, `applied_steps`, `regex_evals`, `regex_matches`, `state_bytes`, and `duration_ms` across the common cases. `state_peak` is the maximum. `rule_count` and `rule_chars` are the interpreter source. That summed `cost` is the language overhead.
 
 ## Workloads
 
@@ -142,12 +145,13 @@ The workloads are:
 | `hosts.HOST.memory_bytes` | Peak resident set size in bytes, or `null` when that commit did not record it |
 | `hosts.HOST.exit_code` | Process exit code. A recorded workload exited 0 |
 | `hosts.HOST.applied_steps`, `hosts.HOST.probes` | From `--counts`. Hosts that ran one workload must agree. A host missing from an older commit is a gap in the chart, not an error |
-| `hosts.HOST.regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars` | Schema 3 only, from `--metrics`. The same object every host writes. Each value must equal the `go` row. Schema 2 rows do not have these keys |
+| `hosts.HOST.cost` | Schema 4 only, from `--metrics`. It must equal the `go` row |
+| `hosts.HOST.regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars` | Schema 3 and 4, from `--metrics`. The same object every host writes. Each value must equal the `go` row. Schema 2 rows do not have these keys. Schema 3 rows do not have `cost` |
 | `hosts.HOST.host_timeout_seconds` | The `timeout(1)` budget for that host |
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "machine": {
     "os": "Linux",
     "release": "6.12.0",
@@ -168,6 +172,7 @@ The workloads are:
         "problem": "factorial",
         "solution": "direct",
         "status": "pass",
+        "cost": 48,
         "applied_steps": 4,
         "regex_evals": 9,
         "regex_matches": 4,
@@ -188,6 +193,7 @@ The workloads are:
         "lang": "forth",
         "program": "langs/forth/forth.thue",
         "status": "pass",
+        "cost": 48,
         "applied_steps": 4,
         "regex_evals": 9,
         "regex_matches": 4,
@@ -216,6 +222,7 @@ The workloads are:
             "environment": "go native",
             "applied_steps": 1,
             "probes": 51,
+            "cost": 12,
             "regex_evals": 2,
             "regex_matches": 1,
             "state_bytes": 8,

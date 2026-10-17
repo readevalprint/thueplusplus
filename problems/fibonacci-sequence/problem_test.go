@@ -55,9 +55,6 @@ func spec() harness.Problem {
 	}
 	return harness.Problem{
 		ID: "fibonacci-sequence",
-		Limits: harness.Limits{
-			MaxSteps: 50000, MaxEvals: 3000000, MaxStateBytes: 2097152, TimeoutSeconds: 30,
-		},
 		Cases:     cases,
 		Reference: reference,
 	}

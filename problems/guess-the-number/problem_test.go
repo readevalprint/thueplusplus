@@ -23,7 +23,6 @@ func spec() harness.Problem {
 	}
 	return harness.Problem{
 		ID:     "guess-the-number",
-		Limits: harness.Limits{MaxSteps: 200000, MaxEvals: 2000000, MaxStateBytes: 2097152, TimeoutSeconds: 30},
 		Cases:  cases, Reference: reference,
 	}
 }

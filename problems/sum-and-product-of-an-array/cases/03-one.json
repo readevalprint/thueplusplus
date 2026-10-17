@@ -1,0 +1,7 @@
+{
+  "name": "one",
+  "stdin": "1\n5\n",
+  "stdout": "5\n",
+  "stderr": "",
+  "exit_code": 0
+}

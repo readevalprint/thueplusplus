@@ -14,9 +14,6 @@ func TestProblem(t *testing.T) {
 func spec() harness.Problem {
 	return harness.Problem{
 		ID: "hello-world",
-		Limits: harness.Limits{
-			MaxSteps: 200000, MaxEvals: 2000000, MaxStateBytes: 2097152, TimeoutSeconds: 30,
-		},
 		Cases: []harness.Case{{Name: "hello", Stdin: ""}},
 		Reference: func(stdin string) (string, error) {
 			if stdin != "" {

@@ -17,8 +17,8 @@ sys.path.insert(0, str(_ROOT / "tools"))
 
 from hosts import host_ids  # noqa: E402
 
-SCHEMA_VERSION = 3
-SCHEMA_ACCEPTED = frozenset({2, 3})
+SCHEMA_VERSION = 4
+SCHEMA_ACCEPTED = frozenset({2, 3, 4})
 TASK_HOST = "go"
 TASK_STATUSES = frozenset({"pass", "fail", "unsupported"})
 TASK_SOURCE = "make tasks"
@@ -29,38 +29,38 @@ BENCH_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "mach
 LATEST_KEYS = frozenset({"schema_version", "machine", "guests", "tasks", "benchmarks"})
 BENCH_KEYS_V3 = BENCH_KEYS | {"problems", "langs"}
 LATEST_KEYS_V3 = LATEST_KEYS | {"problems", "langs"}
+LATEST_RUN_KEYS = frozenset({"schema_version", "commit", "machine", "runs"})
+BENCH_RUN_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "machine", "runs"})
+RUN_KEYS = frozenset({
+    "program", "problem", "ruleset", "case", "host", "environment",
+    "state", "stdin",
+    "max_steps", "max_evals", "max_state_bytes", "timeout_seconds", "memory_cap_bytes", "host_timeout_seconds",
+    "pass", "cost",
+    "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars",
+    "duration_ms", "memory_bytes", "exit_code",
+})
+RUN_DIAGNOSTICS = (
+    "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars",
+)
+RUN_LIMITS = ("max_steps", "max_evals", "max_state_bytes", "timeout_seconds", "memory_cap_bytes", "host_timeout_seconds")
+RUN_SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SUITE_KEYS = frozenset({"source", "host", "environment", "results"})
-PROBLEM_ROW_KEYS = frozenset(
-    {
-        "problem",
-        "solution",
-        "status",
-        "applied_steps",
-        "regex_evals",
-        "regex_matches",
-        "state_bytes",
-        "state_peak",
-        "rule_count",
-        "rule_chars",
-        "duration_ms",
-    }
+_ROW_FIELDS = (
+    "status",
+    "applied_steps",
+    "regex_evals",
+    "regex_matches",
+    "state_bytes",
+    "state_peak",
+    "rule_count",
+    "rule_chars",
+    "duration_ms",
 )
-LANG_ROW_KEYS = frozenset(
-    {
-        "lang",
-        "program",
-        "status",
-        "applied_steps",
-        "regex_evals",
-        "regex_matches",
-        "state_bytes",
-        "state_peak",
-        "rule_count",
-        "rule_chars",
-        "duration_ms",
-    }
-)
-COUNTER_AXES = (
+PROBLEM_ROW_KEYS_V3 = frozenset({"problem", "solution", *_ROW_FIELDS})
+LANG_ROW_KEYS_V3 = frozenset({"lang", "program", *_ROW_FIELDS})
+PROBLEM_ROW_KEYS = PROBLEM_ROW_KEYS_V3 | {"cost"}
+LANG_ROW_KEYS = LANG_ROW_KEYS_V3 | {"cost"}
+COUNTER_AXES_V3 = (
     "applied_steps",
     "regex_evals",
     "regex_matches",
@@ -69,6 +69,7 @@ COUNTER_AXES = (
     "rule_count",
     "rule_chars",
 )
+COUNTER_AXES = ("cost", *COUNTER_AXES_V3)
 INTERPRETERS = (
     {"id": "forth", "program": "langs/forth/forth.thue"},
     {"id": "lisp", "program": "langs/lisp/lisp.thue"},
@@ -105,7 +106,7 @@ BENCHMARK_HOST_KEYS = frozenset(
         "host_timeout_seconds",
     }
 )
-METRIC_KEYS = (
+METRIC_KEYS_V3 = (
     "applied_steps",
     "regex_evals",
     "regex_matches",
@@ -114,7 +115,9 @@ METRIC_KEYS = (
     "rule_count",
     "rule_chars",
 )
-BENCHMARK_HOST_KEYS_V3 = BENCHMARK_HOST_KEYS | frozenset(METRIC_KEYS[1:])
+METRIC_KEYS = ("cost", *METRIC_KEYS_V3)
+BENCHMARK_HOST_KEYS_V3 = BENCHMARK_HOST_KEYS | frozenset(METRIC_KEYS_V3[1:])
+BENCHMARK_HOST_KEYS_V4 = BENCHMARK_HOST_KEYS | {"cost", *METRIC_KEYS_V3[1:]}
 WORKLOAD_TOML_KEYS = frozenset(
     {
         "id",
@@ -370,7 +373,89 @@ def validate_machine(machine, label: str, *, allow_null: bool) -> None:
         raise HistoryError(f"{label}: machine.cpus must be a positive integer")
 
 
+def _validate_runs_document(document: dict, keys: frozenset[str], label: str, *, bench: bool) -> None:
+    if not isinstance(document, dict) or set(document) != keys:
+        raise HistoryError(f"{label}: run document keys must be {', '.join(sorted(keys))}")
+    if document["schema_version"] != SCHEMA_VERSION:
+        raise HistoryError(f"{label}: a runs document is schema {SCHEMA_VERSION}")
+    commit = _commit(document["commit"], label)
+    if bench:
+        _author(document["author"], commit)
+        _timestamp(document["timestamp"], commit)
+    validate_machine(document["machine"], label, allow_null=bench)
+    runs = document["runs"]
+    if not isinstance(runs, list) or not runs:
+        raise HistoryError(f"{label}: runs must be a non-empty array")
+    registered = host_ids()
+    seen: set[tuple[str, str, str, str]] = set()
+    grouped: dict[tuple[str, str, str], list[dict]] = {}
+    limits = None
+    for index, run in enumerate(runs):
+        _validate_run(label, index, run)
+        identity = (run["problem"], run["ruleset"], run["case"], run["host"])
+        if identity in seen:
+            raise HistoryError(f"{label}: duplicate run {'/'.join(identity)}")
+        seen.add(identity)
+        grouped.setdefault(identity[:3], []).append(run)
+        row_limits = tuple(run[key] for key in RUN_LIMITS)
+        if limits is None:
+            limits = row_limits
+        elif row_limits != limits:
+            raise HistoryError(f"{label}: run limits differ at {'/'.join(identity)}")
+        if run["host_timeout_seconds"] != run["timeout_seconds"]:
+            raise HistoryError(f"{label}: host timeout must equal the global timeout")
+    for identity, rows in grouped.items():
+        got = [row["host"] for row in rows]
+        if sorted(got) != sorted(registered) or len(got) != len(registered):
+            raise HistoryError(f"{label}: {'/'.join(identity)} hosts must be {', '.join(registered)}")
+        go = next(row for row in rows if row["host"] == "go")
+        for row in rows:
+            if row["pass"] != go["pass"] or row["cost"] != go["cost"]:
+                raise HistoryError(
+                    f"{label}: {'/'.join(identity)} {row['host']} cost {row['cost']} != go {go['cost']}"
+                )
+
+
+def _validate_run(label: str, index: int, run) -> None:
+    if not isinstance(run, dict) or set(run) != RUN_KEYS:
+        raise HistoryError(f"{label}: run #{index} keys must be {', '.join(sorted(RUN_KEYS))}")
+    where = f"{label} run #{index}"
+    _relative_program(run["program"], where)
+    for key in ("problem", "ruleset", "case"):
+        if not isinstance(run[key], str) or RUN_SLUG.fullmatch(run[key]) is None:
+            raise HistoryError(f"{where}: {key} must be a slug")
+    if run["host"] not in host_ids():
+        raise HistoryError(f"{where}: unknown host {run['host']}")
+    assert_environment(run["host"], run["environment"])
+    if not isinstance(run["state"], str) or not isinstance(run["stdin"], str):
+        raise HistoryError(f"{where}: state and stdin must be strings")
+    for key in RUN_LIMITS:
+        _positive_int(run[key], f"{where} {key}")
+    if not isinstance(run["pass"], bool):
+        raise HistoryError(f"{where}: pass must be a boolean")
+    _non_negative_int(run["duration_ms"], f"{where} duration_ms")
+    if run["memory_bytes"] is not None:
+        _non_negative_int(run["memory_bytes"], f"{where} memory_bytes")
+    if run["exit_code"] is not None and (isinstance(run["exit_code"], bool) or not isinstance(run["exit_code"], int)):
+        raise HistoryError(f"{where}: exit_code must be an integer or null")
+    if run["pass"]:
+        _non_negative_int(run["cost"], f"{where} cost")
+        for key in RUN_DIAGNOSTICS:
+            _non_negative_int(run[key], f"{where} {key}")
+        if run["exit_code"] != 0:
+            raise HistoryError(f"{where}: a passing run exits 0")
+        return
+    if run["cost"] is not None:
+        raise HistoryError(f"{where}: a failing run has no cost")
+    for key in RUN_DIAGNOSTICS:
+        if run[key] is not None:
+            raise HistoryError(f"{where}: a failing run has no {key}")
+
+
 def validate_latest(document: dict) -> None:
+    if isinstance(document, dict) and "runs" in document:
+        _validate_runs_document(document, LATEST_RUN_KEYS, LATEST_REL, bench=False)
+        return
     version = _schema_version(document)
     expected = LATEST_KEYS if version == 2 else LATEST_KEYS_V3
     if not isinstance(document, dict) or set(document) != expected:
@@ -384,13 +469,25 @@ def validate_latest(document: dict) -> None:
             raise HistoryError(f"{LATEST_REL} must include tasks and benchmarks")
         return
     if document["tasks"] is not None:
-        raise HistoryError(f"{LATEST_REL} schema 3 records problems and langs; tasks is null")
-    _validate_counters(LATEST_REL, "problems", document["problems"], PROBLEM_SOURCE, PROBLEM_ROW_KEYS, "problem")
-    _validate_counters(LATEST_REL, "langs", document["langs"], LANG_SOURCE, LANG_ROW_KEYS, "lang")
+        raise HistoryError(f"{LATEST_REL} schema {version} records problems and langs; tasks is null")
+    problem_keys, lang_keys = _suite_row_keys(version)
+    _validate_counters(LATEST_REL, "problems", document["problems"], PROBLEM_SOURCE, problem_keys, "problem", version)
+    _validate_counters(LATEST_REL, "langs", document["langs"], LANG_SOURCE, lang_keys, "lang", version)
 
 
 def bench_from_latest(latest: dict, commit: str, author: str, timestamp: str) -> dict:
     validate_latest(latest)
+    if "runs" in latest:
+        document = {
+            "schema_version": latest["schema_version"],
+            "commit": commit,
+            "author": author,
+            "timestamp": timestamp,
+            "machine": latest["machine"],
+            "runs": latest["runs"],
+        }
+        validate_bench(document)
+        return document
     document = {
         "schema_version": latest["schema_version"],
         "commit": commit,
@@ -401,7 +498,7 @@ def bench_from_latest(latest: dict, commit: str, author: str, timestamp: str) ->
         "tasks": latest["tasks"],
         "benchmarks": latest["benchmarks"],
     }
-    if latest["schema_version"] == SCHEMA_VERSION:
+    if latest["schema_version"] != 2:
         document["problems"] = latest["problems"]
         document["langs"] = latest["langs"]
     validate_bench(document)
@@ -409,6 +506,9 @@ def bench_from_latest(latest: dict, commit: str, author: str, timestamp: str) ->
 
 
 def validate_bench(document: dict) -> None:
+    if isinstance(document, dict) and "runs" in document:
+        _validate_runs_document(document, BENCH_RUN_KEYS, document.get("commit", "bench"), bench=True)
+        return
     version = _schema_version(document)
     expected = BENCH_KEYS if version == 2 else BENCH_KEYS_V3
     if not isinstance(document, dict) or set(document) != expected:
@@ -421,9 +521,10 @@ def validate_bench(document: dict) -> None:
     if version == 2:
         return
     if document["tasks"] is not None:
-        raise HistoryError(f"{commit}: schema 3 records problems and langs; tasks is null")
-    _validate_counters(commit, "problems", document["problems"], PROBLEM_SOURCE, PROBLEM_ROW_KEYS, "problem")
-    _validate_counters(commit, "langs", document["langs"], LANG_SOURCE, LANG_ROW_KEYS, "lang")
+        raise HistoryError(f"{commit}: schema {version} records problems and langs; tasks is null")
+    problem_keys, lang_keys = _suite_row_keys(version)
+    _validate_counters(commit, "problems", document["problems"], PROBLEM_SOURCE, problem_keys, "problem", version)
+    _validate_counters(commit, "langs", document["langs"], LANG_SOURCE, lang_keys, "lang", version)
 
 
 def _schema_version(document: dict) -> int:
@@ -431,7 +532,7 @@ def _schema_version(document: dict) -> int:
         raise HistoryError("metrics document must be an object")
     version = document.get("schema_version")
     if version not in SCHEMA_ACCEPTED:
-        raise HistoryError(f"schema_version must be 2 or 3, got {version!r}")
+        raise HistoryError(f"schema_version must be 2, 3, or 4, got {version!r}")
     return version
 
 
@@ -534,7 +635,19 @@ def _validate_guest(commit: str, guest_id: str, guest: dict) -> None:
             raise HistoryError(f"{commit} {guest_id}: error is only set when rule_lines is null")
 
 
-def _validate_counters(label: str, field: str, document, source: str, row_keys: frozenset, name_key: str) -> None:
+def _suite_row_keys(version: int) -> tuple[frozenset, frozenset]:
+    if version >= SCHEMA_VERSION:
+        return PROBLEM_ROW_KEYS, LANG_ROW_KEYS
+    return PROBLEM_ROW_KEYS_V3, LANG_ROW_KEYS_V3
+
+
+def _counter_axes(version: int) -> tuple[str, ...]:
+    if version >= SCHEMA_VERSION:
+        return COUNTER_AXES
+    return COUNTER_AXES_V3
+
+
+def _validate_counters(label: str, field: str, document, source: str, row_keys: frozenset, name_key: str, version: int) -> None:
     if not isinstance(document, dict) or set(document) != SUITE_KEYS:
         raise HistoryError(f"{label}: {field} keys must be source, host, environment, and results")
     if document["source"] != source:
@@ -560,13 +673,14 @@ def _validate_counters(label: str, field: str, document, source: str, row_keys: 
         if status not in COUNTER_STATUSES:
             raise HistoryError(f"{label}: {identity} status {status!r}")
         _non_negative_int(row["duration_ms"], f"{label} {identity} duration_ms")
+        axes = _counter_axes(version)
         if status == "pass":
-            for axis in COUNTER_AXES:
+            for axis in axes:
                 _non_negative_int(row[axis], f"{label} {identity} {axis}")
             if row["rule_count"] < 1 or row["rule_chars"] < 1:
                 raise HistoryError(f"{label}: {identity} rule count and rule chars come from the source")
             continue
-        for axis in COUNTER_AXES:
+        for axis in axes:
             if row[axis] is not None:
                 raise HistoryError(f"{label}: {identity} fail clears {axis}")
 
@@ -640,7 +754,12 @@ def _validate_hosts(commit: str, workload_id: str, program: str, hosts, version:
     unknown = [name for name in hosts if name not in registered]
     if unknown:
         raise HistoryError(f"{commit} {workload_id}: unknown benchmark host(s) {', '.join(unknown)}")
-    expected = BENCHMARK_HOST_KEYS if version == 2 else BENCHMARK_HOST_KEYS_V3
+    if version == 2:
+        expected = BENCHMARK_HOST_KEYS
+    elif version == 3:
+        expected = BENCHMARK_HOST_KEYS_V3
+    else:
+        expected = BENCHMARK_HOST_KEYS_V4
     steps = set()
     probes = set()
     for host, row in hosts.items():
@@ -657,8 +776,11 @@ def _validate_hosts(commit: str, workload_id: str, program: str, hosts, version:
             raise HistoryError(f"{commit} {workload_id} {host}: exit_code must be an integer")
         _non_negative_int(row["applied_steps"], f"{commit} {workload_id} {host} applied_steps")
         _non_negative_int(row["probes"], f"{commit} {workload_id} {host} probes")
-        if version != 2:
-            for key in METRIC_KEYS[1:]:
+        if version == 3:
+            for key in METRIC_KEYS_V3[1:]:
+                _non_negative_int(row[key], f"{commit} {workload_id} {host} {key}")
+        elif version != 2:
+            for key in ("cost", *METRIC_KEYS_V3[1:]):
                 _non_negative_int(row[key], f"{commit} {workload_id} {host} {key}")
         timeout = row["host_timeout_seconds"]
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
@@ -670,9 +792,10 @@ def _validate_hosts(commit: str, workload_id: str, program: str, hosts, version:
             raise HistoryError(f"{commit} {workload_id}: hosts disagree on applied_steps or probes")
         return
     if "go" not in hosts:
-        raise HistoryError(f"{commit} {workload_id}: schema 3 benchmarks include go")
+        raise HistoryError(f"{commit} {workload_id}: schema {version} benchmarks include go")
     base = hosts["go"]
-    compared = ("applied_steps", "probes", *METRIC_KEYS[1:])
+    extra = METRIC_KEYS_V3[1:] if version == 3 else ("cost", *METRIC_KEYS_V3[1:])
+    compared = ("applied_steps", "probes", *extra)
     for host, row in hosts.items():
         if host == "go":
             continue

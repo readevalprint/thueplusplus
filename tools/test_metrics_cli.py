@@ -19,10 +19,10 @@ from hosts import build_registered  # noqa: E402
 
 # Existing programs keep their names. The limit case is a new file, so it uses .thue.
 PROGRAMS = (
-    ("problems/hello-world/solutions/direct.thue", None, ""),
-    ("problems/99-bottles-of-beer/solutions/direct.thue", None, "4\n"),
-    ("problems/fizzbuzz/solutions/direct.thue", None, "5\n"),
-    ("problems/factorial/solutions/direct.thue", None, "6\n"),
+    ("problems/hello-world/solutions/direct/solution.thue", None, ""),
+    ("problems/99-bottles-of-beer/solutions/direct/solution.thue", None, "4\n"),
+    ("problems/fizzbuzz/solutions/direct/solution.thue", None, "5\n"),
+    ("problems/factorial/solutions/direct/solution.thue", None, "6\n"),
     ("metrics/workloads/probe-cost.thue", None, ""),
     ("metrics/workloads/state-rewrite.thue", None, ""),
     ("metrics/workloads/regex.thue", None, ""),
@@ -114,7 +114,7 @@ def main() -> None:
             target = Path(tmp) / f"list-{interpreter.name}.json"
             completed = run(
                 interpreter,
-                "problems/hello-world/solutions/direct.thue",
+                "problems/hello-world/solutions/direct/solution.thue",
                 None,
                 "",
                 target,

@@ -28,7 +28,7 @@ npm run build        # compile WASM, type-check, build, and smoke-check dist
 
 The production page uses origin-root asset URLs (`/assets/...`, `/thue.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
 
-`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. It reads `problems/` and marks those rows unmeasured. The Tasks pages stay at `/tasks/<id>`. Metrics charts read `demo/src/generated/summary.json`, which `make metrics` feeds through `metrics/latest.json` and the archived bench files.
+`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. `demo/scripts/build-site.mjs` reads each `problems/<slug>/solutions/<ruleset>/metric.json` and the git history of that file. Problem pages are `/problems/<id>`. Each page has one cost chart: a point per solution, colored by ruleset, and a step line of that ruleset's running best. The leaderboard has one "Solved problems" chart. Host charts read `demo/src/generated/summary.json`, built from `runs` in `metrics/latest.json` and archived benches that have `runs`.
 
 ## Vercel
 
@@ -68,7 +68,7 @@ The same shared playground surface powers the playground page and the embeddable
 
 - `/playground` is its own full-screen route: header, resizable editor and output, and a status bar. It does not use the docs shell.
 - `/embed` renders that same surface with no docs chrome. It is for iframe embeds.
-- `/`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, `/tasks`, `/contribute`, and `/autoresearch` are the other prerendered pages. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/tasks` is the problem index, and each problem is also prerendered at `/tasks/<id>`. `/contribute` is the contributor loop. `/autoresearch` is the copyable agent prompt. Hash links such as `/metrics#host-time` open that section.
+- `/`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, `/problems`, `/contribute`, and `/autoresearch` are the other prerendered pages. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/problems` is the problem index, and each problem is also prerendered at `/problems/<id>`. Each ruleset is prerendered at `/rulesets/<id>`. `/contribute` is the contributor loop. `/autoresearch` is the copyable agent prompt. Hash links such as `/metrics#host-time` open that section.
 
 Supported embed query parameters:
 

@@ -25,7 +25,6 @@ func spec() harness.Problem {
 	}
 	return harness.Problem{
 		ID:     "hailstone-sequence",
-		Limits: harness.Limits{MaxSteps: 80000, MaxEvals: 3000000, MaxStateBytes: 2097152, TimeoutSeconds: 30},
 		Cases:  cases, Reference: reference,
 	}
 }

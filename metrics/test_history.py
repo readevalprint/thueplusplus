@@ -75,7 +75,7 @@ class HistoryTests(unittest.TestCase):
 
     def test_parse_metrics_requires_the_shared_object(self) -> None:
         text = (
-            '{"applied_steps":1,"regex_evals":2,"regex_matches":1,'
+            '{"cost":9,"applied_steps":1,"regex_evals":2,"regex_matches":1,'
             '"state_bytes":3,"state_peak":3,"rule_count":1,"rule_chars":4}\n'
         )
         parsed = historylib.parse_metrics(text)
@@ -316,10 +316,10 @@ class HistoryTests(unittest.TestCase):
     def test_committed_benches_match_the_schema(self) -> None:
         benches = historylib.iter_benches(ROOT)
         self.assertGreater(len(benches), 1)
-        measured = [entry for _rel, entry in benches if entry["tasks"] is not None and entry["benchmarks"] is not None]
+        measured = [entry for _rel, entry in benches if entry.get("tasks") is not None and entry.get("benchmarks") is not None]
         self.assertGreater(len(measured), 0)
         for _rel, document in benches:
-            if document["tasks"] is None:
+            if document.get("tasks") is None:
                 continue
             self.assertEqual(document["tasks"]["host"], "go")
             self.assertEqual(document["tasks"]["environment"], "go native")

@@ -236,9 +236,13 @@ def bounded_run(
     ]
     for reader in readers:
         reader.start()
-    if input_text is not None:
-        proc.stdin.write(input_text)
-    proc.stdin.close()
+    try:
+        if input_text is not None:
+            proc.stdin.write(input_text)
+        proc.stdin.close()
+    except BrokenPipeError:
+        # The program exited without reading stdin. The status is still the result.
+        pass
     note()
     while True:
         poll = OBSERVE_POLL_SECONDS if time.monotonic() < observe_until else POLL_SECONDS

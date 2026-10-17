@@ -1,0 +1,7 @@
+{
+  "name": "scripted",
+  "stdin": "42\n10\n80\n42\n",
+  "stdout": "Player 1, enter the secret:\nPlayer 2, enter a guess:\nToo low.\nPlayer 2, enter a guess:\nToo high.\nPlayer 2, enter a guess:\nCorrect.\n",
+  "stderr": "",
+  "exit_code": 0
+}

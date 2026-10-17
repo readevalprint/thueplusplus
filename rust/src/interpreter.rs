@@ -28,6 +28,7 @@ pub const EXIT_READ_TIMEOUT: i32 = 13;
 /// Counters for one run. The same fields as `thue --metrics`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RunMetrics {
+    pub cost: i64,
     pub applied_steps: i64,
     pub regex_evals: i64,
     pub regex_matches: i64,
@@ -226,6 +227,7 @@ pub struct Interpreter {
     pub trace_enabled: bool,
     pub eval_count: i64,
     pub applied_steps: i64,
+    cost: i64,
     regex_evals: i64,
     regex_matches: i64,
     state_bytes: i64,
@@ -260,6 +262,7 @@ impl Interpreter {
             trace_enabled: false,
             eval_count: 0,
             applied_steps: 0,
+            cost: 0,
             regex_evals: 0,
             regex_matches: 0,
             state_bytes: 0,
@@ -338,6 +341,7 @@ impl Interpreter {
             rule_chars += rule.source.len() as i64;
         }
         RunMetrics {
+            cost: self.cost,
             applied_steps: self.applied_steps,
             regex_evals: self.regex_evals,
             regex_matches: self.regex_matches,
@@ -350,6 +354,7 @@ impl Interpreter {
 
     pub fn run(&mut self) -> Result<i32, RunFailure> {
         self.applied_steps = 0;
+        self.cost = 0;
         self.regex_evals = 0;
         self.regex_matches = 0;
         self.state_bytes = 0;
@@ -387,7 +392,7 @@ impl Interpreter {
                     .iter()
                     .map(|mid| mid.pattern.clone())
                     .collect();
-                let mid = self.apply_mids(line_number, &mids, &found.groups);
+                let mid = self.apply_mids(line_number, &lhs, &mids, &found.groups);
                 let groups = match mid {
                     Err(message) => {
                         self.record(
@@ -589,6 +594,7 @@ impl Interpreter {
                     "",
                 );
                 self.applied_steps += 1;
+                self.cost += rhs.len() as i64;
                 if let Some(max) = self.max_steps {
                     if self.applied_steps >= max {
                         return Err(limit_failure(
@@ -627,7 +633,10 @@ impl Interpreter {
         if !prefix.is_empty() && !self.state.contains(&prefix) {
             return None;
         }
+        let state_len = self.state.len() as i64;
+        let lhs_len = self.rules[rule_index].lhs.len() as i64;
         self.regex_evals += 1;
+        self.cost += state_len + lhs_len;
         let found = find_match_rule(&self.rules[rule_index], &self.state);
         if found.is_some() {
             self.regex_matches += 1;
@@ -665,6 +674,7 @@ impl Interpreter {
     fn apply_mids(
         &mut self,
         line_number: usize,
+        lhs: &str,
         mids: &[String],
         groups: &HashMap<String, String>,
     ) -> Result<Option<HashMap<String, String>>, String> {
@@ -690,7 +700,10 @@ impl Interpreter {
                     }
                 }
             };
+            let state_len = self.state.len() as i64;
+            let lhs_len = lhs.len() as i64;
             self.regex_evals += 1;
+            self.cost += state_len + lhs_len;
             let Some(caps) = compiled.captures(&self.state) else {
                 return Ok(None);
             };

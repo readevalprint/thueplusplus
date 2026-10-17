@@ -1,4 +1,4 @@
-import { catalog, type CatalogTask } from './catalog'
+import { catalog, type CatalogProblem } from './catalog'
 import pageRecords from './pages.json'
 
 export interface PageLink {
@@ -26,18 +26,18 @@ export function pageByPath(path: string): PageRecord | undefined {
 }
 
 export function pageLinks(path: string): PageLink[] {
-  if (path === pages.tasks.path) {
-    return catalog.tasks.map(task => ({ title: task.title, href: task.path }))
+  if (path === pages.problems.path) {
+    return catalog.problems.map(problem => ({ title: problem.title, href: problem.path }))
   }
-  const task = catalog.tasks.find(item => item.path === path)
-  if (task) return taskPageLinks(task)
+  const problem = catalog.problems.find(item => item.path === path)
+  if (problem) return problemPageLinks(problem)
   return pageByPath(path)?.links ?? []
 }
 
-function taskPageLinks(task: CatalogTask): PageLink[] {
+function problemPageLinks(problem: CatalogProblem): PageLink[] {
   return [
     { title: 'Description', href: '#description' },
-    { title: 'Input and output', href: '#input-and-output' },
-    ...task.guests.map(guest => ({ title: guest.name, href: `#${guest.id}` })),
+    { title: 'Cost', href: '#cost' },
+    ...problem.versions.map(version => ({ title: version.name, href: `#${version.id}` })),
   ]
 }

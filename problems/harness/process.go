@@ -14,6 +14,7 @@ import (
 )
 
 type Metrics struct {
+	Cost         int
 	Steps        int
 	RegexEvals   int
 	RegexMatches int
@@ -32,7 +33,7 @@ type ProgramRun struct {
 	Err      error
 }
 
-func runBounded(argv []string, timeoutSeconds int, stdin string) ProgramRun {
+func runBounded(argv []string, timeoutSeconds int, memoryCap int, stdin string) ProgramRun {
 	started := time.Now()
 	finish := func(run ProgramRun) ProgramRun {
 		run.Duration = time.Since(started)
@@ -57,7 +58,7 @@ func runBounded(argv []string, timeoutSeconds int, stdin string) ProgramRun {
 		}
 		env = append(env, item)
 	}
-	cmd.Env = append(env, fmt.Sprintf("GOMEMLIMIT=%dB", MemoryCapBytes))
+	cmd.Env = append(env, fmt.Sprintf("GOMEMLIMIT=%dB", memoryCap))
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return finish(ProgramRun{Err: err})
@@ -105,8 +106,8 @@ func runBounded(argv []string, timeoutSeconds int, stdin string) ProgramRun {
 				killGroup(cmd.Process.Pid)
 				break
 			}
-			if rss > MemoryCapBytes {
-				reason = fmt.Errorf("memory cap (%d bytes) exceeded (rss %d bytes)", MemoryCapBytes, rss)
+			if rss > int64(memoryCap) {
+				reason = fmt.Errorf("memory cap (%d bytes) exceeded (rss %d bytes)", memoryCap, rss)
 				killGroup(cmd.Process.Pid)
 				break
 			}
@@ -156,7 +157,7 @@ func readMetrics(path string) (Metrics, error) {
 		return Metrics{}, fmt.Errorf("metrics: %w", err)
 	}
 	keys := []string{
-		"applied_steps", "regex_evals", "regex_matches",
+		"cost", "applied_steps", "regex_evals", "regex_matches",
 		"state_bytes", "state_peak", "rule_count", "rule_chars",
 	}
 	if len(raw) != len(keys) {
@@ -175,8 +176,8 @@ func readMetrics(path string) (Metrics, error) {
 		vals[i] = n
 	}
 	return Metrics{
-		Steps: vals[0], RegexEvals: vals[1], RegexMatches: vals[2],
-		StateBytes: vals[3], StatePeak: vals[4], RuleCount: vals[5], RuleChars: vals[6],
+		Cost: vals[0], Steps: vals[1], RegexEvals: vals[2], RegexMatches: vals[3],
+		StateBytes: vals[4], StatePeak: vals[5], RuleCount: vals[6], RuleChars: vals[7],
 	}, nil
 }
 

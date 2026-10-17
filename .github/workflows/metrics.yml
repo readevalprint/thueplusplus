@@ -22,3 +22,5 @@ jobs:
           enable-cache: true
       - name: Check latest.json and archived benches
         run: uv run python metrics/check_history.py --base "${{ github.event.pull_request.base.sha }}"
+      - name: Check solution and interpreter acceptance
+        run: uv run python metrics/accept.py --base "${{ github.event.pull_request.base.sha }}"

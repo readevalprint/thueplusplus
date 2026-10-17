@@ -1,0 +1,12 @@
+{
+  "pass": true,
+  "cost": 39,
+  "commit": "e6f17d45df46198d6c0bbe0eb44122f4b5d91ba0",
+  "applied_steps": 1,
+  "regex_evals": 2,
+  "regex_matches": 2,
+  "state_bytes": 5,
+  "state_peak": 5,
+  "rule_count": 2,
+  "rule_chars": 45
+}

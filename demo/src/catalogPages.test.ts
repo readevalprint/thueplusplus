@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import MetricsPage from './pages/MetricsPage.vue'
+import ProblemPage from './pages/ProblemPage.vue'
+import ProblemsPage from './pages/ProblemsPage.vue'
 import ProjectsPage from './pages/ProjectsPage.vue'
-import TaskPage from './pages/TaskPage.vue'
-import TasksPage from './pages/TasksPage.vue'
-import { catalog, rankGuests, taskRouteMeta } from './catalog'
-import { history } from './metrics'
+import { catalog, problemRouteMeta, rulesetColor, runningBest, type CatalogPoint } from './catalog'
 import { projects } from './projects'
 import { pageLinks } from './site'
 
@@ -16,8 +15,8 @@ async function mountAt(path: string) {
     routes: [
       { path: '/projects', component: ProjectsPage },
       { path: '/metrics', component: MetricsPage },
-      { path: '/tasks', component: TasksPage },
-      { path: '/tasks/:taskId', component: TaskPage },
+      { path: '/problems', component: ProblemsPage },
+      { path: '/problems/:problemId', component: ProblemPage },
     ],
   })
   await router.push(path)
@@ -29,37 +28,34 @@ async function mountAt(path: string) {
   })
 }
 
-describe('catalog pages', () => {
-  it('ranks guests by passes, then steps, then rules', () => {
-    const ranked = rankGuests([
-      { id: 'lisp', name: 'Lisp', program: 'lisp.thue', ruleCount: 394, passCount: 4, taskCount: 10, stepCount: 13000 },
-      { id: 'forth', name: 'Forth', program: 'forth.thue', ruleCount: 45, passCount: 2, taskCount: 10, stepCount: 128 },
-      { id: 'basic', name: 'Basic', program: 'basic.thue', ruleCount: 10, passCount: 4, taskCount: 10, stepCount: 13000 },
-    ])
-    expect(ranked.map(guest => guest.id)).toEqual(['basic', 'lisp', 'forth'])
+describe('running best', () => {
+  it('holds the minimum cost after a version appears', () => {
+    const points: CatalogPoint[] = [
+      { commit: 'a', solution: 'direct.thue', cost: 10, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
+      { commit: 'a', solution: 'slow.thue', cost: 4, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
+      { commit: 'c', solution: 'direct.thue', cost: 3, steps: 1, regexEvals: 1, regexMatches: 1, stateBytes: 1, statePeak: 1, ruleCount: 1, ruleChars: 1 },
+    ]
+    expect(runningBest(['a', 'b', 'c'], points)).toEqual([4, 4, 3])
+    expect(runningBest(['a', 'b'], [])).toEqual([undefined, undefined])
   })
+})
 
+describe('catalog pages', () => {
   it('checks the generated suite against its own rows', () => {
-    expect(catalog.schemaVersion).toBe(1)
-    expect(catalog.tasks.length).toBeGreaterThan(0)
-    expect(catalog.guests.length).toBeGreaterThan(0)
-    for (const guest of catalog.guests) {
-      const cells = catalog.tasks.map(task => {
-        const cell = task.guests.find(item => item.id === guest.id)
-        expect(cell).toBeTruthy()
-        return cell!
-      })
-      expect(guest.passCount).toBe(cells.filter(cell => cell.status === 'pass').length)
-      expect(guest.taskCount).toBe(catalog.tasks.length)
-      expect(guest.stepCount).toBe(cells.reduce((sum, cell) => sum + (cell.stepCount ?? 0), 0))
-      expect(guest.ruleCount).toBeGreaterThanOrEqual(0)
-      expect(cells.every(cell => cell.status === 'unmeasured')).toBe(true)
+    expect(catalog.schemaVersion).toBe(3)
+    expect(catalog.commit).toMatch(/^[0-9a-f]{40}$/)
+    expect(catalog.problems.length).toBeGreaterThan(0)
+    expect(catalog.commits.length).toBeGreaterThan(0)
+    expect(catalog.rulesets.length).toBeGreaterThan(0)
+    for (const problem of catalog.problems) {
+      expect(problem.path).toBe(`/problems/${problem.id}`)
+      expect(problem.canonical).toBe(`https://thuelang.org/problems/${problem.id}`)
+      const direct = problem.versions.find(version => version.id === 'direct')
+      expect(direct?.missing).toBe(false)
+      expect(direct?.solutions.every(solution => solution.status === 'pass' || solution.status === 'fail')).toBe(true)
+      expect(direct?.series.length).toBeGreaterThan(0)
     }
-    for (const task of catalog.tasks) {
-      expect(task.path).toBe(`/tasks/${task.id}`)
-      expect(task.cases.every(item => Number.isInteger(item.exitCode))).toBe(true)
-      expect(task.guests).toHaveLength(catalog.guests.length)
-    }
+    expect(catalog.rulesets.every(ruleset => ruleset.color.startsWith('var(--chart-'))).toBe(true)
   })
 
   it('renders sandboxed project cards and the metrics charts', async () => {
@@ -82,91 +78,63 @@ describe('catalog pages', () => {
     expect(wrapper.get('h1').text()).toBe('What each commit measured.')
     expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('::=')
     expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('program')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('09744fa8d495')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('Forth ·')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('86')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain(`61ec35406371…${history.entries[history.entries.length - 1].commit.slice(0, 12)} · 86`)
-    expect(wrapper.get('[data-test="task-readout"]').text()).toContain('Lisp · 10 pass · 0 fail · 0 unsupported · 76749 steps')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('steps 10000 · probes 10002')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('wasm (node) · 2.3× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native · 1× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('rust · 0.8× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('cpp · 1× go')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('python · 1.2× go')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('× go')
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).not.toContain(' ms')
-    expect(wrapper.get('[data-test="rule-chart"]').text()).toContain('Forth')
-    expect(wrapper.get('[data-test="rule-chart"]').find('svg').exists()).toBe(true)
+    expect(wrapper.get('[data-test="time-chart"]').find('svg').exists()).toBe(true)
     expect(wrapper.find('[data-test="memory-chart"]').exists() || wrapper.text().includes('No memory is recorded')).toBe(true)
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Placeholder')
     expect(wrapper.text()).not.toMatch(/\bguest\b/i)
     expect(wrapper.text()).not.toContain('RE2')
-    const problemCards = wrapper.findAll('[data-test="problem-card"]')
-    expect(problemCards.map(card => card.attributes('data-problem'))).toEqual(catalog.tasks.map(task => task.id))
-    expect(problemCards[0]?.attributes('href')).toBe('/tasks/hello-world')
-    expect(wrapper.get('[data-test="language-card"][data-lang="forth"]').text()).toContain('86 rules · 14,478 chars')
-    expect(wrapper.get('[data-test="language-card"][data-lang="lisp"]').text()).toContain('No shared set.')
-    expect(wrapper.get('[data-test="language-card"][data-lang="basic"]').text()).toContain('0 of 16 problems')
-    const factorial = wrapper.get('[data-test="problem-card"][data-problem="factorial"]')
-    expect(factorial.text()).toContain('290')
-    expect(factorial.get('[data-test="coverage-mark"][data-version="direct"]').attributes('data-filled')).toBe('true')
-    expect(factorial.get('[data-test="coverage-mark"][data-version="lisp"]').attributes('data-filled')).toBe('false')
-    expect(factorial.get('[data-test="coverage-mark"][data-version="forth"]').attributes('data-filled')).toBe('false')
-    expect(factorial.get('[data-test="coverage-mark"][data-version="basic"]').attributes('data-filled')).toBe('false')
   })
 
-  it('renders a rosetta index and one page per task', async () => {
-    const index = await mountAt('/tasks')
+  it('renders a problem index and one page per problem', async () => {
+    const index = await mountAt('/problems')
     expect(index.get('h1').text()).toBe('Programs with a finish line.')
     expect(index.get('[data-test="page-hero-graphic"]').text()).toContain('stdin')
-    const statuses = index.findAll('[data-test="task-status"]')
-    expect(statuses).toHaveLength(catalog.tasks.length * catalog.guests.length)
+    const statuses = index.findAll('[data-test="problem-status"]')
+    expect(statuses.length).toBeGreaterThan(0)
+    expect(statuses.every(cell => cell.attributes('data-status') === 'pass' || cell.attributes('data-status') === 'fail')).toBe(true)
+    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Solved problems')
+    expect(index.get('[data-test="ruleset-aggregate"]').text()).toContain('sum')
     expect(index.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(index.text()).not.toContain('Placeholder')
-    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Passed')
-    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Rule lines')
-    expect(index.get('[data-test="program-leaderboard"]').text()).toContain('Steps')
-    const names = index.findAll('[data-test="program-row"]').map(row => row.attributes('data-program'))
-    expect(names).toEqual(rankGuests(catalog.guests).map(program => program.id))
+    expect(index.text()).not.toContain('unmeasured')
     expect(index.get('[data-test="program-improve"]').text().toLowerCase()).toContain('autoresearch')
-    expect(index.get('[data-test="program-leaderboard"]').text()).not.toMatch(/\bguest\b/i)
+    expect(index.text()).not.toMatch(/\bguest\b/i)
+    expect(index.text()).not.toContain('RE2')
 
-    const task = catalog.tasks[0]
-    const page = await mountAt(task.path)
-    expect(page.get('h1').text()).toBe(task.title)
-    expect(page.get('[data-test="task-description"]').text()).toContain(task.summary)
-    expect(page.get('[data-test="task-io"]').text()).toContain('Input and output')
-    for (const item of task.cases) {
-      expect(page.get('[data-test="task-io"]').text()).toContain('stdin')
-      expect(page.get('[data-test="task-io"]').text()).toContain('stdout')
-      expect(page.get('[data-test="task-io"]').text()).toContain(String(item.exitCode))
-    }
-    const links = pageLinks(task.path).map(link => link.title)
-    expect(links).toContain('Description')
-    expect(links).toContain('Input and output')
-    expect(page.get('[data-test="problem-history"]').text()).toContain('regex evals')
-    expect(page.get('[data-test="pareto-version"][data-version="direct"]').text()).toContain('direct')
-    expect(page.get('[data-test="pareto-version"][data-version="lisp"]').text()).toContain('Missing.')
-    expect(page.get('[data-test="pareto-version"][data-version="forth"]').text()).toContain('Missing.')
-    expect(page.get('[data-test="pareto-version"][data-version="basic"]').text()).toContain('Missing.')
-    expect(page.get('[data-test="pareto-chart"]').attributes('data-scale')).toBe('log')
+    const problem = catalog.problems.find(item => item.id === 'factorial')
+    expect(problem).toBeTruthy()
+    const page = await mountAt(problem!.path)
+    await flushPromises()
+    expect(page.get('h1').text()).toBe('Factorial')
+    expect(page.get('[data-test="problem-description"]').text()).toContain(problem!.summary)
+    const links = pageLinks(problem!.path).map(link => link.title)
+    expect(links).toEqual(['Description', 'Cost', 'direct', 'Forth', 'Lisp', 'BASIC'])
+    expect(page.get('[data-test="problem-legend"]').text()).toContain('direct')
+    const swatch = page.get('[data-test="problem-legend"]').find('[style]')
+    expect(swatch.attributes('style')).toContain(rulesetColor('direct'))
+    const chart = page.get('[data-test="problem-chart-cost"]')
+    expect(chart.find('svg').exists()).toBe(true)
+    expect(chart.text()).toContain('var(--chart-')
+    const direct = page.get('[data-test="problem-version"][data-version="direct"]')
+    expect(direct.text()).toContain('pass')
+    expect(direct.text()).toContain('cost')
+    expect(page.get('[data-test="problem-version"][data-version="lisp"]').text()).toContain('cost')
+    expect(page.text()).not.toContain('unmeasured')
+    expect(page.text()).not.toMatch(/\bguest\b/i)
     expect(page.text()).not.toContain('RE2')
-    expect(page.findAll('[data-test="task-guest"]')).toHaveLength(catalog.guests.length)
-    for (const guest of task.guests) {
-      const section = page.get(`[data-test="task-guest"][data-guest="${guest.id}"]`)
-      expect(section.text()).toContain(guest.status)
-      if (guest.solution !== null) expect(section.text()).toContain(guest.solution.trim())
-      if (guest.reason !== null) expect(section.text()).toContain(guest.reason)
-    }
   })
 
-  it('says when a task id is not in the suite', async () => {
-    const wrapper = await mountAt('/tasks/not-a-task')
-    expect(wrapper.get('h1').text()).toBe('This task is not in the suite.')
-    expect(wrapper.get('[data-test="task-missing"]').text()).toContain('not-a-task')
-    expect(taskRouteMeta('not-a-task').robots).toBe('noindex,follow')
-    const known = catalog.tasks[0]
-    expect(taskRouteMeta(known.id)).toEqual({
+  it('says when a problem id is not in the suite', async () => {
+    const wrapper = await mountAt('/problems/not-a-problem')
+    expect(wrapper.get('h1').text()).toBe('This problem is not in the suite.')
+    expect(wrapper.get('[data-test="problem-missing"]').text()).toContain('not-a-problem')
+    expect(problemRouteMeta('not-a-problem').robots).toBe('noindex,follow')
+    const known = catalog.problems[0]
+    expect(problemRouteMeta(known.id)).toEqual({
       documentTitle: known.documentTitle,
       description: known.summary,
       canonical: known.canonical,

@@ -1,3 +1,9 @@
+---
+name: Lisp
+description: A Lisp evaluator written as Thue++ rules.
+extension: lisp
+---
+
 # Lisp in Thue++
 
 Apparently, you can write a powerful Lisp in 500 lines of Thue++.

@@ -198,6 +198,7 @@ func resultToJS(r wasmResult) js.Value {
 	if r.Metrics != nil {
 		m := r.Metrics
 		obj["metrics"] = map[string]any{
+			"cost":          m.Cost,
 			"applied_steps": m.AppliedSteps,
 			"regex_evals":   m.RegexEvals,
 			"regex_matches": m.RegexMatches,

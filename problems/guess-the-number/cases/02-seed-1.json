@@ -1,0 +1,7 @@
+{
+  "name": "seed-1",
+  "stdin": "41\n40\n42\n41\n",
+  "stdout": "Player 1, enter the secret:\nPlayer 2, enter a guess:\nToo low.\nPlayer 2, enter a guess:\nToo high.\nPlayer 2, enter a guess:\nCorrect.\n",
+  "stderr": "",
+  "exit_code": 0
+}

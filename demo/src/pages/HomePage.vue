@@ -63,7 +63,7 @@ const pillars = [
         <RouterLink to="/install" class="text-ash hover:text-bone lowercase">Install</RouterLink>
         <RouterLink to="/projects" class="text-ash hover:text-bone lowercase">Projects</RouterLink>
         <RouterLink to="/metrics" class="text-ash hover:text-bone lowercase">Metrics</RouterLink>
-        <RouterLink to="/tasks" class="text-ash hover:text-bone lowercase">Tasks</RouterLink>
+        <RouterLink to="/problems" class="text-ash hover:text-bone lowercase">Problems</RouterLink>
         <RouterLink to="/playground" class="text-ash hover:text-bone lowercase">Playground</RouterLink>
         <RouterLink to="/contribute" class="text-ash hover:text-bone lowercase">Contribute</RouterLink>
         <RouterLink to="/autoresearch" class="text-ash hover:text-bone lowercase">Autoresearch prompt</RouterLink>

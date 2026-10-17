@@ -159,27 +159,22 @@
     "path": "/metrics",
     "kicker": "Metrics",
     "title": "What each commit measured.",
-    "description": "Rule lines, task passes, and host benchmarks. Each host line is labeled by its environment.",
+    "description": "Host time and memory from solution runs. Each host line is labeled by its environment.",
     "documentTitle": "Thue++ Metrics — What each commit measured",
     "canonical": "https://thuelang.org/metrics",
     "robots": "index,follow",
     "links": [
-      { "title": "Rule lines", "href": "#rule-lines" },
-      { "title": "Tasks", "href": "#tasks" },
-      { "title": "Passes", "href": "#passes" },
-      { "title": "Steps", "href": "#task-steps" },
-      { "title": "Benchmarks", "href": "#benchmarks" },
-      { "title": "Steps and probes", "href": "#steps-and-probes" },
-      { "title": "Host time", "href": "#host-time" }
+      { "title": "Host time", "href": "#host-time" },
+      { "title": "Host memory", "href": "#host-memory" }
     ]
   },
-  "tasks": {
-    "path": "/tasks",
-    "kicker": "Tasks",
+  "problems": {
+    "path": "/problems",
+    "kicker": "Problems",
     "title": "Programs with a finish line.",
-    "description": "Tasks are input and output contracts. The index lists every program's status, and each task has its own page.",
-    "documentTitle": "Thue++ Tasks — Programs with a finish line",
-    "canonical": "https://thuelang.org/tasks",
+    "description": "Problems are input and output contracts. The index lists every version's status, and each problem has its own page.",
+    "documentTitle": "Thue++ Problems — Programs with a finish line",
+    "canonical": "https://thuelang.org/problems",
     "robots": "index,follow",
     "links": []
   },
@@ -194,14 +189,14 @@
     "links": [
       { "title": "Clone", "href": "#clone" },
       { "title": "Commands", "href": "#commands" },
-      { "title": "Pareto", "href": "#pareto" }
+      { "title": "Cost", "href": "#cost" }
     ]
   },
   "prompt": {
     "path": "/autoresearch",
     "kicker": "Autoresearch",
     "title": "A prompt for an agent.",
-    "description": "Copy this prompt. The agent clones the repo, tries one improvement, and opens a pull request only when the result is on the Pareto front.",
+    "description": "Copy this prompt. The agent clones the repo, tries one improvement, and opens a pull request only when the Go cost is strictly lower.",
     "documentTitle": "Thue++ Autoresearch — A prompt for an agent",
     "canonical": "https://thuelang.org/autoresearch",
     "robots": "index,follow",

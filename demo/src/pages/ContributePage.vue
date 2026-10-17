@@ -19,11 +19,11 @@ const contributing = repositoryBlob('CONTRIBUTING.md')
     </section>
     <section id="commands" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Commands</h2>
-      <p class="leading-7"><code>make test</code> runs the host suite. <code>make problems</code> and <code>make langs</code> run on native Go. <code>make metrics</code> records host benchmarks and refuses a host that reports no resident memory. Every run sets step, probe, and state limits, <code>timeout(1)</code>, and a 256 MiB cap.</p>
+      <p class="leading-7"><code>make test</code> runs the host suite. <code>make problems</code> and <code>make langs</code> run on native Go. <code>make metrics</code> records every solution run. Limits come from <code>metrics/limits.toml</code>.</p>
     </section>
-    <section id="pareto" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Pareto</h2>
-      <p class="leading-7">A new solution or language version must pass, and it must not be dominated on regex evals, regex matches, cumulative state size, rule count, and rule chars. The check names the dominator. Open a pull request only when the file is on that front, and commit <code>metrics/latest.json</code> with the change.</p>
+    <section id="cost" class="flex flex-col gap-3">
+      <h2 class="text-xl font-semibold tracking-tight">Cost</h2>
+      <p class="leading-7">A changed solution must pass, and its Go cost must be strictly lower than the committed <code>metric.json</code>. Cost is UTF-8 bytes: each regex eval adds the state length plus the pattern, and each applied step adds the replacement. A direct solution is <code>solution.thue</code>. Commit <code>metrics/latest.json</code> with the change.</p>
     </section>
   </DocPage>
 </template>

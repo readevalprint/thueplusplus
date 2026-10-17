@@ -9,7 +9,7 @@ declare module 'vue-router' {
     robots?: string
   }
 }
-import { taskRouteMeta } from './catalog'
+import { problemRouteMeta, rulesetRouteMeta } from './catalog'
 import ContributePage from './pages/ContributePage.vue'
 import EmbedPage from './pages/EmbedPage.vue'
 import HomePage from './pages/HomePage.vue'
@@ -21,8 +21,9 @@ import PlaygroundPage from './PlaygroundPage.vue'
 import PromptPage from './pages/PromptPage.vue'
 import ProjectsPage from './pages/ProjectsPage.vue'
 import ReferencePage from './pages/ReferencePage.vue'
-import TaskPage from './pages/TaskPage.vue'
-import TasksPage from './pages/TasksPage.vue'
+import ProblemPage from './pages/ProblemPage.vue'
+import ProblemsPage from './pages/ProblemsPage.vue'
+import RulesetPage from './pages/RulesetPage.vue'
 import { pages } from './site'
 
 const shell = [
@@ -37,7 +38,7 @@ const shell = [
   { page: pages.installCpp, component: InstallPlatformPage },
   { page: pages.projects, component: ProjectsPage },
   { page: pages.metrics, component: MetricsPage },
-  { page: pages.tasks, component: TasksPage },
+  { page: pages.problems, component: ProblemsPage },
   { page: pages.contribute, component: ContributePage },
   { page: pages.prompt, component: PromptPage },
 ]
@@ -76,8 +77,12 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/tasks/:taskId',
-    component: TaskPage,
+    path: '/problems/:problemId',
+    component: ProblemPage,
+  },
+  {
+    path: '/rulesets/:rulesetId',
+    component: RulesetPage,
   },
 ]
 
@@ -92,9 +97,17 @@ export function createAppRouter() {
     },
   })
   router.beforeEach((to) => {
-    const taskId = to.params.taskId
-    if (typeof taskId === 'string') {
-      const meta = taskRouteMeta(taskId)
+    const problemId = to.params.problemId
+    if (typeof problemId === 'string') {
+      const meta = problemRouteMeta(problemId)
+      to.meta.documentTitle = meta.documentTitle
+      to.meta.description = meta.description
+      to.meta.canonical = meta.canonical
+      to.meta.robots = meta.robots
+    }
+    const rulesetId = to.params.rulesetId
+    if (typeof rulesetId === 'string') {
+      const meta = rulesetRouteMeta(rulesetId)
       to.meta.documentTitle = meta.documentTitle
       to.meta.description = meta.description
       to.meta.canonical = meta.canonical

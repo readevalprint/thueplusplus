@@ -1,151 +1,25 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
 import DocPage from '@/components/DocPage.vue'
-import GuestRewrite from '@/components/GuestRewrite.vue'
 import MetricChart from '@/components/MetricChart.vue'
 import RewriteArrow from '@/components/marks/RewriteArrow.vue'
-import { catalog } from '@/catalog'
-import {
-  benchmarkCommits,
-  changeAxis,
-  commitSpan,
-  commitUrl,
-  countSeries,
-  formatTimesGo,
-  guestRuleChart,
-  HistoryError,
-  history,
-  hostMeasurementText,
-  hostRatio,
-  hostRatioSeries,
-  machineLabel,
-  pointAt,
-  rangeLabel,
-  seriesFromField,
-  taskCommits,
-  workloadIds,
-  workloadLabel,
-  type CommitRef,
-  type HostMeasure,
-  type SeriesPoint,
-  type WorkloadCommit,
-} from '@/metrics'
-import TrendChart from '@/components/metrics/TrendChart.vue'
-import { formatCount, formatOverhead, overview } from '@/overview'
+import { commitUrl, history, hostChart, hostLine, type HostMeasure } from '@/metrics'
 import { pages } from '@/site'
 
-const route = useRoute()
 const page = pages.metrics
-const names = new Map(catalog.guests.map(guest => [guest.id, guest.name]))
-const order = catalog.guests.map(guest => guest.id)
-const rules = guestRuleChart(history, order, names)
-const tasks = taskCommits(history, order, names)
-const passSeries = seriesFromField(tasks, 'passCount')
-const stepSeries = seriesFromField(tasks, 'stepCount')
-const passAxis = changeAxis(tasks, passSeries)
-const stepAxis = changeAxis(tasks, stepSeries)
-const workloads = workloadIds(history).map(id => {
-  const commits = benchmarkCommits(history, id)
-  const counts = countSeries(commits)
-  const hosts = hostRatioSeries(commits, 'durationMs')
-  const memory = hostRatioSeries(commits, 'memoryBytes')
-  return {
-    id,
-    label: workloadLabel(id),
-    commits,
-    order: commits.map(commit => commit.commit),
-    counts,
-    countAxis: changeAxis(commits, counts),
-    hosts,
-    hostAxis: changeAxis(commits, hosts),
-    memory,
-    memoryAxis: changeAxis(commits, memory),
-  }
-})
+const latest = computed(() => history.entries[history.entries.length - 1])
+const time = computed(() => hostChart(history, 'durationMs'))
+const memory = computed(() => hostChart(history, 'memoryBytes'))
+const timeIndex = ref(0)
+const memoryIndex = ref(0)
 
-const ruleIndex = ref(last(rules.commits.length))
-const passIndex = ref(last(passAxis.length))
-const stepIndex = ref(last(stepAxis.length))
-const countIndex = ref<Record<string, number>>({})
-const hostIndex = ref<Record<string, number>>({})
-const memoryIndex = ref<Record<string, number>>({})
-const selectedRule = computed(() => rules.commits[ruleIndex.value])
-const selectedStep = computed(() => stepAxis[stepIndex.value])
-const selectedTask = computed(() => {
-  const commit = selectedStep.value
-  if (!commit) return undefined
-  return tasks.find(item => item.commit === commit.commit)
-})
-const selectedRules = computed(() => {
-  const commit = selectedRule.value
-  if (!commit) return []
-  return rules.series.flatMap(series => {
-    const point = pointAt(series.points, commit.commit, rules.order)
-    if (!point) return []
-    return [{ id: series.id, label: series.label, value: point.value, text: rangeLabel(point) }]
-  })
-})
-
-function axisIndex(selected: Record<string, number>, id: string, count: number): number {
-  const current = selected[id]
-  if (current === undefined) return last(count)
-  return current
+function select(measure: HostMeasure): number {
+  const chart = measure === 'durationMs' ? time.value : memory.value
+  return Math.max(chart.commits.length - 1, 0)
 }
 
-function hostCommit(workload: (typeof workloads)[number]): WorkloadCommit | undefined {
-  const axis = workload.hostAxis[axisIndex(hostIndex.value, workload.id, workload.hostAxis.length)]
-  if (!axis) return undefined
-  return workload.commits.find(commit => commit.commit === axis.commit)
-}
-
-const selectedBench = computed(() => {
-  const workload = workloads[0]
-  if (!workload) return undefined
-  return hostCommit(workload)
-})
-
-watch(() => route.hash, hash => {
-  const id = hash.startsWith('#') ? hash.slice(1) : ''
-  if (!id) return
-  document.getElementById(id)?.scrollIntoView()
-}, { flush: 'post', immediate: true })
-
-function last(count: number): number {
-  return count === 0 ? 0 : count - 1
-}
-
-function hostPointText(commits: readonly WorkloadCommit[], hostId: string, point: SeriesPoint, measure: HostMeasure): string {
-  const commit = commits.find(item => item.commit === point.commit)
-  if (!commit) throw new HistoryError(`commit ${point.commit} is not on the chart`)
-  return `${commitSpan(point)} · ${hostMeasurementText(commit, hostId, measure)}`
-}
-
-function hostTitle(commit: CommitRef & { machine?: WorkloadCommit['machine'] }): string {
-  const machine = machineLabel(commit.machine ?? null)
-  const base = `${commit.commit.slice(0, 12)} · ${commit.timestamp.slice(0, 10)}`
-  return machine ? `${base} · ${machine}` : base
-}
-
-function latestTrend(points: readonly { value: number | null }[]): number | null {
-  for (let index = points.length - 1; index >= 0; index -= 1) {
-    const value = points[index]?.value
-    if (value !== null && value !== undefined) return value
-  }
-  return null
-}
-
-function trendText(points: readonly { value: number | null }[], format: (value: number) => string): string {
-  const value = latestTrend(points)
-  if (value === null) throw new HistoryError('trend text has no value')
-  return format(value)
-}
-
-function durationLine(commit: WorkloadCommit, hostId: string, environment: string): string {
-  const ratio = hostRatio(commit, hostId, 'durationMs')
-  if (ratio === null) return `${environment} · gap`
-  return `${environment} · ${formatTimesGo(ratio)}`
-}
+timeIndex.value = select('durationMs')
+memoryIndex.value = select('memoryBytes')
 </script>
 
 <template>
@@ -154,219 +28,47 @@ function durationLine(commit: WorkloadCommit, hostId: string, environment: strin
       <RewriteArrow />
     </template>
     <template #graphic>
-      <GuestRewrite :commits="rules.commits" :order="rules.order" :series="rules.series" />
+      <p data-test="page-hero-graphic" class="font-mono text-sm">program ::= output</p>
     </template>
-    <div data-test="metrics-overview" class="flex flex-col gap-10">
-      <section id="languages" data-test="language-cards" class="flex flex-col gap-3">
-        <h2 class="text-xl font-semibold tracking-tight">Languages</h2>
-        <p class="leading-7">Size is the rule count and rule characters of that interpreter. Overhead is the geometric mean, over every problem that passes directly and in Lisp, Forth, and BASIC, of that language's regex evals divided by the direct solution. The mean changes when a problem joins the set. Coverage is how many problems that language passes.</p>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <article
-            v-for="lang in overview.languages"
-            :key="lang.id"
-            data-test="language-card"
-            :data-lang="lang.id"
-            class="border-line bg-surface flex flex-col gap-3 border p-3"
-          >
-            <div class="flex flex-col gap-1">
-              <p class="text-base font-semibold tracking-tight">{{ lang.label }}</p>
-              <p v-if="lang.ruleCount !== null && lang.ruleChars !== null" data-test="language-size" class="font-mono text-[13px] tabular-nums">{{ formatCount(lang.ruleCount) }} rules · {{ formatCount(lang.ruleChars) }} chars</p>
-              <p v-else data-test="language-size">No size.</p>
-              <p data-test="language-overhead" class="font-mono text-[13px] tabular-nums">
-                <template v-if="lang.overhead !== null">{{ formatOverhead(lang.overhead) }} direct</template>
-                <template v-else>No shared set.</template>
-              </p>
-              <p data-test="language-coverage" class="text-ash font-mono text-[13px] tabular-nums">{{ lang.coverage }} of {{ overview.problemCount }} problems</p>
-            </div>
-            <TrendChart
-              v-if="latestTrend(lang.trend) !== null"
-              :points="lang.trend"
-              :label="`${lang.label} overhead`"
-              series-label="Overhead"
-              :test-id="`overhead-${lang.id}`"
-              :format-value="formatOverhead"
-              class="h-16"
-            />
-          </article>
-        </div>
-      </section>
-      <section id="problems" data-test="problem-cards" class="flex flex-col gap-3">
-        <h2 class="text-xl font-semibold tracking-tight">Problems</h2>
-        <p class="leading-7">Sorted by the most missing versions, then by the newest improvement. The line is the lowest regex evals among passing solutions on the native Go host. A dot marks an improvement. A mark is filled when that version passes.</p>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <RouterLink
-            v-for="problem in overview.problems"
-            :key="problem.id"
-            :to="problem.path"
-            data-test="problem-card"
-            :data-problem="problem.id"
-            :data-gaps="problem.gaps"
-            class="border-line bg-surface text-bone hover:border-bone flex flex-col no-underline transition-colors duration-150"
-          >
-            <div class="border-line relative h-16 border-b">
-              <TrendChart
-                v-if="latestTrend(problem.trend) !== null"
-                :points="problem.trend"
-                :label="`${problem.title} best regex evals`"
-                series-label="Regex evals"
-                :test-id="`spark-${problem.id}`"
-                :format-value="formatCount"
-                class="h-16"
-              />
-              <p v-else class="text-ash px-3 py-4 font-mono text-[12px]">No passing run.</p>
-              <span v-if="latestTrend(problem.trend) !== null" data-test="problem-best" class="text-ash pointer-events-none absolute top-1 right-2 font-mono text-[11px] tabular-nums">{{ trendText(problem.trend, formatCount) }}</span>
-            </div>
-            <div class="flex flex-col gap-2 p-3">
-              <p class="font-medium leading-5">{{ problem.title }}</p>
-              <p class="text-ash line-clamp-1 text-sm">{{ problem.summary }}</p>
-              <div class="flex flex-wrap gap-x-3 gap-y-1">
-                <span
-                  v-for="mark in problem.marks"
-                  :key="mark.id"
-                  data-test="coverage-mark"
-                  :data-version="mark.id"
-                  :data-filled="mark.filled ? 'true' : 'false'"
-                  class="inline-flex items-center gap-1.5 font-mono text-[11px]"
-                >
-                  <span
-                    class="inline-block size-2 rounded-full border"
-                    :class="mark.filled ? 'border-signal bg-signal' : 'border-ash bg-transparent'"
-                    aria-hidden="true"
-                  />
-                  {{ mark.label }}
-                  <span class="sr-only">{{ mark.filled ? 'passes' : 'missing' }}</span>
-                </span>
-              </div>
-            </div>
-          </RouterLink>
-        </div>
-      </section>
-    </div>
-    <section id="rule-lines" data-test="rule-lines" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Rule lines</h2>
-      <p class="leading-7">A point is the first commit where that program's compiled rule-line count changed. The line stays flat through the later commits with the same count. The point tooltip is that commit through the last unchanged commit. A break is a commit where that program was absent, or the host could not list its rules.</p>
+    <p class="leading-7">Host time and host memory come from the solution runs. Each line is that host divided by Go native, so it reads python 1.2× go. Milliseconds stay off the readout.</p>
+    <section id="host-time" data-test="benchmarks" class="flex flex-col gap-3">
+      <h2 class="text-xl font-semibold tracking-tight">Host time</h2>
+      <p v-if="time.series.length === 0">No host run is recorded.</p>
       <MetricChart
-        v-if="rules.commits.length > 0"
-        test-id="rule-chart"
-        label="Program rule lines per commit"
-        slider-label="Rule line commit"
-        :commits="rules.commits"
-        :order="rules.order"
-        :series="rules.series"
-        :selected="ruleIndex"
-        @select="ruleIndex = $event"
+        v-else
+        test-id="time-chart"
+        label="Host time relative to Go native"
+        slider-label="Host time commit"
+        scale="ratio"
+        :commits="time.commits"
+        :order="time.order"
+        :series="time.series"
+        :selected="timeIndex"
+        @select="timeIndex = $event"
       />
-      <p v-else>No commits are recorded.</p>
-      <div v-if="selectedRule" data-test="rule-readout" class="flex flex-col gap-1">
+      <div v-if="latest" data-test="benchmark-readout" class="flex flex-col gap-1">
         <p class="font-mono text-[13px] leading-6 break-all">
-          <a class="underline underline-offset-4" :href="commitUrl(selectedRule.commit)" rel="noreferrer">{{ selectedRule.commit.slice(0, 12) }}</a>
-          <span class="text-ash"> · {{ selectedRule.author }} · {{ selectedRule.timestamp }}</span>
+          <a class="underline underline-offset-4" :href="commitUrl(latest.commit)" rel="noreferrer">{{ latest.commit.slice(0, 12) }}</a>
+          <span class="text-ash"> · {{ latest.author }} · {{ latest.timestamp }}</span>
         </p>
-        <p v-for="point in selectedRules" :key="point.id" class="font-mono text-[13px] tabular-nums">{{ point.label }} · {{ point.text }}</p>
+        <p v-for="host in latest.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ host.environment }} · {{ hostLine(latest, host.id, 'durationMs') }}</p>
       </div>
     </section>
-    <section id="tasks" data-test="task-trends" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Tasks</h2>
-      <p class="leading-7">A point is the first commit where that program's count changed. The line stays flat while the count stays the same. Older task points were measured with <code>make tasks</code> on native Go. A new measurement records problems and languages with <code>make problems</code> and <code>make langs</code>.</p>
-      <h3 id="passes" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Passes</h3>
+    <section id="host-memory" class="flex flex-col gap-3">
+      <h2 class="text-xl font-semibold tracking-tight">Host memory</h2>
+      <p v-if="memory.series.length === 0">No memory is recorded.</p>
       <MetricChart
-        v-if="passAxis.length > 0"
-        test-id="pass-chart"
-        label="Task passes per commit"
-        slider-label="Task commit"
-        :controls="false"
-        :commits="passAxis"
-        :order="tasks.map(commit => commit.commit)"
-        :series="passSeries"
-        :selected="passIndex"
-        @select="passIndex = $event"
+        v-else
+        test-id="memory-chart"
+        label="Host memory relative to Go native"
+        slider-label="Host memory commit"
+        scale="ratio"
+        :commits="memory.commits"
+        :order="memory.order"
+        :series="memory.series"
+        :selected="memoryIndex"
+        @select="memoryIndex = $event"
       />
-      <p v-else>No task run is recorded.</p>
-      <h3 id="task-steps" class="font-display mt-4 text-[18px] font-semibold tracking-[-0.03em]">Steps</h3>
-      <MetricChart
-        v-if="stepAxis.length > 0"
-        test-id="step-chart"
-        label="Applied steps per commit"
-        slider-label="Task step commit"
-        :commits="stepAxis"
-        :order="tasks.map(commit => commit.commit)"
-        :series="stepSeries"
-        :selected="stepIndex"
-        @select="stepIndex = $event"
-      />
-      <div v-if="selectedTask" data-test="task-readout" class="flex flex-col gap-1">
-        <p class="font-mono text-[13px] leading-6 break-all">
-          <a class="underline underline-offset-4" :href="commitUrl(selectedTask.commit)" rel="noreferrer">{{ selectedTask.commit.slice(0, 12) }}</a>
-          <span class="text-ash"> · {{ selectedTask.author }} · {{ selectedTask.timestamp }}</span>
-        </p>
-        <p v-for="program in selectedTask.guests" :key="program.id" class="font-mono text-[13px] leading-6 tabular-nums">
-          {{ program.name }} · {{ program.passCount }} pass · {{ program.failCount }} fail · {{ program.unsupportedCount }} unsupported · {{ program.stepCount }} steps
-        </p>
-      </div>
-    </section>
-    <section id="benchmarks" data-test="benchmarks" class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold tracking-tight">Benchmarks</h2>
-      <p class="leading-7">Each workload is one program. Applied steps and probes are the same on every host that ran. A host missing from an older commit is a gap. A point is the first commit where that series changed, and the line stays flat through the later commits with the same value. The point tooltip is that commit through the last unchanged commit. Steps and probes are counts. Host time and host memory are that host divided by Go native from the same run, so a line reads python 10.7× go. Raw milliseconds, resident memory, and the machine are in the tooltip.</p>
-      <p v-if="workloads.length === 0">No benchmark is recorded.</p>
-      <article v-for="(workload, index) in workloads" :key="workload.id" class="flex flex-col gap-3">
-        <h3 class="font-display text-[18px] font-semibold tracking-[-0.03em]">{{ workload.label }}</h3>
-        <h3 v-if="index === 0" id="steps-and-probes" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Steps and probes</h3>
-        <p v-else class="font-display text-[18px] font-semibold tracking-[-0.03em]">Steps and probes</p>
-        <MetricChart
-          v-if="workload.countAxis.length > 0"
-          :test-id="index === 0 ? 'probe-chart' : `probe-chart-${workload.id}`"
-          :label="`${workload.label} steps and probes`"
-          slider-label="Benchmark commit"
-          :controls="false"
-          :commits="workload.countAxis"
-          :order="workload.order"
-          :series="workload.counts"
-          :selected="axisIndex(countIndex, workload.id, workload.countAxis.length)"
-          @select="countIndex[workload.id] = $event"
-        />
-        <h3 v-if="index === 0" id="host-time" class="font-display mt-4 text-[18px] font-semibold tracking-[-0.03em]">Host time</h3>
-        <p v-else class="font-display mt-4 text-[18px] font-semibold tracking-[-0.03em]">Host time</p>
-        <MetricChart
-          v-if="workload.hostAxis.length > 0"
-          :test-id="index === 0 ? 'time-chart' : `time-chart-${workload.id}`"
-          :label="`${workload.label} host time relative to Go native`"
-          slider-label="Host time commit"
-          scale="ratio"
-          :commits="workload.hostAxis"
-          :order="workload.order"
-          :series="workload.hosts"
-          :selected="axisIndex(hostIndex, workload.id, workload.hostAxis.length)"
-          :point-text="(hostId, point) => hostPointText(workload.commits, hostId, point, 'durationMs')"
-          :commit-title="hostTitle"
-          @select="hostIndex[workload.id] = $event"
-        />
-        <h3 v-if="index === 0" id="host-memory" class="font-display mt-4 text-[18px] font-semibold tracking-[-0.03em]">Host memory</h3>
-        <p v-else class="font-display mt-4 text-[18px] font-semibold tracking-[-0.03em]">Host memory</p>
-        <MetricChart
-          v-if="workload.memoryAxis.length > 0"
-          :test-id="index === 0 ? 'memory-chart' : `memory-chart-${workload.id}`"
-          :label="`${workload.label} host memory relative to Go native`"
-          slider-label="Host memory commit"
-          scale="ratio"
-          :commits="workload.memoryAxis"
-          :order="workload.order"
-          :series="workload.memory"
-          :selected="axisIndex(memoryIndex, workload.id, workload.memoryAxis.length)"
-          :point-text="(hostId, point) => hostPointText(workload.commits, hostId, point, 'memoryBytes')"
-          :commit-title="hostTitle"
-          @select="memoryIndex[workload.id] = $event"
-        />
-        <p v-else>No memory is recorded.</p>
-        <div v-if="index === 0 && selectedBench" data-test="benchmark-readout" class="flex flex-col gap-1">
-          <p class="font-mono text-[13px] leading-6 break-all">
-            <a class="underline underline-offset-4" :href="commitUrl(selectedBench.commit)" rel="noreferrer">{{ selectedBench.commit.slice(0, 12) }}</a>
-            <span class="text-ash"> · {{ selectedBench.author }} · {{ selectedBench.timestamp }}</span>
-          </p>
-          <p class="font-mono text-[13px] tabular-nums">steps {{ selectedBench.appliedSteps }} · probes {{ selectedBench.probes }}</p>
-          <p v-for="host in selectedBench.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ durationLine(selectedBench, host.id, host.environment) }}</p>
-          <p class="text-ash font-mono text-[13px] leading-6 tabular-nums">max steps {{ selectedBench.maxSteps }} · max probes {{ selectedBench.maxEvals }} · state {{ selectedBench.maxStateBytes }} bytes · timeout {{ selectedBench.timeoutSeconds }} s · memory {{ selectedBench.memoryCapBytes }} bytes</p>
-        </div>
-      </article>
     </section>
   </DocPage>
 </template>

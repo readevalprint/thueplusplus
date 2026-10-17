@@ -1,38 +1,76 @@
 import raw from './generated/catalog.json'
 import { repositoryBlob, repositoryTree } from './hosts'
 
-export type CatalogStatus = 'pass' | 'fail' | 'unsupported' | 'unmeasured'
+export type CatalogStatus = 'pass' | 'fail'
+export type CatalogLangStatus = CatalogStatus | 'missing'
 
-export interface CatalogGuest {
-  id: string
-  name: string
-  program: string
+export interface CatalogCommit {
+  commit: string
+  author: string
+  timestamp: string
+}
+
+export interface CatalogPoint {
+  commit: string
+  solution: string
+  cost: number
+  steps: number
+  regexEvals: number
+  regexMatches: number
+  stateBytes: number
+  statePeak: number
   ruleCount: number
-  passCount: number
-  taskCount: number
-  stepCount: number
+  ruleChars: number
 }
 
-export interface CatalogCase {
-  name: string
-  stdin: string
-  stdout: string
-  stderr: string
-  exitCode: number
+export interface CatalogSolution {
+  id: string
+  status: CatalogStatus
+  steps: number | null
+  cost: number | null
+  regexEvals: number | null
+  regexMatches: number | null
+  stateBytes: number | null
+  statePeak: number | null
+  ruleCount: number | null
+  ruleChars: number | null
+  solution: string
+  solutionPath: string
 }
 
-export interface CatalogGuestResult {
+export interface CatalogVersion {
   id: string
   name: string
-  status: CatalogStatus
-  stepCount: number | null
-  solution: string | null
-  solutionPath: string | null
-  reason: string | null
-  error: string | null
+  color: string
+  missing: boolean
+  notes: string
+  author: string
+  solutions: CatalogSolution[]
+  series: CatalogPoint[]
 }
 
-export interface CatalogTask {
+export interface SolvedPoint extends CatalogCommit {
+  count: number
+  added: string[]
+}
+
+export interface AggregatePoint extends CatalogCommit {
+  cost: number
+}
+
+export interface CatalogRuleset {
+  id: string
+  name: string
+  color: string
+  passing: number
+  total: number
+  common: number
+  aggregate: number | null
+  solved: SolvedPoint[]
+  aggregateSeries: AggregatePoint[]
+}
+
+export interface CatalogProblem {
   id: string
   title: string
   description: string
@@ -40,19 +78,35 @@ export interface CatalogTask {
   path: string
   canonical: string
   documentTitle: string
-  cases: CatalogCase[]
-  guests: CatalogGuestResult[]
+  versions: CatalogVersion[]
+}
+
+export interface CatalogLang {
+  id: string
+  language: string
+  name: string
+  program: string | null
+  status: CatalogLangStatus
+  steps: number | null
+  cost: number | null
+  regexEvals: number | null
+  regexMatches: number | null
+  stateBytes: number | null
+  statePeak: number | null
+  ruleCount: number | null
+  ruleChars: number | null
 }
 
 export interface Catalog {
-  schemaVersion: 1
+  schemaVersion: 3
   specVersion: string
   commit: string
-  commitDirty: boolean
   author: string
   timestamp: string
-  guests: CatalogGuest[]
-  tasks: CatalogTask[]
+  commonProblems: string[]
+  rulesets: CatalogRuleset[]
+  commits: CatalogCommit[]
+  problems: CatalogProblem[]
 }
 
 export interface RouteMetaFields {
@@ -62,54 +116,94 @@ export interface RouteMetaFields {
   robots: string
 }
 
+export function rulesetColor(id: string): string {
+  const ruleset = catalog.rulesets.find(item => item.id === id)
+  if (!ruleset) throw new Error(`ruleset ${id} has no chart color`)
+  return ruleset.color
+}
+
+export const COST_METRIC = { id: 'cost', label: 'Cost', anchor: 'cost' } as const
+
+export function runningBest(commits: readonly string[], points: readonly CatalogPoint[]): (number | undefined)[] {
+  const atCommit = new Map<string, number>()
+  for (const point of points) {
+    if (!Number.isInteger(point.cost) || point.cost < 0) throw new Error(`cost for ${point.solution} is not a non-negative integer`)
+    const prior = atCommit.get(point.commit)
+    atCommit.set(point.commit, prior === undefined ? point.cost : Math.min(prior, point.cost))
+  }
+  let best: number | undefined
+  return commits.map(commit => {
+    const value = atCommit.get(commit)
+    if (value !== undefined) best = best === undefined ? value : Math.min(best, value)
+    return best
+  })
+}
+
 function assertCatalog(value: unknown): Catalog {
   if (value == null || typeof value !== 'object') throw new Error('catalog.json is not an object')
   const catalog = value as Catalog
-  if (catalog.schemaVersion !== 1) throw new Error(`catalog schemaVersion must be 1, got ${String(catalog.schemaVersion)}`)
-  if (!Array.isArray(catalog.tasks) || catalog.tasks.length === 0) throw new Error('catalog has no tasks')
-  if (!Array.isArray(catalog.guests) || catalog.guests.length === 0) throw new Error('catalog has no guests')
+  if (catalog.schemaVersion !== 3) throw new Error(`catalog schemaVersion must be 3, got ${String(catalog.schemaVersion)}`)
+  if (!Array.isArray(catalog.problems) || catalog.problems.length === 0) throw new Error('catalog has no problems')
+  if (!Array.isArray(catalog.commits) || catalog.commits.length === 0) throw new Error('catalog has no commits')
+  if (!Array.isArray(catalog.rulesets) || catalog.rulesets.length === 0) throw new Error('catalog has no rulesets')
   return catalog
 }
 
 export const catalog = assertCatalog(raw)
 
-export function taskById(id: string): CatalogTask | undefined {
-  return catalog.tasks.find(task => task.id === id)
+export function problemById(id: string): CatalogProblem | undefined {
+  return catalog.problems.find(problem => problem.id === id)
 }
 
-export function taskRouteMeta(taskId: string): RouteMetaFields {
-  const task = taskById(taskId)
-  if (!task) {
+export function rulesetById(id: string): CatalogRuleset | undefined {
+  return catalog.rulesets.find(ruleset => ruleset.id === id)
+}
+
+export function rulesetRouteMeta(rulesetId: string): RouteMetaFields {
+  const ruleset = rulesetById(rulesetId)
+  if (!ruleset) {
     return {
-      documentTitle: 'Task not found — Thue++',
-      description: `No task ${taskId} is in the suite.`,
-      canonical: 'https://thuelang.org/tasks',
+      documentTitle: 'Ruleset not found — Thue++',
+      description: `No ruleset ${rulesetId} is in the suite.`,
+      canonical: 'https://thuelang.org/problems',
       robots: 'noindex,follow',
     }
   }
   return {
-    documentTitle: task.documentTitle,
-    description: task.summary,
-    canonical: task.canonical,
+    documentTitle: `Thue++ ${ruleset.name}`,
+    description: `${ruleset.name} aggregate cost over the common problems.`,
+    canonical: `https://thuelang.org/rulesets/${ruleset.id}`,
     robots: 'index,follow',
   }
 }
 
-export function rankGuests(guests: CatalogGuest[]): CatalogGuest[] {
-  return [...guests].sort((left, right) => {
-    if (right.passCount !== left.passCount) return right.passCount - left.passCount
-    if (left.stepCount !== right.stepCount) return left.stepCount - right.stepCount
-    if (left.ruleCount !== right.ruleCount) return left.ruleCount - right.ruleCount
-    if (left.id < right.id) return -1
-    if (left.id > right.id) return 1
-    return 0
-  })
+export function problemRouteMeta(problemId: string): RouteMetaFields {
+  const problem = problemById(problemId)
+  if (!problem) {
+    return {
+      documentTitle: 'Problem not found — Thue++',
+      description: `No problem ${problemId} is in the suite.`,
+      canonical: 'https://thuelang.org/problems',
+      robots: 'noindex,follow',
+    }
+  }
+  return {
+    documentTitle: problem.documentTitle,
+    description: problem.summary,
+    canonical: problem.canonical,
+    robots: 'index,follow',
+  }
 }
 
-export function statusVariant(status: CatalogStatus): 'outline' | 'secondary' | 'destructive' {
+export function statusVariant(status: CatalogStatus): 'outline' | 'destructive' {
   if (status === 'pass') return 'outline'
-  if (status === 'fail') return 'destructive'
-  return 'secondary'
+  return 'destructive'
+}
+
+export function versionStatus(version: CatalogVersion): CatalogStatus | null {
+  if (version.missing || version.solutions.length === 0) return null
+  if (version.solutions.some(solution => solution.status === 'fail')) return 'fail'
+  return 'pass'
 }
 
 export function paragraphs(text: string): string[] {
@@ -128,4 +222,16 @@ export function sourceUrl(program: string): string {
 
 export function improveUrl(path: string): string {
   return repositoryTree(path)
+}
+
+export function diagnosticText(point: Pick<CatalogPoint, 'regexEvals' | 'regexMatches' | 'stateBytes' | 'statePeak' | 'ruleCount' | 'ruleChars' | 'steps'>): string {
+  return [
+    `${point.regexEvals} regex evals`,
+    `${point.regexMatches} regex matches`,
+    `${point.stateBytes} cumulative state size`,
+    `${point.statePeak} state peak`,
+    `${point.ruleCount} rule count`,
+    `${point.ruleChars} rule chars`,
+    `${point.steps} steps`,
+  ].join(' · ')
 }

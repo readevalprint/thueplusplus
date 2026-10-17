@@ -98,11 +98,16 @@ type Interpreter struct {
 	MaxSteps      *int
 	EvalCount     int
 	AppliedSteps  int
+	// Cost is the ranking metric, in UTF-8 bytes. Each regex eval adds the
+	// length of the state plus the rule's pattern source. Each applied step
+	// adds the length of the replacement source. A literal-prefix miss is not
+	// an eval. An exit rule is not an applied step.
 	// RegexEvals counts regex searches during Run. A literal-prefix miss
 	// does not search. RegexMatches counts searches that find a match.
 	// StateBytes is the sum of the UTF-8 state length at the start of Run
 	// and after every applied rewrite. StatePeak is the maximum of those
-	// lengths. Run resets these four. EvalCount is not reset.
+	// lengths. Run resets these counters. EvalCount is not reset.
+	Cost               int
 	RegexEvals         int
 	RegexMatches       int
 	StateBytes         int
@@ -564,6 +569,7 @@ func (i *Interpreter) RuleSourceStats() (count int, chars int) {
 
 // RunMetrics is the --metrics JSON object. Field order is the file order.
 type RunMetrics struct {
+	Cost         int `json:"cost"`
 	AppliedSteps int `json:"applied_steps"`
 	RegexEvals   int `json:"regex_evals"`
 	RegexMatches int `json:"regex_matches"`
@@ -578,6 +584,7 @@ type RunMetrics struct {
 func (i *Interpreter) Metrics() RunMetrics {
 	rules, chars := i.RuleSourceStats()
 	return RunMetrics{
+		Cost:         i.Cost,
 		AppliedSteps: i.AppliedSteps,
 		RegexEvals:   i.RegexEvals,
 		RegexMatches: i.RegexMatches,
@@ -1229,8 +1236,19 @@ func (i *Interpreter) noteState() {
 	}
 }
 
+func (i *Interpreter) chargeEval(state, lhs string) {
+	i.RegexEvals++
+	i.Cost += len(state) + len(lhs)
+}
+
+func (i *Interpreter) chargeStep(rhs string) {
+	i.AppliedSteps++
+	i.Cost += len(rhs)
+}
+
 func (i *Interpreter) Run() (int, error) {
 	i.AppliedSteps = 0
+	i.Cost = 0
 	i.RegexEvals = 0
 	i.RegexMatches = 0
 	i.StateBytes = 0
@@ -1370,7 +1388,7 @@ func (i *Interpreter) Run() (int, error) {
 			}
 			i.noteState()
 			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
-			i.AppliedSteps++
+			i.chargeStep(rule.RHS)
 			if i.MaxSteps != nil && i.AppliedSteps >= *i.MaxSteps {
 				return ExitStepLimit, newLimitError(LimitSteps, ExitStepLimit, "Applied step limit (%d) exceeded", *i.MaxSteps)
 			}
@@ -1422,7 +1440,7 @@ func (i *Interpreter) findMatchFrom(rule Rule, state string, pos int) (matchInfo
 	if rule.literalPrefix != "" && !strings.Contains(suffix, rule.literalPrefix) {
 		return matchInfo{}, false
 	}
-	i.RegexEvals++
+	i.chargeEval(state, rule.LHS)
 	idx := rule.Pattern.FindStringSubmatchIndex(suffix)
 	if idx == nil {
 		return matchInfo{}, false

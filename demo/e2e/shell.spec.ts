@@ -114,7 +114,7 @@ test('deep links render their own heading', async ({ page }) => {
     ['/install/rust', 'Rust.'],
     ['/projects', 'Sandboxed projects.'],
     ['/metrics', 'What each commit measured.'],
-    ['/tasks', 'Programs with a finish line.'],
+    ['/problems', 'Programs with a finish line.'],
     ['/contribute', 'Clone, measure, open a pull request.'],
     ['/autoresearch', 'A prompt for an agent.'],
   ] as const) {

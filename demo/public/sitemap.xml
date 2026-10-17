@@ -6,122 +6,138 @@
   </url>
   <url>
     <loc>https://thuelang.org/docs/guides</loc>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/docs/language</loc>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/playground</loc>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/install</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/install/go</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/install/python</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/install/js</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/install/rust</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/install/cpp</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/projects</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/metrics</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks</loc>
-    <priority>0.6</priority>
+    <loc>https://thuelang.org/problems</loc>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/contribute</loc>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thuelang.org/autoresearch</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/hello-world</loc>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/hello-world</loc>
+    <loc>https://thuelang.org/problems/fibonacci-sequence</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/fizzbuzz</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/factorial</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/reverse-a-string</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/99-bottles-of-beer</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/guess-the-number</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/sum-and-product-of-an-array</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/palindrome-detection</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/rot-13</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/greatest-common-divisor</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/least-common-multiple</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/primality-by-trial-division</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/hailstone-sequence</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/leap-year</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/problems/exponentiation-operator</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/rulesets/direct</loc>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/fibonacci-sequence</loc>
+    <loc>https://thuelang.org/rulesets/forth</loc>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/fizzbuzz</loc>
+    <loc>https://thuelang.org/rulesets/lisp</loc>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/factorial</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/reverse-a-string</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/99-bottles-of-beer</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/guess-the-number</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/sum-and-product-of-an-array</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/palindrome-detection</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/rot-13</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/greatest-common-divisor</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/least-common-multiple</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/primality-by-trial-division</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/hailstone-sequence</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/leap-year</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://thuelang.org/tasks/exponentiation-operator</loc>
+    <loc>https://thuelang.org/rulesets/basic</loc>
     <priority>0.5</priority>
   </url>
 </urlset>
