@@ -51,6 +51,9 @@ export const paint = {
   boneLight: { hex: '#1a1916', rgba: [26, 25, 22, 255] },
   boneDark: { hex: '#e8e6e1', rgba: [232, 230, 225, 255] },
   void: { hex: '#0a0a0c', rgba: [10, 10, 12, 255] },
+  /** Pure ink for the 16 and 32 pixel icon. Bone grays wash out at that size. */
+  iconInkLight: { hex: '#000000', rgba: [0, 0, 0, 255] },
+  iconInkDark: { hex: '#ffffff', rgba: [255, 255, 255, 255] },
 }
 
 export const hatFill = paint.hat.hex
@@ -66,13 +69,22 @@ export const BLINK_SHUT = 0.14
 export const BLINK_MS = 230
 
 /**
+ * 16-unit icon canvas. One unit is one pixel at 16px and two pixels at 32px.
+ * The hat is the shared crown, scaled down. The eyes and dots are heavier
+ * than the rest pose so the body, not the hat, fills the canvas.
+ */
+const ICON_BOX = { x: 0, y: 0, w: 16, h: 16 }
+const ICON_HAT_SCALE = 0.17
+
+/**
  * @param {'icon' | 'header' | 'full'} detail
- * @returns {{ hatAt: { x: number, y: number }, parts: MarkPart[] }}
+ * @returns {{ hatAt: { x: number, y: number }, hatScale: number, parts: MarkPart[] }}
  */
 export function markModel(detail) {
   if (detail !== 'icon' && detail !== 'header' && detail !== 'full') {
     throw new Error(`unknown rex detail ${String(detail)}`)
   }
+  if (detail === 'icon') return iconModel()
   const { eyeW, eyeH, eyeDx, eyeDy, dotR, handDx, handDy, footDx } = MARK
   const eyeRx = Math.min(eyeW / 2, eyeH / 2)
   /** @type {MarkPart[]} */
@@ -84,22 +96,41 @@ export function markModel(detail) {
     parts.push({ kind: 'path', d: hat.crown, role: 'stroke', space: 'hat' })
     parts.push({ kind: 'rect', ...hat.band, role: 'band', space: 'hat' })
     parts.push({ kind: 'path', d: hat.shine, role: 'shine', space: 'hat' })
-  } else if (detail === 'header') {
+  } else {
     parts.push({ kind: 'rect', ...hat.band, role: 'band', space: 'hat' })
   }
   parts.push(
     { kind: 'rect', x: -eyeDx - eyeW / 2, y: eyeDy - eyeH / 2, w: eyeW, h: eyeH, rx: eyeRx, role: 'eye', space: 'world' },
     { kind: 'rect', x: eyeDx - eyeW / 2, y: eyeDy - eyeH / 2, w: eyeW, h: eyeH, rx: eyeRx, role: 'eye', space: 'world' },
+    { kind: 'circle', cx: -handDx, cy: handDy, r: dotR, role: 'dot', space: 'world' },
+    { kind: 'circle', cx: handDx, cy: handDy, r: dotR, role: 'dot', space: 'world' },
+    { kind: 'circle', cx: -footDx, cy: -dotR, r: dotR, role: 'dot', space: 'world' },
+    { kind: 'circle', cx: footDx, cy: -dotR, r: dotR, role: 'dot', space: 'world' },
   )
-  if (detail !== 'icon') {
-    parts.push(
-      { kind: 'circle', cx: -handDx, cy: handDy, r: dotR, role: 'dot', space: 'world' },
-      { kind: 'circle', cx: handDx, cy: handDy, r: dotR, role: 'dot', space: 'world' },
-      { kind: 'circle', cx: -footDx, cy: -dotR, r: dotR, role: 'dot', space: 'world' },
-      { kind: 'circle', cx: footDx, cy: -dotR, r: dotR, role: 'dot', space: 'world' },
-    )
-  }
-  return { hatAt: { x: 0, y: eyeDy }, parts }
+  return { hatAt: { x: 0, y: eyeDy }, hatScale: 1, parts }
+}
+
+/** Bold 16-unit Rex. Hat local y=-34 is the crown top. */
+function iconModel() {
+  const hatScale = ICON_HAT_SCALE
+  const hatAt = { x: 8, y: 0.15 + 34 * hatScale }
+  const eyeW = 3
+  const eyeH = 5
+  const eyeY = 4.85
+  const eyeRx = 1
+  const dotR = 1.6
+  /** @type {MarkPart[]} */
+  const parts = [
+    { kind: 'path', d: hat.crown, role: 'hat', space: 'hat' },
+    { kind: 'ellipse', ...hat.brim, role: 'hat', space: 'hat' },
+    { kind: 'rect', x: 4, y: eyeY, w: eyeW, h: eyeH, rx: eyeRx, role: 'eye', space: 'world' },
+    { kind: 'rect', x: 9, y: eyeY, w: eyeW, h: eyeH, rx: eyeRx, role: 'eye', space: 'world' },
+    { kind: 'circle', cx: 2.15, cy: 10.35, r: dotR, role: 'dot', space: 'world' },
+    { kind: 'circle', cx: 13.85, cy: 10.35, r: dotR, role: 'dot', space: 'world' },
+    { kind: 'circle', cx: 5.5, cy: 13.9, r: dotR, role: 'dot', space: 'world' },
+    { kind: 'circle', cx: 10.5, cy: 13.9, r: dotR, role: 'dot', space: 'world' },
+  ]
+  return { hatAt, hatScale, parts }
 }
 
 /** @param {string} d */
@@ -225,33 +256,41 @@ function mid(a, b) {
  */
 export function compileMarks(detail) {
   const model = markModel(detail)
-  return model.parts.map(part => compilePart(part, model.hatAt))
+  return model.parts.map(part => compilePart(part, model.hatAt, model.hatScale))
 }
 
-/** @param {MarkPart} part @param {{ x: number, y: number }} hatAt @returns {Compiled} */
-function compilePart(part, hatAt) {
+/**
+ * @param {MarkPart} part
+ * @param {{ x: number, y: number }} hatAt
+ * @param {number} hatScale
+ * @returns {Compiled}
+ */
+function compilePart(part, hatAt, hatScale) {
   const shift = (/** @type {number} */ x, /** @type {number} */ y) => (
-    part.space === 'hat' ? { x: x + hatAt.x, y: y + hatAt.y } : { x, y }
+    part.space === 'hat' ? { x: x * hatScale + hatAt.x, y: y * hatScale + hatAt.y } : { x, y }
   )
   if (part.kind === 'path') {
     const points = flattenPath(part.d).map(point => shift(point.x, point.y))
     if (part.role === 'shine' || part.role === 'stroke') {
       const width = part.role === 'shine' ? hat.shineWidth : hat.strokeWidth
-      return { role: part.role, kind: 'stroke', points, radius: width / 2 }
+      return { role: part.role, kind: 'stroke', points, radius: (width / 2) * hatScale }
     }
     return { role: part.role, kind: 'poly', points }
   }
   if (part.kind === 'ellipse') {
     const center = shift(part.cx, part.cy)
-    return { role: part.role, kind: 'ellipse', cx: center.x, cy: center.y, rx: part.rx, ry: part.ry }
+    const scale = part.space === 'hat' ? hatScale : 1
+    return { role: part.role, kind: 'ellipse', cx: center.x, cy: center.y, rx: part.rx * scale, ry: part.ry * scale }
   }
   if (part.kind === 'rect') {
     const origin = shift(part.x, part.y)
-    return { role: part.role, kind: 'roundrect', x: origin.x, y: origin.y, w: part.w, h: part.h, rx: part.rx }
+    const scale = part.space === 'hat' ? hatScale : 1
+    return { role: part.role, kind: 'roundrect', x: origin.x, y: origin.y, w: part.w * scale, h: part.h * scale, rx: part.rx * scale }
   }
   if (part.kind === 'circle') {
     const center = shift(part.cx, part.cy)
-    return { role: part.role, kind: 'circle', cx: center.x, cy: center.y, r: part.r }
+    const scale = part.space === 'hat' ? hatScale : 1
+    return { role: part.role, kind: 'circle', cx: center.x, cy: center.y, r: part.r * scale }
   }
   const unknown = part
   throw new Error(`unknown mark part ${JSON.stringify(unknown)}`)
@@ -290,14 +329,13 @@ export function boundsOf(detail) {
 }
 
 /**
- * Icon viewBox is a 56-unit square. At 16px and 32px the 7-unit eye bars
- * land on whole pixels (2px and 4px). It must contain the icon bounds.
+ * The icon viewBox is the 16-unit canvas. It must contain the bold icon.
  * @param {'icon' | 'header' | 'full'} detail
  */
 export function viewBoxFor(detail) {
   const bounds = boundsOf(detail)
   if (detail === 'icon') {
-    const box = { x: -28, y: -102, w: 56, h: 56 }
+    const box = ICON_BOX
     if (bounds.minX < box.x - 1e-6 || bounds.minY < box.y - 1e-6 || bounds.maxX > box.x + box.w + 1e-6 || bounds.maxY > box.y + box.h + 1e-6) {
       throw new Error(`icon viewBox clips rex ${JSON.stringify(bounds)}`)
     }
@@ -333,13 +371,13 @@ export function faviconSvg() {
   <title>Rex</title>
   <style>
     :root { color-scheme: light dark; }
-    .ink { fill: ${paint.boneLight.hex}; }
+    .ink { fill: ${paint.iconInkLight.hex}; }
     .hat { fill: ${paint.hat.hex}; }
     @media (prefers-color-scheme: dark) {
-      .ink { fill: ${paint.boneDark.hex}; }
+      .ink { fill: ${paint.iconInkDark.hex}; }
     }
   </style>
-  <g class="hat" transform="translate(${num(model.hatAt.x)} ${num(model.hatAt.y)})">
+  <g class="hat" transform="translate(${num(model.hatAt.x)} ${num(model.hatAt.y)}) scale(${num(model.hatScale)})">
     ${hatParts.map(svgElement).join('\n    ')}
   </g>
   <g class="ink">

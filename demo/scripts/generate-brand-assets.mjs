@@ -222,12 +222,15 @@ function over(dst, src) {
  * @param {'light' | 'dark'} scheme
  * @param {string} role
  */
-function colorFor(scheme, role) {
+function colorFor(scheme, role, ink) {
   if (role === 'hat') return paint.hat.rgba
   if (role === 'band') return paint.band.rgba
   if (role === 'shine') return [paint.shine.rgba[0], paint.shine.rgba[1], paint.shine.rgba[2], Math.round(255 * hat.shineOpacity)]
   if (role === 'stroke') return [paint.hatInk.rgba[0], paint.hatInk.rgba[1], paint.hatInk.rgba[2], Math.round(255 * hat.strokeOpacity)]
-  if (role === 'eye' || role === 'dot') return scheme === 'dark' ? paint.boneDark.rgba : paint.boneLight.rgba
+  if (role === 'eye' || role === 'dot') {
+    if (ink === 'contrast') return scheme === 'dark' ? paint.iconInkDark.rgba : paint.iconInkLight.rgba
+    return scheme === 'dark' ? paint.boneDark.rgba : paint.boneLight.rgba
+  }
   throw new Error(`unknown rex paint role ${role}`)
 }
 
@@ -240,10 +243,11 @@ function colorFor(scheme, role) {
  *   scheme: 'light' | 'dark',
  *   background: number[] | null,
  *   samples: number,
+ *   ink?: 'bone' | 'contrast',
  * }} spec
  */
 export function rasterize(spec) {
-  const shapes = spec.shapes.map(shape => ({ shape, bounds: shapeBounds(shape), color: colorFor(spec.scheme, shape.role) }))
+  const shapes = spec.shapes.map(shape => ({ shape, bounds: shapeBounds(shape), color: colorFor(spec.scheme, shape.role, spec.ink ?? 'bone') }))
   const samples = spec.samples
   return encodePng(spec.width, spec.height, (x, y) => {
     /** @type {number[]} */
@@ -353,6 +357,7 @@ function writeAll() {
     viewBox: iconBox,
     shapes: icon,
     scheme: 'dark',
+    ink: 'contrast',
     background: paint.void.rgba,
     samples: samplesFor(32),
   }))

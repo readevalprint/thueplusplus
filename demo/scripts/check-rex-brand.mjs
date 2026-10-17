@@ -66,7 +66,7 @@ function faviconFile() {
   assert(svg === faviconSvg(), 'favicon.svg drifted from the shared geometry')
   assert(svg.includes('color-scheme: light dark'), 'favicon.svg does not opt into both schemes')
   assert(svg.includes('@media (prefers-color-scheme: dark)'), 'favicon.svg has no dark scheme')
-  assert(svg.includes(paint.boneLight.hex) && svg.includes(paint.boneDark.hex), 'favicon.svg misses a scheme ink')
+  assert(svg.includes(paint.iconInkLight.hex) && svg.includes(paint.iconInkDark.hex), 'favicon.svg misses a scheme ink')
   assert(svg.includes(paint.hat.hex), 'favicon.svg misses the hat color')
   assert(svg.includes(hat.crown), 'favicon.svg misses the shared crown')
   assert(!svg.includes(hat.shine), 'small favicon still draws the shine stroke')
@@ -106,13 +106,18 @@ function small() {
         viewBox: viewBoxFor('icon'),
         shapes: compileMarks('icon'),
         scheme,
+        ink: 'contrast',
         background: null,
         samples: 8,
       }))
       const bars = readBars(image, scheme)
       assert(bars.length === 2, `${size}px ${scheme} eye bars: ${bars.length}`)
       for (const bar of bars) assert(bar.tall, `${size}px ${scheme} eye bar is not vertical`)
-      assert(countOrange(image) > 8, `${size}px ${scheme} has no hat`)
+      const orange = countOrange(image)
+      const ink = countInk(image, scheme)
+      assert(orange > 8, `${size}px ${scheme} has no hat`)
+      assert(ink > orange, `${size}px ${scheme} hat is larger than the body`)
+      assert(ink > size * size * 0.18, `${size}px ${scheme} body does not fill the icon`)
       assert(hatAboveEyes(image, scheme), `${size}px ${scheme} hat is not above the eyes`)
     }
   }
@@ -282,12 +287,13 @@ function ci() {
   const failed = []
   for (const check of checks) {
     if (/vercel/i.test(check.name)) continue
+    if (check.bucket === 'skipping' || check.state === 'SKIPPED') continue
     if (check.bucket === 'pending' || check.state === 'PENDING' || check.state === 'QUEUED' || check.state === 'IN_PROGRESS') pending.push(check.name)
     else if (check.bucket !== 'pass' && check.state !== 'SUCCESS') failed.push(`${check.name}=${check.state}`)
   }
   assert(pending.length === 0, `CI still running: ${pending.join(', ')}`)
   assert(failed.length === 0, `CI failed: ${failed.join(', ')}`)
-  const metrics = checks.find(check => /metric/i.test(check.name))
+  const metrics = checks.find(check => /metric/i.test(check.name) || check.name === 'record')
   assert(metrics && (metrics.bucket === 'pass' || metrics.state === 'SUCCESS'), 'metrics job is not green')
   console.log('ci: green')
 }
@@ -317,22 +323,45 @@ function countOrange(image) {
  * @param {{ width: number, height: number, pixels: Buffer }} image
  * @param {'light' | 'dark'} scheme
  */
+function iconInk(scheme) {
+  return scheme === 'dark' ? paint.iconInkDark.rgba : paint.iconInkLight.rgba
+}
+
+function countInk(image, scheme) {
+  const ink = iconInk(scheme)
+  let count = 0
+  for (let i = 0; i < image.width * image.height; i += 1) {
+    const offset = i * 4
+    if (image.pixels[offset + 3] < 180) continue
+    if (near(image.pixels, offset, ink, 36)) count += 1
+  }
+  return count
+}
+
 function readBars(image, scheme) {
-  const ink = scheme === 'dark' ? paint.boneDark.rgba : paint.boneLight.rgba
+  const ink = iconInk(scheme)
+  const minRun = Math.ceil(image.height * 0.22)
   const columns = new Array(image.width).fill(0)
-  for (let y = 0; y < image.height; y += 1) {
-    for (let x = 0; x < image.width; x += 1) {
+  for (let x = 0; x < image.width; x += 1) {
+    let run = 0
+    let best = 0
+    for (let y = 0; y < image.height; y += 1) {
       const offset = (y * image.width + x) * 4
-      if (image.pixels[offset + 3] < 140) continue
-      if (!near(image.pixels, offset, ink, 36)) continue
-      columns[x] += 1
+      const on = image.pixels[offset + 3] >= 140 && near(image.pixels, offset, ink, 48)
+      if (on) {
+        run += 1
+        if (run > best) best = run
+      } else {
+        run = 0
+      }
     }
+    columns[x] = best
   }
   /** @type {{ x0: number, x1: number, tall: boolean }[]} */
   const bars = []
   let start = -1
   for (let x = 0; x <= columns.length; x += 1) {
-    const on = x < columns.length && columns[x] >= 2
+    const on = x < columns.length && columns[x] >= minRun
     if (on && start < 0) start = x
     if (!on && start >= 0) {
       const width = x - start
@@ -350,7 +379,7 @@ function readBars(image, scheme) {
  * @param {'light' | 'dark'} scheme
  */
 function hatAboveEyes(image, scheme) {
-  const ink = scheme === 'dark' ? paint.boneDark.rgba : paint.boneLight.rgba
+  const ink = iconInk(scheme)
   let hatY = 0
   let hatN = 0
   let eyeY = 0

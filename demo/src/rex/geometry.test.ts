@@ -56,6 +56,21 @@ describe('rex geometry', () => {
     expect(wrapper.findAll('[data-test="rex-dot"]')).toHaveLength(4)
   })
 
+  it('small icon is a bolder rex on the shared hat', () => {
+    const icon = markModel('icon')
+    expect(icon.hatScale).toBeLessThan(0.25)
+    expect(icon.parts.some(part => part.kind === 'path' && part.d === hat.crown)).toBe(true)
+    const eyes = icon.parts.filter(part => part.role === 'eye')
+    const dots = icon.parts.filter(part => part.role === 'dot')
+    expect(eyes).toHaveLength(2)
+    expect(dots).toHaveLength(4)
+    const eye = eyes[0]
+    const dot = dots[0]
+    if (eye?.kind !== 'rect' || dot?.kind !== 'circle') throw new Error('icon mark kinds drifted')
+    expect(eye.h).toBeGreaterThan(eye.w)
+    expect(dot.r).toBeGreaterThan(1.4)
+  })
+
   it('header mark is the static rex and does not reuse the hero test ids', () => {
     const wrapper = mount(Mark)
     expect(wrapper.text()).not.toContain('++')
