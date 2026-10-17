@@ -1,28 +1,29 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { DOT_R, HAND_DY } from '@/rex/motion'
+import { DOT_R } from '@/rex/motion'
 import { difficulty, scoreJump } from './game'
 import {
-  BELT_TOP,
+  BELT_BOTTOM,
   GROUND,
   SCALE,
+  VIEW_H,
+  beltPoint,
   scoreFlashRadius,
   scoreLabelBottom,
   scoreNumberCenterY,
   scoreNumberTop,
 } from './layout'
 
-const beltSurface = BELT_TOP - 14
-
 describe('hero polish', () => {
-  it('grounds rex behind the belt', () => {
-    const handBottom = GROUND + (HAND_DY + DOT_R) * SCALE
+  it('grounds rex behind the belt with his feet showing', () => {
     const footTop = GROUND + (-DOT_R - DOT_R) * SCALE
-    expect(footTop).toBeGreaterThan(beltSurface + 12)
-    expect(handBottom).toBeGreaterThan(beltSurface)
-    expect(handBottom).toBeLessThan(beltSurface + 20)
+    const footBottom = GROUND
+    expect(footTop).toBeGreaterThan(BELT_BOTTOM)
+    expect(footBottom).toBeLessThan(VIEW_H)
+    expect(beltPoint(0).x).toBeGreaterThan(beltPoint(1).x)
     const scene = readFileSync('src/components/SandboxScene.vue', 'utf8')
-    expect(scene.indexOf('data-test="rex-mark"')).toBeLessThan(scene.indexOf('data-test="belt"'))
+    expect(scene.indexOf('data-test="floor"')).toBeLessThan(scene.indexOf('<Rex'))
+    expect(scene.indexOf('<Rex')).toBeLessThan(scene.indexOf('data-test="belt"'))
   })
 
   it('keeps the score label clear of the flash', () => {

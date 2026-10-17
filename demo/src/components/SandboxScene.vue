@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Rex from './Rex.vue'
 import {
   BELT_H,
@@ -12,6 +12,9 @@ import {
   GROUND,
   LEVER_LEN,
   LEVER_PIVOT,
+  MACHINE_S,
+  MACHINE_X,
+  MACHINE_Y,
   SCALE,
   SCAN_TOP,
   SCORE_LABEL_SIZE,
@@ -19,8 +22,15 @@ import {
   SCORE_NUMBER_SIZE,
   SCORE_NUMBER_Y,
   SCORE_X,
+  TUNNEL_BOTTOM,
+  TUNNEL_DEEP,
+  TUNNEL_LIP,
   VIEW_H,
   VIEW_W,
+  WINDOW_H,
+  WINDOW_W,
+  WINDOW_X,
+  WINDOW_Y,
   beltPoint,
   flapBend,
   flapXs,
@@ -32,6 +42,7 @@ import {
   leverDegrees,
   leverKnob,
 } from '@/sandbox/layout'
+import { MACHINE_D } from '@/sandbox/machine'
 import { framePose, settledSpring, type Pose, type Spring } from '@/sandbox/motion'
 import {
   beginAutoplay,
@@ -48,7 +59,7 @@ import {
 
 const BEST_KEY = 'rex-sandbox-best'
 
-const emit = defineEmits<{ break: [reduced: boolean], rebuilt: [] }>()
+const emit = defineEmits<{ break: [reduced: boolean], rebuilt: [], offer: [value: boolean] }>()
 
 function motionReduced(): boolean {
   return typeof window !== 'undefined'
@@ -158,6 +169,7 @@ const leverLabel = computed(() => (
   offerTurn.value ? 'Your turn. Take over the lever.' : 'Pull the lever to sandbox the box.'
 ))
 const leverHint = computed(() => (offerTurn.value ? 'your turn' : 'pull the lever'))
+watch(offerTurn, value => emit('offer', value), { immediate: true })
 const leverAngle = computed(() => leverDegrees(game.value.lever))
 const tickOffset = computed(() => (reduced.value || !game.value.beltOn ? 0 : -(beltScroll.value % 16)))
 const jump = computed(() => scoreJump(
@@ -182,15 +194,16 @@ const floatPos = computed(() => {
   }
 })
 const aperture = computed(() => scannerAperture(diff.value.span))
-const entranceFlaps = computed(() => flapXs(aperture.value.entrance))
-const exitFlaps = computed(() => flapXs(aperture.value.exit))
+const entranceFlaps = computed(() => flapXs(TUNNEL_LIP))
+const exitFlaps = computed(() => flapXs(TUNNEL_DEEP))
+const zoneLeft = computed(() => Math.min(aperture.value.entrance, aperture.value.exit))
 const scanned = computed(() => game.value.boxes
   .filter(box => inZone(box.progress, game.value.score, game.value.reduced))
   .sort((a, b) => b.progress - a.progress || a.id - b.id)[0])
 const scanX = computed(() => {
   const lead = scanned.value
   if (!lead) return null
-  return scanLineX(clock.value, reduced.value, aperture.value.entrance, aperture.value.exit, beltPoint(lead.progress).x)
+  return scanLineX(clock.value, reduced.value, WINDOW_X, WINDOW_X + WINDOW_W, beltPoint(lead.progress).x)
 })
 const scannerTransform = computed(() => {
   if (reduced.value || game.value.jolt === 0) return 'translate(0 0)'
@@ -206,7 +219,8 @@ const scannerTransform = computed(() => {
 function flapTransform(x: number): string {
   let bend = 0
   for (const box of game.value.boxes) {
-    bend = Math.max(bend, flapBend(x, beltPoint(box.progress).x))
+    const next = flapBend(x, beltPoint(box.progress).x)
+    if (Math.abs(next) > Math.abs(bend)) bend = next
   }
   return `rotate(${bend.toFixed(2)} ${x} ${SCAN_TOP})`
 }
@@ -347,7 +361,7 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
 })
 
-defineExpose({ game, advance })
+defineExpose({ game, advance, act })
 </script>
 
 <template>
@@ -379,14 +393,14 @@ defineExpose({ game, advance })
           <feGaussianBlur stdDeviation="14" />
         </filter>
         <linearGradient id="rex-belt-fade" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="white" />
-          <stop offset="0.34" stop-color="white" />
-          <stop offset="0.52" stop-color="black" />
+          <stop offset="0.48" stop-color="black" />
+          <stop offset="0.66" stop-color="white" />
+          <stop offset="1" stop-color="white" />
         </linearGradient>
         <linearGradient id="rex-belt-sharp" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="black" />
-          <stop offset="0.34" stop-color="black" />
-          <stop offset="0.52" stop-color="white" />
+          <stop offset="0.48" stop-color="white" />
+          <stop offset="0.66" stop-color="black" />
+          <stop offset="1" stop-color="black" />
         </linearGradient>
         <mask id="rex-belt-left">
           <rect :width="VIEW_W" :height="VIEW_H" fill="url(#rex-belt-fade)" />
@@ -395,7 +409,7 @@ defineExpose({ game, advance })
           <rect :width="VIEW_W" :height="VIEW_H" fill="url(#rex-belt-sharp)" />
         </mask>
       </defs>
-      <path :d="`M0 ${BELT_TOP + BELT_H + 18} H${VIEW_W}`" stroke="currentColor" stroke-width="2" opacity="0.28" />
+      <path data-test="floor" :d="`M0 ${GROUND} H${VIEW_W}`" stroke="currentColor" stroke-width="2" opacity="0.45" />
 
       <circle
         v-if="flashRadius > 0"
@@ -428,6 +442,38 @@ defineExpose({ game, advance })
         <text v-if="game.best > 0" data-test="best" :x="SCORE_X" :y="SCORE_NUMBER_Y + 28" font-size="16" opacity="0.75">best {{ game.best }}</text>
       </g>
 
+      <g
+        v-if="game.control === 'auto' && game.rex !== 'cheer'"
+        data-test="speech"
+        :transform="`translate(${pose.rootX - 180} ${pose.rootY - 372})`"
+      >
+        <path
+          data-test="speech-bubble"
+          d="M0 18 C0 6 10 0 24 0 H188 C204 0 214 8 214 22 V58 C214 72 204 80 188 80 H46 L22 102 L28 80 H24 C10 80 0 74 0 62 Z"
+          fill="var(--surface)"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linejoin="round"
+        />
+        <text
+          data-test="speech-text"
+          x="107"
+          y="32"
+          fill="currentColor"
+          font-family="JetBrains Mono, ui-monospace, monospace"
+          font-size="15"
+          text-anchor="middle"
+        >i guess we</text>
+        <text
+          x="107"
+          y="54"
+          fill="currentColor"
+          font-family="JetBrains Mono, ui-monospace, monospace"
+          font-size="15"
+          text-anchor="middle"
+        >sandboxin' now</text>
+      </g>
+
       <g :transform="`translate(${pose.rootX} ${pose.rootY}) scale(${SCALE})`">
         <Rex :pose="pose" />
       </g>
@@ -442,8 +488,9 @@ defineExpose({ game, advance })
 
       <text
         data-test="start-hint"
-        :x="LEVER_PIVOT.x - 150"
-        :y="BELT_TOP - 28"
+        :x="LEVER_PIVOT.x"
+        :y="BELT_TOP - 72"
+        text-anchor="middle"
         fill="currentColor"
         font-family="JetBrains Mono, ui-monospace, monospace"
         font-size="16"
@@ -483,30 +530,6 @@ defineExpose({ game, advance })
         </g>
       </g>
 
-      <g data-test="scanner" :data-scanning="scanned ? 'yes' : 'no'" :transform="scannerTransform">
-        <path
-          :d="`M${aperture.entrance - 22} ${SCAN_TOP - 28} H${aperture.exit + 22} V${SCAN_TOP} H${aperture.entrance - 22} Z`"
-          fill="var(--surface)"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linejoin="round"
-        />
-        <rect :x="aperture.entrance - 22" :y="SCAN_TOP" width="16" :height="BELT_TOP - SCAN_TOP" fill="var(--surface)" stroke="currentColor" stroke-width="2" />
-        <rect :x="aperture.exit + 6" :y="SCAN_TOP" width="16" :height="BELT_TOP - SCAN_TOP" fill="var(--surface)" stroke="currentColor" stroke-width="2" />
-        <rect
-          data-test="capture-zone"
-          :x="aperture.entrance"
-          :y="SCAN_TOP"
-          :width="aperture.width"
-          :height="BELT_TOP - SCAN_TOP"
-          fill="color-mix(in srgb, var(--signal) 14%, var(--void))"
-          stroke="var(--signal)"
-          stroke-width="1.5"
-          opacity="0.72"
-        />
-        <circle data-test="belt-lamp" :cx="aperture.entrance + 28" :cy="SCAN_TOP - 14" r="5" :fill="game.beltOn ? 'var(--signal)' : 'currentColor'" :opacity="game.beltOn ? 1 : 0.35" />
-      </g>
-
       <g
         v-for="box in game.boxes"
         :key="box.id"
@@ -524,6 +547,26 @@ defineExpose({ game, advance })
           <rect x="-18" y="-36" width="36" height="36" rx="2" fill="var(--surface)" stroke="currentColor" stroke-width="2.4" />
           <path d="M-18 -18 H18 M0 -36 V0" stroke="currentColor" stroke-width="1.4" opacity="0.5" />
         </template>
+      </g>
+
+      <g data-test="scanner" data-test-machine="sketch" :data-scanning="scanned ? 'yes' : 'no'" :transform="scannerTransform">
+        <g
+          data-test="machine"
+          :transform="`translate(${MACHINE_X} ${MACHINE_Y}) scale(${MACHINE_S})`"
+          fill="currentColor"
+        >
+          <g transform="translate(0 500) scale(0.1 -0.1)">
+            <path :d="MACHINE_D" />
+          </g>
+        </g>
+        <rect
+          data-test="capture-zone"
+          :x="zoneLeft"
+          :y="SCAN_TOP"
+          :width="aperture.width"
+          :height="TUNNEL_BOTTOM - SCAN_TOP"
+          fill="none"
+        />
       </g>
 
       <g data-test="belt-blur" filter="url(#rex-belt-blur)" mask="url(#rex-belt-left)" opacity="0.9">
@@ -551,19 +594,19 @@ defineExpose({ game, advance })
         data-test="scan-line"
         :x1="scanX"
         :x2="scanX"
-        :y1="SCAN_TOP + 4"
-        :y2="BELT_TOP - 6"
+        :y1="WINDOW_Y + 4"
+        :y2="WINDOW_Y + WINDOW_H - 4"
         stroke="var(--signal)"
         stroke-width="2.5"
         stroke-linecap="round"
         opacity="0.9"
       />
-      <g data-test="scanner-flaps" fill="var(--dim)" stroke="currentColor" stroke-width="1.2">
+      <g data-test="scanner-flaps" fill="var(--surface)" stroke="currentColor" stroke-width="1.6">
         <g v-for="(x, index) in entranceFlaps" :key="`in-${index}`" data-test="scanner-flap" data-edge="entrance" :transform="flapTransform(x)">
-          <rect :x="x - 4" :y="SCAN_TOP" width="8" :height="BELT_TOP - SCAN_TOP - 2" rx="1.5" opacity="0.92" />
+          <rect :x="x - 4" :y="SCAN_TOP" width="8" :height="TUNNEL_BOTTOM - SCAN_TOP" rx="1.5" opacity="0.92" />
         </g>
         <g v-for="(x, index) in exitFlaps" :key="`out-${index}`" data-test="scanner-flap" data-edge="exit" :transform="flapTransform(x)">
-          <rect :x="x - 4" :y="SCAN_TOP" width="8" :height="BELT_TOP - SCAN_TOP - 2" rx="1.5" opacity="0.92" />
+          <rect :x="x - 4" :y="SCAN_TOP" width="8" :height="TUNNEL_BOTTOM - SCAN_TOP" rx="1.5" opacity="0.92" />
         </g>
       </g>
 
@@ -604,15 +647,6 @@ defineExpose({ game, advance })
       </g>
     </svg>
 
-    <button
-      v-if="offerTurn"
-      type="button"
-      class="rex-turn"
-      data-test="your-turn"
-      aria-label="Your turn. Take over the lever."
-      @click="act"
-      @keydown="onButtonKey"
-    >your turn</button>
     <button
       type="button"
       class="rex-hit"

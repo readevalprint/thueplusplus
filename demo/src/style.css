@@ -364,52 +364,24 @@ html:not(.dark) {
   z-index: -1;
   --veil-fade-x: min(32vw, 280px);
   --veil-fade-y: min(22vw, 150px);
-  inset: -18px calc(var(--veil-fade-x) * -1) calc(var(--veil-fade-y) * -1) -20px;
+  inset: -18px -12px calc(var(--veil-fade-y) * -1) calc(var(--veil-fade-x) * -1);
   pointer-events: none;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   -webkit-mask-image:
-    linear-gradient(to right, #000 0, #000 calc(100% - var(--veil-fade-x)), transparent 100%),
+    linear-gradient(to left, #000 0, #000 calc(100% - var(--veil-fade-x)), transparent 100%),
     linear-gradient(to bottom, #000 0, #000 calc(100% - var(--veil-fade-y)), transparent 100%);
   -webkit-mask-composite: source-in;
   -webkit-mask-repeat: no-repeat;
   mask-image:
-    linear-gradient(to right, #000 0, #000 calc(100% - var(--veil-fade-x)), transparent 100%),
+    linear-gradient(to left, #000 0, #000 calc(100% - var(--veil-fade-x)), transparent 100%),
     linear-gradient(to bottom, #000 0, #000 calc(100% - var(--veil-fade-y)), transparent 100%);
   mask-composite: intersect;
   mask-repeat: no-repeat;
 }
 
-.rex-bleed .rex-hit,
-.rex-bleed .rex-turn {
+.rex-bleed .rex-hit {
   pointer-events: auto;
-}
-
-.rex-turn {
-  position: absolute;
-  z-index: 3;
-  left: 69%;
-  top: 42%;
-  margin: 0;
-  padding: 8px 14px;
-  border: 2px solid var(--bone);
-  background: var(--signal);
-  color: #1a1916;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  min-height: 44px;
-  touch-action: manipulation;
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
-}
-
-.rex-turn:focus-visible {
-  outline: 2px solid var(--bone);
-  outline-offset: 3px;
 }
 
 .rex-hit {

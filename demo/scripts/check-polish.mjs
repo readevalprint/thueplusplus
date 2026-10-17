@@ -163,7 +163,7 @@ async function checkVeil() {
         mask: computed.maskImage || computed.webkitMaskImage,
         composite: computed.maskComposite || computed.webkitMaskComposite,
         blur: computed.backdropFilter || computed.webkitBackdropFilter,
-        fadeX: box.right - copy.right,
+        fadeX: copy.left - box.left,
         fadeY: box.bottom - copy.bottom,
         box: box.toJSON(),
       }
@@ -179,17 +179,18 @@ async function checkVeil() {
     if (!(style.fadeY >= 48)) fail(`vertical veil fade is ${style.fadeY}px`)
     const belt = await page.locator('[data-test="belt-surface"]').boundingBox()
     if (!belt) fail('belt surface is missing')
-    if (style.box.right > 1440 - 8) fail(`veil fade is clipped by the viewport at x=${style.box.right}`)
+    if (style.box.left < 8) fail(`veil fade is clipped by the viewport at x=${style.box.left}`)
+    if (style.box.right > 1440 - 8) fail(`veil is clipped by the viewport at x=${style.box.right}`)
     const shot = decodePng(await page.screenshot({ type: 'png' }))
     const y0 = belt.y + 3
     const y1 = belt.y + Math.min(10, belt.height - 2)
     const samples = []
-    for (let x = Math.round(style.box.right - style.fadeX); x <= Math.round(style.box.right); x += 1) {
+    for (let x = Math.round(style.box.left); x <= Math.round(style.box.left + style.fadeX); x += 1) {
       samples.push(averageLuminance(shot, x, y0, y1))
     }
-    const outside = averageLuminance(shot, style.box.right + 14, y0, y1)
-    const opaque = averageLuminance(shot, style.box.right - style.fadeX - 24, y0, y1)
-    const edge = samples[samples.length - 1]
+    const outside = averageLuminance(shot, style.box.left - 14, y0, y1)
+    const opaque = averageLuminance(shot, style.box.left + style.fadeX + 24, y0, y1)
+    const edge = samples[0]
     const range = Math.abs(outside - opaque)
     if (range < 12) fail(`veil does not change the belt (opaque ${opaque.toFixed(1)}, outside ${outside.toFixed(1)})`)
     let maxStep = 0
@@ -199,7 +200,7 @@ async function checkVeil() {
       fail(`veil fade has a hard step of ${maxStep.toFixed(1)} on a ${range.toFixed(1)} swing`)
     }
     if (released > 0.4) {
-      fail(`veil still dims the belt at its right edge (released ${released.toFixed(2)}, edge ${edge.toFixed(1)}, outside ${outside.toFixed(1)})`)
+      fail(`veil still dims the belt at its left edge (released ${released.toFixed(2)}, edge ${edge.toFixed(1)}, outside ${outside.toFixed(1)})`)
     }
     console.log('veil fade ok')
   } finally {
@@ -218,29 +219,34 @@ async function checkGround() {
         const box = dot.getBoundingClientRect()
         return { top: box.top, bottom: box.bottom }
       })
-      const belt = scene.querySelector('[data-test="belt-surface"]').getBoundingClientRect()
+      const belt = scene.querySelector('[data-test="belt"]').getBoundingClientRect()
+      const floor = scene.querySelector('[data-test="floor"]').getBoundingClientRect()
       const mark = scene.querySelector('[data-test="rex-mark"]')
       const beltGroup = scene.querySelector('[data-test="belt"]')
+      const svg = scene.querySelector('svg').getBoundingClientRect()
       const order = mark.compareDocumentPosition(beltGroup)
-      return { dots, belt: { top: belt.top, bottom: belt.bottom }, markBeforeBelt: (order & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 }
+      return {
+        dots,
+        belt: { top: belt.top, bottom: belt.bottom },
+        floor: { top: floor.top, bottom: floor.bottom },
+        svgBottom: svg.bottom,
+        markBeforeBelt: (order & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      }
     })
     if (!measured.markBeforeBelt) fail('belt is painted before Rex')
     if (measured.dots.length !== 4) fail(`expected 4 Rex dots, got ${measured.dots.length}`)
     const sorted = [...measured.dots].sort((a, b) => a.top - b.top)
-    const hands = sorted.slice(0, 2)
     const feet = sorted.slice(2)
     for (const foot of feet) {
-      if (foot.top < measured.belt.top + 8) {
-        fail(`Rex foot starts at ${foot.top.toFixed(1)} above the belt face ${measured.belt.top.toFixed(1)}`)
+      if (foot.top < measured.belt.bottom - 1) {
+        fail(`Rex foot starts at ${foot.top.toFixed(1)} behind the belt bottom ${measured.belt.bottom.toFixed(1)}`)
+      }
+      if (foot.bottom > measured.svgBottom - 1) {
+        fail(`Rex foot is clipped at ${foot.bottom.toFixed(1)} past the scene ${measured.svgBottom.toFixed(1)}`)
       }
     }
-    for (const hand of hands) {
-      if (hand.bottom < measured.belt.top - 2) {
-        fail(`Rex hand floats ${ (measured.belt.top - hand.bottom).toFixed(1) }px above the belt`)
-      }
-      if (hand.bottom > measured.belt.bottom + 14) {
-        fail(`Rex hand is buried ${ (hand.bottom - measured.belt.bottom).toFixed(1) }px under the belt face`)
-      }
+    if (measured.floor.top < measured.belt.bottom - 1) {
+      fail(`floor line at ${measured.floor.top.toFixed(1)} is not below the belt ${measured.belt.bottom.toFixed(1)}`)
     }
     console.log('rex grounded ok')
   } finally {

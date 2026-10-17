@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BELT_MOUTH, BELT_X0, BREAK_BEAT } from './layout'
+import { BELT_ENTRANCE, BELT_MOUTH, BELT_X0, BREAK_BEAT, beltPoint } from './layout'
 import { WALK_DURATION } from './motion'
 import {
   GRACE,
@@ -227,7 +227,10 @@ describe('lever game', () => {
   it('gate scale', () => {
     expect(TRACK).toBeGreaterThan(1)
     expect(BELT_X0).toBe(0)
-    expect(BELT_MOUTH - BELT_X0).toBeGreaterThan(1000)
+    expect(BELT_ENTRANCE - BELT_MOUTH).toBeGreaterThan(1000)
+    expect(beltPoint(0).x).toBe(BELT_ENTRANCE)
+    expect(beltPoint(1).x).toBe(BELT_MOUTH)
+    expect(beltPoint(0).x).toBeGreaterThan(beltPoint(1).x)
     for (const score of [0, 6, 18]) {
       const now = difficulty(score, false)
       const u = 1 - Math.exp(-score / 6)
@@ -337,6 +340,18 @@ describe('lever game', () => {
       expect(game.score).toBeGreaterThan(0)
       expect(game.best).toBe(3)
     }
+
+    let visible = beginAutoplay(createGame({ seed: 9, reduced: false, best: 0 }))
+    let sawScan = false
+    let elapsed = 0
+    while (visible.score === 0 && elapsed < 20) {
+      visible = step(visible, 1 / 30)
+      elapsed += 1 / 30
+      if (visible.boxes.some(box => inZone(box.progress, visible.score, false))) sawScan = true
+    }
+    expect(sawScan).toBe(true)
+    expect(visible.score).toBeGreaterThan(0)
+    expect(visible.phase).toBe('playing')
   })
 
   it('gate takeover', () => {

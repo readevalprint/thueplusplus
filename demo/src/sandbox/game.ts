@@ -268,10 +268,18 @@ function scoreHit(game: Game, hit: Box): Game {
   }
 }
 
-/** Rex catches the box in the scanner. He does not miss. */
+/**
+ * Rex catches once the box is in the middle of the scan.
+ * The opening of the tunnel stays visible as an X-ray before he pulls.
+ * A box that reaches the exit is still caught, so the demo does not break.
+ */
 function autoCatch(game: Game): Game {
   if (game.control !== 'auto' || game.phase !== 'playing') return game
-  const hit = hottest(game)
+  const { span } = difficulty(game.score, game.reduced)
+  const mark = 1 - span * 0.45
+  const hit = game.boxes
+    .filter(box => box.progress >= mark && box.progress < 1)
+    .sort((a, b) => b.progress - a.progress || a.id - b.id)[0]
   if (!hit) return game
   return scoreHit(game, hit)
 }
