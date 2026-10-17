@@ -319,6 +319,104 @@ html:not(.dark) {
   }
 }
 
+.rex-hit {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.rex-hit:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.rex-hit:disabled {
+  cursor: default;
+}
+
+.rex-svg {
+  display: block;
+  overflow: visible;
+}
+
+.rex-rebuild {
+  position: fixed;
+  z-index: 80;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+}
+
+.rex-wander {
+  position: fixed;
+  z-index: 70;
+  width: 168px;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.rex-wander svg {
+  display: block;
+  width: 168px;
+  height: 230px;
+  overflow: visible;
+  color: var(--bone);
+}
+
+.rex-wander-line {
+  margin: 0 0 6px;
+  padding: 8px 10px;
+  border: 2px solid var(--bone);
+  background: var(--surface);
+  color: var(--bone);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.rex-rubble {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.rex-cracks {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  color: var(--bone);
+}
+
+.rex-cracks svg {
+  width: 100%;
+  height: 100%;
+}
+
+.rex-cracks path {
+  stroke: currentColor;
+  stroke-width: 2.5;
+  fill: none;
+}
+
+html.rex-shattered [data-shard] {
+  visibility: hidden !important;
+}
+
+html.rex-shattered .rex-rubble [data-shard] {
+  visibility: visible !important;
+}
+
 .metric-chart {
   --vis-axis-font-family: var(--font-mono);
   --vis-axis-grid-color: var(--line);
