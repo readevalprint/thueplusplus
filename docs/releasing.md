@@ -1,63 +1,42 @@
 # Releasing the hosts
 
-Spec version stays in `SPEC_VERSION`. Package versions are the `version` fields below. This repository does not publish on its own. The commands here are the release path when a tag is ready.
+Spec version stays in `SPEC_VERSION`. Package version `0.1.0` is the `version` field in every manifest below. A pushed tag `vX.Y.Z` is the only publish trigger. The workflow is `.github/workflows/release.yml`. It runs `make release-check` and `make test`, then publishes. A tag that is not `vX.Y.Z`, or that disagrees with the manifests, fails before any upload.
 
-The hosts share the API in [host-api.md](host-api.md). The Rust crate and the C++ library are not published.
+Pull requests run `make release-check` and do not publish. Do not run `uv publish`, `npm publish`, or `cargo publish` from a laptop. The first-release account setup is in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 | Host | Name | Version field |
 | --- | --- | --- |
 | Go | `github.com/thuelang/thueplusplus/go` | git tag `go/vX.Y.Z` |
-| Python | PyPI `thuelang` (module `thuelang`) | `pyproject.toml` `version` |
-| npm | `thuelang` | `js/package.json` `version` |
-| Rust | crate and library `thuelang` | `rust/Cargo.toml` `version` |
-| C++ | CMake project and library `thuelang` | `cpp/CMakeLists.txt` `VERSION` (not published) |
+| Python | PyPI `thuelang` (module `thuelang`, CLI `thue`) | `pyproject.toml` `version` |
+| npm | `thuelang` (CLI `thue`) | `js/package.json` `version` |
+| Rust | crate and library `thuelang`, binary `thue` | `rust/Cargo.toml` `version` |
+| C++ | CMake project and library `thuelang`, CLI `thue` | `cpp/CMakeLists.txt` `VERSION` |
+| Editor | `.vsix` `thue` | `editors/vscode/package.json` `version` |
+| vcpkg sketch | `thuelang` | `cpp/vcpkg.json` `version` |
+| Conan sketch | `thuelang` | `cpp/conanfile.py` `version` |
+
+`make release-check` deletes `dist/`, runs `uv build`, then `twine check dist/*`, `npm pack --dry-run` in `js/`, and `cargo publish --dry-run --manifest-path rust/Cargo.toml`. `RELEASE_TAG=vX.Y.Z` makes the version check require that tag.
+
+## What the tag publishes
+
+- **PyPI.** Trusted publishing (OIDC) through `pypa/gh-action-pypi-publish`. The job environment is `pypi`. There is no PyPI token.
+- **npm.** `npm publish --provenance --access public` from `js/`, authenticated with the `NPM_TOKEN` repository secret.
+- **crates.io.** `cargo publish --manifest-path rust/Cargo.toml`, authenticated with the `CARGO_REGISTRY_TOKEN` repository secret.
+- **GitHub Release.** `thue-<version>-<host>-<os>-<arch>.tar.gz` for hosts `go`, `rust`, and `cpp`, and targets `linux-x86_64`, `linux-arm64`, `darwin-x86_64`, and `darwin-arm64`. The archive contains one `thue` binary. `thue-<version>.vsix` is attached. `SHA256SUMS` covers those files. The Go binary is `CGO_ENABLED=0`. The C++ binary links RE2 and Abseil statically.
+
+The workflow does not upload the vcpkg port, the Conan recipe, or the extension listing on the Marketplace or Open VSX.
 
 ## Go
 
 The module lives in `go/`. Consumers import `github.com/thuelang/thueplusplus/go/thuelang`.
 
 ```bash
-cd go && go test ./...
-git tag go/v0.5.0
-git push origin go/v0.5.0
+git tag go/v0.1.0 v0.1.0
+git push origin go/v0.1.0
 ```
 
-A tag on the repository root does not version this module. The tag must be `go/vX.Y.Z`.
+Push that tag at the same commit as `v0.1.0`. A root tag does not version this module. `go/v0.1.0` does not start the registry publish.
 
-## Python
+## C++ registries
 
-The PyPI distribution is `thuelang`. The import module is `python/thuelang` (`from thuelang import ...`). The console script is `thue`.
-
-```bash
-uv lock
-uv build
-uv publish   # PyPI credentials required; omit until the release is intentional
-```
-
-`uv build` writes `dist/`. Do not commit `dist/`.
-
-## npm
-
-The package is `js/`. It is ESM. The `thue` bin is `js/src/cli.js`. Browser code imports `thuelang/browser`, `thuelang/worker`, and `thuelang/browser-worker`. The wasm binary is not inside the package; `THUE_WASM` or the default `build/thue.wasm` path supplies it.
-
-```bash
-npm --prefix js pack --dry-run
-npm --prefix js publish   # npm credentials required; omit until the release is intentional
-```
-
-The playground depends on `file:../js`. A published release replaces that dependency with the published version in a later change. Do not publish from a dirty tree.
-
-## Rust
-
-The crate is `rust/`. The Cargo package name and the Rust library are `thuelang`. The CLI binary is `thue`. `Cargo.toml` sets `publish = false`. This repository does not publish it.
-
-`license` is `MIT`, matching the npm package. The repository has no `LICENSE` file. Add one before a real publish. Then remove `publish = false` and:
-
-```bash
-cargo publish --dry-run --manifest-path rust/Cargo.toml
-cargo publish --manifest-path rust/Cargo.toml   # crates.io token required; omit until the release is intentional
-```
-
-## C++
-
-The library is `cpp/`. The CMake target and the C++ namespace are `thuelang`. The CLI installs as `thue`. This repository does not publish a vcpkg port or a Conan package. `cpp/vcpkg.json` and `cpp/conanfile.py` are the packaging sketches, and `cpp/README.md` is the build and install note. Do not upload them to a registry from this tree.
+`cpp/vcpkg.json` and `cpp/conanfile.py` keep the same version as the other manifests so the tag check can see them. This repository does not upload them to a registry. `cpp/README.md` is the build note.

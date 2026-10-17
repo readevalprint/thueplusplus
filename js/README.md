@@ -2,11 +2,11 @@
 
 Thue++ for Node and the browser. The npm package name is `thuelang`. The CLI command is `thue`. The engine is the Go WebAssembly build. The CLI is a thin wrapper over `initThue`.
 
-The shared embedder contract is [../docs/host-api.md](../docs/host-api.md). Release steps are [../docs/releasing.md](../docs/releasing.md). This package is not published yet.
+The shared embedder contract is [../docs/host-api.md](../docs/host-api.md). A pushed `vX.Y.Z` tag publishes this package. See [../docs/releasing.md](../docs/releasing.md).
 
 ## Install from a checkout
 
-The playground depends on this directory with `"thuelang": "file:../js"`. A program that vendors the same tree can do the same. `npm publish` is described in the release doc and is not part of `make test`.
+The playground depends on this directory with `"thuelang": "file:../js"`. A program that vendors the same tree can do the same. `make release-check` runs `npm pack --dry-run`. It does not publish.
 
 Node 22 or newer. Build the wasm module first (`make wasm` from the repository root) or set `THUE_WASM` to a `thue.wasm` built from `go/cmd/thue-wasm`.
 

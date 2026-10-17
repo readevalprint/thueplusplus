@@ -1,13 +1,20 @@
 cmake_minimum_required(VERSION 3.16)
-project(thuelang VERSION 0.5.0 LANGUAGES CXX)
+project(thuelang VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(RE2 REQUIRED IMPORTED_TARGET re2)
 find_package(Threads REQUIRED)
+
+# Release binaries set this so the executable does not need libre2.so.
+option(THUELANG_RE2_STATIC "Link the static RE2 archive and its private dependencies" OFF)
+if(THUELANG_RE2_STATIC)
+  pkg_check_modules(RE2 REQUIRED re2)
+else()
+  pkg_check_modules(RE2 REQUIRED IMPORTED_TARGET re2)
+endif()
 
 add_library(thuelang src/engine.cpp src/prefix.cpp)
 add_library(thuelang::thuelang ALIAS thuelang)
@@ -18,7 +25,12 @@ target_include_directories(thuelang
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
-target_link_libraries(thuelang PUBLIC PkgConfig::RE2 Threads::Threads)
+if(THUELANG_RE2_STATIC)
+  target_include_directories(thuelang PUBLIC ${RE2_STATIC_INCLUDE_DIRS})
+  target_link_libraries(thuelang PUBLIC ${RE2_STATIC_LDFLAGS} Threads::Threads)
+else()
+  target_link_libraries(thuelang PUBLIC PkgConfig::RE2 Threads::Threads)
+endif()
 target_compile_options(thuelang PRIVATE -Wall -Wextra -Wpedantic)
 
 add_executable(thue-cli src/cli.cpp)

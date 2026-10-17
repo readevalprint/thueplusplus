@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics
+.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
 
 RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
@@ -28,11 +28,17 @@ endif
 
 # C++17 host. The binary is build/cpp/thue. g++ is required: the default c++
 # on some images is clang without libstdc++.
+# THUELANG_RE2_STATIC=1 links the static RE2 archive. The release archives use it.
+ifeq ($(THUELANG_RE2_STATIC),)
+  CPP_RE2_FLAG :=
+else
+  CPP_RE2_FLAG := -DTHUELANG_RE2_STATIC=ON
+endif
 cpp:
 	@command -v cmake >/dev/null 2>&1 || { echo "Error: cmake is required to build the C++ host" >&2; exit 127; }
 	@command -v g++ >/dev/null 2>&1 || { echo "Error: g++ is required to build the C++ host" >&2; exit 127; }
 	@command -v pkg-config >/dev/null 2>&1 || { echo "Error: pkg-config is required to build the C++ host" >&2; exit 127; }
-	cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+	cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ $(CPP_RE2_FLAG)
 	cmake --build build/cpp --parallel
 
 # Per-PR check. Core features on every host, guest programs on native Go.
@@ -48,6 +54,8 @@ test-static:
 	uv run python tools/test_ci_paths.py
 	uv run python tools/test_tiers.py
 	uv run python tools/test_pareto.py
+	uv run python tools/test_check_versions.py
+	uv run python tools/test_release_workflow.py
 
 test-core:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }
@@ -112,6 +120,19 @@ metrics:
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to record metrics" >&2; exit 127; }
 	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to record metrics" >&2; exit 127; }
 	uv run python metrics/record.py
+
+# Package dry run. Does not publish. RELEASE_TAG=vX.Y.Z also requires every
+# manifest version to equal X.Y.Z.
+release-check:
+	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required for release-check" >&2; exit 127; }
+	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required for release-check" >&2; exit 127; }
+	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required for release-check" >&2; exit 127; }
+	uv run python tools/check_versions.py
+	rm -rf dist
+	uv build
+	uvx twine check dist/*
+	cd js && npm pack --dry-run
+	cargo publish --dry-run --manifest-path rust/Cargo.toml
 
 wasm:
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to build WASM" >&2; exit 127; }

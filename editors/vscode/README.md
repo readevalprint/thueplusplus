@@ -1,7 +1,7 @@
 # Thue++ for VS Code
 
 Syntax highlighting, snippets, and **Run Thue++ file** for [Thue++](https://github.com/thuelang/thueplusplus) programs (`.thue`).
-The extension installs in VS Code, Cursor, VSCodium, and Windsurf. Cursor installs extensions from [Open VSX](https://open-vsx.org). This repository does not publish the extension.
+The extension installs in VS Code, Cursor, VSCodium, and Windsurf. Cursor installs extensions from [Open VSX](https://open-vsx.org). The GitHub Release for a `vX.Y.Z` tag attaches the `.vsix`. This repository does not publish the extension to the Marketplace or Open VSX.
 
 ## What you get
 
@@ -20,17 +20,17 @@ npm --prefix editors/vscode test
 npm --prefix editors/vscode run package
 ```
 
-That writes `editors/vscode/thue-0.5.0.vsix`. A CI job also builds that file and keeps it as an artifact. Nothing in CI publishes it.
+That writes `editors/vscode/thue-0.1.0.vsix`. A CI job also builds that file and keeps it as an artifact. The tag release attaches it to the GitHub Release. Pull request CI does not publish it.
 
 In the Extensions view, open the `...` menu and choose **Install from VSIX**, then pick the file. The same menu exists in VS Code, Cursor, VSCodium, and Windsurf.
 
 From a terminal, if the matching command is on your `PATH`:
 
 ```bash
-code --install-extension thue-0.5.0.vsix
-cursor --install-extension thue-0.5.0.vsix
-codium --install-extension thue-0.5.0.vsix
-windsurf --install-extension thue-0.5.0.vsix
+code --install-extension thue-0.1.0.vsix
+cursor --install-extension thue-0.1.0.vsix
+codium --install-extension thue-0.1.0.vsix
+windsurf --install-extension thue-0.1.0.vsix
 ```
 
 Reload the window if an open `.thue` file does not pick up the grammar.
@@ -89,7 +89,7 @@ Do this yourself. Do not put the token in the repository or in CI.
 3. From `editors/vscode`, after `npm run package`:
 
 ```bash
-npx ovsx publish thue-0.5.0.vsix -p "$OVSX_TOKEN"
+npx ovsx publish thue-0.1.0.vsix -p "$OVSX_TOKEN"
 ```
 
 Publishing docs: [Publishing Extensions](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions).

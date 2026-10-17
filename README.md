@@ -656,7 +656,7 @@ Project docs and examples:
 - [`docs/host-api.md`](docs/host-api.md) — embedder API for the host packages
 - [`rust/README.md`](rust/README.md) — Rust crate API, regex gaps, and the crates.io steps
 - [`cpp/README.md`](cpp/README.md) — C++ build, and the unpublished vcpkg and Conan sketches
-- [`docs/releasing.md`](docs/releasing.md) — how to publish the packages
+- [`docs/releasing.md`](docs/releasing.md) — tag publish for PyPI, npm, crates.io, and the GitHub Release
 - [`js/README.md`](js/README.md) — npm package API
 
 External context:
@@ -670,7 +670,7 @@ External context:
 
 ## Installation
 
-The Go, Python, and npm hosts are packages. The Rust crate and the C++ library are not published. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). From a checkout:
+Python, npm, and the Rust crate publish when a `vX.Y.Z` tag is pushed. That GitHub Release also carries the Go, Rust, and C++ `thue` binaries and the editor `.vsix`. C++ is not a vcpkg or Conan package. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). The one-time registry setup is in [`CONTRIBUTING.md`](CONTRIBUTING.md). From a checkout:
 
 ```bash
 uv run thue <program.thue>
@@ -680,7 +680,7 @@ cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/t
 build/cpp/thue <program.thue>
 ```
 
-Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from `rust/`. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
+Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from crates.io. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. The playground depends on the npm package in this repository.
 
 Copy-pasteable agent prompt:
 
@@ -713,10 +713,10 @@ Repository development requirements:
 The extension in [`editors/vscode`](editors/vscode) highlights `.thue` files and adds snippets and **Run Thue++ file**. It installs in VS Code, Cursor, VSCodium, and Windsurf. Build it with `npm --prefix editors/vscode ci && npm --prefix editors/vscode run package`, or download the `.vsix` from the CI job artifact. From the Extensions view, choose **Install from VSIX**. From a terminal:
 
 ```bash
-code --install-extension editors/vscode/thue-0.5.0.vsix
-cursor --install-extension editors/vscode/thue-0.5.0.vsix
-codium --install-extension editors/vscode/thue-0.5.0.vsix
-windsurf --install-extension editors/vscode/thue-0.5.0.vsix
+code --install-extension editors/vscode/thue-0.1.0.vsix
+cursor --install-extension editors/vscode/thue-0.1.0.vsix
+codium --install-extension editors/vscode/thue-0.1.0.vsix
+windsurf --install-extension editors/vscode/thue-0.1.0.vsix
 ```
 
-**Run Thue++ file** calls the `thue` already on your `PATH`. It always passes `--max-steps`, `--max-evals`, and `--max-state-bytes`. The defaults are 1000000, 1000000, and 8388608. The command has no unlimited setting. Publishing to the VS Code Marketplace and to Open VSX is documented in [`editors/vscode/README.md`](editors/vscode/README.md). This repository does not publish the extension. Cursor installs extensions from Open VSX.
+**Run Thue++ file** calls the `thue` already on your `PATH`. It always passes `--max-steps`, `--max-evals`, and `--max-state-bytes`. The defaults are 1000000, 1000000, and 8388608. The command has no unlimited setting. The GitHub Release for the tag attaches the `.vsix`. Publishing to the VS Code Marketplace and to Open VSX is documented in [`editors/vscode/README.md`](editors/vscode/README.md). This repository does not publish the extension to those registries. Cursor installs extensions from Open VSX.
