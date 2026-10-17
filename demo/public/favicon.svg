@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-28 -102 56 56" role="img">
+  <title>Rex</title>
+  <style>
+    .ink { fill: #1a1916; }
+    .hat { fill: #ff5a36; }
+    @media (prefers-color-scheme: dark) {
+      .ink { fill: #e8e6e1; }
+    }
+  </style>
+  <g class="hat" transform="translate(0 -64)">
+    <path d="M-16 -13 C-20 -34 20 -34 16 -13 Z"/>
+    <ellipse cx="0" cy="-12" rx="24" ry="5.2"/>
+  </g>
+  <g class="ink">
+    <rect x="-14" y="-75" width="7" height="22" rx="3.5"/>
+    <rect x="7" y="-75" width="7" height="22" rx="3.5"/>
+  </g>
+</svg>

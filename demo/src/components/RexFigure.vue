@@ -2,13 +2,14 @@
 /** RexFigure is the only drawing of the mark. */
 import { computed } from 'vue'
 import type { Pose } from '@/rex/motion'
+import { MARK, hat, hatFill, bandFill, hatInk, shineFill } from '@/rex/geometry.mjs'
 
 const props = defineProps<{ pose: Pose }>()
 
 const bulge = computed(() => 1 + (1 - props.pose.squash) * 0.45)
 const eyeMidX = computed(() => (props.pose.eyeLX + props.pose.eyeRX) / 2)
 const eyeMidY = computed(() => (props.pose.eyeLY + props.pose.eyeRY) / 2)
-const eyeRx = computed(() => Math.min(3.5, Math.max(props.pose.eyeH, 0.8) / 2))
+const eyeRx = computed(() => Math.min(MARK.eyeW / 2, Math.max(props.pose.eyeH, 0.8) / 2))
 </script>
 
 <template>
@@ -17,17 +18,17 @@ const eyeRx = computed(() => Math.min(3.5, Math.max(props.pose.eyeH, 0.8) / 2))
       data-test="hard-hat"
       :transform="`translate(${eyeMidX} ${eyeMidY}) rotate(${pose.hatRot})`"
     >
-      <path d="M-16 -13 C-20 -34 20 -34 16 -13 Z" fill="#ff5a36" />
-      <ellipse cx="0" cy="-12" rx="24" ry="5.2" fill="#ff5a36" />
-      <path d="M-16 -13 C-20 -34 20 -34 16 -13 Z" fill="none" stroke="#1a100c" stroke-width="1.3" opacity="0.4" />
-      <rect x="-9" y="-19" width="18" height="4.5" rx="1" fill="#c43b1d" />
-      <path d="M-7 -30 Q-1 -35 5 -28" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.55" />
+      <path :d="hat.crown" :fill="hatFill" />
+      <ellipse :cx="hat.brim.cx" :cy="hat.brim.cy" :rx="hat.brim.rx" :ry="hat.brim.ry" :fill="hatFill" />
+      <path :d="hat.crown" fill="none" :stroke="hatInk" :stroke-width="hat.strokeWidth" :opacity="hat.strokeOpacity" />
+      <rect :x="hat.band.x" :y="hat.band.y" :width="hat.band.w" :height="hat.band.h" :rx="hat.band.rx" :fill="bandFill" />
+      <path :d="hat.shine" fill="none" :stroke="shineFill" :stroke-width="hat.shineWidth" stroke-linecap="round" :opacity="hat.shineOpacity" />
     </g>
-    <rect data-test="rex-eye" :x="pose.eyeLX - 3.5" :y="pose.eyeLY - pose.eyeH / 2" width="7" :height="Math.max(pose.eyeH, 0.8)" :rx="eyeRx" />
-    <rect data-test="rex-eye" :x="pose.eyeRX - 3.5" :y="pose.eyeRY - pose.eyeH / 2" width="7" :height="Math.max(pose.eyeH, 0.8)" :rx="eyeRx" />
-    <circle data-test="rex-dot" :cx="pose.handLX" :cy="pose.handLY" r="7" />
-    <circle data-test="rex-dot" :cx="pose.handRX" :cy="pose.handRY" r="7" />
-    <circle data-test="rex-dot" :cx="pose.footLX" :cy="pose.footLY" r="7" />
-    <circle data-test="rex-dot" :cx="pose.footRX" :cy="pose.footRY" r="7" />
+    <rect data-test="rex-eye" :x="pose.eyeLX - MARK.eyeW / 2" :y="pose.eyeLY - pose.eyeH / 2" :width="MARK.eyeW" :height="Math.max(pose.eyeH, 0.8)" :rx="eyeRx" />
+    <rect data-test="rex-eye" :x="pose.eyeRX - MARK.eyeW / 2" :y="pose.eyeRY - pose.eyeH / 2" :width="MARK.eyeW" :height="Math.max(pose.eyeH, 0.8)" :rx="eyeRx" />
+    <circle data-test="rex-dot" :cx="pose.handLX" :cy="pose.handLY" :r="MARK.dotR" />
+    <circle data-test="rex-dot" :cx="pose.handRX" :cy="pose.handRY" :r="MARK.dotR" />
+    <circle data-test="rex-dot" :cx="pose.footLX" :cy="pose.footLY" :r="MARK.dotR" />
+    <circle data-test="rex-dot" :cx="pose.footRX" :cy="pose.footRY" :r="MARK.dotR" />
   </g>
 </template>

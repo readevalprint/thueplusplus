@@ -10,7 +10,7 @@
     "wasm": "node scripts/build-wasm.mjs",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "build": "node scripts/build-site.mjs && npm run wasm && npm run brand:assets && vue-tsc --noEmit && vite build && node scripts/prepare-dist.mjs && node scripts/check-dist.mjs",
-    "test": "node --test scripts/site.test.mjs && node scripts/build-site.mjs && vue-tsc --noEmit && vitest run",
+    "test": "node --test scripts/site.test.mjs && node scripts/check-rex-brand.mjs local && node scripts/build-site.mjs && vue-tsc --noEmit && vitest run",
     "test:ui": "node scripts/build-site.mjs && vitest run",
     "test:e2e": "playwright test",
     "smoke:dist": "node scripts/check-dist.mjs"
