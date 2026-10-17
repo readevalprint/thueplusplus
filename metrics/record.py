@@ -32,6 +32,13 @@ class RecordError(RuntimeError):
     pass
 
 
+def require_memory(workload_id: str, host: str, memory: object) -> int:
+    """A measured host reports a positive peak RSS. Zero is a missed sample."""
+    if isinstance(memory, bool) or not isinstance(memory, int) or memory <= 0:
+        raise RecordError(f"benchmark {workload_id} {host} did not report resident memory")
+    return memory
+
+
 def git_text(args: list[str], *, root: Path = ROOT) -> str:
     completed = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
     if completed.returncode != 0:
@@ -117,6 +124,9 @@ def measure(*, allow_dirty: bool = False) -> int:
     head = git_text(["rev-parse", "HEAD"])
     pending = read_committed_latest(ROOT) if not allow_dirty else None
     runs = measure_runs(write_metrics=True, commit=head)
+    for row in runs:
+        if row["pass"] is True:
+            require_memory(f"{row['problem']}/{row['case']}", row["host"], row["memory_bytes"])
     if pending is not None:
         sha, previous = pending
         archived = move_latest(ROOT, sha, previous)
