@@ -60,6 +60,8 @@ func main() {
 		"schema_version": 1,
 		"commit":         git(root, "rev-parse", "HEAD"),
 		"commit_dirty":   git(root, "status", "--porcelain") != "",
+		"author":         git(root, "log", "-1", "--format=%an <%ae>"),
+		"timestamp":      time.Now().UTC().Format("2006-01-02T15:04:05Z"),
 		"safety": map[string]any{
 			"host":        "go",
 			"environment": "go native",

@@ -233,7 +233,7 @@ class HistoryTests(unittest.TestCase):
         ids = [row["id"] for row in suite["workloads"]]
         self.assertEqual(ids, ["probe-cost", "state-rewrite", "regex", "io", "guest"])
         guest = suite["workloads"][-1]
-        self.assertEqual(guest["program"], "examples/forth/forth.tpp")
+        self.assertEqual(guest["program"], "langs/forth/forth.tpp")
         self.assertEqual(guest["input"], "1 2 + .")
         self.assertGreater(guest["max_steps"], 0)
         self.assertGreater(guest["max_evals"], 0)
