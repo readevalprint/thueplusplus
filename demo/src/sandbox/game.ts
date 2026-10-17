@@ -3,7 +3,7 @@
  *
  * Rex waits. The player pulls the lever. Boxes arrive at seeded random
  * intervals. A pull while a box is in the capture zone scores. An empty
- * pull is a miss. The belt speeds up, the gaps shrink, and the window
+ * pull is a miss. The belt speeds up, the gaps shrink, and the capture zone
  * tightens as the score grows. A box that reaches the mouth breaks the run.
  * Nothing here reads the clock, the DOM, or storage.
  */
@@ -64,8 +64,8 @@ export interface Difficulty {
   /** Shortest and longest seconds between boxes. */
   gapLo: number
   gapHi: number
-  /** Capture zone is [1 - window, 1). */
-  window: number
+  /** Capture zone is [1 - span, 1). */
+  span: number
 }
 
 export interface GameOptions {
@@ -84,13 +84,13 @@ export function difficulty(score: number, reduced: boolean): Difficulty {
     beltRate,
     gapLo: (1.7 - u * 1.05) * stretch,
     gapHi: (3.1 - u * 1.15) * stretch,
-    window: 0.32 - u * 0.14,
+    span: 0.32 - u * 0.14,
   }
 }
 
 export function inZone(progress: number, score: number, reduced: boolean): boolean {
-  const { window } = difficulty(score, reduced)
-  return progress >= 1 - window && progress < 1
+  const { span } = difficulty(score, reduced)
+  return progress >= 1 - span && progress < 1
 }
 
 /** mulberry32. Same state, same next value. State 0 is a later stream value, not a seed. */

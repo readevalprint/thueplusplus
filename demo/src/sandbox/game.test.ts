@@ -164,7 +164,7 @@ describe('lever game', () => {
     expect(inZone(0.7, 3, false)).toBe(false)
     let tight = playUntil(createGame({ seed: 9, reduced: true, best: 0 }), 3)
     tight = until(tight, current => {
-      const start = 1 - difficulty(current.score, true).window
+      const start = 1 - difficulty(current.score, true).span
       return canPull(current) && current.boxes.some(box => box.progress >= 0.7 && box.progress < start)
     })
     const score = tight.score
@@ -182,12 +182,12 @@ describe('lever game', () => {
     expect(mid.beltRate).toBeLessThan(high.beltRate)
     expect(low.gapLo).toBeGreaterThan(mid.gapLo)
     expect(mid.gapLo).toBeGreaterThan(high.gapLo)
-    expect(low.window).toBeGreaterThan(mid.window)
-    expect(mid.window).toBeGreaterThan(high.window)
+    expect(low.span).toBeGreaterThan(mid.span)
+    expect(mid.span).toBeGreaterThan(high.span)
     expect(high.gapHi - high.gapLo).toBeGreaterThan(0.4)
     expect(difficulty(4, true).beltRate).toBeLessThan(difficulty(4, false).beltRate)
     expect(difficulty(4, true).gapLo).toBeGreaterThan(difficulty(4, false).gapLo)
-    expect(high.window).toBeGreaterThan(0.1)
+    expect(high.span).toBeGreaterThan(0.1)
     expect(high.gapLo).toBeGreaterThan(0.4)
 
     let slowGame = started(4, false)

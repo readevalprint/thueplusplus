@@ -135,7 +135,7 @@ const glass = computed(() => {
 })
 const tickOffset = computed(() => (reduced.value || !game.value.beltOn ? 0 : -(beltScroll.value % 16)))
 const zone = computed(() => {
-  const start = beltPoint(1 - diff.value.window)
+  const start = beltPoint(1 - diff.value.span)
   const end = beltPoint(1)
   return { x: start.x, w: Math.max(8, end.x - start.x) }
 })
