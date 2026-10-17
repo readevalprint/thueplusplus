@@ -148,22 +148,26 @@ export function formatTimesGo(ratio: number): string {
 }
 
 export function hostLine(entry: HistoryEntry, hostId: string, measure: HostMeasure): string {
-  const host = entry.hosts.find(item => item.id === hostId)
   const ratio = hostRatio(entry, hostId, measure)
-  if (!host || ratio === null) return `${host?.environment ?? hostId} · no ratio`
-  return `${host.environment} · ${formatTimesGo(ratio)}`
+  if (ratio === null) return 'no ratio'
+  return formatTimesGo(ratio)
 }
 
 export function hostChart(history: History, measure: HostMeasure): { commits: CommitRef[]; order: string[]; series: NamedSeries[] } {
-  const ids = [...new Set(history.entries.flatMap(entry => entry.hosts.map(host => host.id)))]
-  const series = ids.map(id => ({
-    id,
-    label: history.entries.flatMap(entry => entry.hosts).find(host => host.id === id)?.environment ?? id,
-    points: collapseRuns(history.entries.map(entry => ({
-      commit: entry.commit,
-      value: hostRatio(entry, id, measure),
-    }))),
-  })).filter(item => item.points.length > 0)
+  const samples = history.entries.flatMap(entry => entry.hosts)
+  const ids = [...new Set(samples.map(sample => sample.id))]
+  const series = ids.flatMap(id => {
+    const sample = samples.find(item => item.id === id)
+    if (!sample) return []
+    return [{
+      id,
+      label: sample.environment,
+      points: collapseRuns(history.entries.map(entry => ({
+        commit: entry.commit,
+        value: hostRatio(entry, id, measure),
+      }))),
+    }]
+  }).filter(item => item.points.length > 0)
   return {
     commits: history.entries,
     order: history.entries.map(entry => entry.commit),

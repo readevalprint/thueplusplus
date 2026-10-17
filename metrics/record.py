@@ -129,9 +129,13 @@ def measure(*, allow_dirty: bool = False) -> int:
     }
     historylib.save_latest(ROOT, latest)
     costs: dict[str, int] = {}
-    for run in runs:
-        if run["host"] == "go" and run["ruleset"] == "direct":
-            costs[run["problem"]] = costs.get(run["problem"], 0) + run["cost"]
+    printed: set[str] = set()
+    for row in runs:
+        if row["host"] not in printed:
+            printed.add(row["host"])
+            print(f"host {row['host']} {row['environment']}")
+        if row["host"] == "go" and row["ruleset"] == "direct" and row["pass"] is True:
+            costs[row["problem"]] = costs.get(row["problem"], 0) + row["cost"]
     for problem, cost in costs.items():
         print(f"cost {problem} {cost}")
     print(f"metrics: wrote {historylib.LATEST_REL} ({len(runs)} runs)")

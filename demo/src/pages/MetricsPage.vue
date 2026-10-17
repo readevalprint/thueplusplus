@@ -51,7 +51,7 @@ memoryIndex.value = select('memoryBytes')
           <a class="underline underline-offset-4" :href="commitUrl(latest.commit)" rel="noreferrer">{{ latest.commit.slice(0, 12) }}</a>
           <span class="text-ash"> · {{ latest.author }} · {{ latest.timestamp }}</span>
         </p>
-        <p v-for="host in latest.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ hostLine(latest, host.id, 'durationMs') }}</p>
+        <p v-for="host in latest.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ host.environment }} · {{ hostLine(latest, host.id, 'durationMs') }}</p>
       </div>
     </section>
     <section id="host-memory" class="flex flex-col gap-3">

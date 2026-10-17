@@ -23,8 +23,8 @@ describe('host ratios', () => {
       { id: 'python', environment: 'python', durationMs: 1200, memoryBytes: 4000, runs: 4 },
     ])
     expect(hostRatio(row, 'python', 'durationMs')).toBeCloseTo(1.2)
-    expect(hostLine(row, 'python', 'durationMs')).toBe('python · 1.2× go')
-    expect(hostLine(row, 'go', 'durationMs')).toBe('go native · 1× go')
+    expect(hostLine(row, 'python', 'durationMs')).toBe('1.2× go')
+    expect(hostLine(row, 'go', 'durationMs')).toBe('1× go')
     expect(formatTimesGo(2.25)).toBe('2.3× go')
   })
 
