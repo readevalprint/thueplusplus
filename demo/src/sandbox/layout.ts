@@ -19,17 +19,12 @@ export const BELT_X0 = 358
 export const BELT_MOUTH = 528
 export const BELT_Y = 376
 
-export const BELT_RATE = 0.3
-export const ITEM_GAP = 0.36
-export const SPAWN_GAP = 0.42
-export const FIRST_SPAWN = 0.18
-export const PROCESS = 0.68
-export const PULL = 0.46
-export const GLOW = 0.6
-export const EXIT_LIFE = 3.2
+/** Seconds for one yank, from rest through the pull and back. */
+export const YANK = 0.24
+/** Seconds Rex holds a milestone cheer. */
+export const CHEER = 0.7
 export const BREAK_BEAT = 0.85
 
-export const EXIT_X = 678
 export const CAGE_X = 706
 export const CAGE_W = 44
 export const CAGE_H = 42
@@ -59,8 +54,9 @@ export function leverKnob(lever: number): Pt {
   }
 }
 
+/** `progress` 0 is the belt entrance. 1 is the machine mouth. Values past 1 draw through it. */
 export function beltPoint(progress: number): Pt {
-  const p = clamp(progress, 0, 1)
+  const p = clamp(progress, 0, 1.2)
   return { x: BELT_X0 + (BELT_MOUTH - BELT_X0) * p, y: BELT_Y }
 }
 
@@ -71,13 +67,6 @@ export function cageOrigin(index: number): Pt {
     ? CAGE_BASE - index * CAGE_PITCH
     : CAGE_BASE - 5 * CAGE_PITCH - (index - 5) * 14
   return { x: CAGE_X, y }
-}
-
-export function exitPoint(age: number): Pt & { opacity: number } {
-  const u = clamp(age / EXIT_LIFE, 0, 1)
-  const hop = Math.sin(clamp(age / 0.35, 0, 1) * Math.PI) * 18
-  const opacity = u < 0.72 ? 1 : 1 - (u - 0.72) / 0.28
-  return { x: EXIT_X + u * 10, y: BELT_Y - hop - u * 46, opacity }
 }
 
 /** Source-unit distance Rex walks between home and the lever. */
