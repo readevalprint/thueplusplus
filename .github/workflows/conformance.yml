@@ -205,6 +205,11 @@ jobs:
           enable-cache: true
       - name: Install the C++ toolchain and RE2
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ruby
       - run: uv run python metrics/check_solutions.py
 
   tasks:
