@@ -82,6 +82,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Fixed
 
+- The playground rule catalog includes the unicode trace programs. The install scene fits one socket per registered host inside the frame.
 - Trace events match on every host. A matched rule that fails before replacement records the event, leaves the state unchanged, and then returns. A state-limit stop records the rejected replacement and then returns 12. `matchStart` and `matchEnd` are UTF-8 byte offsets into `stateBefore`. `--trace` writes non-ASCII text as UTF-8, and U+2028 and U+2029 as `\u2028` and `\u2029`. Python used to report code-point offsets and `\uXXXX` for every non-ASCII character. Rust and the Node CLI used to leave U+2028 and U+2029 unescaped.
 - A solution run that exits before a resident-memory sample is taken runs again, up to five times. `make metrics` still fails when a passing host reports no resident memory after that.
 - Host benchmark `memory_bytes`. Go, Rust, and C++ often exit in a few milliseconds. The recorder sampled `/proc` on a 100ms poll after `timeout(1)` had reaped the host, so the missing process tree was stored as 0. It reads `VmHWM` immediately and again through a 1ms window at the start of the run. When the host exits before that read, the peak is `timeout(1)`'s `ru_maxrss` from `wait4`, which includes the program. `make metrics` fails when a host still reports no resident memory. A conformance case still completes.
