@@ -186,26 +186,7 @@ func writeMetrics(path string, interp *thuepp.Interpreter) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	rules, chars := interp.RuleSourceStats()
-	payload, err := json.Marshal(struct {
-		AppliedSteps int `json:"applied_steps"`
-		Probes       int `json:"probes"`
-		RegexEvals   int `json:"regex_evals"`
-		RegexMatches int `json:"regex_matches"`
-		StateBytes   int `json:"state_bytes"`
-		StatePeak    int `json:"state_peak"`
-		RuleCount    int `json:"rule_count"`
-		RuleChars    int `json:"rule_chars"`
-	}{
-		AppliedSteps: interp.AppliedSteps,
-		Probes:       interp.EvalCount,
-		RegexEvals:   interp.RegexEvals,
-		RegexMatches: interp.RegexMatches,
-		StateBytes:   interp.StateBytes,
-		StatePeak:    interp.StatePeak,
-		RuleCount:    rules,
-		RuleChars:    chars,
-	})
+	payload, err := json.Marshal(interp.Metrics())
 	if err != nil {
 		return err
 	}

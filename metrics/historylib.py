@@ -105,6 +105,16 @@ BENCHMARK_HOST_KEYS = frozenset(
         "host_timeout_seconds",
     }
 )
+METRIC_KEYS = (
+    "applied_steps",
+    "regex_evals",
+    "regex_matches",
+    "state_bytes",
+    "state_peak",
+    "rule_count",
+    "rule_chars",
+)
+BENCHMARK_HOST_KEYS_V3 = BENCHMARK_HOST_KEYS | frozenset(METRIC_KEYS[1:])
 WORKLOAD_TOML_KEYS = frozenset(
     {
         "id",
@@ -366,7 +376,7 @@ def validate_latest(document: dict) -> None:
     if not isinstance(document, dict) or set(document) != expected:
         raise HistoryError(f"latest.json keys must be {', '.join(sorted(expected))}")
     validate_machine(document["machine"], LATEST_REL, allow_null=False)
-    _validate_measurement(LATEST_REL, document["guests"], document["tasks"], document["benchmarks"])
+    _validate_measurement(LATEST_REL, document["guests"], document["tasks"], document["benchmarks"], version)
     if document["benchmarks"] is None:
         raise HistoryError(f"{LATEST_REL} must include benchmarks")
     if version == 2:
@@ -407,7 +417,7 @@ def validate_bench(document: dict) -> None:
     _author(document["author"], commit)
     _timestamp(document["timestamp"], commit)
     validate_machine(document["machine"], commit, allow_null=True)
-    _validate_measurement(commit, document["guests"], document["tasks"], document["benchmarks"])
+    _validate_measurement(commit, document["guests"], document["tasks"], document["benchmarks"], version)
     if version == 2:
         return
     if document["tasks"] is not None:
@@ -425,13 +435,13 @@ def _schema_version(document: dict) -> int:
     return version
 
 
-def _validate_measurement(label: str, guests, tasks, benchmarks) -> None:
+def _validate_measurement(label: str, guests, tasks, benchmarks, version: int) -> None:
     if not isinstance(guests, dict):
         raise HistoryError(f"{label}: guests must be an object")
     for guest_id, guest in guests.items():
         _validate_guest(label, guest_id, guest)
     _validate_tasks(label, tasks)
-    _validate_benchmarks(label, benchmarks)
+    _validate_benchmarks(label, benchmarks, version)
 
 
 def validate_placed(rel: str, document: dict) -> None:
@@ -588,7 +598,7 @@ def _validate_tasks(commit: str, tasks) -> None:
             raise HistoryError(f"{commit}: pass does not match status for {identity}")
 
 
-def _validate_benchmarks(commit: str, benchmarks) -> None:
+def _validate_benchmarks(commit: str, benchmarks, version: int) -> None:
     if benchmarks is None:
         return
     if not isinstance(benchmarks, dict) or set(benchmarks) != BENCHMARK_KEYS:
@@ -610,22 +620,34 @@ def _validate_benchmarks(commit: str, benchmarks) -> None:
         for key in ("max_steps", "max_evals", "max_state_bytes", "memory_cap_bytes"):
             _positive_int(workload[key], f"{commit} {workload_id} {key}")
         _positive_int(workload["timeout_seconds"], f"{commit} {workload_id} timeout_seconds")
-        _validate_hosts(commit, workload_id, workload["hosts"])
+        _validate_hosts(commit, workload_id, workload["program"], workload["hosts"], version)
 
 
-def _validate_hosts(commit: str, workload_id: str, hosts) -> None:
+def parse_metrics(text: str) -> dict[str, int]:
+    """The `--metrics` file. Keys are fixed, in order, and probes is not one of them."""
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise HistoryError(f"metrics JSON: {exc}") from exc
+    if not isinstance(data, dict) or list(data) != list(METRIC_KEYS):
+        raise HistoryError(f"metrics keys must be {', '.join(METRIC_KEYS)}")
+    return {key: _non_negative_int(data[key], key) for key in METRIC_KEYS}
+
+
+def _validate_hosts(commit: str, workload_id: str, program: str, hosts, version: int) -> None:
     registered = host_ids()
     if not isinstance(hosts, dict) or not hosts:
         raise HistoryError(f"{commit} {workload_id}: hosts must be a non-empty subset of {', '.join(registered)}")
     unknown = [name for name in hosts if name not in registered]
     if unknown:
         raise HistoryError(f"{commit} {workload_id}: unknown benchmark host(s) {', '.join(unknown)}")
+    expected = BENCHMARK_HOST_KEYS if version == 2 else BENCHMARK_HOST_KEYS_V3
     steps = set()
     probes = set()
     for host, row in hosts.items():
-        if not isinstance(row, dict) or set(row) != BENCHMARK_HOST_KEYS:
+        if not isinstance(row, dict) or set(row) != expected:
             raise HistoryError(
-                f"{commit} {workload_id} {host}: keys must be {', '.join(sorted(BENCHMARK_HOST_KEYS))}"
+                f"{commit} {workload_id} {host}: keys must be {', '.join(sorted(expected))}"
             )
         assert_environment(host, row["environment"])
         _non_negative_int(row["duration_ms"], f"{commit} {workload_id} {host} duration_ms")
@@ -636,13 +658,28 @@ def _validate_hosts(commit: str, workload_id: str, hosts) -> None:
             raise HistoryError(f"{commit} {workload_id} {host}: exit_code must be an integer")
         _non_negative_int(row["applied_steps"], f"{commit} {workload_id} {host} applied_steps")
         _non_negative_int(row["probes"], f"{commit} {workload_id} {host} probes")
+        if version != 2:
+            for key in METRIC_KEYS[1:]:
+                _non_negative_int(row[key], f"{commit} {workload_id} {host} {key}")
         timeout = row["host_timeout_seconds"]
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
             raise HistoryError(f"{commit} {workload_id} {host}: host_timeout_seconds must be a positive number")
         steps.add(row["applied_steps"])
         probes.add(row["probes"])
-    if len(steps) != 1 or len(probes) != 1:
-        raise HistoryError(f"{commit} {workload_id}: hosts disagree on applied_steps or probes")
+    if version == 2:
+        if len(steps) != 1 or len(probes) != 1:
+            raise HistoryError(f"{commit} {workload_id}: hosts disagree on applied_steps or probes")
+        return
+    if "go" not in hosts:
+        raise HistoryError(f"{commit} {workload_id}: schema 3 benchmarks include go")
+    base = hosts["go"]
+    compared = ("applied_steps", "probes", *METRIC_KEYS[1:])
+    for host, row in hosts.items():
+        if host == "go":
+            continue
+        for key in compared:
+            if row[key] != base[key]:
+                raise HistoryError(f"{host} {program} {key}: {row[key]}, go {base[key]}")
 
 
 def _relative_program(program, label: str) -> str:

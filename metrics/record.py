@@ -224,6 +224,7 @@ def run_benchmarks(suite: dict) -> dict:
         timeout = host_timeout(float(workload["timeout_seconds"]), host)
         with tempfile.TemporaryDirectory(prefix=f"thuepp-bench-{workload['id']}-{host}-") as tmpname:
             counts_path = Path(tmpname) / "counts.json"
+            metrics_path = Path(tmpname) / "metrics.json"
             argv = [*interpreter.argv, str(program)]
             if workload["input"]:
                 argv.extend(["--input", workload["input"]])
@@ -231,6 +232,8 @@ def run_benchmarks(suite: dict) -> dict:
                 [
                     "--counts",
                     str(counts_path),
+                    "--metrics",
+                    str(metrics_path),
                     "--max-steps",
                     str(workload["max_steps"]),
                     "--max-evals",
@@ -257,10 +260,20 @@ def run_benchmarks(suite: dict) -> dict:
             if not counts_path.is_file():
                 raise RecordError(f"benchmark {workload['id']} {host} did not write counts")
             applied, probes = historylib.parse_counts(counts_path.read_text(encoding="utf-8"))
+            if not metrics_path.is_file():
+                raise RecordError(f"benchmark {workload['id']} {host} did not write metrics")
+            try:
+                metrics = historylib.parse_metrics(metrics_path.read_text(encoding="utf-8"))
+            except historylib.HistoryError as exc:
+                raise RecordError(f"benchmark {workload['id']} {host}: {exc}") from exc
+            if metrics["applied_steps"] != applied:
+                raise RecordError(
+                    f"{host} {workload['program']} applied_steps: {metrics['applied_steps']}, counts {applied}"
+                )
             memory = getattr(completed, "peak_rss_bytes", None)
             if isinstance(memory, bool) or not isinstance(memory, int) or memory < 0:
                 raise RecordError(f"benchmark {workload['id']} {host} did not report resident memory")
-        return host, {
+        row = {
             "environment": historylib.environment_for(host),
             "applied_steps": applied,
             "probes": probes,
@@ -269,19 +282,20 @@ def run_benchmarks(suite: dict) -> dict:
             "exit_code": completed.returncode,
             "host_timeout_seconds": _timeout_number(timeout),
         }
+        row.update(metrics)
+        return host, row
 
     recorded = []
     for workload in suite["workloads"]:
         with ThreadPoolExecutor(max_workers=len(registered)) as pool:
             rows = dict(pool.map(lambda host, workload=workload: one(workload, host), registered))
-        steps = {row["applied_steps"] for row in rows.values()}
-        probes = {row["probes"] for row in rows.values()}
-        if len(steps) != 1 or len(probes) != 1:
-            rendered = ", ".join(
-                f"{rows[host]['environment']} steps={rows[host]['applied_steps']} probes={rows[host]['probes']}"
-                for host in registered
-            )
-            raise RecordError(f"benchmark {workload['id']} hosts disagree: {rendered}")
+        if "go" not in rows:
+            raise RecordError(f"benchmark {workload['id']} did not run go")
+        base = rows["go"]
+        for host, row in rows.items():
+            for key in ("applied_steps", "probes", *historylib.METRIC_KEYS[1:]):
+                if row[key] != base[key]:
+                    raise RecordError(f"{host} {workload['program']} {key}: {row[key]}, go {base[key]}")
         recorded.append(
             {
                 "id": workload["id"],

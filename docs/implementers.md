@@ -29,6 +29,7 @@ Required flags, including the `--flag=value` form:
 | `--proc:NAME COMMAND` | Bind resource `NAME` to a host process. The next argument is the command. This is the only subprocess opt-in. |
 | `--rule-coverage PATH` | Write TSV `source.tpp:line<TAB>count` for applied rules. Required of the Python coverage oracle. |
 | `--counts PATH` | After a run, write `{"applied_steps": N, "probes": N}` JSON. `probes` is the eval count. `--list-rules` does not write it. |
+| `--metrics PATH` | After a run, write the shared counters JSON from [host-api.md](host-api.md). The keys, in order, are `applied_steps`, `regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars`. `--list-rules` does not write it. |
 | `--list-rules` | Write TSV `source.tpp:line<TAB>lhs` and do not run. Required of the Python coverage oracle. |
 
 The program path is the first argument. Standard input is the `stdin` resource. Standard output and standard error are captured and compared to `expect`. Exit `0` is quiescence or `::-`. Every resource-limit stop prints `Error: <message>` and uses its own code:

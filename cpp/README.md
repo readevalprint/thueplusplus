@@ -15,7 +15,7 @@ cmake --build build/cpp --parallel
 
 `make cpp` runs those two commands. `make test` builds this host and runs the core conformance tier with `--impl cpp=./build/cpp/thuepp`. `make test-full` runs every manifest on this host and the others.
 
-The CLI matches the other hosts. The program path is the first argument. Defaults are 1000000 applied steps, 1000000 probes, and 8388608 bytes of state. `unlimited` clears one limit. `0` is a real limit. Exit codes are 0, 1, 2, 10, 11, 12, and 13. `--trace` writes one JSON object per event. Every run outside the conformance runner still needs an explicit step limit, probe limit, and state limit, plus an OS timeout and a memory cap.
+The CLI matches the other hosts. `--metrics PATH` writes the shared counters JSON, and `metrics()` returns that value. The program path is the first argument. Defaults are 1000000 applied steps, 1000000 probes, and 8388608 bytes of state. `unlimited` clears one limit. `0` is a real limit. Exit codes are 0, 1, 2, 10, 11, 12, and 13. `--trace` writes one JSON object per event. Every run outside the conformance runner still needs an explicit step limit, probe limit, and state limit, plus an OS timeout and a memory cap.
 
 ```bash
 timeout -k 1 10 build/cpp/thuepp program.tpp \

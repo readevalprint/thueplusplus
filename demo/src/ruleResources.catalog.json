@@ -1,26 +1,5 @@
 [
   {
-    "path": "langs/basic/basic.tpp",
-    "resources": [
-      {
-        "name": "stdin",
-        "reads": true,
-        "writes": false
-      },
-      {
-        "name": "stdout",
-        "reads": false,
-        "writes": true
-      },
-      {
-        "name": "stderr",
-        "reads": false,
-        "writes": true
-      }
-    ],
-    "errors": []
-  },
-  {
     "path": "examples/brainfuck/brainfuck.tpp",
     "resources": [
       {
@@ -127,27 +106,6 @@
     "errors": []
   },
   {
-    "path": "langs/forth/forth.tpp",
-    "resources": [
-      {
-        "name": "stdout",
-        "reads": false,
-        "writes": true
-      },
-      {
-        "name": "stderr",
-        "reads": false,
-        "writes": true
-      },
-      {
-        "name": "stdin",
-        "reads": true,
-        "writes": false
-      }
-    ],
-    "errors": []
-  },
-  {
     "path": "examples/guess-number/guess-number.tpp",
     "resources": [
       {
@@ -247,27 +205,6 @@
     "resources": [
       {
         "name": "stdout",
-        "reads": false,
-        "writes": true
-      }
-    ],
-    "errors": []
-  },
-  {
-    "path": "langs/lisp/lisp.tpp",
-    "resources": [
-      {
-        "name": "stdout",
-        "reads": false,
-        "writes": true
-      },
-      {
-        "name": "stdin",
-        "reads": true,
-        "writes": false
-      },
-      {
-        "name": "stderr",
         "reads": false,
         "writes": true
       }
@@ -823,6 +760,69 @@
   {
     "path": "examples/trace/state-limit.tpp",
     "resources": [],
+    "errors": []
+  },
+  {
+    "path": "langs/basic/basic.tpp",
+    "resources": [
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stderr",
+        "reads": false,
+        "writes": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "langs/forth/forth.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stderr",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      }
+    ],
+    "errors": []
+  },
+  {
+    "path": "langs/lisp/lisp.tpp",
+    "resources": [
+      {
+        "name": "stdout",
+        "reads": false,
+        "writes": true
+      },
+      {
+        "name": "stdin",
+        "reads": true,
+        "writes": false
+      },
+      {
+        "name": "stderr",
+        "reads": false,
+        "writes": true
+      }
+    ],
     "errors": []
   }
 ]

@@ -63,6 +63,7 @@ test-core:
 	  command -v node >/dev/null 2>&1 || { echo "Error: node is required to run repository verification" >&2; exit 127; }; \
 	fi
 	uv run python tools/example_runner.py $(CORE_ARGS)
+	uv run python tools/test_metrics_cli.py
 
 test-guests:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required to run repository verification" >&2; exit 127; }

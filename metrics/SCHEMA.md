@@ -98,7 +98,7 @@ Schema 2 only. `tasks.source` is `make tasks`. `tasks.host` is `go`. `tasks.envi
 
 Schema 3. Both objects use `source`, `host`, `environment`, and `results`. `problems.source` is `make problems`. `langs.source` is `make langs`. `host` is `go`. `environment` is `go native`.
 
-These counters come from the native Go engine. `--counts` on every host stays `applied_steps` and `probes`. Python, wasm, Rust, and C++ do not record the new counters. Rule count and rule chars are the trimmed rule rows of the `.tpp` source, counted when the Go engine parses that file.
+Problem and language rows are the native Go measurement. Rankings and Pareto use those numbers. Every host also reports the same counters. `--counts` on every host stays `applied_steps` and `probes`. `--metrics` writes the object below. Rule count and rule chars are the trimmed rule rows, counted when that host parses the program.
 
 | Field | Meaning |
 | --- | --- |
@@ -142,6 +142,7 @@ The workloads are:
 | `hosts.HOST.memory_bytes` | Peak resident set size in bytes, or `null` when that commit did not record it |
 | `hosts.HOST.exit_code` | Process exit code. A recorded workload exited 0 |
 | `hosts.HOST.applied_steps`, `hosts.HOST.probes` | From `--counts`. Hosts that ran one workload must agree. A host missing from an older commit is a gap in the chart, not an error |
+| `hosts.HOST.regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars` | Schema 3 only, from `--metrics`. The same object every host writes. Each value must equal the `go` row. Schema 2 rows do not have these keys |
 | `hosts.HOST.host_timeout_seconds` | The `timeout(1)` budget for that host |
 
 ```json
@@ -215,6 +216,12 @@ The workloads are:
             "environment": "go native",
             "applied_steps": 1,
             "probes": 51,
+            "regex_evals": 2,
+            "regex_matches": 1,
+            "state_bytes": 8,
+            "state_peak": 4,
+            "rule_count": 2,
+            "rule_chars": 20,
             "duration_ms": 40,
             "memory_bytes": 12000000,
             "exit_code": 0,

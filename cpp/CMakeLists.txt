@@ -9,7 +9,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(RE2 REQUIRED IMPORTED_TARGET re2)
 find_package(Threads REQUIRED)
 
-add_library(thuepp src/engine.cpp)
+add_library(thuepp src/engine.cpp src/prefix.cpp)
 add_library(thuepp::thuepp ALIAS thuepp)
 target_include_directories(thuepp
   PUBLIC

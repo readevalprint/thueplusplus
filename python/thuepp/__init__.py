@@ -10,6 +10,7 @@ from thuepp.interpreter import (
     EXIT_STATE_LIMIT,
     EXIT_STEP_LIMIT,
     LimitExceeded,
+    RunMetrics,
     ThueppInterpreter,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "EXIT_STATE_LIMIT",
     "EXIT_STEP_LIMIT",
     "LimitExceeded",
+    "RunMetrics",
     "ThueppInterpreter",
 ]

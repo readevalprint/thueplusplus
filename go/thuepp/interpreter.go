@@ -562,6 +562,32 @@ func (i *Interpreter) RuleSourceStats() (count int, chars int) {
 	return count, chars
 }
 
+// RunMetrics is the --metrics JSON object. Field order is the file order.
+type RunMetrics struct {
+	AppliedSteps int `json:"applied_steps"`
+	RegexEvals   int `json:"regex_evals"`
+	RegexMatches int `json:"regex_matches"`
+	StateBytes   int `json:"state_bytes"`
+	StatePeak    int `json:"state_peak"`
+	RuleCount    int `json:"rule_count"`
+	RuleChars    int `json:"rule_chars"`
+}
+
+// Metrics returns the counters for the most recent Run. Rule count and rule
+// chars come from the trimmed rule rows. EvalCount is not included.
+func (i *Interpreter) Metrics() RunMetrics {
+	rules, chars := i.RuleSourceStats()
+	return RunMetrics{
+		AppliedSteps: i.AppliedSteps,
+		RegexEvals:   i.RegexEvals,
+		RegexMatches: i.RegexMatches,
+		StateBytes:   i.StateBytes,
+		StatePeak:    i.StatePeak,
+		RuleCount:    rules,
+		RuleChars:    chars,
+	}
+}
+
 func (i *Interpreter) ApplyInputOverride(value string) error {
 	i.State = value
 	return nil

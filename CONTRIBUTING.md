@@ -22,7 +22,7 @@ Those runs use 200000 steps, 3000000 evals, 2097152 state bytes, and 30 seconds,
 
 ## Counters
 
-Problem and language counters are properties of the program. They are measured only on native Go, in the Go engine and the Go test harness. `--counts` on every host stays `{"applied_steps": N, "probes": N}`. The Go CLI flag `--metrics PATH` writes the extended counters. Python, wasm, Rust, and C++ are unchanged. Host benchmarks stay on `--counts`.
+Problem and language counters are properties of the program. Rankings and Pareto use the native Go measurement. Every host reports the same counters. `--counts` stays `{"applied_steps": N, "probes": N}`. `--metrics PATH` writes the shared object: `applied_steps`, `regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars`. The library returns that value. `make metrics` stores each host's counters beside its time and memory. If a host differs from Go, the check names the host, the program, and the counter. Fix the host. Do not loosen the check.
 
 | Counter | Meaning |
 | --- | --- |
@@ -55,7 +55,7 @@ factorial/slow.tpp is dominated by factorial/direct.tpp
 
 ## Metrics
 
-`make metrics` refuses a dirty work tree. It runs `make problems`, `make langs`, and the host benchmarks, then writes `metrics/latest.json` at schema 3. The previous file moves to `metrics/YYYY/MM/DD/{sha}/bench.json`. Commit `latest.json` with the change. CI checks that history. It does not measure.
+`make metrics` refuses a dirty work tree. It runs `make problems`, `make langs`, and the host benchmarks, then writes `metrics/latest.json` at schema 3. Benchmark host rows include the `--metrics` counters, and those counters must match Go. The previous file moves to `metrics/YYYY/MM/DD/{sha}/bench.json`. Commit `latest.json` with the change. CI checks that history. It does not measure. Schema 2 benches stay valid without the new host keys.
 
 ## Tests
 

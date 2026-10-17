@@ -18,6 +18,29 @@ void Usage() {
 
 bool IsFlag(const std::string& arg, const std::string& name) { return arg == name || arg.rfind(name + "=", 0) == 0; }
 
+void WriteMetrics(const std::string& path, const thuepp::RunMetrics& metrics) {
+  namespace fs = std::filesystem;
+  fs::path target(path);
+  if (target.has_parent_path()) {
+    fs::create_directories(target.parent_path());
+  }
+  std::ofstream out(target, std::ios::binary);
+  if (!out) {
+    throw std::runtime_error(std::strerror(errno));
+  }
+  std::string body = "{\"applied_steps\":" + std::to_string(metrics.applied_steps) +
+                     ",\"regex_evals\":" + std::to_string(metrics.regex_evals) +
+                     ",\"regex_matches\":" + std::to_string(metrics.regex_matches) +
+                     ",\"state_bytes\":" + std::to_string(metrics.state_bytes) +
+                     ",\"state_peak\":" + std::to_string(metrics.state_peak) +
+                     ",\"rule_count\":" + std::to_string(metrics.rule_count) +
+                     ",\"rule_chars\":" + std::to_string(metrics.rule_chars) + "}\n";
+  out.write(body.data(), static_cast<std::streamsize>(body.size()));
+  if (!out) {
+    throw std::runtime_error(std::strerror(errno));
+  }
+}
+
 void WriteCounts(const std::string& path, int64_t applied, int64_t probes) {
   namespace fs = std::filesystem;
   fs::path target(path);
@@ -62,6 +85,7 @@ int main(int argc, char** argv) {
   std::optional<std::string> input;
   std::string coverage;
   std::string counts;
+  std::string metrics;
   bool list_rules = false;
   bool saw_input = false;
 
@@ -95,6 +119,8 @@ int main(int argc, char** argv) {
         coverage = need("--rule-coverage");
       } else if (IsFlag(arg, "--counts")) {
         counts = need("--counts");
+      } else if (IsFlag(arg, "--metrics")) {
+        metrics = need("--metrics");
       } else if (IsFlag(arg, "--input")) {
         input = need("--input");
         saw_input = true;
@@ -158,6 +184,14 @@ int main(int argc, char** argv) {
       WriteCounts(counts, interp.applied_steps(), interp.eval_count());
     } catch (const std::exception& err) {
       std::cerr << "Error: failed to write counts: " << err.what() << "\n";
+      code = 1;
+    }
+  }
+  if (ran && !metrics.empty()) {
+    try {
+      WriteMetrics(metrics, interp.metrics());
+    } catch (const std::exception& err) {
+      std::cerr << "Error: failed to write metrics: " << err.what() << "\n";
       code = 1;
     }
   }

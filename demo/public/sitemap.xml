@@ -57,7 +57,7 @@
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/fibonacci</loc>
+    <loc>https://thuelang.org/tasks/fibonacci-sequence</loc>
     <priority>0.5</priority>
   </url>
   <url>
@@ -69,11 +69,11 @@
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/reverse-string</loc>
+    <loc>https://thuelang.org/tasks/reverse-a-string</loc>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/99-bottles</loc>
+    <loc>https://thuelang.org/tasks/99-bottles-of-beer</loc>
     <priority>0.5</priority>
   </url>
   <url>
@@ -81,15 +81,39 @@
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/sum-numbers</loc>
+    <loc>https://thuelang.org/tasks/sum-and-product-of-an-array</loc>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/palindrome</loc>
+    <loc>https://thuelang.org/tasks/palindrome-detection</loc>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thuelang.org/tasks/rot13</loc>
+    <loc>https://thuelang.org/tasks/rot-13</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/tasks/greatest-common-divisor</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/tasks/least-common-multiple</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/tasks/primality-by-trial-division</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/tasks/hailstone-sequence</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/tasks/leap-year</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thuelang.org/tasks/exponentiation-operator</loc>
     <priority>0.5</priority>
   </url>
 </urlset>

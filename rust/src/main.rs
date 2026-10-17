@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use thuepp::{display_path, format_trace, parse_limit, Interpreter};
+use thuepp::{display_path, format_trace, parse_limit, Interpreter, RunMetrics};
 
 fn main() -> ExitCode {
     match run() {
@@ -28,6 +28,7 @@ fn run() -> Result<u8, u8> {
     let mut input_override = None;
     let mut rule_coverage_path = None;
     let mut counts_path = None;
+    let mut metrics_path = None;
     let mut list_rules = false;
     let mut index = 1;
     while index < args.len() {
@@ -45,6 +46,8 @@ fn run() -> Result<u8, u8> {
             rule_coverage_path = Some(value);
         } else if let Some(value) = take_value(&args, &mut index, "--counts") {
             counts_path = Some(value);
+        } else if let Some(value) = take_value(&args, &mut index, "--metrics") {
+            metrics_path = Some(value);
         } else if let Some(value) = take_value(&args, &mut index, "--input") {
             input_override = Some(value);
         } else if let Some(value) = take_value(&args, &mut index, "--max-evals") {
@@ -121,6 +124,12 @@ fn run() -> Result<u8, u8> {
                 exit_code = 1;
             }
         }
+        if let Some(path) = metrics_path {
+            if let Err(err) = write_metrics(&path, &interp.metrics()) {
+                let _ = writeln!(io::stderr(), "Error: failed to write metrics: {err}");
+                exit_code = 1;
+            }
+        }
     }
     if let Err(err) = interp.write_rule_coverage() {
         let _ = writeln!(io::stderr(), "Error: failed to write rule coverage: {err}");
@@ -161,6 +170,17 @@ fn require_limit(text: &str) -> Result<Option<i64>, u8> {
             Err(2)
         }
     }
+}
+
+fn write_metrics(path: &str, metrics: &RunMetrics) -> Result<(), String> {
+    if let Some(parent) = Path::new(path).parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+        }
+    }
+    let mut text = serde_json::to_string(metrics).map_err(|err| err.to_string())?;
+    text.push('\n');
+    fs::write(path, text).map_err(|err| err.to_string())
 }
 
 fn write_counts(path: &str, applied_steps: i64, probes: i64) -> Result<(), String> {
