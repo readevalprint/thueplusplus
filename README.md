@@ -2,6 +2,8 @@
 
 # Thue++
 
+The site is [thuelang.org](https://thuelang.org).
+
 Start with a string and rules that rewrite it:
 
 ```text
@@ -96,7 +98,7 @@ Example source (`examples/mid/chain.tpp`):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/mid/chain.tpp
 
-See the source: [examples/mid/chain.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/mid/chain.tpp)
+See the source: [examples/mid/chain.tpp](https://github.com/thuelang/thueplusplus/blob/main/examples/mid/chain.tpp)
 
 ```thuepp
 ^MAP:.*$ ::| a=(?<ak>[^,]*) ::| b=(?<bv>[^,]*) ::= {{ak}}-{{bv}}
@@ -140,7 +142,7 @@ Example source (`examples/hello/hello.tpp`):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/hello/hello.tpp
 
-See the source: [examples/hello/hello.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/hello/hello.tpp)
+See the source: [examples/hello/hello.tpp](https://github.com/thuelang/thueplusplus/blob/main/examples/hello/hello.tpp)
 
 ```thuepp
 ^START$ ::= hello\ndone
@@ -202,7 +204,7 @@ Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-30):
 Run it now in the browser playground:
 https://thuelang.org/playground?file=./examples/guess-number/guess-number.tpp
 
-See the source: [examples/guess-number/guess-number.tpp](https://gitlab.com/thuelang/thueplusplus/-/blob/main/examples/guess-number/guess-number.tpp)
+See the source: [examples/guess-number/guess-number.tpp](https://github.com/thuelang/thueplusplus/blob/main/examples/guess-number/guess-number.tpp)
 
 ```thuepp
 NUMBER <- [0-9]+
@@ -520,7 +522,7 @@ This repository has five current conformance backends:
 # Python package
 uv run thuepp <program.tpp>
 
-# Go package github.com/readevalprint/thueplusplus/go/thuepp
+# Go package github.com/thuelang/thueplusplus/go/thuepp
 (cd go && go run ./cmd/thuepp ../<program.tpp>)
 
 # npm package thuepp
@@ -535,7 +537,7 @@ cmake --build build/cpp --parallel
 build/cpp/thuepp <program.tpp>
 ```
 
-`uv run thuepp` is the Python console script. The Go library import is `github.com/readevalprint/thueplusplus/go/thuepp`. The npm package name is `thuepp`. The Rust crate is `thuepp` under `rust/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
+`uv run thuepp` is the Python console script. The Go library import is `github.com/thuelang/thueplusplus/go/thuepp`. The npm package name is `thuepp`. The Rust crate is `thuepp` under `rust/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -629,7 +631,7 @@ Coverage ignores are unsupported. Every surviving rule in manifest-declared exam
 ```text
 examples/        Shared Thue++ programs and manifest tests
 python/thuepp/   Python package. The thuepp console script is the CLI.
-go/thuepp/       Go package github.com/readevalprint/thueplusplus/go/thuepp
+go/thuepp/       Go package github.com/thuelang/thueplusplus/go/thuepp
 go/cmd/thuepp/   Thin Go CLI
 js/              npm package thuepp (ESM, types, Node CLI, browser worker)
 rust/            Rust crate thuepp and its thin CLI. Not published.
@@ -678,7 +680,7 @@ cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/t
 build/cpp/thuepp <program.tpp>
 ```
 
-Import `thuepp` in Python, `github.com/readevalprint/thueplusplus/go/thuepp` in Go, `thuepp` from npm, and crate `thuepp` from `rust/`. C++ includes `thuepp/thuepp.hpp` and links `thuepp::thuepp`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
+Import `thuepp` in Python, `github.com/thuelang/thueplusplus/go/thuepp` in Go, `thuepp` from npm, and crate `thuepp` from `rust/`. C++ includes `thuepp/thuepp.hpp` and links `thuepp::thuepp`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
 
 Copy-pasteable agent prompt:
 

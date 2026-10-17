@@ -77,11 +77,11 @@ def playground_url(source_path: str) -> str:
     return f"https://thuelang.org/playground?file={file_param}"
 
 
-GITLAB_SOURCE_ROOT = "https://gitlab.com/thuelang/thueplusplus/-/blob/main"
+SOURCE_ROOT = "https://github.com/thuelang/thueplusplus/blob/main"
 
 
-def gitlab_source_url(source_path: str) -> str:
-    return f"{GITLAB_SOURCE_ROOT}/{quote(source_path, safe='/')}"
+def source_url(source_path: str) -> str:
+    return f"{SOURCE_ROOT}/{quote(source_path, safe='/')}"
 
 
 def render_readme_example(root: Path, source_path: str, expected_output_path: str, source_lines: str | None = None) -> str:
@@ -91,7 +91,7 @@ def render_readme_example(root: Path, source_path: str, expected_output_path: st
         f"{source_label}\n\n"
         "Run it now in the browser playground:\n"
         f"{playground_url(source_path)}\n\n"
-        f"See the source: [{source_path}]({gitlab_source_url(source_path)})\n\n"
+        f"See the source: [{source_path}]({source_url(source_path)})\n\n"
         "```thuepp\n"
         f"{source.rstrip(chr(10))}\n"
         "```\n\n"
@@ -203,7 +203,7 @@ def check_readme(root: Path) -> list[Failure]:
             failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/check_contract.py --update-readme"))
     except ValueError as exc:
         failures.append(Failure(path, str(exc)))
-    required = ["## Verification", "make test", "uv run thuepp", "pyproject.toml", "uv.lock", "github.com/readevalprint/thueplusplus/go/thuepp"]
+    required = ["## Verification", "make test", "uv run thuepp", "pyproject.toml", "uv.lock", "github.com/thuelang/thueplusplus/go/thuepp", "https://thuelang.org"]
     for snippet in required:
         if snippet not in text:
             failures.append(Failure(path, f"missing README verification text: {snippet}"))

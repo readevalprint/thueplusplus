@@ -2,6 +2,7 @@ import { parse as parseToml } from 'smol-toml'
 import rawSummary from './generated/summary.json'
 import hostsToml from '../../hosts.toml?raw'
 import environments from '../../metrics/environments.json'
+import { repositoryUrl } from './hosts'
 
 export const HOST_IDS = readHostIds(hostsToml)
 const REQUIRED_ENVIRONMENTS = {
@@ -191,7 +192,7 @@ export function workloadLabel(id: string): string {
 }
 
 export function commitUrl(commit: string): string {
-  return `https://gitlab.com/thuelang/thueplusplus/-/commit/${commit}`
+  return `${repositoryUrl}/commit/${commit}`
 }
 
 export function collapseRuns(samples: readonly { commit: string; value: number | null }[]): SeriesPoint[] {

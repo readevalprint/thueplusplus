@@ -10,6 +10,7 @@ declare module 'vue-router' {
   }
 }
 import { taskRouteMeta } from './catalog'
+import ContributePage from './pages/ContributePage.vue'
 import EmbedPage from './pages/EmbedPage.vue'
 import HomePage from './pages/HomePage.vue'
 import InstallPage from './pages/InstallPage.vue'
@@ -17,6 +18,7 @@ import InstallPlatformPage from './pages/InstallPlatformPage.vue'
 import LearnPage from './pages/LearnPage.vue'
 import MetricsPage from './pages/MetricsPage.vue'
 import PlaygroundPage from './PlaygroundPage.vue'
+import PromptPage from './pages/PromptPage.vue'
 import ProjectsPage from './pages/ProjectsPage.vue'
 import ReferencePage from './pages/ReferencePage.vue'
 import TaskPage from './pages/TaskPage.vue'
@@ -36,6 +38,8 @@ const shell = [
   { page: pages.projects, component: ProjectsPage },
   { page: pages.metrics, component: MetricsPage },
   { page: pages.tasks, component: TasksPage },
+  { page: pages.contribute, component: ContributePage },
+  { page: pages.prompt, component: PromptPage },
 ]
 
 export const routes: RouteRecordRaw[] = [

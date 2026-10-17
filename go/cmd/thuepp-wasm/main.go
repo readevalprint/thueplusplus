@@ -11,7 +11,7 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/readevalprint/thueplusplus/go/thuepp"
+	"github.com/thuelang/thueplusplus/go/thuepp"
 )
 
 type jsResource struct {

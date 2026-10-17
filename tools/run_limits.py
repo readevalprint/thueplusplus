@@ -26,6 +26,11 @@ DEFAULT_TIMEOUT_SECONDS = 10
 # either rejects a healthy wasm run or does not protect the machine.
 RUN_MEMORY_CAP_BYTES = 256 * 1024 * 1024
 POLL_SECONDS = 0.1
+# Go, Rust, and C++ often exit in under 10ms. A 100ms poll samples /proc after
+# timeout(1) has reaped them, and the missing tree reads as 0 bytes. The first
+# window polls fast enough to see VmHWM while the host is still alive.
+OBSERVE_POLL_SECONDS = 0.001
+OBSERVE_WINDOW_SECONDS = 0.1
 
 LIMIT_FLAGS = ("--max-evals", "--max-steps", "--max-state-bytes")
 _LIMIT_DEFAULTS = {
@@ -124,6 +129,43 @@ def _process_tree_rss(pid: int) -> int:
     return total
 
 
+def _vm_hwm_bytes(pid: int) -> int:
+    """Kernel peak RSS for one live process. A reaped pid contributes 0."""
+    try:
+        text = Path(f"/proc/{pid}/status").read_text(encoding="ascii")
+    except (FileNotFoundError, ProcessLookupError):
+        return 0
+    for line in text.splitlines():
+        if not line.startswith("VmHWM:"):
+            continue
+        parts = line.split()
+        if len(parts) != 3 or parts[2] != "kB":
+            raise RuntimeError(f"/proc/{pid}/status VmHWM is not kilobytes: {line}")
+        return int(parts[1]) * 1024
+    # A task that is still execing, or already a zombie, has no address-space
+    # high-water mark yet. A later sample reads it. No sample at all fails the run.
+    return 0
+
+
+def _tree_peak_rss(pid: int) -> int:
+    """Highest VmHWM in the live process tree."""
+    peak = 0
+    pending = [pid]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        peak = max(peak, _vm_hwm_bytes(current))
+        try:
+            children = Path(f"/proc/{current}/task/{current}/children").read_text(encoding="ascii")
+            pending.extend(int(child) for child in children.split())
+        except (FileNotFoundError, ProcessLookupError, ValueError):
+            continue
+    return peak
+
+
 def _kill_group(pid: int) -> None:
     try:
         os.killpg(pid, signal.SIGKILL)
@@ -167,6 +209,19 @@ def bounded_run(
         text=True,
         start_new_session=True,
     )
+    reason: str | None = None
+    deadline = time.monotonic() + timeout
+    observe_until = time.monotonic() + OBSERVE_WINDOW_SECONDS
+    peak_rss = 0
+
+    def note() -> int:
+        nonlocal peak_rss
+        rss = _process_tree_rss(proc.pid)
+        peak_rss = max(peak_rss, rss, _tree_peak_rss(proc.pid))
+        return rss
+
+    # Sample before the reader threads. A native host can exit while those start.
+    note()
     stdout_parts: list[str] = []
     stderr_parts: list[str] = []
 
@@ -183,20 +238,16 @@ def bounded_run(
     if input_text is not None:
         proc.stdin.write(input_text)
     proc.stdin.close()
-
-    reason: str | None = None
-    deadline = time.monotonic() + timeout
-    peak_rss = _process_tree_rss(proc.pid)
+    note()
     while True:
+        poll = OBSERVE_POLL_SECONDS if time.monotonic() < observe_until else POLL_SECONDS
         try:
-            proc.wait(timeout=POLL_SECONDS)
-            peak_rss = max(peak_rss, _process_tree_rss(proc.pid))
+            proc.wait(timeout=poll)
+            note()
             break
         except subprocess.TimeoutExpired:
             pass
-        rss = _process_tree_rss(proc.pid)
-        if rss > peak_rss:
-            peak_rss = rss
+        rss = note()
         if rss > memory_cap:
             reason = f"memory cap ({memory_cap} bytes) exceeded (rss {rss} bytes)"
             _kill_group(proc.pid)
@@ -218,6 +269,8 @@ def bounded_run(
     # timeout(1) uses 124 when it, rather than the program, stops the run.
     if code == 124 or code == 137:
         raise RuntimeError(f"timed out after {timeout}s (timeout(1) status {code})")
+    if reason is None and peak_rss <= 0:
+        raise RuntimeError("resident memory was not measured")
     completed = subprocess.CompletedProcess(argv, code, stdout, stderr)
     completed.peak_rss_bytes = peak_rss
     return completed

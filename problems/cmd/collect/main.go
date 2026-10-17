@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/readevalprint/thueplusplus/problems/harness"
+	"github.com/thuelang/thueplusplus/problems/harness"
 )
 
 func main() {

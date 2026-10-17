@@ -115,7 +115,7 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 
 | | Package | CLI |
 | --- | --- | --- |
-| Go | `github.com/readevalprint/thueplusplus/go/thuepp` | `go/cmd/thuepp` |
+| Go | `github.com/thuelang/thueplusplus/go/thuepp` | `go/cmd/thuepp` |
 | Python | distribution `thuepp` | console script `thuepp` |
 | JS | npm package `thuepp` | `thuepp` bin, `node js/src/cli.js` in this repo |
 | Rust | crate `thuepp` (`rust/`) | `thuepp` bin, `rust/target/release/thuepp` in this repo |
@@ -124,7 +124,7 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 Go:
 
 ```go
-import "github.com/readevalprint/thueplusplus/go/thuepp"
+import "github.com/thuelang/thueplusplus/go/thuepp"
 
 interp := thuepp.New()
 if err := interp.LoadProgram("hello.tpp"); err != nil {

@@ -9,7 +9,7 @@
 | `demo/src/generated/summary.json` | Compact series generated from every bench file and from `latest.json`. Not committed. |
 | `/metrics/summary.json` | That summary on the published site. |
 
-GitLab Pages copies the summary to `public/metrics/summary.json` after the demo build. The demo build copies it to `demo/dist/metrics/summary.json`. Both URLs are `/metrics/summary.json`.
+Vercel serves the site at https://thuelang.org. The demo build copies the summary to `demo/dist/metrics/summary.json`, and the Vercel build publishes that file at `/metrics/summary.json`. GitLab mirrors the repository and does not publish the site.
 
 ## Who writes a file
 

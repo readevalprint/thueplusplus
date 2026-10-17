@@ -182,5 +182,31 @@
     "canonical": "https://thuelang.org/tasks",
     "robots": "index,follow",
     "links": []
+  },
+  "contribute": {
+    "path": "/contribute",
+    "kicker": "Contribute",
+    "title": "Clone, measure, open a pull request.",
+    "description": "How to change a problem or a language, run the Go tests, and commit metrics.",
+    "documentTitle": "Thue++ Contribute — Clone, measure, open a pull request",
+    "canonical": "https://thuelang.org/contribute",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Clone", "href": "#clone" },
+      { "title": "Commands", "href": "#commands" },
+      { "title": "Pareto", "href": "#pareto" }
+    ]
+  },
+  "prompt": {
+    "path": "/autoresearch",
+    "kicker": "Autoresearch",
+    "title": "A prompt for an agent.",
+    "description": "Copy this prompt. The agent clones the repo, tries one improvement, and opens a pull request only when the result is on the Pareto front.",
+    "documentTitle": "Thue++ Autoresearch — A prompt for an agent",
+    "canonical": "https://thuelang.org/autoresearch",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Prompt", "href": "#prompt" }
+    ]
   }
 }

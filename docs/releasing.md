@@ -6,7 +6,7 @@ The hosts share the API in [host-api.md](host-api.md). The Rust crate and the C+
 
 | Host | Name | Version field |
 | --- | --- | --- |
-| Go | `github.com/readevalprint/thueplusplus/go` | git tag `go/vX.Y.Z` |
+| Go | `github.com/thuelang/thueplusplus/go` | git tag `go/vX.Y.Z` |
 | Python | `thuepp` | `pyproject.toml` `version` |
 | npm | `thuepp` | `js/package.json` `version` |
 | Rust | crate `thuepp` | `rust/Cargo.toml` `version` |
@@ -14,7 +14,7 @@ The hosts share the API in [host-api.md](host-api.md). The Rust crate and the C+
 
 ## Go
 
-The module lives in `go/`. Consumers import `github.com/readevalprint/thueplusplus/go/thuepp`.
+The module lives in `go/`. Consumers import `github.com/thuelang/thueplusplus/go/thuepp`.
 
 ```bash
 cd go && go test ./...
