@@ -2,6 +2,9 @@
 import { onBeforeUnmount, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
+import HostsPillar from '@/components/landing/HostsPillar.vue'
+import PortablePillar from '@/components/landing/PortablePillar.vue'
+import SandboxPillar from '@/components/landing/SandboxPillar.vue'
 import SandboxScene from '@/components/SandboxScene.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import { siteHosts, soonLanguages } from '@/hosts'
@@ -24,21 +27,6 @@ onBeforeUnmount(() => {
   rubble.value?.restore(true)
   rubble.value = null
 })
-
-const pillars = [
-  {
-    title: 'smallest',
-    body: 'A program is an ordered list of rules and one state string. The engine rewrites that string until it stops.',
-  },
-  {
-    title: 'safest',
-    body: 'A new interpreter starts with a step limit, a probe limit, and a state limit. A run cannot go on forever.',
-  },
-  {
-    title: 'sandbox',
-    body: 'Rules do not open files, sockets, or processes. A host binds the resources a program is allowed to touch.',
-  },
-]
 </script>
 
 <template>
@@ -73,11 +61,10 @@ const pillars = [
       <div class="page-screen-gap" aria-hidden="true" />
     </div>
 
-    <section data-test="page-details" class="page-details border-line grid max-w-none border-t md:grid-cols-3">
-      <article v-for="(pillar, index) in pillars" :id="pillar.title" :key="pillar.title" data-shard class="border-line px-4 py-8 sm:px-6 lg:px-8" :class="index < pillars.length - 1 ? 'md:border-r' : undefined">
-        <h2 class="font-display text-[18px] font-semibold tracking-[-0.03em]">{{ pillar.title }}</h2>
-        <p class="text-ash mt-3 text-[15px] leading-[1.55]">{{ pillar.body }}</p>
-      </article>
+    <section data-test="page-details" class="page-details border-line bg-void grid max-w-none border-t lg:grid-cols-3">
+      <PortablePillar />
+      <SandboxPillar />
+      <HostsPillar />
     </section>
 
     <SiteFooter data-shard class="px-4 sm:px-6 lg:px-14" />

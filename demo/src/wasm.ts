@@ -57,17 +57,20 @@ export interface DemoRunResult {
   state?: string
   evalCount?: number
   appliedSteps?: number
-  metrics?: { cost: number }
+  metrics?: { cost: number, state_peak?: number }
   resourceLogs?: DemoResourceLog[]
   trace?: DemoTraceEvent[]
   limit?: string
 }
 
-function metricCost(metrics: object): number {
+function metricNumbers(metrics: object): { cost: number, state_peak: number } {
   if (!('cost' in metrics) || typeof metrics.cost !== 'number' || !Number.isFinite(metrics.cost)) {
     throw new Error('run metrics have no cost')
   }
-  return metrics.cost
+  if (!('state_peak' in metrics) || typeof metrics.state_peak !== 'number' || !Number.isFinite(metrics.state_peak) || metrics.state_peak < 0) {
+    throw new Error('run metrics have no state peak')
+  }
+  return { cost: metrics.cost, state_peak: metrics.state_peak }
 }
 
 function publicAssetURL(fileName: string): string {
@@ -97,7 +100,7 @@ export async function runWithWorker(request: DemoRunRequest): Promise<DemoRunRes
     return {
       ...rest,
       coverage: result.coverageTSV ?? '',
-      metrics: metrics ? { cost: metricCost(metrics) } : undefined,
+      metrics: metrics ? metricNumbers(metrics) : undefined,
     }
   } finally {
     client.terminate()
