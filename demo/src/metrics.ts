@@ -19,7 +19,8 @@ const WORKLOAD_LABELS: Record<string, string> = {
   guest: 'Forth',
   rewrite: 'Rewrite',
 }
-const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'guests', 'tasks', 'benchmarks']
+const ENTRY_KEYS = ['commit', 'author', 'timestamp', 'machine', 'guests', 'tasks', 'benchmarks']
+const MACHINE_KEYS = ['os', 'release', 'arch', 'cpu', 'cpus']
 const TASK_GUEST_KEYS = ['pass', 'fail', 'unsupported', 'steps']
 const WORKLOAD_KEYS = ['id', 'steps', 'probes', 'max_steps', 'max_evals', 'max_state_bytes', 'timeout_seconds', 'memory_cap_bytes', 'hosts']
 const HOST_KEYS = ['id', 'environment', 'duration_ms', 'memory_bytes', 'exit_code']
@@ -59,6 +60,14 @@ export interface CommitRef {
   commit: string
   author: string
   timestamp: string
+}
+
+export interface Machine {
+  os: string
+  release: string
+  arch: string
+  cpu: string
+  cpus: number
 }
 
 export interface SeriesPoint {
@@ -102,6 +111,7 @@ export interface BenchmarkHost {
 }
 
 export interface WorkloadCommit extends CommitRef {
+  machine: Machine | null
   id: string
   appliedSteps: number
   probes: number
@@ -133,6 +143,7 @@ interface WorkloadRow {
 }
 
 interface HistoryEntry extends CommitRef {
+  machine: Machine | null
   guests: Record<string, number>
   tasks: Record<string, TaskGuestRow> | null
   benchmarks: WorkloadRow[] | null
@@ -141,18 +152,6 @@ interface HistoryEntry extends CommitRef {
 export interface History {
   schemaVersion: 1
   entries: HistoryEntry[]
-}
-
-export interface PlacedChart {
-  width: number
-  height: number
-  plotLeft: number
-  plotTop: number
-  plotRight: number
-  plotBottom: number
-  yMax: number
-  xAt: (index: number) => number
-  yAt: (value: number) => number
 }
 
 export function loadHistory(value: unknown): History {
@@ -238,23 +237,14 @@ export function pointAt(points: readonly SeriesPoint[], commit: string, order: r
   })
 }
 
-export function rangeLabel(point: SeriesPoint): string {
+export function commitSpan(point: SeriesPoint): string {
   const start = point.commit.slice(0, 12)
   const end = point.until.slice(0, 12)
-  const span = start === end ? start : `${start}…${end}`
-  return `${span} · ${point.value}`
+  return start === end ? start : `${start}…${end}`
 }
 
-export function stepPath(points: readonly { x: number; y: number; value: number }[]): string {
-  if (points.length < 2) return ''
-  let path = `M${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1]
-    const point = points[index]
-    path += `L${point.x.toFixed(1)} ${previous.y.toFixed(1)}`
-    if (point.value !== previous.value) path += `L${point.x.toFixed(1)} ${point.y.toFixed(1)}`
-  }
-  return path
+export function rangeLabel(point: SeriesPoint): string {
+  return `${commitSpan(point)} · ${point.value}`
 }
 
 export function guestRuleChart(history: History, order: readonly string[], names: ReadonlyMap<string, string>): RuleChart {
@@ -293,21 +283,59 @@ export function taskCommits(history: History, order: readonly string[], names: R
   })
 }
 
-export function hostDurationSeries(commits: readonly WorkloadCommit[]): NamedSeries[] {
+export type HostMeasure = 'durationMs' | 'memoryBytes'
+
+export function hostRatio(commit: WorkloadCommit, hostId: string, measure: HostMeasure): number | null {
+  const host = commit.hosts.find(item => item.id === hostId)
+  const baseline = commit.hosts.find(item => item.id === 'go')
+  if (!host || !baseline) return null
+  const value = host[measure]
+  const base = baseline[measure]
+  if (measure === 'durationMs') {
+    if (value === null || base === null || value <= 0 || base <= 0) {
+      throw new HistoryError(`${commit.commit} ${hostId} duration ratio ${value}/${base}`)
+    }
+    return value / base
+  }
+  if (value === null || base === null || value <= 0 || base <= 0) return null
+  return value / base
+}
+
+export function formatTimesGo(ratio: number): string {
+  if (!Number.isFinite(ratio) || ratio <= 0) throw new HistoryError(`ratio ${ratio}`)
+  const rounded = Math.round(ratio * 10) / 10
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  return `${text}× go`
+}
+
+export function hostMeasurementText(commit: WorkloadCommit, hostId: string, measure: HostMeasure): string {
+  const host = commit.hosts.find(item => item.id === hostId)
+  const ratio = hostRatio(commit, hostId, measure)
+  if (!host || ratio === null) throw new HistoryError(`${commit.commit} ${hostId} has no ${measure} ratio`)
+  const memory = host.memoryBytes === null ? '' : ` · ${host.memoryBytes} bytes`
+  return `${formatTimesGo(ratio)} · ${host.durationMs} ms${memory}`
+}
+
+export function machineLabel(machine: Machine | null): string {
+  if (machine === null) return ''
+  return `${machine.os} ${machine.release} · ${machine.arch} · ${machine.cpu} · ${machine.cpus} cores`
+}
+
+export function hostRatioSeries(commits: readonly WorkloadCommit[], measure: HostMeasure): NamedSeries[] {
   const present = new Set(commits.flatMap(commit => commit.hosts.map(host => host.id)))
   return HOST_IDS.filter(id => present.has(id)).map(id => {
     const sample = commits.flatMap(commit => commit.hosts).find(host => host.id === id)
-    if (!sample) throw new HistoryError(`host ${id} has no duration`)
+    if (!sample) throw new HistoryError(`host ${id} has no measurement`)
     assertEnvironment(id, sample.environment)
     return {
       id,
       label: sample.environment,
-      points: collapseRuns(commits.map(commit => {
-        const row = commit.hosts.find(host => host.id === id)
-        return { commit: commit.commit, value: row ? row.durationMs : null }
-      })),
+      points: collapseRuns(commits.map(commit => ({
+        commit: commit.commit,
+        value: hostRatio(commit, id, measure),
+      }))),
     }
-  })
+  }).filter(item => item.points.length > 0)
 }
 
 export function countSeries(commits: readonly WorkloadCommit[]): NamedSeries[] {
@@ -340,7 +368,7 @@ export function benchmarkCommits(history: History, workloadId: string): Workload
   const commits = history.entries.flatMap(entry => {
     const workload = entry.benchmarks?.find(item => item.id === workloadId)
     if (!workload) return []
-    return [{ ...commitRef(entry), ...workload }]
+    return [{ ...commitRef(entry), machine: entry.machine, ...workload }]
   })
   if (commits.length === 0) throw new HistoryError(`workload ${workloadId} has no commits`)
   return commits
@@ -361,34 +389,6 @@ export function seriesFromField(commits: readonly TaskCommit[], field: 'passCoun
       return { commit: commit.commit, value: row ? row[field] : null }
     })),
   })).filter(item => item.points.length > 0)
-}
-
-export function placeChart(count: number, maxValue: number, width = 640, height = 220): PlacedChart {
-  if (!Number.isInteger(count) || count < 1) throw new HistoryError(`chart count ${count}`)
-  if (!Number.isFinite(maxValue) || maxValue < 0) throw new HistoryError(`chart max ${maxValue}`)
-  const plotLeft = 72
-  const plotRight = width - 12
-  const plotTop = 14
-  const plotBottom = height - 24
-  const yMax = maxValue === 0 ? 1 : maxValue * 1.08
-  return {
-    width,
-    height,
-    plotLeft,
-    plotTop,
-    plotRight,
-    plotBottom,
-    yMax,
-    xAt(index: number) {
-      if (!Number.isInteger(index) || index < 0 || index >= count) throw new HistoryError(`chart index ${index}`)
-      if (count === 1) return (plotLeft + plotRight) / 2
-      return plotLeft + ((plotRight - plotLeft) * index) / (count - 1)
-    },
-    yAt(value: number) {
-      if (!Number.isFinite(value) || value < 0 || value > yMax) throw new HistoryError(`chart value ${value}`)
-      return plotBottom - ((plotBottom - plotTop) * value) / yMax
-    },
-  }
 }
 
 export const history = loadHistory(rawSummary)
@@ -430,9 +430,24 @@ function loadEntry(value: unknown, index: number): HistoryEntry {
     commit,
     author,
     timestamp,
+    machine: loadMachine(commit, value.machine),
     guests: loadGuests(commit, value.guests),
     tasks: loadTasks(commit, value.tasks),
     benchmarks: loadBenchmarks(commit, value.benchmarks),
+  }
+}
+
+function loadMachine(commit: string, value: unknown): Machine | null {
+  if (value === null) return null
+  if (!isRecord(value) || !exactKeys(value, MACHINE_KEYS)) {
+    throw new HistoryError(`${commit}: machine keys must be ${MACHINE_KEYS.join(', ')}`)
+  }
+  return {
+    os: requireText(value.os, `${commit} machine os`),
+    release: requireText(value.release, `${commit} machine release`),
+    arch: requireText(value.arch, `${commit} machine arch`),
+    cpu: requireText(value.cpu, `${commit} machine cpu`),
+    cpus: positiveInt(value.cpus, `${commit} machine cpus`),
   }
 }
 

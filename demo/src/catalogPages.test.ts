@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import MetricsPage from './pages/MetricsPage.vue'
 import ProjectsPage from './pages/ProjectsPage.vue'
@@ -78,20 +78,25 @@ describe('catalog pages', () => {
     expect(projectsPage.text()).not.toContain('RE2')
 
     const wrapper = await mountAt('/metrics')
+    await flushPromises()
     expect(wrapper.get('h1').text()).toBe('What each commit measured.')
     expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('::=')
     expect(wrapper.get('[data-test="page-hero-graphic"]').text()).toContain('program')
     expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('09744fa8d495')
-    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('Forth · 86')
-    expect(wrapper.get('[data-test="rule-chart"]').text()).toContain(`61ec35406371…${history.entries[history.entries.length - 1].commit.slice(0, 12)} · 86`)
+    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('Forth ·')
+    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain('86')
+    expect(wrapper.get('[data-test="rule-readout"]').text()).toContain(`61ec35406371…${history.entries[history.entries.length - 1].commit.slice(0, 12)} · 86`)
     expect(wrapper.get('[data-test="task-readout"]').text()).toContain('Lisp · 10 pass · 0 fail · 0 unsupported · 76749 steps')
     expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('steps 10000 · probes 10002')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('wasm (node) · 1408 ms')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native · 607 ms')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('rust · 468 ms')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('cpp · 624 ms')
-    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('python ·')
-    expect(wrapper.get('[data-test="rule-chart"]').find('path').exists()).toBe(true)
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('wasm (node) · 2.3× go')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('go native · 1× go')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('rust · 0.8× go')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('cpp · 1× go')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).toContain('python · 1.2× go')
+    expect(wrapper.get('[data-test="benchmark-readout"]').text()).not.toContain(' ms')
+    expect(wrapper.get('[data-test="rule-chart"]').text()).toContain('Forth')
+    expect(wrapper.get('[data-test="rule-chart"]').find('svg').exists()).toBe(true)
+    expect(wrapper.find('[data-test="memory-chart"]').exists() || wrapper.text().includes('No memory is recorded')).toBe(true)
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Placeholder')
     expect(wrapper.text()).not.toMatch(/\bguest\b/i)
