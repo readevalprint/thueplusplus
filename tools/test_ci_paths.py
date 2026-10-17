@@ -29,16 +29,22 @@ def main() -> None:
     expect(["metrics/runs.py"], python=False, go=False, wasm=False, rust=False, guests=False, solutions=True)
     expect(["examples/brainfuck/brainfuck.thue"], python=True, go=True, wasm=True, rust=True, guests=True)
     expect(["examples/hello/tests/basic.toml"], python=True, go=True, wasm=True, rust=True, guests=True)
-    expect(["Makefile"], python=True, go=True, wasm=True, rust=True, csharp=True, guests=True)
+    expect(["Makefile"], python=True, go=True, wasm=True, rust=True, csharp=True, java=True, guests=True)
     expect(["csharp/src/Thuelang/Interpreter.cs"], python=False, go=False, wasm=False, rust=False, cpp=False, csharp=True, guests=False)
     expect(["cpp/CMakeLists.txt"], python=False, go=False, wasm=False, rust=False, cpp=False, guests=False)
     with_cpp = ci_paths.classify(["cpp/src/main.cpp"], cpp_present=True, ruby_present=False)
-    if not with_cpp["cpp"] or with_cpp["go"] or with_cpp["ruby"]:
+    if not with_cpp["cpp"] or with_cpp["go"] or with_cpp["ruby"] or with_cpp["java"]:
         raise SystemExit(f"cpp path: {with_cpp}")
     expect(["ruby/lib/thuelang/interpreter.rb"], python=False, go=False, wasm=False, rust=False, cpp=False, ruby=False, guests=False)
     with_ruby = ci_paths.classify(["ruby/lib/thuelang/interpreter.rb"], cpp_present=True, ruby_present=True)
-    if not with_ruby["ruby"] or with_ruby["go"]:
+    if not with_ruby["ruby"] or with_ruby["go"] or with_ruby["java"]:
         raise SystemExit(f"ruby path: {with_ruby}")
+    shared = ci_paths.classify(["Makefile"], cpp_present=True, ruby_present=True)
+    if not shared["java"] or not shared["csharp"] or not shared["ruby"] or not shared["python"]:
+        raise SystemExit(f"shared path: {shared}")
+    java_only = ci_paths.classify(["java/src/main/java/org/thuelang/thuelang/Cli.java"], cpp_present=True, ruby_present=True)
+    if not java_only["java"] or java_only["go"] or java_only["python"] or java_only["ruby"] or java_only["csharp"]:
+        raise SystemExit(f"java path: {java_only}")
     print("ci path filters passed")
 
 

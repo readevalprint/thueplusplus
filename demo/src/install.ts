@@ -8,6 +8,7 @@ export const installNotes: Record<string, string> = {
   cpp: 'The CMake library and the thue command.',
   ruby: 'The thuelang gem and the thue command.',
   csharp: 'The Thuelang library and the thue command.',
+  java: 'The Gradle package and the thue command.',
 }
 
 for (const host of siteHosts) {
@@ -196,6 +197,24 @@ var code = interp.Run();`,
 dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/csharp
 build/csharp/thue program.thue`,
     api: [hostApi, { href: `${blob}/csharp/README.md`, label: 'csharp/README.md' }],
+  },
+  java: {
+    prose: 'The Java host is a native implementation. The Gradle package is org.thuelang:thuelang and the command is thue. It uses the regex engine and the same default limits. Process bindings stay opt-in. The package is not published.',
+    installLead: 'The package is not published. From a checkout of this repository:',
+    install: './java/gradlew -p java --no-daemon installDist',
+    moreInstall: [],
+    libraryLead: 'A new interpreter binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. null clears one.',
+    library: `import org.thuelang.thuelang.Interpreter;
+
+Interpreter interp = new Interpreter();
+interp.loadProgram("hello.thue");
+int code = interp.run();`,
+    cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',
+    cli: `thue <program.thue> [--max-steps N] [--max-evals N] [--max-state-bytes N]
+
+make java
+java/build/install/thue/bin/thue program.thue`,
+    api: [hostApi, { href: `${blob}/java/README.md`, label: 'java/README.md' }],
   },
 }
 

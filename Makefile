@@ -1,33 +1,37 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp ruby csharp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
+.PHONY: test test-static test-core test-guests test-full cpp ruby csharp java wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
 
 RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
 CSHARP_BIN := ./build/csharp/thue
 CSHARP_IMPL := --impl csharp=$(CSHARP_BIN)
+JAVA_BIN := ./java/build/install/thue/bin/thue
+JAVA_IMPL := --impl java=$(JAVA_BIN)
 
-# HOST selects one conformance host: python, go, wasm, rust, cpp, ruby, or csharp.
+# HOST selects one conformance host: python, go, wasm, rust, cpp, ruby, csharp, or java.
 # Empty runs every host that is present. Guest programs run on native Go.
 ifeq ($(HOST),)
-  CORE_ARGS := --tier core $(RUST_IMPL) $(CSHARP_IMPL)
+  CORE_ARGS := --tier core $(RUST_IMPL) $(CSHARP_IMPL) $(JAVA_IMPL)
 else ifeq ($(HOST),rust)
   CORE_ARGS := --tier core --only rust $(RUST_IMPL)
 else ifeq ($(HOST),csharp)
   CORE_ARGS := --tier core --only csharp $(CSHARP_IMPL)
+else ifeq ($(HOST),java)
+  CORE_ARGS := --tier core --only java $(JAVA_IMPL)
 else
   CORE_ARGS := --tier core --only $(HOST)
 endif
 
 ifneq ($(wildcard cpp/CMakeLists.txt),)
-  FULL_IMPL := $(RUST_IMPL) $(CSHARP_IMPL) --impl cpp=./build/cpp/thue
+  FULL_IMPL := $(RUST_IMPL) $(CSHARP_IMPL) $(JAVA_IMPL) --impl cpp=./build/cpp/thue
   ifeq ($(HOST),)
     CORE_ARGS += --impl cpp=./build/cpp/thue
   else ifeq ($(HOST),cpp)
     CORE_ARGS := --tier core --only cpp --impl cpp=./build/cpp/thue
   endif
 else
-  FULL_IMPL := $(RUST_IMPL) $(CSHARP_IMPL)
+  FULL_IMPL := $(RUST_IMPL) $(CSHARP_IMPL) $(JAVA_IMPL)
 endif
 
 ifneq ($(wildcard ruby/thuelang.gemspec),)
@@ -63,6 +67,11 @@ ruby:
 	@command -v bundle >/dev/null 2>&1 || { echo "Error: bundle is required to build the Ruby host" >&2; exit 127; }
 	cd ruby && bundle config set --local path vendor/bundle && bundle install
 
+# JDK 21 host. The CLI is java/build/install/thue/bin/thue.
+java:
+	@command -v java >/dev/null 2>&1 || { echo "Error: java is required to build the Java host" >&2; exit 127; }
+	./java/gradlew -p java --no-daemon installDist
+
 # Per-PR check. Core features on every host, guest programs on native Go.
 test: test-static test-core test-guests
 
@@ -91,7 +100,7 @@ test-core:
 	  cargo test --manifest-path rust/Cargo.toml; \
 	  cargo build --release --manifest-path rust/Cargo.toml; \
 	fi
-	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "go" ] || [ "$(HOST)" = "wasm" ]; then \
+	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "go" ] || [ "$(HOST)" = "wasm" ] || [ "$(HOST)" = "java" ]; then \
 	  command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }; \
 	fi
 	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "wasm" ]; then \
@@ -140,6 +149,7 @@ metrics:
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to record metrics" >&2; exit 127; }
 	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to record metrics" >&2; exit 127; }
 	@command -v dotnet >/dev/null 2>&1 || { echo "Error: dotnet is required to record metrics" >&2; exit 127; }
+	@command -v java >/dev/null 2>&1 || { echo "Error: java is required to record metrics" >&2; exit 127; }
 	uv run python metrics/record.py
 
 # Package dry run. Does not publish. RELEASE_TAG=vX.Y.Z also requires every
@@ -205,4 +215,11 @@ ifeq ($(HOST),)
 test-core: csharp
 else ifeq ($(HOST),csharp)
 test-core: csharp
+endif
+
+test-full: java
+ifeq ($(HOST),)
+test-core: java
+else ifeq ($(HOST),java)
+test-core: java
 endif

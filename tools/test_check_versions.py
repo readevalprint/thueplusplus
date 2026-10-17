@@ -33,6 +33,9 @@ def write_tree(root: Path, version: str) -> None:
     csharp = root / "csharp"
     csharp.mkdir()
     (csharp / "Directory.Build.props").write_text(f"<Project><PropertyGroup><Version>{version}</Version></PropertyGroup></Project>\n")
+    java = root / "java"
+    java.mkdir()
+    (java / "build.gradle.kts").write_text(f'version = "{version}"\n')
 
 
 def expect_error(fn) -> None:

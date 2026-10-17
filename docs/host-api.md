@@ -2,7 +2,7 @@
 
 Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
-This is the embedder contract for the Python interpreter, the Go interpreter, the Go wasm module, the Rust crate, the C++ library, the Ruby gem, and the C# library. The CLI is a host that follows the same rules.
+This is the embedder contract for the Python interpreter, the Go interpreter, the Go wasm module, the Rust crate, the C++ library, the Ruby gem, the C# library, and the Java package. The CLI is a host that follows the same rules.
 
 ## Safe by default
 
@@ -18,6 +18,7 @@ A process binding exists only after the host opts in:
 | C++ | `AddProcBinding(name, command)` |
 | Ruby | `add_proc_binding(name, command)` |
 | C# | `AddProcBinding(name, command)` |
+| Java | `addProcBinding(name, command)` |
 | CLI | `--proc:NAME COMMAND` |
 | wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thuelang` package spawns a process only when it is given `--proc`. |
 
@@ -53,9 +54,10 @@ A read past the scripted lines is `EOF before newline`. A read of a write-only s
 | C++ | `BindScripts` and `ScriptWrites` |
 | Ruby | `bind_scripts` and `script_writes` |
 | C# | `BindScripts` and `ScriptWrites` |
+| Java | `bindScripts` and `scriptWrites` |
 | wasm Node CLI | `--resources` and `--resource-out` |
 
-These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go and C#; `max_evals`, `max_state_bytes`, and `max_steps` in Python, Rust, and Ruby; `set_max_evals`, `set_max_state_bytes`, and `set_max_steps` in C++; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it. Rust uses `None`. C++ uses `std::nullopt`. Ruby uses `nil`. C# uses `null`.
+These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go and C#; `max_evals`, `max_state_bytes`, and `max_steps` in Python, Rust, and Ruby; `set_max_evals`, `set_max_state_bytes`, and `set_max_steps` in C++; `setMaxEvals`, `setMaxStateBytes`, and `setMaxSteps` in Java; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it. Rust uses `None`. C++ uses `std::nullopt`. Ruby uses `nil`. C# uses `null`. Java passes `null`.
 
 ## Exit codes
 
@@ -82,21 +84,22 @@ The reason is part of the host API:
 | Rust | `RunFailure::Limit` carries `LimitError` (`kind`, `exit_code`, `message`). `limit()` returns it. `RunFailure::Message` is any other failure. |
 | Ruby | `Thuelang::LimitExceeded`, a `RuntimeError` with `kind`, `code`, and the message as the exception text. |
 | C# | `LimitException` carries `Kind`, `Code`, and `Message`. Any other failure is `ThueException` and the CLI exits 1. |
+| Java | `LimitException`, a `ThueException`. `kind()` is `steps`, `evals`, `state`, or `timeout`. `code()` is 10–13. The message has no `Error: ` prefix. |
 
 Rate limiting across runs, and wall-clock limits other than a `::<` timeout written in the program, are the host's job. The interpreter bounds one run's probes, applied steps, and state size. It does not bound how many runs a host starts.
 
-A `::<` read waits for one newline-terminated line. The Go `stdin` resource and every process read return `ERR:resource:NAME:timeout` when that line has not arrived at the deadline. A line that arrives after a timeout stays available for a later read of the same resource. The Python `stdin` resource returns the same timeout when `stdin` is not readable within the deadline, then reads one line. A stream that is already at EOF, with no newline, is `EOF before newline`, not a timeout. The wasm module passes the timeout, in seconds, to the host `readLine` callback. The Node CLI's stdin callback enforces that deadline and returns the same timeout error. The Rust `stdin` resource returns that same timeout, and a closed stdin with no newline is `EOF before newline`. The Ruby `stdin` resource returns that same timeout, and a closed stdin with no newline is `EOF before newline`. The C# `stdin` resource does the same.
+A `::<` read waits for one newline-terminated line. The Go `stdin` resource and every process read return `ERR:resource:NAME:timeout` when that line has not arrived at the deadline. A line that arrives after a timeout stays available for a later read of the same resource. The Python `stdin` resource returns the same timeout when `stdin` is not readable within the deadline, then reads one line. A stream that is already at EOF, with no newline, is `EOF before newline`, not a timeout. The wasm module passes the timeout, in seconds, to the host `readLine` callback. The Node CLI's stdin callback enforces that deadline and returns the same timeout error. The Rust `stdin` resource returns that same timeout, and a closed stdin with no newline is `EOF before newline`. The Ruby `stdin` resource returns that same timeout, and a closed stdin with no newline is `EOF before newline`. The C# `stdin` resource does the same. The Java `stdin` resource returns that same timeout.
 
 Repository runners do not clear these limits. Conformance passes explicit `--max-evals`, `--max-steps`, and `--max-state-bytes`, wraps the process in `timeout(1)`, and kills it if resident memory passes 256 MiB. A manifest may pass `unlimited` only by setting `allow_unlimited = true` on a single case. See [conformance.md](conformance.md).
 
 ## Metering
 
-| | Go | Python | C++ | wasm result | Rust | Ruby | C# |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| rule probes | `EvalCount` | `eval_count` | `eval_count()` | `evalCount` | `eval_count` | `eval_count` | `EvalCount` |
-| applied rewrites | `AppliedSteps` | `applied_steps` | `applied_steps()` | `appliedSteps` | `applied_steps` | `applied_steps` | `AppliedSteps` |
-| trace switch | `TraceEnabled` | `trace_enabled` | `set_trace_enabled` | `trace: true` | `trace_enabled` | `trace_enabled` | `TraceEnabled` |
-| trace log | `Trace` | `trace` | `trace()` | `trace` | `trace` | `trace` | `Trace` |
+| | Go | Python | C++ | wasm result | Rust | Ruby | C# | Java |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| rule probes | `EvalCount` | `eval_count` | `eval_count()` | `evalCount` | `eval_count` | `eval_count` | `EvalCount` | `evalCount()` |
+| applied rewrites | `AppliedSteps` | `applied_steps` | `applied_steps()` | `appliedSteps` | `applied_steps` | `applied_steps` | `AppliedSteps` | `appliedSteps()` |
+| trace switch | `TraceEnabled` | `trace_enabled` | `set_trace_enabled` | `trace: true` | `trace_enabled` | `trace_enabled` | `TraceEnabled` | `setTraceEnabled` |
+| trace log | `Trace` | `trace` | `trace()` | `trace` | `trace` | `trace` | `Trace` | `formatTrace()` |
 
 The CLI flag `--counts PATH` writes those two numbers as JSON: `applied_steps` and `probes` (`probes` is the eval count). The file is written after a run, including a limit stop. `--list-rules` does not write it.
 
@@ -110,7 +113,7 @@ The CLI flag `--metrics PATH` writes one JSON object, the same on every host. Th
 
 `regex_evals` counts regex searches. A literal-prefix miss does not search and does not count. `regex_matches` counts searches that find a match. `state_bytes` is the sum of the UTF-8 state length at the start of the run and after every applied rewrite. `state_peak` is the maximum of those lengths. `rule_count` and `rule_chars` are the trimmed rule rows and their UTF-8 bytes. Those counters are diagnostics. Ranking uses `cost`. An exit rule does not add a state sample and does not count as an applied step. The file is written after a run, including a limit stop. A load failure does not write it. `--list-rules` does not write it. `probes` stays on `--counts` and is not in this object.
 
-The library records the same object on every run and returns it as a value. Go is `Metrics() RunMetrics`. Python is `metrics()` on `RunMetrics`. C++ is `metrics()`. Rust is `metrics()`. Ruby is `metrics` on `Thuelang::RunMetrics`. C# is `Metrics()`. The wasm result field is `metrics`. `Run` still returns the exit code.
+The library records the same object on every run and returns it as a value. Go is `Metrics() RunMetrics`. Python is `metrics()` on `RunMetrics`. C++ is `metrics()`. Rust is `metrics()`. Ruby is `metrics` on `Thuelang::RunMetrics`. C# is `Metrics()`. Java is `metrics()`. The wasm result field is `metrics`. `Run` still returns the exit code.
 
 `Run` resets the applied-step count, the metrics counters, and the trace log. Eval count accumulates for the lifetime of the interpreter. Rule count and rule chars follow the loaded program and are not reset.
 
@@ -146,6 +149,7 @@ Each host is an importable package. The CLI in that language is a thin wrapper o
 | C++ | CMake target `thuelang` (`thuelang::thuelang`) | `thue-cli`, output name `thue` |
 | Ruby | gem `thuelang` (`ruby/`) | `thue`, `ruby/exe/thue` in this repo |
 | C# | NuGet `Thuelang`, namespace `Thuelang` (`csharp/`) | `thue`, `build/csharp/thue` in this repo |
+| Java | Gradle package `org.thuelang:thuelang` (`java/`) | `thue`, `java/build/install/thue/bin/thue` in this repo |
 
 Go:
 
@@ -278,3 +282,23 @@ catch (LimitException limit)
 ```
 
 `null` clears `MaxEvals`, `MaxStateBytes`, or `MaxSteps`. Leave them at the values from `new Interpreter()` for the defaults. `0` is a real limit. The NuGet package is not published. See [releasing.md](releasing.md).
+
+Java:
+
+```java
+import org.thuelang.thuelang.Interpreter;
+import org.thuelang.thuelang.LimitException;
+
+Interpreter interp = new Interpreter();
+interp.setTraceEnabled(true);
+interp.loadProgram("hello.thue");
+interp.addProcBinding("echo", "cat");
+try {
+    int code = interp.run();
+} catch (LimitException err) {
+    // err.kind() is steps, evals, state, or timeout. err.code() is 10–13.
+    throw err;
+}
+```
+
+`null` clears `setMaxEvals`, `setMaxStateBytes`, or `setMaxSteps`. Leave them at the values from `new Interpreter()` for the defaults. `0` is a real limit. The package is not published. See [releasing.md](releasing.md).

@@ -31,6 +31,14 @@ jobs:
           ruby-version: "3.2"
           bundler-cache: true
           working-directory: ruby
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: |
+            java/**/*.gradle.kts
+            java/gradle/wrapper/gradle-wrapper.properties
       - name: Run conformance, including the C++ host
         env:
           # Same stretch the Rust workflow uses. A heavy Lisp case misses
