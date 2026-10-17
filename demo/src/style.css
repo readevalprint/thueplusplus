@@ -1,3 +1,6 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* Visual tokens follow the distance-field palette published by LukyVj
    in https://github.com/LukyVj/GSS (Apache-2.0). The GSS mark, wordmark,
    and name are not used. Light-mode values are original. */
@@ -79,6 +82,11 @@
   --signal: #ff5a36;
   --signal-hover: #ff7a5c;
   --signal-wash: rgb(255 90 54 / 0.1);
+  --chart-1: #ff5a36;
+  --chart-2: #e8e6e1;
+  --chart-3: #c4b8a5;
+  --chart-4: #8d8880;
+  --chart-5: #ff9a80;
   --error-text: #ff9a80;
   --diff-removed-line: rgb(255 90 70 / 0.14);
   --diff-removed-char: rgb(255 70 55 / 0.46);
@@ -101,6 +109,11 @@ html:not(.dark) {
   --signal: #ff5a36;
   --signal-hover: #e24e2d;
   --signal-wash: rgb(255 90 54 / 0.12);
+  --chart-1: #e24e2d;
+  --chart-2: #1a1916;
+  --chart-3: #5c574e;
+  --chart-4: #8a7268;
+  --chart-5: #b4331a;
   --error-text: #b4331a;
   --diff-removed-line: rgb(180 40 30 / 0.1);
   --diff-removed-char: rgb(180 40 30 / 0.32);
@@ -132,11 +145,6 @@ html:not(.dark) {
   --border: var(--line);
   --input: var(--isoline);
   --ring: var(--signal);
-  --chart-1: var(--signal);
-  --chart-2: var(--ash);
-  --chart-3: var(--dim);
-  --chart-4: var(--isoline);
-  --chart-5: var(--gutter);
   --sidebar: var(--void);
   --sidebar-foreground: var(--bone);
   --sidebar-primary: var(--signal);
@@ -309,4 +317,12 @@ html:not(.dark) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.metric-chart {
+  --vis-axis-font-family: var(--font-mono);
+  --vis-axis-grid-color: var(--line);
+  --vis-axis-tick-label-color: var(--ash);
+  --vis-axis-tick-label-font-size: 11px;
+  --vis-scatter-stroke-width: 0px;
 }

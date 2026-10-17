@@ -1,6 +1,20 @@
 <script setup lang="ts">
+import type { ChartConfig } from '@/components/ui/chart'
+import { CurveType } from '@unovis/ts'
+import { VisAxis, VisLine, VisScatter, VisXYContainer } from '@unovis/vue'
+import { useMediaQuery } from '@vueuse/core'
 import { computed } from 'vue'
-import { HistoryError, placeChart, pointAt, rangeLabel, stepPath, type CommitRef, type NamedSeries } from '@/metrics'
+import {
+  ChartContainer,
+  ChartCrosshair,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  componentToString,
+} from '@/components/ui/chart'
+import { HistoryError, pointAt, rangeLabel, type CommitRef, type Machine, type NamedSeries, type SeriesPoint } from '@/metrics'
+
+const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'] as const
 
 const props = withDefaults(defineProps<{
   commits: CommitRef[]
@@ -11,76 +25,104 @@ const props = withDefaults(defineProps<{
   sliderLabel: string
   testId: string
   controls?: boolean
+  scale?: 'count' | 'ratio'
+  pointText?: (seriesId: string, point: SeriesPoint) => string
+  commitTitle?: (commit: CommitRef & { machine?: Machine | null }) => string
 }>(), {
   controls: true,
+  scale: 'count',
 })
 
 const emit = defineEmits<{
   select: [index: number]
 }>()
 
-const frame = computed(() => {
+const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+
+interface Datum {
+  index: number
+  title: string
+  [key: string]: number | string | undefined
+}
+
+const chartConfig = computed(() => {
   if (props.commits.length === 0) throw new HistoryError('chart has no commits')
   if (!Number.isInteger(props.selected) || props.selected < 0 || props.selected >= props.commits.length) {
     throw new HistoryError(`chart selection ${props.selected} is outside 0..${props.commits.length - 1}`)
   }
-  const values = props.series.flatMap(series => series.points.map(point => point.value))
-  if (values.length === 0) throw new HistoryError('chart has no values')
-  const dataMax = Math.max(...values)
-  return { placed: placeChart(props.commits.length, dataMax), dataMax }
-})
-
-interface Drawn {
-  id: string
-  tone: number
-  d: string
-  dots: { x: number; y: number; title: string; selected: boolean }[]
-}
-
-interface PlotPoint {
-  index: number
-  x: number
-  y: number
-  value: number
-  change: boolean
-  title: string
-}
-
-const drawn = computed(() => {
-  const { placed } = frame.value
-  return props.series.map((series, index): Drawn => {
-    const runs: PlotPoint[][] = []
-    let run: PlotPoint[] = []
-    props.commits.forEach((commit, commitIndex) => {
-      const point = pointAt(series.points, commit.commit, props.order)
-      if (!point) {
-        if (run.length > 0) runs.push(run)
-        run = []
-        return
-      }
-      run.push({
-        index: commitIndex,
-        x: placed.xAt(commitIndex),
-        y: placed.yAt(point.value),
-        value: point.value,
-        change: point.commit === commit.commit,
-        title: rangeLabel(point),
-      })
-    })
-    if (run.length > 0) runs.push(run)
-    const dots = runs.flat().filter(point => point.change).map(point => ({
-      x: point.x,
-      y: point.y,
-      title: point.title,
-      selected: point.index === props.selected,
-    }))
-    const d = runs.map(item => stepPath(item)).filter(path => path.length > 0).join(' ')
-    return { id: series.id, tone: index % 4, d, dots }
+  if (props.series.length === 0) throw new HistoryError('chart has no series')
+  if (props.series.length > CHART_COLORS.length) throw new HistoryError(`chart has ${props.series.length} series`)
+  const config: ChartConfig = {}
+  props.series.forEach((series, index) => {
+    config[series.id] = { label: series.label, color: CHART_COLORS[index] }
   })
+  return config
 })
 
-const firstDate = computed(() => props.commits[0]?.timestamp.slice(0, 10) ?? '')
-const lastDate = computed(() => props.commits[props.commits.length - 1]?.timestamp.slice(0, 10) ?? '')
+function textFor(seriesId: string, point: SeriesPoint): string {
+  return props.pointText ? props.pointText(seriesId, point) : rangeLabel(point)
+}
+
+function titleFor(commit: CommitRef): string {
+  return props.commitTitle ? props.commitTitle(commit) : commit.timestamp.slice(0, 10)
+}
+
+const rows = computed(() => props.commits.map((commit, index): Datum => {
+  const row: Datum = { index, title: titleFor(commit) }
+  for (const series of props.series) {
+    const point = pointAt(series.points, commit.commit, props.order)
+    if (!point) continue
+    row[`y:${series.id}`] = point.value
+    row[series.id] = textFor(series.id, point)
+    if (point.commit === commit.commit) row[`c:${series.id}`] = point.value
+  }
+  return row
+}))
+
+function numeric(value: number | string | undefined): number | undefined {
+  return typeof value === 'number' ? value : undefined
+}
+
+const yLine = computed(() => props.series.map(series => (row: Datum) => numeric(row[`y:${series.id}`])))
+const yPoint = computed(() => props.series.map(series => (row: Datum) => numeric(row[`c:${series.id}`])))
+const colors = computed(() => props.series.map(series => `var(--color-${series.id})`))
+const xTicks = computed(() => rows.value.length > 1 ? [0, rows.value.length - 1] : [0])
+
+function xOf(row: Datum): number {
+  return row.index
+}
+
+function formatX(tick: number): string {
+  const commit = props.commits[tick]
+  return commit ? commit.timestamp.slice(0, 10) : ''
+}
+
+function formatY(tick: number): string {
+  if (!Number.isFinite(tick)) return ''
+  if (props.scale === 'ratio') {
+    const rounded = Math.round(tick * 10) / 10
+    const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+    return `${text}×`
+  }
+  return String(Math.round(tick))
+}
+
+function pointSize(row: Datum): number {
+  return row.index === props.selected ? 7 : 4
+}
+
+function labelFormatter(x: number | Date): string {
+  if (typeof x !== 'number' || !Number.isFinite(x)) return ''
+  const row = rows.value[Math.round(x)]
+  return row?.title ?? ''
+}
+
+const tooltip = componentToString(chartConfig.value, ChartTooltipContent, {
+  class: 'max-w-[min(18rem,80vw)] font-mono break-words',
+  hideLabel: props.scale === 'count',
+  labelFormatter,
+})
+
 const selectedCommit = computed(() => props.commits[props.selected]?.commit.slice(0, 12) ?? '')
 
 function onSlider(event: Event): void {
@@ -90,84 +132,46 @@ function onSlider(event: Event): void {
   if (index >= props.commits.length) throw new HistoryError(`commit index ${index}`)
   emit('select', index)
 }
-
-function onPointer(event: PointerEvent): void {
-  const svg = event.currentTarget
-  if (!(svg instanceof SVGSVGElement)) return
-  const rect = svg.getBoundingClientRect()
-  if (rect.width === 0) return
-  const x = ((event.clientX - rect.left) / rect.width) * frame.value.placed.width
-  let nearest = 0
-  let best = Number.POSITIVE_INFINITY
-  for (let index = 0; index < props.commits.length; index += 1) {
-    const distance = Math.abs(frame.value.placed.xAt(index) - x)
-    if (distance < best) {
-      best = distance
-      nearest = index
-    }
-  }
-  emit('select', nearest)
-}
 </script>
 
 <template>
-  <figure :data-test="testId" class="border-line bg-surface border p-3">
-    <svg
-      :viewBox="`0 0 ${frame.placed.width} ${frame.placed.height}`"
-      class="h-auto w-full"
-      role="img"
-      :aria-label="label"
-      font-family="JetBrains Mono, ui-monospace, monospace"
-      @pointerdown="onPointer"
-    >
-      <line
-        :x1="frame.placed.plotLeft"
-        :x2="frame.placed.plotRight"
-        :y1="frame.placed.plotBottom"
-        :y2="frame.placed.plotBottom"
-        stroke="var(--line)"
-      />
-      <line
-        :x1="frame.placed.plotLeft"
-        :x2="frame.placed.plotRight"
-        :y1="frame.placed.yAt(frame.dataMax)"
-        :y2="frame.placed.yAt(frame.dataMax)"
-        stroke="var(--line)"
-      />
-      <text :x="frame.placed.plotLeft - 8" :y="frame.placed.plotBottom" fill="var(--ash)" font-size="11" text-anchor="end" dominant-baseline="middle">0</text>
-      <text :x="frame.placed.plotLeft - 8" :y="frame.placed.yAt(frame.dataMax)" fill="var(--ash)" font-size="11" text-anchor="end" dominant-baseline="middle">{{ frame.dataMax }}</text>
-      <line
-        :x1="frame.placed.xAt(selected)"
-        :x2="frame.placed.xAt(selected)"
-        :y1="frame.placed.plotTop"
-        :y2="frame.placed.plotBottom"
-        stroke="var(--signal)"
-        stroke-opacity="0.45"
-      />
-      <template v-for="series in drawn" :key="series.id">
-        <path v-if="series.d" :d="series.d" vector-effect="non-scaling-stroke" :class="['series', `tone-${series.tone}`]" />
-        <circle
-          v-for="(dot, dotIndex) in series.dots"
-          :key="`${series.id}-${dotIndex}`"
-          :cx="dot.x"
-          :cy="dot.y"
-          :r="dot.selected ? 3.5 : 2.5"
-          :class="['dot', `tone-${series.tone}`]"
-        >
-          <title>{{ dot.title }}</title>
-        </circle>
-      </template>
-      <text :x="frame.placed.plotLeft" :y="frame.placed.height - 4" fill="var(--dim)" font-size="11">{{ firstDate }}</text>
-      <text v-if="commits.length > 1" :x="frame.placed.plotRight" :y="frame.placed.height - 4" fill="var(--dim)" font-size="11" text-anchor="end">{{ lastDate }}</text>
-    </svg>
-    <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-      <li v-for="(item, index) in series" :key="item.id" class="text-ash flex items-center gap-2 font-mono text-[12px]">
-        <svg width="18" height="8" aria-hidden="true">
-          <line x1="0" y1="4" x2="18" y2="4" stroke-width="2" :class="`tone-${index % 4}`" />
-        </svg>
-        {{ item.label }}
-      </li>
-    </ul>
+  <figure :data-test="testId" class="border-line bg-surface min-w-0 border p-3">
+    <ChartContainer :config="chartConfig" class="metric-chart aspect-auto h-[220px] w-full" :cursor="true">
+      <VisXYContainer
+        :data="rows"
+        :duration="reduceMotion ? 0 : 200"
+        :margin="{ top: 8, right: 8, bottom: 28, left: 64 }"
+        :aria-label="label"
+      >
+        <VisLine
+          :x="xOf"
+          :y="yLine"
+          :color="colors"
+          :curve-type="CurveType.StepAfter"
+          :line-width="1.5"
+        />
+        <VisScatter :x="xOf" :y="yPoint" :color="colors" :size="pointSize" />
+        <VisAxis
+          type="x"
+          :tick-line="false"
+          :domain-line="false"
+          :grid-line="false"
+          :tick-values="xTicks"
+          :tick-format="formatX"
+        />
+        <VisAxis
+          type="y"
+          :tick-line="false"
+          :domain-line="false"
+          :grid-line="true"
+          :num-ticks="4"
+          :tick-format="formatY"
+        />
+        <ChartTooltip />
+        <ChartCrosshair :x="xOf" :y="yLine" :color="colors" :template="tooltip" />
+      </VisXYContainer>
+      <ChartLegendContent v-if="series.length > 1" class="flex-wrap justify-start gap-x-4 gap-y-1" />
+    </ChartContainer>
     <label v-if="controls && commits.length > 1" class="mt-3 block font-mono text-[11px] tracking-[0.08em] uppercase">
       <span class="text-dim flex items-center justify-between gap-3">
         <span>Commit</span>
@@ -189,41 +193,6 @@ function onPointer(event: PointerEvent): void {
 </template>
 
 <style scoped>
-.series {
-  fill: none;
-  stroke-width: 1.5;
-}
-.dot {
-  stroke: none;
-}
-.tone-0 {
-  --tone: var(--signal);
-  stroke: var(--tone);
-  fill: var(--tone);
-}
-.tone-1 {
-  --tone: var(--bone);
-  stroke: var(--tone);
-  fill: var(--tone);
-}
-.tone-2 {
-  --tone: var(--ash);
-  stroke: var(--tone);
-  fill: var(--tone);
-  stroke-dasharray: 6 4;
-}
-.tone-3 {
-  --tone: var(--dim);
-  stroke: var(--tone);
-  fill: var(--tone);
-  stroke-dasharray: 1.5 3.5;
-}
-.series.tone-0,
-.series.tone-1,
-.series.tone-2,
-.series.tone-3 {
-  fill: none;
-}
 .commit-slider {
   appearance: none;
   background: transparent;

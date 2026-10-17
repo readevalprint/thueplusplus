@@ -5,15 +5,15 @@ import {
   benchmarkCommits,
   changeAxis,
   collapseRuns,
+  formatTimesGo,
   guestName,
   guestRuleChart,
   history,
-  hostDurationSeries,
+  hostRatio,
+  hostRatioSeries,
   loadHistory,
-  placeChart,
   pointAt,
   rangeLabel,
-  stepPath,
   taskCommits,
 } from './metrics'
 
@@ -67,17 +67,15 @@ describe('metrics history', () => {
       ['cpp', 'cpp', 624, 0, null],
     ])
     expect(latestBench.memoryCapBytes).toBe(268435456)
-    const hosts = hostDurationSeries(benches)
-    expect(hosts.find(series => series.id === 'wasm')?.points.at(-1)).toEqual({ commit: LAST_REWRITE, until: LAST_REWRITE, value: 1408 })
-    expect(hosts.find(series => series.id === 'cpp')?.points.at(-1)).toEqual({ commit: LAST_REWRITE, until: LAST_REWRITE, value: 624 })
-  })
-
-  it('places zero on the baseline and the max near the top', () => {
-    const placed = placeChart(3, 100, 640, 220)
-    expect(placed.yAt(0)).toBe(placed.plotBottom)
-    expect(placed.yAt(100)).toBeLessThan(placed.plotTop + (placed.plotBottom - placed.plotTop) * 0.1)
-    expect(placed.xAt(0)).toBe(placed.plotLeft)
-    expect(placed.xAt(2)).toBe(placed.plotRight)
+    const hosts = hostRatioSeries(benches, 'durationMs')
+    const wasm = hosts.find(series => series.id === 'wasm')?.points.at(-1)
+    const cpp = hosts.find(series => series.id === 'cpp')?.points.at(-1)
+    expect(wasm).toEqual({ commit: LAST_REWRITE, until: LAST_REWRITE, value: 1408 / 607 })
+    expect(cpp).toEqual({ commit: LAST_REWRITE, until: LAST_REWRITE, value: 624 / 607 })
+    expect(formatTimesGo(wasm!.value)).toBe('2.3× go')
+    expect(formatTimesGo(1)).toBe('1× go')
+    expect(formatTimesGo(10.74)).toBe('10.7× go')
+    expect(hosts.find(series => series.id === 'go')?.points.at(-1)?.value).toBe(1)
     expect(guestName('lisp', names)).toBe('Lisp')
     expect(guestName('forth', new Map())).toBe('Forth')
   })
@@ -93,11 +91,12 @@ describe('metrics history', () => {
       ],
     })
     const commits = benchmarkCommits(loaded, 'rewrite')
-    const series = hostDurationSeries(commits)
+    const series = hostRatioSeries(commits, 'durationMs')
     expect(series.map(item => item.id)).toEqual(['python', 'go', 'wasm', 'rust'])
     expect(series.map(item => item.label)).toEqual(['python', 'go native', 'wasm (node)', 'rust'])
-    expect(series.find(item => item.id === 'rust')?.points).toEqual([{ commit: newer, until: newer, value: 10 }])
-    expect(series.find(item => item.id === 'python')?.points).toEqual([{ commit: older, until: newer, value: 10 }])
+    expect(series.find(item => item.id === 'rust')?.points).toEqual([{ commit: newer, until: newer, value: 1 }])
+    expect(series.find(item => item.id === 'python')?.points).toEqual([{ commit: older, until: newer, value: 1 }])
+    expect(hostRatio(commits[1], 'rust', 'memoryBytes')).toBeNull()
     expect(() => loadHistory({
       schema_version: 1,
       entries: [benchEntry('c'.repeat(40), '2026-01-03T00:00:00Z', ['erlang'], 10)],
@@ -108,26 +107,32 @@ describe('metrics history', () => {
     const first = 'a'.repeat(40)
     const gap = 'b'.repeat(40)
     const last = 'c'.repeat(40)
-    const loaded = loadHistory({
-      schema_version: 1,
-      entries: [
-        benchEntry(first, '2026-01-01T00:00:00Z', ['python', 'rust'], 10),
-        benchEntry(gap, '2026-01-02T00:00:00Z', ['python'], 12),
-        benchEntry(last, '2026-01-03T00:00:00Z', ['python', 'rust'], 10),
-      ],
-    })
+    const open = benchEntry(first, '2026-01-01T00:00:00Z', ['python', 'go', 'rust'], 10)
+    const middle = benchEntry(gap, '2026-01-02T00:00:00Z', ['python', 'go'], 10)
+    const close = benchEntry(last, '2026-01-03T00:00:00Z', ['python', 'go', 'rust'], 10)
+    setDuration(open, 'python', 20)
+    setDuration(middle, 'python', 24)
+    setDuration(close, 'python', 20)
+    const loaded = loadHistory({ schema_version: 1, entries: [open, middle, close] })
     const commits = benchmarkCommits(loaded, 'rewrite')
-    const series = hostDurationSeries(commits)
+    const series = hostRatioSeries(commits, 'durationMs')
     expect(series.find(item => item.id === 'python')?.points).toEqual([
-      { commit: first, until: first, value: 10 },
-      { commit: gap, until: gap, value: 12 },
-      { commit: last, until: last, value: 10 },
+      { commit: first, until: first, value: 2 },
+      { commit: gap, until: gap, value: 2.4 },
+      { commit: last, until: last, value: 2 },
     ])
     expect(series.find(item => item.id === 'rust')?.points).toEqual([
-      { commit: first, until: first, value: 10 },
-      { commit: last, until: last, value: 10 },
+      { commit: first, until: first, value: 1 },
+      { commit: last, until: last, value: 1 },
+    ])
+    expect(series.find(item => item.id === 'go')?.points).toEqual([
+      { commit: first, until: last, value: 1 },
     ])
     expect(changeAxis(commits, series).map(commit => commit.commit)).toEqual([first, gap, last])
+    open.benchmarks[0].hosts.find(host => host.id === 'go')!.memory_bytes = 0
+    open.benchmarks[0].hosts.find(host => host.id === 'python')!.memory_bytes = 1000
+    const zeroMemory = loadHistory({ schema_version: 1, entries: [open] })
+    expect(hostRatio(benchmarkCommits(zeroMemory, 'rewrite')[0], 'python', 'memoryBytes')).toBeNull()
     expect(collapseRuns([
       { commit: first, value: 4 },
       { commit: gap, value: 4 },
@@ -136,11 +141,10 @@ describe('metrics history', () => {
       { commit: first, until: gap, value: 4 },
       { commit: last, until: last, value: 9 },
     ])
-    expect(stepPath([
-      { x: 0, y: 10, value: 1 },
-      { x: 20, y: 10, value: 1 },
-      { x: 40, y: 4, value: 2 },
-    ])).toBe('M0.0 10.0L20.0 10.0L40.0 10.0L40.0 4.0')
+    const zeroGo = benchEntry('e'.repeat(40), '2026-01-05T00:00:00Z', ['python', 'go'], 10)
+    zeroGo.benchmarks[0].hosts[1].duration_ms = 0
+    const loadedZero = loadHistory({ schema_version: 1, entries: [zeroGo] })
+    expect(() => hostRatio(benchmarkCommits(loadedZero, 'rewrite')[0], 'python', 'durationMs')).toThrow(/duration ratio/)
   })
 
   it('rejects a document that breaks the schema', () => {
@@ -149,7 +153,9 @@ describe('metrics history', () => {
     const older = blank('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '2026-01-02T00:00:00Z')
     const newer = blank('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2026-01-01T00:00:00Z')
     expect(() => loadHistory({ schema_version: 1, entries: [older, newer] })).toThrow(/out of order/)
-    expect(() => placeChart(0, 1)).toThrow(HistoryError)
+    const { machine: _machine, ...missingMachine } = benchEntry('e'.repeat(40), '2026-01-05T00:00:00Z', ['python'], 10)
+    expect(_machine).toBeNull()
+    expect(() => loadHistory({ schema_version: 1, entries: [missingMachine] })).toThrow(/machine/)
     expect(() => assertEnvironment('go', 'wasm (node)')).toThrow(/go native/)
     expect(() => assertEnvironment('wasm', 'go native')).toThrow(/go native/)
     const negative = benchEntry('d'.repeat(40), '2026-01-04T00:00:00Z', ['python'], 10)
@@ -158,11 +164,18 @@ describe('metrics history', () => {
   })
 })
 
+function setDuration(entry: ReturnType<typeof benchEntry>, host: string, duration: number): void {
+  const row = entry.benchmarks[0].hosts.find(item => item.id === host)
+  if (!row) throw new Error(`missing ${host}`)
+  row.duration_ms = duration
+}
+
 function benchEntry(commit: string, timestamp: string, hosts: string[], duration: number) {
   return {
     commit,
     author: 'Ada <ada@example.com>',
     timestamp,
+    machine: null as null | { os: string, release: string, arch: string, cpu: string, cpus: number },
     guests: {},
     tasks: null,
     benchmarks: [{
@@ -190,6 +203,7 @@ function blank(commit: string, timestamp: string) {
     commit,
     author: 'Ada <ada@example.com>',
     timestamp,
+    machine: null as null | { os: string, release: string, arch: string, cpu: string, cpus: number },
     guests: {},
     tasks: null,
     benchmarks: null,

@@ -22,5 +22,7 @@ describe('summary', () => {
     assert.ok(files.length > 0)
     assert.equal(new Set(summary.entries.map(entry => entry.commit)).size, files.length + 1)
     assert.equal(summary.entries[summary.entries.length - 1].commit, head)
+    assert.deepEqual(summary.entries[summary.entries.length - 1].machine, latest.machine)
+    assert.equal(summary.entries.some(entry => entry.machine === null), true)
   })
 })

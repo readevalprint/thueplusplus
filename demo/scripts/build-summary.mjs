@@ -64,9 +64,33 @@ function summarizeFile(file, ids) {
     commit: sha,
     author: requireText(bench.author, `${sha} author`),
     timestamp,
+    machine: summarizeMachine(sha, bench.machine),
     guests: summarizeGuests(sha, bench.guests),
     tasks: summarizeTasks(sha, bench.tasks),
     benchmarks: summarizeBenchmarks(sha, bench.benchmarks, ids),
+  }
+}
+
+function summarizeMachine(commit, machine) {
+  if (machine == null) return null
+  if (typeof machine !== 'object' || Array.isArray(machine)) {
+    throw new SummaryError(`${commit}: machine must be an object or null`)
+  }
+  const keys = ['os', 'release', 'arch', 'cpu', 'cpus']
+  const present = Object.keys(machine)
+  if (present.length !== keys.length || keys.some(key => !Object.hasOwn(machine, key))) {
+    throw new SummaryError(`${commit}: machine keys must be ${keys.join(', ')}`)
+  }
+  const cpus = machine.cpus
+  if (typeof cpus !== 'number' || !Number.isInteger(cpus) || cpus < 1) {
+    throw new SummaryError(`${commit}: machine cpus must be a positive integer`)
+  }
+  return {
+    os: requireText(machine.os, `${commit} machine os`),
+    release: requireText(machine.release, `${commit} machine release`),
+    arch: requireText(machine.arch, `${commit} machine arch`),
+    cpu: requireText(machine.cpu, `${commit} machine cpu`),
+    cpus,
   }
 }
 

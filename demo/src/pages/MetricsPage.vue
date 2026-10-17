@@ -9,16 +9,26 @@ import { catalog } from '@/catalog'
 import {
   benchmarkCommits,
   changeAxis,
+  commitSpan,
   commitUrl,
   countSeries,
+  formatTimesGo,
   guestRuleChart,
+  HistoryError,
   history,
-  hostDurationSeries,
+  hostMeasurementText,
+  hostRatio,
+  hostRatioSeries,
+  machineLabel,
   pointAt,
+  rangeLabel,
   seriesFromField,
   taskCommits,
   workloadIds,
   workloadLabel,
+  type CommitRef,
+  type HostMeasure,
+  type SeriesPoint,
   type WorkloadCommit,
 } from '@/metrics'
 import { pages } from '@/site'
@@ -36,7 +46,8 @@ const stepAxis = changeAxis(tasks, stepSeries)
 const workloads = workloadIds(history).map(id => {
   const commits = benchmarkCommits(history, id)
   const counts = countSeries(commits)
-  const hosts = hostDurationSeries(commits)
+  const hosts = hostRatioSeries(commits, 'durationMs')
+  const memory = hostRatioSeries(commits, 'memoryBytes')
   return {
     id,
     label: workloadLabel(id),
@@ -46,6 +57,8 @@ const workloads = workloadIds(history).map(id => {
     countAxis: changeAxis(commits, counts),
     hosts,
     hostAxis: changeAxis(commits, hosts),
+    memory,
+    memoryAxis: changeAxis(commits, memory),
   }
 })
 
@@ -54,6 +67,7 @@ const passIndex = ref(last(passAxis.length))
 const stepIndex = ref(last(stepAxis.length))
 const countIndex = ref<Record<string, number>>({})
 const hostIndex = ref<Record<string, number>>({})
+const memoryIndex = ref<Record<string, number>>({})
 const selectedRule = computed(() => rules.commits[ruleIndex.value])
 const selectedStep = computed(() => stepAxis[stepIndex.value])
 const selectedTask = computed(() => {
@@ -67,7 +81,7 @@ const selectedRules = computed(() => {
   return rules.series.flatMap(series => {
     const point = pointAt(series.points, commit.commit, rules.order)
     if (!point) return []
-    return [{ id: series.id, label: series.label, value: point.value }]
+    return [{ id: series.id, label: series.label, value: point.value, text: rangeLabel(point) }]
   })
 })
 
@@ -97,6 +111,24 @@ watch(() => route.hash, hash => {
 
 function last(count: number): number {
   return count === 0 ? 0 : count - 1
+}
+
+function hostPointText(commits: readonly WorkloadCommit[], hostId: string, point: SeriesPoint, measure: HostMeasure): string {
+  const commit = commits.find(item => item.commit === point.commit)
+  if (!commit) throw new HistoryError(`commit ${point.commit} is not on the chart`)
+  return `${commitSpan(point)} · ${hostMeasurementText(commit, hostId, measure)}`
+}
+
+function hostTitle(commit: CommitRef & { machine?: WorkloadCommit['machine'] }): string {
+  const machine = machineLabel(commit.machine ?? null)
+  const base = `${commit.commit.slice(0, 12)} · ${commit.timestamp.slice(0, 10)}`
+  return machine ? `${base} · ${machine}` : base
+}
+
+function durationLine(commit: WorkloadCommit, hostId: string, environment: string): string {
+  const ratio = hostRatio(commit, hostId, 'durationMs')
+  if (ratio === null) return `${environment} · gap`
+  return `${environment} · ${formatTimesGo(ratio)}`
 }
 </script>
 
@@ -128,7 +160,7 @@ function last(count: number): number {
           <a class="underline underline-offset-4" :href="commitUrl(selectedRule.commit)" rel="noreferrer">{{ selectedRule.commit.slice(0, 12) }}</a>
           <span class="text-ash"> · {{ selectedRule.author }} · {{ selectedRule.timestamp }}</span>
         </p>
-        <p v-for="point in selectedRules" :key="point.id" class="font-mono text-[13px] tabular-nums">{{ point.label }} · {{ point.value }}</p>
+        <p v-for="point in selectedRules" :key="point.id" class="font-mono text-[13px] tabular-nums">{{ point.label }} · {{ point.text }}</p>
       </div>
     </section>
     <section id="tasks" data-test="task-trends" class="flex flex-col gap-3">
@@ -172,7 +204,7 @@ function last(count: number): number {
     </section>
     <section id="benchmarks" data-test="benchmarks" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Benchmarks</h2>
-      <p class="leading-7">Each workload is one program. Applied steps and probes are the same on every host that ran. A host missing from an older commit is a gap. A point is the first commit where that series changed, and the line stays flat through the later commits with the same value. The point tooltip is that commit through the last unchanged commit. Duration is wall-clock milliseconds, including startup. Memory is the peak resident set size when the run recorded it. Each host line is that environment.</p>
+      <p class="leading-7">Each workload is one program. Applied steps and probes are the same on every host that ran. A host missing from an older commit is a gap. A point is the first commit where that series changed, and the line stays flat through the later commits with the same value. The point tooltip is that commit through the last unchanged commit. Steps and probes are counts. Host time and host memory are that host divided by Go native from the same run, so a line reads python 10.7× go. Raw milliseconds, resident memory, and the machine are in the tooltip.</p>
       <p v-if="workloads.length === 0">No benchmark is recorded.</p>
       <article v-for="(workload, index) in workloads" :key="workload.id" class="flex flex-col gap-3">
         <h3 class="font-display text-[18px] font-semibold tracking-[-0.03em]">{{ workload.label }}</h3>
@@ -195,21 +227,41 @@ function last(count: number): number {
         <MetricChart
           v-if="workload.hostAxis.length > 0"
           :test-id="index === 0 ? 'time-chart' : `time-chart-${workload.id}`"
-          :label="`${workload.label} host time by environment`"
+          :label="`${workload.label} host time relative to Go native`"
           slider-label="Host time commit"
+          scale="ratio"
           :commits="workload.hostAxis"
           :order="workload.order"
           :series="workload.hosts"
           :selected="axisIndex(hostIndex, workload.id, workload.hostAxis.length)"
+          :point-text="(hostId, point) => hostPointText(workload.commits, hostId, point, 'durationMs')"
+          :commit-title="hostTitle"
           @select="hostIndex[workload.id] = $event"
         />
+        <h3 v-if="index === 0" id="host-memory" class="font-display mt-4 text-[18px] font-semibold tracking-[-0.03em]">Host memory</h3>
+        <p v-else class="font-display mt-4 text-[18px] font-semibold tracking-[-0.03em]">Host memory</p>
+        <MetricChart
+          v-if="workload.memoryAxis.length > 0"
+          :test-id="index === 0 ? 'memory-chart' : `memory-chart-${workload.id}`"
+          :label="`${workload.label} host memory relative to Go native`"
+          slider-label="Host memory commit"
+          scale="ratio"
+          :commits="workload.memoryAxis"
+          :order="workload.order"
+          :series="workload.memory"
+          :selected="axisIndex(memoryIndex, workload.id, workload.memoryAxis.length)"
+          :point-text="(hostId, point) => hostPointText(workload.commits, hostId, point, 'memoryBytes')"
+          :commit-title="hostTitle"
+          @select="memoryIndex[workload.id] = $event"
+        />
+        <p v-else>No memory is recorded.</p>
         <div v-if="index === 0 && selectedBench" data-test="benchmark-readout" class="flex flex-col gap-1">
           <p class="font-mono text-[13px] leading-6 break-all">
             <a class="underline underline-offset-4" :href="commitUrl(selectedBench.commit)" rel="noreferrer">{{ selectedBench.commit.slice(0, 12) }}</a>
             <span class="text-ash"> · {{ selectedBench.author }} · {{ selectedBench.timestamp }}</span>
           </p>
           <p class="font-mono text-[13px] tabular-nums">steps {{ selectedBench.appliedSteps }} · probes {{ selectedBench.probes }}</p>
-          <p v-for="host in selectedBench.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ host.environment }} · {{ host.durationMs }} ms<template v-if="host.memoryBytes !== null"> · {{ host.memoryBytes }} bytes</template> · exit {{ host.exitCode }}</p>
+          <p v-for="host in selectedBench.hosts" :key="host.id" class="font-mono text-[13px] tabular-nums">{{ durationLine(selectedBench, host.id, host.environment) }}</p>
           <p class="text-ash font-mono text-[13px] leading-6 tabular-nums">max steps {{ selectedBench.maxSteps }} · max probes {{ selectedBench.maxEvals }} · state {{ selectedBench.maxStateBytes }} bytes · timeout {{ selectedBench.timeoutSeconds }} s · memory {{ selectedBench.memoryCapBytes }} bytes</p>
         </div>
       </article>
