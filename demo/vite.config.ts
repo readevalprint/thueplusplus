@@ -30,6 +30,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      ...(process.env.VITEST
+        ? { '@juggle/resize-observer': fileURLToPath(new URL('./src/test-resize-observer.ts', import.meta.url)) }
+        : {}),
     },
   },
   server: {
@@ -41,5 +44,10 @@ export default defineConfig({
     environment: 'jsdom',
     exclude: ['e2e/**', 'node_modules/**', 'dist/**', 'scripts/**'],
     setupFiles: ['./src/test-setup.ts'],
+    server: {
+      deps: {
+        inline: ['@unovis/ts', '@unovis/vue', '@juggle/resize-observer'],
+      },
+    },
   },
 })

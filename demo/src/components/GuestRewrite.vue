@@ -1,6 +1,13 @@
 <script setup lang="ts">
+import type { ChartConfig } from '@/components/ui/chart'
+import { CurveType } from '@unovis/ts'
+import { VisLine, VisXYContainer } from '@unovis/vue'
+import { useMediaQuery } from '@vueuse/core'
 import { computed } from 'vue'
-import { placeChart, pointAt, stepPath, type CommitRef, type NamedSeries } from '@/metrics'
+import { ChartContainer } from '@/components/ui/chart'
+import { HistoryError, pointAt, type CommitRef, type NamedSeries } from '@/metrics'
+
+const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'] as const
 
 const props = defineProps<{
   commits: CommitRef[]
@@ -8,59 +15,55 @@ const props = defineProps<{
   series: NamedSeries[]
 }>()
 
-const paths = computed(() => {
-  const values = props.series.flatMap(series => series.points.map(point => point.value))
-  if (props.commits.length === 0 || values.length === 0) return []
-  const placed = placeChart(props.commits.length, Math.max(...values), 640, 168)
-  return props.series.flatMap(series => {
-    const runs: { x: number; y: number; value: number }[][] = []
-    let run: { x: number; y: number; value: number }[] = []
-    props.commits.forEach((commit, index) => {
+const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+
+const chartConfig = computed(() => {
+  if (props.series.length > CHART_COLORS.length) throw new HistoryError(`chart has ${props.series.length} series`)
+  const config: ChartConfig = {}
+  props.series.forEach((series, index) => {
+    config[series.id] = { label: series.label, color: CHART_COLORS[index] }
+  })
+  return config
+})
+
+interface Datum {
+  index: number
+  [key: string]: number | undefined
+}
+
+const rows = computed(() => {
+  if (props.commits.length === 0) return []
+  return props.commits.map((commit, index) => {
+    const row: Datum = { index }
+    for (const series of props.series) {
       const point = pointAt(series.points, commit.commit, props.order)
-      if (!point) {
-        if (run.length > 0) runs.push(run)
-        run = []
-        return
-      }
-      run.push({ x: placed.xAt(index), y: placed.yAt(point.value) + 78, value: point.value })
-    })
-    if (run.length > 0) runs.push(run)
-    return runs.map(item => stepPath(item)).filter(path => path.length > 0)
+      if (point) row[series.id] = point.value
+    }
+    return row
   })
 })
+
+const y = computed(() => props.series.map(series => (row: Datum) => row[series.id]))
+const colors = computed(() => props.series.map(series => `var(--color-${series.id})`))
+
+function xOf(row: Datum): number {
+  return row.index
+}
 </script>
 
 <template>
-  <svg data-test="guest-rewrite" viewBox="0 0 640 280" class="text-bone h-auto w-full" fill="none" aria-hidden="true">
-    <text x="8" y="36" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" font-size="22">program</text>
-    <text x="132" y="36" fill="#ff5a36" font-family="Martian Mono, ui-monospace, monospace" font-size="22" font-weight="600">::=</text>
-    <text x="196" y="36" fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" font-size="22">rules</text>
-    <rect x="8" y="72" width="624" height="188" stroke="currentColor" stroke-width="1" opacity="0.28" />
-    <rect x="28" y="92" width="584" height="148" stroke="currentColor" stroke-width="1" opacity="0.16" />
-    <path
-      v-for="(path, index) in paths"
-      :key="index"
-      :d="path"
-      pathLength="1"
-      stroke-width="1.5"
-      vector-effect="non-scaling-stroke"
-      :class="['draw', `tone-${index % 4}`]"
-      :style="{ animationDelay: `${index * 140}ms` }"
-    />
-  </svg>
+  <div data-test="guest-rewrite" class="text-bone w-full" aria-hidden="true">
+    <p class="font-mono text-[22px] leading-none">
+      program <span class="text-signal font-display font-semibold">::=</span> rules
+    </p>
+    <ChartContainer v-if="rows.length > 0" :config="chartConfig" class="metric-chart mt-4 aspect-auto h-[148px] w-full">
+      <VisXYContainer
+        :data="rows"
+        :duration="reduceMotion ? 0 : 700"
+        :margin="{ top: 12, right: 8, bottom: 8, left: 8 }"
+      >
+        <VisLine :x="xOf" :y="y" :color="colors" :curve-type="CurveType.StepAfter" :line-width="1.5" />
+      </VisXYContainer>
+    </ChartContainer>
+  </div>
 </template>
-
-<style scoped>
-.draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: draw 1.4s ease-out forwards;
-}
-.tone-0 { stroke: var(--signal); }
-.tone-1 { stroke: var(--bone); }
-.tone-2 { stroke: var(--ash); }
-.tone-3 { stroke: var(--dim); }
-@keyframes draw {
-  to { stroke-dashoffset: 0; }
-}
-</style>
