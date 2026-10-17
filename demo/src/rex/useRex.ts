@@ -28,11 +28,27 @@ export function useRex(mode: () => PoseMode) {
   }
 
   function tick(now: number): void {
+    if (document.hidden) {
+      raf = 0
+      last = 0
+      return
+    }
     const dt = last === 0 ? 0 : Math.min(0.05, (now - last) / 1000)
     last = now
     if (dt > 0 && !reduced.value) clock.value += dt
     sync(dt)
     raf = requestAnimationFrame(tick)
+  }
+
+  function onVisibility(): void {
+    if (document.hidden) {
+      cancelAnimationFrame(raf)
+      raf = 0
+      last = 0
+      return
+    }
+    if (import.meta.env.MODE === 'test') return
+    if (raf === 0) raf = requestAnimationFrame(tick)
   }
 
   watch([() => mode(), reduced], () => sync(0))
@@ -44,6 +60,7 @@ export function useRex(mode: () => PoseMode) {
       reduced.value = media?.matches ?? false
     }
     media.addEventListener('change', onMedia)
+    document.addEventListener('visibilitychange', onVisibility)
     sync(0)
     if (import.meta.env.MODE === 'test') return
     raf = requestAnimationFrame(tick)
@@ -51,6 +68,7 @@ export function useRex(mode: () => PoseMode) {
 
   onBeforeUnmount(() => {
     if (media && onMedia) media.removeEventListener('change', onMedia)
+    document.removeEventListener('visibilitychange', onVisibility)
     cancelAnimationFrame(raf)
   })
 

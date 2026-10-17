@@ -1,8 +1,9 @@
 const assert = require('assert')
 
 class MockWorker {
-  constructor(url) {
+  constructor(url, options) {
     this.url = url
+    this.options = options
     this.messages = []
     this.terminated = false
     MockWorker.last = this
@@ -32,6 +33,7 @@ async function rejectsWith(promise, pattern) {
   const { ThueWorker } = await import('./src/worker-client.js')
 
   const errorClient = new ThueWorker('worker.js', {}, { Worker: MockWorker, requestTimeoutMs: 0 })
+  assert.deepStrictEqual(MockWorker.last.options, { type: 'module' })
   MockWorker.last.onerror({ message: 'blocked by CSP' })
   await rejectsWith(errorClient.ready, /blocked by CSP/)
 

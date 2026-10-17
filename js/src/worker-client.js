@@ -4,7 +4,7 @@ export class ThueWorker {
     if (typeof WorkerImpl !== 'function') {
       throw new Error('Worker is not available in this environment')
     }
-    this.worker = new WorkerImpl(workerURL)
+    this.worker = new WorkerImpl(workerURL, { type: 'module' })
     this.nextId = 1
     this.pending = new Map()
     this.requestTimeoutMs = clientOptions.requestTimeoutMs ?? 15000

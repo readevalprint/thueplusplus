@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { BELT_MOUTH, BELT_X0, BREAK_BEAT } from './layout'
+import { BELT_ENTRANCE, BELT_MOUTH, BELT_X0, BREAK_BEAT, beltPoint } from './layout'
 import { WALK_DURATION } from './motion'
 import {
   GRACE,
   MISS_COOLDOWN,
+  IDLE,
+  RETURN,
+  beginAutoplay,
+  beginPlayer,
   createGame,
+  demoRuns,
   TRACK,
   difficulty,
   inZone,
+  playerAct,
   pull,
   rebuild,
   roll,
@@ -28,15 +34,30 @@ function until(game: Game, pred: (current: Game) => boolean, limit = 40): Game {
 }
 
 function started(seed: number, reduced: boolean, best = 0): Game {
-  return pull(createGame({ seed, reduced, best }))
+  return beginPlayer(createGame({ seed, reduced, best }))
 }
 
 function canPull(game: Game): boolean {
   return game.phase === 'playing' && game.rex !== 'to-lever' && game.rex !== 'yank' && game.rex !== 'cheer' && game.cooldown === 0
 }
 
+function fumbleUntilBroken(game: Game, limit = 40): Game {
+  let current = game.control === 'player' && game.phase === 'playing' ? game : beginPlayer(game)
+  let elapsed = 0
+  while (current.phase !== 'broken') {
+    const zoned = current.boxes.some(box => inZone(box.progress, current.score, current.reduced))
+    if (!zoned && canPull(current)) current = pull(current)
+    current = step(current, 1 / 60)
+    elapsed += 1 / 60
+    if (elapsed > limit) {
+      throw new Error(`timed out fumbling at ${elapsed.toFixed(2)}s phase=${current.phase} control=${current.control}`)
+    }
+  }
+  return current
+}
+
 function playUntil(game: Game, score: number): Game {
-  let current = game.phase === 'waiting' ? pull(game) : game
+  let current = game.control === 'player' && game.phase === 'playing' ? game : beginPlayer(game)
   let elapsed = 0
   while (current.score < score) {
     if (current.phase === 'broken') throw new Error(`broke at score ${current.score}`)
@@ -206,7 +227,10 @@ describe('lever game', () => {
   it('gate scale', () => {
     expect(TRACK).toBeGreaterThan(1)
     expect(BELT_X0).toBe(0)
-    expect(BELT_MOUTH - BELT_X0).toBeGreaterThan(1000)
+    expect(BELT_ENTRANCE - BELT_MOUTH).toBeGreaterThan(1000)
+    expect(beltPoint(0).x).toBe(BELT_ENTRANCE)
+    expect(beltPoint(1).x).toBe(BELT_MOUTH)
+    expect(beltPoint(0).x).toBeGreaterThan(beltPoint(1).x)
     for (const score of [0, 6, 18]) {
       const now = difficulty(score, false)
       const u = 1 - Math.exp(-score / 6)
@@ -242,7 +266,7 @@ describe('lever game', () => {
 
   it('gate break', () => {
     let game = started(5, true, 2)
-    game = until(game, current => current.phase === 'broken')
+    game = fumbleUntilBroken(game)
     expect(game.score).toBe(0)
     expect(game.best).toBe(2)
     expect(game.beltOn).toBe(false)
@@ -253,19 +277,21 @@ describe('lever game', () => {
     game = step(game, 0.08)
     expect(game.showRebuild).toBe(true)
     const next = rebuild(game)
-    expect(next.phase).toBe('waiting')
+    expect(next.control).toBe('auto')
+    expect(next.phase).toBe('playing')
     expect(next.score).toBe(0)
     expect(next.boxes).toHaveLength(0)
     expect(next.cages).toHaveLength(0)
-    expect(next.beltOn).toBe(false)
-    expect(next.lever).toBe(0)
-    expect(next.rex).toBe('idle')
+    expect(next.beltOn).toBe(true)
     expect(next.best).toBe(2)
     expect(next.seed).toBe(game.seed + 1)
     expect(rebuild(next)).toBe(next)
+    const resumed = until(game, current => current.control === 'auto' && current.phase === 'playing', RETURN + 1)
+    expect(resumed.score).toBe(0)
+    expect(resumed.beltOn).toBe(true)
 
     let scored = playUntil(createGame({ seed: 6, reduced: true, best: 0 }), 2)
-    scored = until(scored, current => current.phase === 'broken', 30)
+    scored = fumbleUntilBroken(scored)
     expect(scored.score).toBe(2)
     expect(scored.best).toBe(2)
     expect(rebuild(scored).best).toBe(2)
@@ -293,5 +319,77 @@ describe('lever game', () => {
     const cheer = playUntil(createGame({ seed: 11, reduced: false, best: 0 }), 5)
     expect(cheer.rex).toBe('cheer')
     expect(cheer.score).toBe(5)
+  })
+
+  it('gate autoplay', () => {
+    for (const reduced of [false, true]) {
+      let game = beginAutoplay(createGame({ seed: 4, reduced, best: 3 }))
+      expect(game.control).toBe('auto')
+      expect(game.phase).toBe('playing')
+      expect(game.beltOn).toBe(true)
+      expect(game.score).toBe(0)
+      expect(game.best).toBe(3)
+      let elapsed = 0
+      while (elapsed < 60) {
+        game = step(game, 1 / 30)
+        elapsed += 1 / 30
+        if (game.phase === 'broken') throw new Error(`autoplay broke at ${elapsed.toFixed(2)}s score ${game.score}`)
+        expect(game.miss).toBe(0)
+        expect(game.control).toBe('auto')
+      }
+      expect(game.score).toBeGreaterThan(0)
+      expect(game.best).toBe(3)
+    }
+
+    let visible = beginAutoplay(createGame({ seed: 9, reduced: false, best: 0 }))
+    let sawScan = false
+    let elapsed = 0
+    while (visible.score === 0 && elapsed < 20) {
+      visible = step(visible, 1 / 30)
+      elapsed += 1 / 30
+      if (visible.boxes.some(box => inZone(box.progress, visible.score, false))) sawScan = true
+    }
+    expect(sawScan).toBe(true)
+    expect(visible.score).toBeGreaterThan(0)
+    expect(visible.phase).toBe('playing')
+  })
+
+  it('gate takeover', () => {
+    const demo = beginAutoplay(createGame({ seed: 2, reduced: true, best: 4 }))
+    const playing = until(demo, current => current.score >= 1, 50)
+    const taken = playerAct(playing)
+    expect(taken.control).toBe('player')
+    expect(taken.score).toBe(0)
+    expect(taken.best).toBe(4)
+    expect(taken.phase).toBe('playing')
+    expect(taken.boxes).toHaveLength(0)
+
+    const again = playerAct(taken)
+    expect(again.score).toBe(0)
+    expect(again.control).toBe('player')
+
+    let missed = started(7, true)
+    missed = fumbleUntilBroken(missed)
+    expect(missed.control).toBe('player')
+    expect(missed.score).toBe(0)
+
+    let idle = started(7, true)
+    idle = step(idle, IDLE - 0.05)
+    expect(idle.control).toBe('player')
+    expect(idle.phase).toBe('playing')
+    idle = step(idle, 0.1)
+    expect(idle.control).toBe('auto')
+    expect(idle.phase).toBe('playing')
+    expect(idle.phase).not.toBe('broken')
+    expect(idle.score).toBe(0)
+  })
+
+  it('gate demo', () => {
+    expect(demoRuns(false, true)).toBe(true)
+    expect(demoRuns(true, true)).toBe(false)
+    expect(demoRuns(false, false)).toBe(false)
+    expect(demoRuns(true, false)).toBe(false)
+    expect(() => demoRuns(0 as unknown as boolean, true)).toThrow(/hidden/)
+    expect(() => demoRuns(false, 'yes' as unknown as boolean)).toThrow(/inView/)
   })
 })
