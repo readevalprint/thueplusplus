@@ -13,7 +13,7 @@ import {
   HAND_DX,
   HAND_DY,
 } from '@/rex/motion'
-import { MARK, hat, hatFill, markModel } from '@/rex/geometry.mjs'
+import { MARK, hat, hatFill, hatShape, markModel } from '@/rex/geometry.mjs'
 
 describe('rex geometry', () => {
   it('rest constants match the walk engine', () => {
@@ -71,18 +71,18 @@ describe('rex geometry', () => {
     expect(dot.r).toBeGreaterThan(1.4)
   })
 
-  it('header mark is the static rex and does not reuse the hero test ids', () => {
+  it('header mark draws the shared cocked rex', () => {
     const wrapper = mount(Mark)
     expect(wrapper.text()).not.toContain('++')
     expect(wrapper.find('[data-test="header-mark"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="rex-eye"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="hard-hat"]').exists()).toBe(false)
-    expect(wrapper.findAll('.rex-eye')).toHaveLength(2)
-    expect(wrapper.findAll('circle')).toHaveLength(4)
+    expect(wrapper.find('[data-test="hard-hat"]').attributes('data-tilt')).toBe(String(hatShape('hard').tilt))
+    expect(wrapper.findAll('[data-test="rex-eye"]')).toHaveLength(2)
+    expect(wrapper.findAll('[data-test="rex-dot"]')).toHaveLength(4)
     expect(wrapper.find('path').attributes('d')).toBe(hat.crown)
     expect(wrapper.find('path').attributes('fill')).toBe('var(--signal)')
-    expect(wrapper.find('.rex-eye').attributes('fill')).toBe('currentColor')
+    expect(wrapper.find('[data-test="rex-eye"]').attributes('fill')).toBe('currentColor')
     const model = markModel('header')
+    expect(model.hatTilt).toBe(hatShape('hard').tilt)
     expect(model.parts.filter(part => part.role === 'eye')).toHaveLength(2)
     expect(model.parts.filter(part => part.role === 'dot')).toHaveLength(4)
   })

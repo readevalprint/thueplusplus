@@ -7,6 +7,7 @@ import {
   compileMarks,
   faviconSvg,
   hat,
+  hatGroupTransform,
   markModel,
   paint,
   viewBoxFor,
@@ -309,7 +310,7 @@ export function cardSvg() {
   <title>Thue++ Rex</title>
   <desc>Rex, the Thue++ mascot, centered on a dark card.</desc>
   <rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="${paint.void.hex}"/>
-  <g transform="translate(${model.hatAt.x} ${model.hatAt.y})">
+  <g transform="${hatGroupTransform(model)}">
     ${hatMarkup}
   </g>
   <g>

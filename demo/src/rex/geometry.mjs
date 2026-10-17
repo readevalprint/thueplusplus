@@ -61,6 +61,340 @@ export const bandFill = paint.band.hex
 export const hatInk = paint.hatInk.hex
 export const shineFill = paint.shine.hex
 
+/** @typedef {'hard' | 'top' | 'party' | 'beanie' | 'wizard' | 'crown'} HatId */
+
+/** Hard hat first. Clicking Rex walks this list and wraps. */
+export const HAT_IDS = ['hard', 'top', 'party', 'beanie', 'wizard', 'crown']
+
+export const HAT_STORAGE_KEY = 'rex-hat'
+
+/**
+ * Hollow center of the rest pose, halfway from the eyes to the ground.
+ * Hat swaps scale to 0 here.
+ */
+export const BODY_CENTER = { x: 0, y: MARK.eyeDy / 2 }
+
+/** Header reach. The slide stays under a fifth of the header figure. */
+export const REACH_MAX = 12
+export const REACH_STRETCH = 1.25
+export const GLANCE_MAX = 3.2
+export const REACH_FALLOFF_PX = 480
+export const SWAP_MS = 720
+
+/** @param {number} value */
+function clamp01(value) {
+  if (!Number.isFinite(value)) throw new Error(`expected a finite amount, got ${value}`)
+  return Math.min(1, Math.max(0, value))
+}
+
+/** @param {number} t */
+function smooth(t) {
+  const x = clamp01(t)
+  return x * x * (3 - 2 * x)
+}
+
+/** @param {string} value @returns {value is HatId} */
+export function isHatId(value) {
+  return HAT_IDS.includes(/** @type {HatId} */ (value))
+}
+
+/** @param {string} id @returns {HatId} */
+export function nextHatId(id) {
+  const index = HAT_IDS.indexOf(/** @type {HatId} */ (id))
+  if (index < 0) throw new Error(`unknown hat ${id}`)
+  return HAT_IDS[(index + 1) % HAT_IDS.length]
+}
+
+/**
+ * @param {{ getItem(key: string): string | null }} storage
+ * @returns {HatId}
+ */
+export function loadHat(storage) {
+  const raw = storage.getItem(HAT_STORAGE_KEY)
+  if (raw === null) return 'hard'
+  if (!isHatId(raw)) throw new Error(`stored rex hat ${raw} is not in the wardrobe`)
+  return raw
+}
+
+/**
+ * @param {{ setItem(key: string, value: string): void }} storage
+ * @param {string} id
+ */
+export function saveHat(storage, id) {
+  if (!isHatId(id)) throw new Error(`unknown hat ${id}`)
+  storage.setItem(HAT_STORAGE_KEY, id)
+}
+
+/**
+ * @param {HatId} id
+ * @param {{ x: number, y: number }} offset
+ * @param {number} tilt
+ * @param {MarkPart[]} parts
+ * @returns {{ id: HatId, offset: { x: number, y: number }, tilt: number, parts: MarkPart[] }}
+ */
+function hatOf(id, offset, tilt, parts) {
+  if (!Number.isFinite(tilt) || Math.abs(tilt) < 3 || Math.abs(tilt) > 12) {
+    throw new Error(`hat ${id} tilt must be a few degrees, got ${tilt}`)
+  }
+  const shift = Math.hypot(offset.x, offset.y)
+  if (!Number.isFinite(shift) || shift < 1 || shift > 5) {
+    throw new Error(`hat ${id} must sit a little off center, got ${shift}`)
+  }
+  return { id, offset: { x: offset.x, y: offset.y }, tilt, parts }
+}
+
+/** @param {string} d @param {MarkRole} role @returns {PathPart} */
+function hatPath(d, role) {
+  return { kind: 'path', d, role, space: 'hat' }
+}
+
+/** @param {{ cx: number, cy: number, rx: number, ry: number }} brim @param {MarkRole} role @returns {EllipsePart} */
+function hatEllipse(brim, role) {
+  return { kind: 'ellipse', ...brim, role, space: 'hat' }
+}
+
+/** @param {{ x: number, y: number, w: number, h: number, rx: number }} band @param {MarkRole} role @returns {RectPart} */
+function hatRect(band, role) {
+  return { kind: 'rect', ...band, role, space: 'hat' }
+}
+
+/** @param {number} cx @param {number} cy @param {number} r @param {MarkRole} role @returns {CirclePart} */
+function hatCircle(cx, cy, r, role) {
+  return { kind: 'circle', cx, cy, r, role, space: 'hat' }
+}
+
+/**
+ * Same line style as the hard hat: a filled silhouette, an ink stroke,
+ * a darker band, and a shine. Local space is the eye midpoint, y down.
+ * `offset` shifts the hat on the head. `tilt` is degrees, cocked from level.
+ * @type {Record<HatId, { id: HatId, offset: { x: number, y: number }, tilt: number, parts: MarkPart[] }>}
+ */
+export const hats = {
+  hard: hatOf('hard', { x: 2.4, y: 0.8 }, -6, [
+    hatPath(hat.crown, 'hat'),
+    hatEllipse(hat.brim, 'hat'),
+    hatPath(hat.crown, 'stroke'),
+    hatRect(hat.band, 'band'),
+    hatPath(hat.shine, 'shine'),
+  ]),
+  top: hatOf('top', { x: -2.8, y: 0.4 }, 5, [
+    hatPath('M-9 -13 L-11 -44 L11 -44 L9 -13 Z', 'hat'),
+    hatEllipse({ cx: 0, cy: -12, rx: 20, ry: 4 }, 'hat'),
+    hatPath('M-9 -13 L-11 -44 L11 -44 L9 -13 Z', 'stroke'),
+    hatRect({ x: -9, y: -20, w: 18, h: 4.5, rx: 0.6 }, 'band'),
+    hatPath('M-5 -38 L-5 -26', 'shine'),
+  ]),
+  party: hatOf('party', { x: 3.2, y: -0.6 }, 8, [
+    hatPath('M-14 -12 L0 -42 L14 -12 Z', 'hat'),
+    hatEllipse({ cx: 0, cy: -11.5, rx: 16, ry: 3.2 }, 'hat'),
+    hatPath('M-14 -12 L0 -42 L14 -12 Z', 'stroke'),
+    hatRect({ x: -7, y: -26, w: 14, h: 3.6, rx: 0.4 }, 'band'),
+    hatPath('M-4 -36 L-1 -32', 'shine'),
+    hatCircle(0, -44.2, 2.2, 'shine'),
+  ]),
+  beanie: hatOf('beanie', { x: -1.8, y: 1.2 }, -4, [
+    hatPath('M-16 -10 C-19 -32 19 -32 16 -10 Z', 'hat'),
+    hatPath('M-16 -10 C-19 -32 19 -32 16 -10 Z', 'stroke'),
+    hatRect({ x: -17, y: -14, w: 34, h: 6.5, rx: 2 }, 'band'),
+    hatPath('M-6 -28 Q-1 -33 4 -26', 'shine'),
+    hatCircle(0, -33.5, 3.2, 'hat'),
+  ]),
+  wizard: hatOf('wizard', { x: 1.4, y: -1.1 }, -8, [
+    hatPath('M-15 -12 C-10 -30 -1 -44 0 -46 C3 -40 12 -28 16 -12 Z', 'hat'),
+    hatEllipse({ cx: 0, cy: -11.5, rx: 22, ry: 4.2 }, 'hat'),
+    hatPath('M-15 -12 C-10 -30 -1 -44 0 -46 C3 -40 12 -28 16 -12 Z', 'stroke'),
+    hatRect({ x: -8, y: -16, w: 16, h: 3.5, rx: 0.5 }, 'band'),
+    hatPath('M-2 -40 L1 -32', 'shine'),
+  ]),
+  crown: hatOf('crown', { x: -3.4, y: 0.5 }, 7, [
+    hatPath('M-16 -12 L-16 -24 L-9 -14 L-4 -30 L0 -15 L4 -30 L9 -14 L16 -24 L16 -12 Z', 'hat'),
+    hatPath('M-16 -12 L-16 -24 L-9 -14 L-4 -30 L0 -15 L4 -30 L9 -14 L16 -24 L16 -12 Z', 'stroke'),
+    hatRect({ x: -14, y: -14, w: 28, h: 3.5, rx: 0.5 }, 'band'),
+    hatPath('M-4 -26 L-4 -20', 'shine'),
+    hatCircle(-4, -22, 1.7, 'shine'),
+    hatCircle(4, -22, 1.7, 'shine'),
+    hatCircle(0, -16, 1.5, 'shine'),
+  ]),
+}
+
+/** @param {string} id */
+export function hatShape(id) {
+  if (!isHatId(id)) throw new Error(`unknown hat ${id}`)
+  return hats[id]
+}
+
+/**
+ * Body center in hat-local space. The hat group origin is the eye midpoint.
+ * @param {number} eyeX
+ * @param {number} eyeY
+ */
+export function bodyCenterLocal(eyeX, eyeY) {
+  return { x: BODY_CENTER.x - eyeX, y: BODY_CENTER.y - eyeY }
+}
+
+/**
+ * Incoming hat grows from the body center to the head.
+ * Outgoing hat shrinks from the head into the body center.
+ * `t` is 0 at the click and 1 when the swap has finished.
+ * The hats move from 0.16 to 0.92 so the hand can arrive first.
+ * @param {number} t
+ * @param {number} eyeX
+ * @param {number} eyeY
+ */
+export function hatSwapFrame(t, eyeX, eyeY) {
+  const eased = swapArrive(t)
+  const center = bodyCenterLocal(eyeX, eyeY)
+  return {
+    incoming: {
+      x: center.x * (1 - eased),
+      y: center.y * (1 - eased),
+      scale: eased,
+    },
+    outgoing: {
+      x: center.x * eased,
+      y: center.y * eased,
+      scale: 1 - eased,
+    },
+  }
+}
+
+/** 0 before the hat moves, 1 when it has reached the head. */
+export function swapArrive(t) {
+  return smooth(clamp01((clamp01(t) - 0.16) / 0.76))
+}
+
+/**
+ * Degrees of cock while a new hat settles. Reduced motion is the resting
+ * tilt immediately, with no wobble. At the end of a swap the wobble is gone
+ * and the angle is that hat's tilt.
+ * @param {number} restTilt
+ * @param {number} t
+ * @param {boolean} reduced
+ */
+export function hatTiltAt(restTilt, t, reduced) {
+  if (!Number.isFinite(restTilt)) throw new Error(`hat tilt must be finite, got ${restTilt}`)
+  if (reduced) return restTilt
+  const arrive = swapArrive(t)
+  const wobble = Math.sin(arrive * Math.PI * 3) * (1 - arrive) * 4.5
+  return restTilt * arrive + wobble
+}
+
+/**
+ * Offset eases in with the hat. Reduced motion uses the resting offset.
+ * @param {{ x: number, y: number }} offset
+ * @param {number} t
+ * @param {boolean} reduced
+ */
+export function hatOffsetAt(offset, t, reduced) {
+  if (reduced) return { x: offset.x, y: offset.y }
+  const arrive = swapArrive(t)
+  return { x: offset.x * arrive, y: offset.y * arrive }
+}
+
+/**
+ * @param {{ x: number, y: number }} a
+ * @param {{ x: number, y: number }} b
+ * @param {number} t
+ */
+function lerpPoint(a, b, t) {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+}
+
+/**
+ * Right or left hand. It reaches the body center, follows the new hat up,
+ * and returns to `rest`.
+ * @param {number} t
+ * @param {{ x: number, y: number }} rest
+ */
+export function pullHand(t, rest) {
+  const u = clamp01(t)
+  const center = { x: BODY_CENTER.x, y: BODY_CENTER.y }
+  if (u <= 0.22) return lerpPoint(rest, center, smooth(u / 0.22))
+  const frame = hatSwapFrame(u, 0, MARK.eyeDy)
+  const anchor = { x: frame.incoming.x, y: MARK.eyeDy + frame.incoming.y }
+  if (u <= 0.68) return anchor
+  const releaseFrame = hatSwapFrame(0.68, 0, MARK.eyeDy)
+  const release = { x: releaseFrame.incoming.x, y: MARK.eyeDy + releaseFrame.incoming.y }
+  return lerpPoint(release, rest, smooth((u - 0.68) / 0.32))
+}
+
+/**
+ * @param {number} distancePx
+ * @param {{ reduced: boolean, touch: boolean, present: boolean }} flags
+ */
+export function reachAmount(distancePx, flags) {
+  if (flags.reduced || flags.touch || !flags.present) return 0
+  if (!Number.isFinite(distancePx) || distancePx < 0) throw new Error(`reach distance must be >= 0, got ${distancePx}`)
+  return clamp01(1 - distancePx / REACH_FALLOFF_PX)
+}
+
+/**
+ * Header reach target. `pointer` is in the header viewBox. Null means the
+ * pointer has left the window. The nearer hand slides out along the pointer
+ * and stretches. The eyes glance the same way.
+ * @param {{ pointer: { x: number, y: number } | null, distancePx: number, reduced: boolean, touch: boolean }} input
+ */
+export function reachPose(input) {
+  const left = { x: -MARK.handDx, y: MARK.handDy }
+  const right = { x: MARK.handDx, y: MARK.handDy }
+  const amount = reachAmount(input.distancePx, {
+    reduced: input.reduced,
+    touch: input.touch,
+    present: input.pointer !== null,
+  })
+  const rest = {
+    side: /** @type {'left' | 'right' | 'none'} */ ('none'),
+    handLX: left.x,
+    handLY: left.y,
+    handRX: right.x,
+    handRY: right.y,
+    eyeX: 0,
+    eyeY: 0,
+    radius: MARK.dotR,
+  }
+  if (amount === 0 || !input.pointer) return rest
+  const pointer = input.pointer
+  const toLeft = Math.hypot(pointer.x - left.x, pointer.y - left.y)
+  const toRight = Math.hypot(pointer.x - right.x, pointer.y - right.y)
+  const side = toLeft <= toRight ? 'left' : 'right'
+  const hand = side === 'left' ? left : right
+  const dx = pointer.x - hand.x
+  const dy = pointer.y - hand.y
+  const length = Math.hypot(dx, dy)
+  const slide = REACH_MAX * REACH_STRETCH * amount
+  const offset = length < 1e-6 ? { x: 0, y: 0 } : { x: (dx / length) * slide, y: (dy / length) * slide }
+  const ex = pointer.x
+  const ey = pointer.y - MARK.eyeDy
+  const eyeLength = Math.hypot(ex, ey)
+  const glance = GLANCE_MAX * amount
+  const eye = eyeLength < 1e-6 ? { x: 0, y: 0 } : { x: (ex / eyeLength) * glance, y: (ey / eyeLength) * glance }
+  return {
+    side,
+    handLX: left.x + (side === 'left' ? offset.x : 0),
+    handLY: left.y + (side === 'left' ? offset.y : 0),
+    handRX: right.x + (side === 'right' ? offset.x : 0),
+    handRY: right.y + (side === 'right' ? offset.y : 0),
+    eyeX: eye.x,
+    eyeY: eye.y,
+    radius: MARK.dotR * (1 + 0.22 * amount),
+  }
+}
+
+/**
+ * Exponential ease toward a target. `rate` is per second.
+ * @param {number} current
+ * @param {number} target
+ * @param {number} dt
+ * @param {number} [rate]
+ */
+export function easeToward(current, target, dt, rate = 14) {
+  if (!Number.isFinite(current) || !Number.isFinite(target)) throw new Error('ease values must be finite')
+  if (!Number.isFinite(dt) || dt < 0) throw new Error(`ease dt must be >= 0, got ${dt}`)
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error(`ease rate must be > 0, got ${rate}`)
+  const gain = 1 - Math.exp(-rate * dt)
+  return current + (target - current) * gain
+}
+
 /**
  * Closed eye height is `1 - 0.86 * blink` at full blink, matching framePose.
  * The hover blink lasts 230ms: 70 close, 30 hold, 130 open.
@@ -78,7 +412,7 @@ const ICON_HAT_SCALE = 0.17
 
 /**
  * @param {'icon' | 'header' | 'full'} detail
- * @returns {{ hatAt: { x: number, y: number }, hatScale: number, parts: MarkPart[] }}
+ * @returns {{ hatAt: { x: number, y: number }, hatScale: number, hatTilt: number, hatOffset: { x: number, y: number }, parts: MarkPart[] }}
  */
 export function markModel(detail) {
   if (detail !== 'icon' && detail !== 'header' && detail !== 'full') {
@@ -107,7 +441,7 @@ export function markModel(detail) {
     { kind: 'circle', cx: -footDx, cy: -dotR, r: dotR, role: 'dot', space: 'world' },
     { kind: 'circle', cx: footDx, cy: -dotR, r: dotR, role: 'dot', space: 'world' },
   )
-  return { hatAt: { x: 0, y: eyeDy }, hatScale: 1, parts }
+  return placeHardHat({ hatAt: { x: 0, y: eyeDy }, hatScale: 1, parts })
 }
 
 /** Bold 16-unit Rex. Hat local y=-34 is the crown top. */
@@ -130,12 +464,18 @@ function iconModel() {
     { kind: 'circle', cx: 5.5, cy: 13.9, r: dotR, role: 'dot', space: 'world' },
     { kind: 'circle', cx: 10.5, cy: 13.9, r: dotR, role: 'dot', space: 'world' },
   ]
-  return { hatAt, hatScale, parts }
+  return placeHardHat({ hatAt, hatScale, parts })
+}
+
+/** Favicon, header bounds, and the open-graph card all wear the hard hat's cock. */
+function placeHardHat(model) {
+  const shape = hatShape('hard')
+  return { ...model, hatTilt: shape.tilt, hatOffset: { x: shape.offset.x, y: shape.offset.y } }
 }
 
 /** @param {string} d */
 export function flattenPath(d) {
-  const tokens = d.match(/[MCQZ]|-?\d*\.?\d+(?:e[+-]?\d+)?/gi)
+  const tokens = d.match(/[MCLQZ]|-?\d*\.?\d+(?:e[+-]?\d+)?/gi)
   if (!tokens) throw new Error(`empty path ${d}`)
   /** @type {Pt[]} */
   const points = []
@@ -163,6 +503,11 @@ export function flattenPath(d) {
       const p3 = { x: num(), y: num() }
       flattenCubic(cursor, p1, p2, p3, 0.05, points)
       cursor = p3
+    } else if (op === 'L') {
+      if (!cursor) throw new Error(`path ${d} has a line with no start`)
+      const point = { x: num(), y: num() }
+      points.push(point)
+      cursor = point
     } else if (op === 'Q') {
       if (!cursor) throw new Error(`path ${d} has a curve with no start`)
       const p1 = { x: num(), y: num() }
@@ -256,40 +601,99 @@ function mid(a, b) {
  */
 export function compileMarks(detail) {
   const model = markModel(detail)
-  return model.parts.map(part => compilePart(part, model.hatAt, model.hatScale))
+  return model.parts.map(part => compilePart(part, model))
+}
+
+/**
+ * Rotate about the head point, then shift. Degrees, y down.
+ * @param {number} x
+ * @param {number} y
+ * @param {{ hatAt: { x: number, y: number }, hatScale: number, hatTilt: number, hatOffset: { x: number, y: number } }} model
+ */
+function placeHat(x, y, model) {
+  const tilt = model.hatTilt * Math.PI / 180
+  const c = Math.cos(tilt)
+  const s = Math.sin(tilt)
+  const rx = x * c - y * s
+  const ry = x * s + y * c
+  return {
+    x: (rx + model.hatOffset.x) * model.hatScale + model.hatAt.x,
+    y: (ry + model.hatOffset.y) * model.hatScale + model.hatAt.y,
+  }
+}
+
+/** @param {number} cx @param {number} cy @param {number} rx @param {number} ry */
+function ellipsePoints(cx, cy, rx, ry) {
+  const steps = 40
+  /** @type {Pt[]} */
+  const points = []
+  for (let i = 0; i < steps; i += 1) {
+    const angle = (i / steps) * Math.PI * 2
+    points.push({ x: cx + Math.cos(angle) * rx, y: cy + Math.sin(angle) * ry })
+  }
+  return points
+}
+
+/** @param {number} x @param {number} y @param {number} w @param {number} h @param {number} rx */
+function roundRectPoints(x, y, w, h, rx) {
+  const r = Math.min(Math.max(rx, 0), w / 2, h / 2)
+  if (r < 1e-6) {
+    return [
+      { x, y },
+      { x: x + w, y },
+      { x: x + w, y: y + h },
+      { x, y: y + h },
+    ]
+  }
+  /** @type {Pt[]} */
+  const points = []
+  const arc = (/** @type {number} */ cx, /** @type {number} */ cy, /** @type {number} */ a0, /** @type {number} */ a1) => {
+    const steps = 4
+    for (let i = 0; i <= steps; i += 1) {
+      const angle = a0 + (a1 - a0) * (i / steps)
+      points.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r })
+    }
+  }
+  arc(x + w - r, y + r, -Math.PI / 2, 0)
+  arc(x + w - r, y + h - r, 0, Math.PI / 2)
+  arc(x + r, y + h - r, Math.PI / 2, Math.PI)
+  arc(x + r, y + r, Math.PI, Math.PI * 1.5)
+  return points
 }
 
 /**
  * @param {MarkPart} part
- * @param {{ x: number, y: number }} hatAt
- * @param {number} hatScale
+ * @param {{ hatAt: { x: number, y: number }, hatScale: number, hatTilt: number, hatOffset: { x: number, y: number } }} model
  * @returns {Compiled}
  */
-function compilePart(part, hatAt, hatScale) {
+function compilePart(part, model) {
+  const hatSpace = part.space === 'hat'
   const shift = (/** @type {number} */ x, /** @type {number} */ y) => (
-    part.space === 'hat' ? { x: x * hatScale + hatAt.x, y: y * hatScale + hatAt.y } : { x, y }
+    hatSpace ? placeHat(x, y, model) : { x, y }
   )
   if (part.kind === 'path') {
     const points = flattenPath(part.d).map(point => shift(point.x, point.y))
     if (part.role === 'shine' || part.role === 'stroke') {
       const width = part.role === 'shine' ? hat.shineWidth : hat.strokeWidth
-      return { role: part.role, kind: 'stroke', points, radius: (width / 2) * hatScale }
+      return { role: part.role, kind: 'stroke', points, radius: (width / 2) * (hatSpace ? model.hatScale : 1) }
     }
     return { role: part.role, kind: 'poly', points }
   }
+  if (part.kind === 'ellipse' && hatSpace) {
+    return { role: part.role, kind: 'poly', points: ellipsePoints(part.cx, part.cy, part.rx, part.ry).map(point => shift(point.x, point.y)) }
+  }
   if (part.kind === 'ellipse') {
-    const center = shift(part.cx, part.cy)
-    const scale = part.space === 'hat' ? hatScale : 1
-    return { role: part.role, kind: 'ellipse', cx: center.x, cy: center.y, rx: part.rx * scale, ry: part.ry * scale }
+    return { role: part.role, kind: 'ellipse', cx: part.cx, cy: part.cy, rx: part.rx, ry: part.ry }
+  }
+  if (part.kind === 'rect' && hatSpace) {
+    return { role: part.role, kind: 'poly', points: roundRectPoints(part.x, part.y, part.w, part.h, part.rx).map(point => shift(point.x, point.y)) }
   }
   if (part.kind === 'rect') {
-    const origin = shift(part.x, part.y)
-    const scale = part.space === 'hat' ? hatScale : 1
-    return { role: part.role, kind: 'roundrect', x: origin.x, y: origin.y, w: part.w * scale, h: part.h * scale, rx: part.rx * scale }
+    return { role: part.role, kind: 'roundrect', x: part.x, y: part.y, w: part.w, h: part.h, rx: part.rx }
   }
   if (part.kind === 'circle') {
     const center = shift(part.cx, part.cy)
-    const scale = part.space === 'hat' ? hatScale : 1
+    const scale = hatSpace ? model.hatScale : 1
     return { role: part.role, kind: 'circle', cx: center.x, cy: center.y, r: part.r * scale }
   }
   const unknown = part
@@ -362,7 +766,12 @@ function num(value) {
   return String(rounded)
 }
 
-/** SVG favicon. Ink follows the browser scheme. The hat stays signal orange. */
+/** SVG transform shared by the favicon and the open-graph card. */
+export function hatGroupTransform(model) {
+  return `translate(${num(model.hatAt.x)} ${num(model.hatAt.y)}) scale(${num(model.hatScale)}) translate(${num(model.hatOffset.x)} ${num(model.hatOffset.y)}) rotate(${num(model.hatTilt)})`
+}
+
+/** SVG favicon. Ink follows the browser scheme. The hard hat keeps its cock. */
 export function faviconSvg() {
   const model = markModel('icon')
   const hatParts = model.parts.filter(part => part.space === 'hat')
@@ -377,7 +786,7 @@ export function faviconSvg() {
       .ink { fill: ${paint.iconInkDark.hex}; }
     }
   </style>
-  <g class="hat" transform="translate(${num(model.hatAt.x)} ${num(model.hatAt.y)}) scale(${num(model.hatScale)})">
+  <g class="hat" transform="${hatGroupTransform(model)}">
     ${hatParts.map(svgElement).join('\n    ')}
   </g>
   <g class="ink">
