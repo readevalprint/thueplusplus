@@ -1,5 +1,5 @@
 name = "mid without a terminal operator"
-program = "../missing-operator.tpp"
+program = "../missing-operator.thue"
 
 [expect]
 exit_code = 1

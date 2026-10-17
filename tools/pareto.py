@@ -54,7 +54,7 @@ def rows_from_document(document: dict) -> list[dict]:
             raise ParetoError(f"result #{index} has no status")
         if "problem" in row and "solution" in row:
             group = str(row["problem"])
-            path = f"{group}/{row['solution']}.tpp"
+            path = f"{group}/{row['solution']}.thue"
         elif "lang" in row and "program" in row:
             group = str(row["lang"])
             path = f"{group}/{Path(str(row['program'])).name}"

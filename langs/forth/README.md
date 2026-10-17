@@ -1,9 +1,9 @@
 # Forth example
 
-`forth.tpp` is a Forth-style stack machine implemented as Thue++ rewrite rules. Tokens are whitespace-delimited. The program comes from `--input`. A line of standard input is read only by `input` or `accept`.
+`forth.thue` is a Forth-style stack machine implemented as Thue++ rewrite rules. Tokens are whitespace-delimited. The program comes from `--input`. A line of standard input is read only by `input` or `accept`.
 
 ```bash
-uv run thuepp langs/forth/forth.tpp --input '1 2 + 3 *'
+uv run thue langs/forth/forth.thue --input '1 2 + 3 *'
 ```
 
 prints:
@@ -61,4 +61,4 @@ A multiline program is `unsupported_form`. Colon definitions, comments, and vari
 uv run python tools/example_runner.py langs/forth/cases/core.toml langs/forth/cases/words.toml
 ```
 
-The manifests check Python, Go, and wasm, and they cover every rule in `forth.tpp`.
+The manifests check Python, Go, and wasm, and they cover every rule in `forth.thue`.

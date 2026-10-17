@@ -3,17 +3,17 @@
 ## Inputs read
 
 - Skill reference: `references/bl-bm-lexical-closures.md`
-- `/tmp/thuepp-lisp-pda/BL_BM_LEARNINGS.md`
-- `/tmp/thuepp-lisp-pda/attempt-bm-let2-env-mul.tpp`
-- `python/thuepp.py` implementation source around replacement expansion, PCT template behavior, and holistic row probing.
+- `/tmp/thue-lisp-pda/BL_BM_LEARNINGS.md`
+- `/tmp/thue-lisp-pda/attempt-bm-let2-env-mul.thue`
+- `python/thue.py` implementation source around replacement expansion, PCT template behavior, and holistic row probing.
 
 ## Attempt BN
 
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bn-letbind-envforms.tpp
-/tmp/thuepp-lisp-pda/bn-lisp.tpp
+/tmp/thue-lisp-pda/attempt-bn-letbind-envforms.thue
+/tmp/thue-lisp-pda/bn-lisp.thue
 ```
 
 Purpose:
@@ -53,10 +53,10 @@ LETBINDRAW[L[name init]|body|env|k]
 Verification:
 
 ```text
-python3 /tmp/thuepp-lisp-pda/run_hard_acceptance.py /tmp/thuepp-lisp-pda/bn-lisp.tpp
+python3 /tmp/thue-lisp-pda/run_hard_acceptance.py /tmp/thue-lisp-pda/bn-lisp.thue
 => 15/15 passed
 
-python3 /tmp/thuepp-lisp-pda/run_cases.py /tmp/thuepp-lisp-pda/expanded_acceptance_cases.tsv /tmp/thuepp-lisp-pda/bn-lisp.tpp
+python3 /tmp/thue-lisp-pda/run_cases.py /tmp/thue-lisp-pda/expanded_acceptance_cases.tsv /tmp/thue-lisp-pda/bn-lisp.thue
 => 6/6 passed
 ```
 

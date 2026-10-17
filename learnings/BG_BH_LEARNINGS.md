@@ -11,7 +11,7 @@ User proposal tested:
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bg-inside-out-framer.tpp
+/tmp/thue-lisp-pda/attempt-bg-inside-out-framer.thue
 ```
 
 Core rule:
@@ -42,7 +42,7 @@ Important property:
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bh-inside-out-demand-eval.tpp
+/tmp/thue-lisp-pda/attempt-bh-inside-out-demand-eval.thue
 ```
 
 Added a tiny continuation evaluator over the encoded-list representation:

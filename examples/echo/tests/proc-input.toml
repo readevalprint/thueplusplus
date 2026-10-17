@@ -1,5 +1,5 @@
 name = "echo process input with line read"
-program = "../echo.tpp"
+program = "../echo.thue"
 
 [bindings.procs]
 input = "printf 'abc\\n'"

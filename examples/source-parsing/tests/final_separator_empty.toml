@@ -1,4 +1,4 @@
-program = "../final-separator-empty.tpp"
+program = "../final-separator-empty.thue"
 
 [expect]
 exit_code = 0

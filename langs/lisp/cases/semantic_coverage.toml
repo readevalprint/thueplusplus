@@ -1,7 +1,7 @@
 # Coverage-oriented manifest for supported Lisp evaluator paths.
 # These cases exercise intended runtime paths beyond the minimal core acceptance
 # suite, without weakening existing behavior.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

@@ -74,7 +74,7 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 | Field | Meaning |
 | --- | --- |
-| `program` | Path of the interpreter. Current paths are `langs/forth/forth.tpp`, `langs/lisp/lisp.tpp`, `langs/basic/basic.tpp`, and `examples/brainfuck/brainfuck.tpp` |
+| `program` | Path of the interpreter. Current paths are `langs/forth/forth.thue`, `langs/lisp/lisp.thue`, `langs/basic/basic.thue`, and `examples/brainfuck/brainfuck.thue` |
 | `rule_lines` | Rows from the current Python host `--list-rules`, or `null` |
 | `error` | Present only when `rule_lines` is `null`. The host could not parse that historical file |
 
@@ -102,7 +102,7 @@ Problem and language rows are the native Go measurement. Rankings and Pareto use
 
 | Field | Meaning |
 | --- | --- |
-| `problem`, `solution` | Problem row. `solution` is the file name without `.tpp` |
+| `problem`, `solution` | Problem row. `solution` is the file name without `.thue` |
 | `lang`, `program` | Language row. `program` is the interpreter path |
 | `status` | `pass` or `fail` |
 | `applied_steps` | Applied rewrites. `null` on fail |
@@ -128,12 +128,12 @@ The workloads are:
 | `regex` | Anchored patterns and character classes that miss before a short chain hits |
 | `io` | Eight line reads and writes |
 | `guest` | The Forth program, with the fixed input `1 2 + .` |
-| `rewrite` | The earlier single program `metrics/benchmark.tpp`. New runs do not record it |
+| `rewrite` | The earlier single program `metrics/benchmark.thue`. New runs do not record it |
 
 | Field | Meaning |
 | --- | --- |
 | `id` | Lowercase slug |
-| `program` | Repo-relative `.tpp` path |
+| `program` | Repo-relative `.thue` path |
 | `input` | `--input` text. Empty means the program's own initial state |
 | `stdin` | Bytes written to standard input. Empty means no input |
 | `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes` | The limits on the command and the process |
@@ -156,7 +156,7 @@ The workloads are:
     "cpus": 4
   },
   "guests": {
-    "forth": { "program": "langs/forth/forth.tpp", "rule_lines": 86 }
+    "forth": { "program": "langs/forth/forth.thue", "rule_lines": 86 }
   },
   "tasks": null,
   "problems": {
@@ -186,7 +186,7 @@ The workloads are:
     "results": [
       {
         "lang": "forth",
-        "program": "langs/forth/forth.tpp",
+        "program": "langs/forth/forth.thue",
         "status": "pass",
         "applied_steps": 4,
         "regex_evals": 9,
@@ -203,7 +203,7 @@ The workloads are:
     "workloads": [
       {
         "id": "probe-cost",
-        "program": "metrics/workloads/probe-cost.tpp",
+        "program": "metrics/workloads/probe-cost.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,

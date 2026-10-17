@@ -2,13 +2,13 @@
 
 ## Goal
 
-Promote the BO Lisp evaluator into `examples/lisp/lisp.tpp` as the active implementation, then drive the evaluator forward with explicit RED tests until it supports a small but real Lisp core: arbitrary nested forms, typed runtime values, lazy control flow, arrays, lexical bindings, closures, fail-loud errors, and Python/Go parity.
+Promote the BO Lisp evaluator into `examples/lisp/lisp.thue` as the active implementation, then drive the evaluator forward with explicit RED tests until it supports a small but real Lisp core: arbitrary nested forms, typed runtime values, lazy control flow, arrays, lexical bindings, closures, fail-loud errors, and Python/Go parity.
 
-The immediate priority is not to hide failing behavior. The priority is to make the desired behavior executable in manifests, keep the current hard-acceptance behavior green, and use the RED tests to guide fixes in `examples/lisp/lisp.tpp`.
+The immediate priority is not to hide failing behavior. The priority is to make the desired behavior executable in manifests, keep the current hard-acceptance behavior green, and use the RED tests to guide fixes in `examples/lisp/lisp.thue`.
 
 ## Current baseline
 
-`examples/lisp/lisp.tpp` has been promoted from `learnings/bo-lisp.tpp`.
+`examples/lisp/lisp.thue` has been promoted from `learnings/bo-lisp.thue`.
 
 The promoted implementation currently passes the hard acceptance manifest:
 
@@ -235,7 +235,7 @@ Once the edge manifest is closer to green, update `phase0_baseline.toml` and `ph
 
 ### Priority 4: Improve performance only after semantics stabilize
 
-The current test loop is slow because the runner starts a fresh interpreter process per case and reparses the `.tpp` program repeatedly. The best future performance improvement is batch execution or parsed-rule caching, but semantics and manifest correctness come first.
+The current test loop is slow because the runner starts a fresh interpreter process per case and reparses the `.thue` program repeatedly. The best future performance improvement is batch execution or parsed-rule caching, but semantics and manifest correctness come first.
 
 ## Verification commands
 
@@ -271,10 +271,10 @@ uv run python tools/example_runner.py examples/lisp/tests/*.toml
 
 The current promotion/setup work is done when:
 
-- `examples/lisp/lisp.tpp` contains the promoted BO implementation;
-- hard acceptance runs against `../lisp.tpp`, not `learnings/bo-lisp.tpp`;
+- `examples/lisp/lisp.thue` contains the promoted BO implementation;
+- hard acceptance runs against `../lisp.thue`, not `learnings/bo-lisp.thue`;
 - the hard acceptance manifest passes in Python and Go;
-- RED edge tests exist and run against `../lisp.tpp`;
+- RED edge tests exist and run against `../lisp.thue`;
 - legacy Lisp manifest failures are documented as reconciliation work rather than accidentally ignored;
 - no changes have been pushed unless explicitly requested.
 

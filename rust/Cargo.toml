@@ -1,5 +1,5 @@
 [package]
-name = "thuepp"
+name = "thuelang"
 version = "0.5.0"
 edition = "2021"
 rust-version = "1.83"
@@ -7,6 +7,14 @@ publish = false
 description = "Thue++ interpreter: ordered regex rewrites over one state string"
 license = "MIT"
 readme = "README.md"
+
+[lib]
+name = "thuelang"
+path = "src/lib.rs"
+
+[[bin]]
+name = "thue"
+path = "src/main.rs"
 
 [dependencies]
 base64 = "0.22"

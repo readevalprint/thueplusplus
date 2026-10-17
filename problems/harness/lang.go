@@ -130,7 +130,7 @@ func RunCommonLang(t *testing.T, id, extension string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if os.Getenv("THUEPP_LANG_RECORD") == "1" {
+	if os.Getenv("THUE_LANG_RECORD") == "1" {
 		root, err := RepoRoot()
 		if err != nil {
 			t.Fatal(err)
@@ -171,8 +171,8 @@ func executeLang(id, extension string) (LangPart, error) {
 	if err := limits.validate(); err != nil {
 		return LangPart{}, err
 	}
-	programRel := filepath.ToSlash(filepath.Join("langs", id, id+".tpp"))
-	program := filepath.Join(root, "langs", id, id+".tpp")
+	programRel := filepath.ToSlash(filepath.Join("langs", id, id+".thue"))
+	program := filepath.Join(root, "langs", id, id+".thue")
 	if _, err := os.Stat(program); err != nil {
 		return LangPart{}, err
 	}

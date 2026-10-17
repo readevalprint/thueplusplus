@@ -1,5 +1,5 @@
 name = "commit publishes transaction overlay"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "set a base; begin; set a child; commit; get a"
 
 [expect]

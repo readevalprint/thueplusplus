@@ -10,12 +10,12 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "packa
 const properties = packageJson.contributes.configuration.properties;
 
 test("package defaults are the finite host defaults", () => {
-  assert.equal(properties["thuepp.maxSteps"].default, DEFAULT_MAX_STEPS);
-  assert.equal(properties["thuepp.maxProbes"].default, DEFAULT_MAX_PROBES);
-  assert.equal(properties["thuepp.maxStateBytes"].default, DEFAULT_MAX_STATE_BYTES);
-  assert.equal(properties["thuepp.maxSteps"].default, 1000000);
-  assert.equal(properties["thuepp.maxProbes"].default, 1000000);
-  assert.equal(properties["thuepp.maxStateBytes"].default, 8388608);
+  assert.equal(properties["thue.maxSteps"].default, DEFAULT_MAX_STEPS);
+  assert.equal(properties["thue.maxProbes"].default, DEFAULT_MAX_PROBES);
+  assert.equal(properties["thue.maxStateBytes"].default, DEFAULT_MAX_STATE_BYTES);
+  assert.equal(properties["thue.maxSteps"].default, 1000000);
+  assert.equal(properties["thue.maxProbes"].default, 1000000);
+  assert.equal(properties["thue.maxStateBytes"].default, 8388608);
   for (const property of Object.values(properties)) {
     assert.notEqual(property.default, "unlimited");
     assert.ok(!JSON.stringify(property).includes("unlimited") || property.description.includes("no unlimited"));
@@ -24,13 +24,13 @@ test("package defaults are the finite host defaults", () => {
 
 test("run command passes explicit finite limits", () => {
   const command = buildRunCommand({
-    file: "/tmp/hello.tpp",
-    executable: "thuepp",
+    file: "/tmp/hello.thue",
+    executable: "thue",
     config: {},
   });
-  assert.equal(command.executable, "thuepp");
+  assert.equal(command.executable, "thue");
   assert.deepEqual(command.args, [
-    "/tmp/hello.tpp",
+    "/tmp/hello.thue",
     "--max-steps",
     "1000000",
     "--max-evals",
@@ -43,12 +43,12 @@ test("run command passes explicit finite limits", () => {
 
 test("configured limits replace the defaults and stay explicit", () => {
   const command = buildRunCommand({
-    file: "program.tpp",
-    executable: "/usr/local/bin/thuepp",
+    file: "program.thue",
+    executable: "/usr/local/bin/thue",
     config: { maxSteps: 0, maxProbes: 3, maxStateBytes: 8 },
   });
   assert.deepEqual(command.args, [
-    "program.tpp",
+    "program.thue",
     "--max-steps",
     "0",
     "--max-evals",
@@ -60,8 +60,8 @@ test("configured limits replace the defaults and stay explicit", () => {
 
 test("null config values use the finite defaults", () => {
   const command = buildRunCommand({
-    file: "program.tpp",
-    executable: "thuepp",
+    file: "program.thue",
+    executable: "thue",
     config: { maxSteps: null, maxProbes: null, maxStateBytes: null },
   });
   assert.deepEqual(command.args.slice(1), [
@@ -84,11 +84,11 @@ test("unlimited and non-integers are rejected", () => {
     { maxStateBytes: Number.POSITIVE_INFINITY },
     { maxSteps: Number.NaN },
   ]) {
-    assert.throws(() => buildRunCommand({ file: "program.tpp", executable: "thuepp", config }), /non-negative integer|Unlimited is not/);
+    assert.throws(() => buildRunCommand({ file: "program.thue", executable: "thue", config }), /non-negative integer|Unlimited is not/);
   }
 });
 
 test("missing file and executable fail", () => {
-  assert.throws(() => buildRunCommand({ file: "", executable: "thuepp", config: {} }), /Save the Thue/);
-  assert.throws(() => buildRunCommand({ file: "program.tpp", executable: "  ", config: {} }), /executable/);
+  assert.throws(() => buildRunCommand({ file: "", executable: "thue", config: {} }), /Save the Thue/);
+  assert.throws(() => buildRunCommand({ file: "program.thue", executable: "  ", config: {} }), /executable/);
 });

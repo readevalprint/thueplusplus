@@ -4,7 +4,7 @@ Disposable probes only. No repo files changed.
 
 ## Attempt A: tokenizer
 
-File: `/tmp/thuepp-lisp-pda/attempt-a-tokenizer.tpp`
+File: `/tmp/thue-lisp-pda/attempt-a-tokenizer.thue`
 
 Validated prefix token scanning:
 
@@ -22,7 +22,7 @@ Learning: prefix scanning is straightforward and not the hard part.
 
 ## Attempt B: packed-stack pushdown parser
 
-File: `/tmp/thuepp-lisp-pda/attempt-b-packed-stack-parser.tpp`
+File: `/tmp/thue-lisp-pda/attempt-b-packed-stack-parser.thue`
 
 Validated pushdown parsing with a packed stack:
 
@@ -41,7 +41,7 @@ Learning: this is the first viable parser trunk. Balanced syntax should be solve
 
 ## Attempt C: parser + nested binary math
 
-File: `/tmp/thuepp-lisp-pda/attempt-c-parser-nested-math-eval.tpp`
+File: `/tmp/thue-lisp-pda/attempt-c-parser-nested-math-eval.thue`
 
 Validated parser output can feed evaluator reductions.
 
@@ -56,7 +56,7 @@ Learning: packed pseudo-AST is enough for literal/nested arithmetic.
 
 ## Attempt D: N-ary math over packed pseudo-AST
 
-File: `/tmp/thuepp-lisp-pda/attempt-d-parser-nary-math.tpp`
+File: `/tmp/thue-lisp-pda/attempt-d-parser-nary-math.thue`
 
 Validated left-reducing N-ary associative math in pseudo-AST.
 
@@ -76,7 +76,7 @@ Learning: N-ary add/mul are easy as reduction rules. N-ary sub/div require polic
 
 ## Attempt E: lazy-ish special forms
 
-File: `/tmp/thuepp-lisp-pda/attempt-e-lazy-specials.tpp`
+File: `/tmp/thue-lisp-pda/attempt-e-lazy-specials.thue`
 
 Validated special-form rules can discard unchosen branches before errors fire.
 
@@ -97,7 +97,7 @@ Learning: laziness is possible, but pattern priority becomes fragile. This works
 
 ## Attempt F: tiny lambda by AST-body substitution
 
-File: `/tmp/thuepp-lisp-pda/attempt-f-tiny-lambda-subst.tpp`
+File: `/tmp/thue-lisp-pda/attempt-f-tiny-lambda-subst.thue`
 
 Validated a very narrow unary lambda can be layered onto parsed AST by substituting `ATOM:x` in the body.
 

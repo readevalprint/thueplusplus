@@ -1,0 +1,8 @@
+>^a$ ::| b
+#^ source.thue invalid.illegal.missing-operator.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^ source.thue invalid.illegal.missing-operator.thue meta.pattern.thue
+#  ^ source.thue invalid.illegal.missing-operator.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#   ^ source.thue invalid.illegal.missing-operator.thue meta.pattern.thue
+#    ^^^ source.thue invalid.illegal.missing-operator.thue keyword.operator.mid.thue
+#       ^^ source.thue invalid.illegal.missing-operator.thue
+>

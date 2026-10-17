@@ -1,5 +1,5 @@
 name = "alias expansion does not inject user-visible hash metadata"
-program = "../alias-metadata.tpp"
+program = "../alias-metadata.thue"
 timeout = 5
 
 [[case]]

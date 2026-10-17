@@ -1,4 +1,4 @@
-program = "fixtures/bad-missing-capture.tpp"
+program = "fixtures/bad-missing-capture.thue"
 timeout = 5
 
 [[case]]

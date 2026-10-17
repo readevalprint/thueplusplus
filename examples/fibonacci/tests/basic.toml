@@ -1,5 +1,5 @@
 name = "fibonacci example"
-program = "../fibonacci.tpp"
+program = "../fibonacci.thue"
 timeout = 5
 
 [expect]

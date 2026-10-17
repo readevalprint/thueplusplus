@@ -1,5 +1,5 @@
 name = "mid braces and repetition"
-program = "../braces.tpp"
+program = "../braces.thue"
 
 [[case]]
 name = "a{2} is a repetition"

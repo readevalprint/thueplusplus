@@ -4,12 +4,12 @@ import { analyzeRules } from './ruleResources'
 import { splitProgramSource } from './thueSource'
 
 const exampleSources = {
-  ...import.meta.glob('../../examples/**/*.tpp', {
+  ...import.meta.glob('../../examples/**/*.thue', {
     query: '?raw',
     import: 'default',
     eager: true,
   }),
-  ...import.meta.glob('../../langs/**/*.tpp', {
+  ...import.meta.glob('../../langs/**/*.thue', {
     query: '?raw',
     import: 'default',
     eager: true,

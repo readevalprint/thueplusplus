@@ -4,18 +4,18 @@ const path = require('path');
 
 require(process.env.WASM_EXEC_JS || path.join(process.env.GOROOT || '/usr/local/go', 'lib/wasm/wasm_exec.js'));
 
-const wasmPath = process.env.THUEPP_WASM || path.join(__dirname, '..', '..', 'build', 'thuepp.wasm');
+const wasmPath = process.env.THUE_WASM || path.join(__dirname, '..', '..', 'build', 'thue.wasm');
 const bytes = fs.readFileSync(wasmPath);
 
 async function runSmoke(cases) {
-  globalThis.ThuePPSmoke = cases;
-  delete globalThis.ThuePPSmokeResult;
+  globalThis.ThueSmoke = cases;
+  delete globalThis.ThueSmokeResult;
   const go = new Go();
   const result = await WebAssembly.instantiate(bytes, go.importObject);
   await go.run(result.instance);
-  const runResult = globalThis.ThuePPSmokeResult;
-  delete globalThis.ThuePPSmoke;
-  delete globalThis.ThuePPSmokeResult;
+  const runResult = globalThis.ThueSmokeResult;
+  delete globalThis.ThueSmoke;
+  delete globalThis.ThueSmokeResult;
   return Array.from(runResult);
 }
 
@@ -24,14 +24,14 @@ async function runSmoke(cases) {
   const [hello, emptyOverride, resource, missing, proc, callbackError] = await runSmoke([
     {
       ...limits,
-      sourcePath: 'hello.tpp',
+      sourcePath: 'hello.thue',
       sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
       coverage: true,
       maxEvals: 10,
     },
     {
       ...limits,
-      sourcePath: 'empty-override.tpp',
+      sourcePath: 'empty-override.thue',
       sourceText: '^hello$ ::> stdout hello\\n\n::=\nhello',
       input: '',
       coverage: true,
@@ -64,7 +64,7 @@ async function runSmoke(cases) {
 
   assert.strictEqual(hello.exitCode, 0, JSON.stringify(hello));
   assert.strictEqual(hello.stdout, 'hello\n');
-  assert.match(hello.coverageTSV || '', /hello\.tpp:1\t1/);
+  assert.match(hello.coverageTSV || '', /hello\.thue:1\t1/);
 
   assert.strictEqual(emptyOverride.exitCode, 0, JSON.stringify(emptyOverride));
   assert.strictEqual(emptyOverride.stdout, '');

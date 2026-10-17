@@ -1,5 +1,5 @@
 name = "mid raw substitution"
-program = "../literal.tpp"
+program = "../literal.thue"
 
 [[case]]
 name = "captured dot is a wildcard"

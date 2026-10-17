@@ -1,5 +1,5 @@
 name = "mid capture is a builtin argument"
-program = "../builtin.tpp"
+program = "../builtin.thue"
 
 [expect]
 stdout = "1\n"

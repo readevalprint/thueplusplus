@@ -35,15 +35,15 @@ DEFAULT_MANIFEST_GLOBS = ("examples/**/tests/*.toml", "langs/**/cases/*.toml")
 
 
 def timeout_scale() -> float:
-    raw = os.environ.get("THUEPP_TIMEOUT_SCALE", "").strip()
+    raw = os.environ.get("THUE_TIMEOUT_SCALE", "").strip()
     if not raw:
         return 1.0
     try:
         scale = float(raw)
     except ValueError as exc:
-        raise RuntimeError(f"THUEPP_TIMEOUT_SCALE must be a number >= 1, got {raw!r}") from exc
+        raise RuntimeError(f"THUE_TIMEOUT_SCALE must be a number >= 1, got {raw!r}") from exc
     if not math.isfinite(scale) or scale < 1:
-        raise RuntimeError(f"THUEPP_TIMEOUT_SCALE must be a number >= 1, got {raw!r}")
+        raise RuntimeError(f"THUE_TIMEOUT_SCALE must be a number >= 1, got {raw!r}")
     return scale
 
 
@@ -103,7 +103,7 @@ EXPECT_KEYS = {
     "stderr_stripped",
     "stderr_contains",
 }
-BINDING_KEYS = {"procs", "tpp"}
+BINDING_KEYS = {"procs", "thue"}
 
 
 def validate_expect(config_path: Path, scope: str, expect) -> None:
@@ -127,16 +127,16 @@ def validate_bindings(config_path: Path, scope: str, bindings) -> None:
     for name, command in bindings.get("procs", {}).items():
         if not isinstance(name, str) or not name or not isinstance(command, str) or not command:
             raise RuntimeError(f"{config_path} {scope}: proc bindings must map non-empty names to non-empty command strings")
-    for name, spec in bindings.get("tpp", {}).items():
+    for name, spec in bindings.get("thue", {}).items():
         if not isinstance(name, str) or not name:
-            raise RuntimeError(f"{config_path} {scope}: tpp binding names must be non-empty strings")
+            raise RuntimeError(f"{config_path} {scope}: thue binding names must be non-empty strings")
         if not isinstance(spec, dict):
-            raise RuntimeError(f"{config_path} {scope}: tpp binding {name!r} must be a table")
+            raise RuntimeError(f"{config_path} {scope}: thue binding {name!r} must be a table")
         unknown_spec = sorted(set(spec) - {"program"})
         if unknown_spec:
-            raise RuntimeError(f"{config_path} {scope}: unknown tpp binding {name!r} key(s): {', '.join(unknown_spec)}")
+            raise RuntimeError(f"{config_path} {scope}: unknown thue binding {name!r} key(s): {', '.join(unknown_spec)}")
         if not isinstance(spec.get("program"), str) or not spec["program"]:
-            raise RuntimeError(f"{config_path} {scope}: tpp binding {name!r} requires a program string")
+            raise RuntimeError(f"{config_path} {scope}: thue binding {name!r} requires a program string")
 
 
 def validate_manifest(config_path: Path, config: dict) -> None:
@@ -233,9 +233,9 @@ def build_case_args(
     bound_files: dict[str, str] = {}
     for name, command in case.get("bindings", {}).get("procs", {}).items():
         args.extend([f"--proc:{name}", command])
-    for name, spec in case.get("bindings", {}).get("tpp", {}).items():
+    for name, spec in case.get("bindings", {}).get("thue", {}).items():
         if interpreter is None:
-            raise RuntimeError(f"{config_path} {case_name(config_path, case)}: tpp bindings require an interpreter command")
+            raise RuntimeError(f"{config_path} {case_name(config_path, case)}: thue bindings require an interpreter command")
         child_program = (tests_dir / spec["program"]).resolve()
         child = apply_explicit_limits([str(child_program)])
         command = " ".join(shlex.quote(part) for part in (*interpreter.argv, *child))
@@ -258,7 +258,7 @@ def run_case(
     args, bound_files = build_case_args(config_path, case, tmp, extra_args=extra_args, interpreter=interpreter)
     timeout = float(case.get("timeout", DEFAULT_TIMEOUT_SECONDS))
     # Hosted runners are slower per core than the machines these budgets were
-    # timed on. THUEPP_TIMEOUT_SCALE stretches every case budget before the
+    # timed on. THUE_TIMEOUT_SCALE stretches every case budget before the
     # wasm multiplier. Unset, the manifest budget is unchanged.
     timeout *= timeout_scale()
     # The wasm host is the same language build, started once per case. Give it
@@ -324,8 +324,8 @@ def case_program(config_path: Path, case: dict) -> Path:
     if not isinstance(program, str) or not program.strip():
         raise RuntimeError(f"{config_path} {case_name(config_path, case)}: missing top-level program")
     resolved = (config_path.parent / program).resolve()
-    if resolved.suffix != ".tpp":
-        raise RuntimeError(f"{config_path}: program must be a .tpp file: {program}")
+    if resolved.suffix != ".thue":
+        raise RuntimeError(f"{config_path}: program must be a .thue file: {program}")
     if not resolved.exists():
         raise RuntimeError(f"{config_path}: program does not exist: {program}")
     try:
@@ -357,7 +357,7 @@ def read_coverage(path: Path) -> Counter[str]:
     counts: Counter[str] = Counter()
     if not path.exists():
         raise RuntimeError(f"coverage file was not written: {path}")
-    row_re = re.compile(r"^(.+\.tpp:\d+)\t([1-9][0-9]*)$")
+    row_re = re.compile(r"^(.+\.thue:\d+)\t([1-9][0-9]*)$")
     seen: set[str] = set()
     for row_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         match = row_re.match(line)
@@ -388,7 +388,7 @@ def list_rules(interpreter: Interpreter, program: Path, require_success: bool) -
         if "\t" not in line:
             raise RuntimeError(f"{rel(program)} --list-rules row {row_number}: malformed row: {line!r}")
         rule_id, text = line.split("\t", 1)
-        if not re.match(r"^.+\.tpp:\d+$", rule_id):
+        if not re.match(r"^.+\.thue:\d+$", rule_id):
             raise RuntimeError(f"{rel(program)} --list-rules row {row_number}: malformed rule id: {rule_id!r}")
         if rule_id in rules:
             raise RuntimeError(f"{rel(program)} --list-rules row {row_number}: duplicate rule id: {rule_id}")
@@ -499,14 +499,14 @@ def _artifact_stale(artifact: Path) -> bool:
 
 
 def build_wasm(build_root: Path) -> Path:
-    wasm_artifact = build_root / "thuepp.wasm"
+    wasm_artifact = build_root / "thue.wasm"
     if not _artifact_stale(wasm_artifact):
         return wasm_artifact
     build_root.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env.update({"GOOS": "js", "GOARCH": "wasm", "CGO_ENABLED": "0"})
     completed = subprocess.run(
-        ["go", "build", "-o", str(wasm_artifact), "./cmd/thuepp-wasm"],
+        ["go", "build", "-o", str(wasm_artifact), "./cmd/thue-wasm"],
         cwd=ROOT / "go",
         env=env,
         capture_output=True,
@@ -528,12 +528,12 @@ def build_interpreters(build_root: Path, hosts: tuple[str, ...] | None = None) -
     build_root.mkdir(parents=True, exist_ok=True)
     interpreters: list[Interpreter] = []
     if "python" in wanted:
-        interpreters.append(Interpreter("python", ("uv", "run", "thuepp")))
+        interpreters.append(Interpreter("python", ("uv", "run", "thue")))
     if "go" in wanted:
-        go_artifact = build_root / "go-thuepp"
+        go_artifact = build_root / "go-thue"
         if _artifact_stale(go_artifact):
             completed = subprocess.run(
-                ["go", "build", "-o", str(go_artifact), "./cmd/thuepp"],
+                ["go", "build", "-o", str(go_artifact), "./cmd/thue"],
                 cwd=ROOT / "go",
                 capture_output=True,
                 text=True,
@@ -547,7 +547,7 @@ def build_interpreters(build_root: Path, hosts: tuple[str, ...] | None = None) -
     if "wasm" in wanted:
         wasm_artifact = build_wasm(build_root)
         interpreters.append(
-            Interpreter("wasm", ("node", str(ROOT / "js" / "src" / "cli.js")), (("THUEPP_WASM", str(wasm_artifact)),))
+            Interpreter("wasm", ("node", str(ROOT / "js" / "src" / "cli.js")), (("THUE_WASM", str(wasm_artifact)),))
         )
     return interpreters
 
@@ -626,7 +626,7 @@ def run_work(
         has_success_by_program[program] = has_success_by_program.get(program, False) or case.get("expect", {}).get("exit_code") == 0
     coverage_by_program: dict[Path, Counter[str]] = {program: Counter() for program in has_success_by_program}
     jobs = max(1, jobs)
-    with tempfile.TemporaryDirectory(prefix="thuepp-examples-") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="thue-examples-") as tmpdir:
         root_tmp = Path(tmpdir)
         if jobs == 1 or len(work) <= 1:
             for config_path, case in work:

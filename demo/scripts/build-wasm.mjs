@@ -10,14 +10,14 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 const goModule = join(repoRoot, 'go')
 const buildDir = join(repoRoot, 'build')
 const wasmPublicDir = join(demoRoot, '.wasm-public')
-const wasmOut = join(buildDir, 'thuepp.wasm')
+const wasmOut = join(buildDir, 'thue.wasm')
 const wasmExecOut = join(buildDir, 'wasm_exec.js')
 
 const required = [
   join(goModule, 'go.mod'),
-  join(goModule, 'cmd', 'thuepp-wasm', 'main.go'),
+  join(goModule, 'cmd', 'thue-wasm', 'main.go'),
   join(repoRoot, 'README.md'),
-  join(repoRoot, 'examples', 'hello', 'hello.tpp'),
+  join(repoRoot, 'examples', 'hello', 'hello.thue'),
 ]
 
 for (const path of required) {
@@ -38,7 +38,7 @@ const env = {
 }
 
 mkdirSync(buildDir, { recursive: true })
-execFileSync(toolchain.bin, ['build', '-o', wasmOut, './cmd/thuepp-wasm'], {
+execFileSync(toolchain.bin, ['build', '-o', wasmOut, './cmd/thue-wasm'], {
   cwd: goModule,
   env,
   stdio: 'inherit',
@@ -52,10 +52,10 @@ copyFileSync(wasmExecSrc, wasmExecOut)
 
 rmSync(wasmPublicDir, { recursive: true, force: true })
 mkdirSync(wasmPublicDir, { recursive: true })
-copyFileSync(wasmOut, join(wasmPublicDir, 'thuepp.wasm'))
+copyFileSync(wasmOut, join(wasmPublicDir, 'thue.wasm'))
 copyFileSync(wasmExecOut, join(wasmPublicDir, 'wasm_exec.js'))
 
-assertNonEmpty(join(wasmPublicDir, 'thuepp.wasm'))
+assertNonEmpty(join(wasmPublicDir, 'thue.wasm'))
 assertNonEmpty(join(wasmPublicDir, 'wasm_exec.js'))
 console.log(`demo WASM ready (${toolchain.text})`)
 

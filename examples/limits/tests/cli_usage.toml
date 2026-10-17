@@ -1,4 +1,4 @@
-program = "../max-steps.tpp"
+program = "../max-steps.thue"
 
 [[case]]
 name = "non-integer step limit is cli usage"

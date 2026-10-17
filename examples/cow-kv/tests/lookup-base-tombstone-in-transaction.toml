@@ -1,5 +1,5 @@
 name = "transaction lookup sees base tombstone"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "set a base; del a; begin; get a"
 
 [expect]

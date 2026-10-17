@@ -11,18 +11,18 @@ async function showOutput(page: Page): Promise<void> {
 async function fillRules(page: Page, value: string): Promise<void> {
   const rules = page.getByTestId('playground-rules')
   await expect.poll(async () => rules.evaluate(element => {
-    const editorElement = element as HTMLElement & { __thueppSetValue?: (next: string) => void }
-    return typeof editorElement.__thueppSetValue === 'function'
+    const editorElement = element as HTMLElement & { __thueSetValue?: (next: string) => void }
+    return typeof editorElement.__thueSetValue === 'function'
   }), { timeout: 10_000 }).toBe(true)
   await rules.evaluate((element, text) => {
-    const editorElement = element as HTMLElement & { __thueppSetValue?: (next: string) => void }
-    if (!editorElement.__thueppSetValue) throw new Error('rules Monaco editor is not ready')
-    editorElement.__thueppSetValue(text)
+    const editorElement = element as HTMLElement & { __thueSetValue?: (next: string) => void }
+    if (!editorElement.__thueSetValue) throw new Error('rules Monaco editor is not ready')
+    editorElement.__thueSetValue(text)
   }, value)
 }
 
 test('a tiny program runs and the status bar shows steps, probes, and state', async ({ page }) => {
-  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await page.goto('/playground?file=./examples/hello/hello.thue')
   await page.getByTestId('playground-end').click()
   await showOutput(page)
   await expect(page.getByTestId('resource-output-stdout')).toHaveValue('Hello, World!\n')
@@ -36,7 +36,7 @@ test('a tiny program runs and the status bar shows steps, probes, and state', as
 })
 
 test('a step limit stops a looping program', async ({ page }) => {
-  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await page.goto('/playground?file=./examples/hello/hello.thue')
   await fillRules(page, '^a$ ::= a\n\n::=\na\n')
   await page.getByTestId('playground-state').fill('a')
   await page.getByTestId('playground-settings-trigger').click()
@@ -48,7 +48,7 @@ test('a step limit stops a looping program', async ({ page }) => {
 })
 
 test('one lisp example loads without running it', async ({ page }) => {
-  await page.goto('/playground?file=./examples/hello/hello.tpp')
+  await page.goto('/playground?file=./examples/hello/hello.thue')
   await openExamples(page)
   await page.getByTestId('test-case-menu-trigger').filter({ hasText: 'Lisp' }).click()
   await page.getByTestId('test-case-menu-case').filter({ hasText: 'Closure call' }).click()

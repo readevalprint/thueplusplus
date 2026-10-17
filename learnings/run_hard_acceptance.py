@@ -4,17 +4,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "tools"))
 from run_limits import bounded_run
 root = pathlib.Path('/workspaces/thueplusplus')
 cases = []
-for line in pathlib.Path('/tmp/thuepp-lisp-pda/hard_acceptance_cases.tsv').read_text().splitlines():
+for line in pathlib.Path('/tmp/thue-lisp-pda/hard_acceptance_cases.tsv').read_text().splitlines():
     if not line.strip():
         continue
     name, inp, expected = line.split('\t')
     cases.append((name, inp, expected))
 
 attempts = sys.argv[1:] or [
-    '/tmp/thuepp-lisp-pda/attempt-ba-lisp.tpp',
-    '/tmp/thuepp-lisp-pda/attempt-bb-lisp.tpp',
-    '/tmp/thuepp-lisp-pda/attempt-ar-integrated-fuller-acceptance.tpp',
-    '/tmp/thuepp-lisp-pda/attempt-ax-arbitrary-vtypes-strict-lazy-array.tpp',
+    '/tmp/thue-lisp-pda/attempt-ba-lisp.thue',
+    '/tmp/thue-lisp-pda/attempt-bb-lisp.thue',
+    '/tmp/thue-lisp-pda/attempt-ar-integrated-fuller-acceptance.thue',
+    '/tmp/thue-lisp-pda/attempt-ax-arbitrary-vtypes-strict-lazy-array.thue',
 ]
 for attempt in attempts:
     print(f'## {pathlib.Path(attempt).name}')
@@ -22,7 +22,7 @@ for attempt in attempts:
     for name, inp, expected in cases:
         try:
             cp = bounded_run(
-                ['uv','run','thuepp',attempt,'--input',inp,'--max-evals','60000','--max-steps','1000000','--max-state-bytes','8388608'],
+                ['uv','run','thue',attempt,'--input',inp,'--max-evals','60000','--max-steps','1000000','--max-state-bytes','8388608'],
                 timeout=8,
                 cwd=root,
             )

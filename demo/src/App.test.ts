@@ -217,7 +217,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="autoresearch-prompt"]').text()).toContain('https://github.com/thuelang/thueplusplus')
     expect(wrapper.text()).not.toContain('RE2')
 
-    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.thue')
     wrapper = await mountApp()
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="playground-workbench"]').exists()).toBe(true)
@@ -226,7 +226,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('serves a resizable playground route with pinned stdio resources and no reset action', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
 
     expect(wrapper.find('[data-test="site-header"]').exists()).toBe(true)
@@ -312,7 +312,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('uses the visible empty state instead of falling back to embedded source state', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-state"]').setValue('')
 
@@ -326,7 +326,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('seeds Program State from pasted full source while keeping Program Rules runnable', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-state"]').setValue('stale override')
     const pastedSource = '^aaab$ ::= done\n::=\naaab\n'
@@ -339,7 +339,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('does not rewrite Program Rules when Program State is edited after source seeding', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     const originalSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
 
@@ -349,7 +349,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('loads hash-prefixed source rows exactly and keeps state empty without a separator heuristic', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hash-data/source-hash-rule.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hash-data/source-hash-rule.thue')
     const wrapper = await mountApp()
 
     const loadedSource = (wrapper.get('[data-test="playground-rules"]').element as HTMLTextAreaElement).value
@@ -359,7 +359,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('discovers resources from hash-prefixed rule rows', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('#read ::< @VALUE custom\n#done ::> custom done\n')
 
@@ -369,8 +369,8 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('sizes the resources, state, and trace panels equally, then restores a saved layout', async () => {
-    localStorage.removeItem('reka:thuepp-playground-column')
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    localStorage.removeItem('reka:thue-playground-column')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const fresh = await mountApp()
     const grow = (wrapper: Awaited<ReturnType<typeof mountApp>>, name: string) => {
       const panel = wrapper.get(`[data-test="playground-panel-${name}"]`).element.parentElement as HTMLElement
@@ -379,16 +379,16 @@ describe('Go-WASM demo UI', () => {
     const initial = ['resources', 'state', 'trace'].map(name => grow(fresh, name))
     expect(initial.every(size => size === initial[0] && Number(size) > 0)).toBe(true)
 
-    localStorage.setItem('reka:thuepp-playground-column', JSON.stringify({
+    localStorage.setItem('reka:thue-playground-column', JSON.stringify({
       'resources,state,trace': { expandToSizes: {}, layout: [60, 25, 15] },
     }))
     const restored = await mountApp()
     expect(['resources', 'state', 'trace'].map(name => Number(grow(restored, name)))).toEqual([60, 25, 15])
-    localStorage.removeItem('reka:thuepp-playground-column')
+    localStorage.removeItem('reka:thue-playground-column')
   })
 
   it('shows only bar and the Go error for a read rule without a timeout', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('foo ::> bar\nbaz ::< qux\n')
 
@@ -404,7 +404,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('labels the read input with the resource name from ::< timeout name', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('foo ::> bar\nbaz ::< 30 qux\n')
 
@@ -434,7 +434,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('steps one rule and updates State as the current state', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
     await wrapper.get('[data-test="playground-state"]').setValue('start')
@@ -444,7 +444,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: 'middle',
-      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
       resourceLogs: [],
     })
 
@@ -460,7 +460,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('^start$ ::= middle')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('-start')
     expect(wrapper.get('[data-test="playground-diffs"]').text()).toContain('+middle')
-    expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('examples/hello/hello.tpp')
+    expect(wrapper.get('[data-test="playground-diffs"]').text()).not.toContain('examples/hello/hello.thue')
     expect(wrapper.find('.state-diff-line.removed').exists()).toBe(true)
     expect(wrapper.find('.state-diff-line.added').exists()).toBe(true)
     const removed = wrapper.get('.state-diff-char-removed')
@@ -472,7 +472,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('shows failed step exit status and stderr instead of reporting a successful step', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/builtin/builtin.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/builtin/builtin.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-state"]').setValue('div:1,0')
 
@@ -483,7 +483,7 @@ describe('Go-WASM demo UI', () => {
       error: "Builtin 'div' division by zero",
       errors: "Builtin 'div' division by zero",
       state: 'div:1,0',
-      trace: [{ step: 1, ruleIndex: 3, sourcePath: 'examples/builtin/builtin.tpp', lineNumber: 6, operator: '::!', lhs: '^div:(?<a>$N),(?<b>$N)$', matchStart: 0, matchEnd: 7, groups: { a: '1', b: '0' }, stateBefore: 'div:1,0', replacement: '', stateAfter: 'div:1,0', error: "Builtin 'div' division by zero" }],
+      trace: [{ step: 1, ruleIndex: 3, sourcePath: 'examples/builtin/builtin.thue', lineNumber: 6, operator: '::!', lhs: '^div:(?<a>$N),(?<b>$N)$', matchStart: 0, matchEnd: 7, groups: { a: '1', b: '0' }, stateBefore: 'div:1,0', replacement: '', stateAfter: 'div:1,0', error: "Builtin 'div' division by zero" }],
       resourceLogs: [],
     })
 
@@ -516,7 +516,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('shows parse-time step errors in state history when no trace is available', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^(?<a>\\d+),(?<b>\\d+)$ ::! nope a b')
     await wrapper.get('[data-test="playground-state"]').setValue('1,2')
@@ -542,7 +542,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('shows matched rules in state history even when state does not change', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^done$ ::> stdout ok\\n')
     await wrapper.get('[data-test="playground-state"]').setValue('done')
@@ -552,7 +552,7 @@ describe('Go-WASM demo UI', () => {
       stdout: 'ok\n',
       stderr: '',
       state: 'done',
-      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^done$', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: 'done', replacement: '', stateAfter: 'done' }],
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::>', lhs: '^done$', matchStart: 0, matchEnd: 4, groups: {}, stateBefore: 'done', replacement: '', stateAfter: 'done' }],
       resourceLogs: [],
     })
 
@@ -565,7 +565,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('shows compact changed context for long state diffs below State', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle')
     const before = `${'a'.repeat(80)}LOOK<add|mul=VPRIM<mul>;add=VPRIM<add>;|K>${'z'.repeat(80)}`
@@ -576,7 +576,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: after,
-      trace: [{ step: 4, ruleIndex: 7, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 80, matchEnd: 130, groups: {}, stateBefore: before, replacement: 'FOUND<VPRIM<add>|K>', stateAfter: after }],
+      trace: [{ step: 4, ruleIndex: 7, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 80, matchEnd: 130, groups: {}, stateBefore: before, replacement: 'FOUND<VPRIM<add>|K>', stateAfter: after }],
       resourceLogs: [],
     })
 
@@ -588,13 +588,13 @@ describe('Go-WASM demo UI', () => {
     expect(diffs.text()).toContain('…')
     expect(diffs.text()).toContain('LOOK<add')
     expect(diffs.text()).toContain('FOUND<VPRIM<add>|K>')
-    expect(diffs.text()).not.toContain('examples/hello/hello.tpp')
+    expect(diffs.text()).not.toContain('examples/hello/hello.thue')
     expect(diffs.text()).not.toContain('a'.repeat(80))
     expect(diffs.text()).not.toContain('z'.repeat(80))
   })
 
   it('places newer step diffs below older diffs', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
 
@@ -603,7 +603,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: 'middle',
-      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
       resourceLogs: [],
     })
     await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -614,7 +614,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: 'done',
-      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' }],
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.thue', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' }],
       resourceLogs: [],
     })
     await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -629,7 +629,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('ends a run in one worker call and appends only a collapsed final history row', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
     await wrapper.get('[data-test="playground-state"]').setValue('start')
@@ -665,7 +665,7 @@ describe('Go-WASM demo UI', () => {
   it('uses media controls for play and stop', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+      window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
       const wrapper = await mountApp()
       await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done')
       await wrapper.get('[data-test="playground-state"]').setValue('start')
@@ -675,7 +675,7 @@ describe('Go-WASM demo UI', () => {
         stdout: '',
         stderr: '',
         state: 'middle',
-        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
         resourceLogs: [],
       })
 
@@ -702,7 +702,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('clicks timeline rows to restore state, undo, and prune future rows before stepping', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^start$ ::= middle\n^middle$ ::= done\n^middle$ ::= branch')
     await wrapper.get('[data-test="playground-state"]').setValue('start')
@@ -712,7 +712,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: 'middle',
-      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::=', lhs: '^start$', matchStart: 0, matchEnd: 5, groups: {}, stateBefore: 'start', replacement: 'middle', stateAfter: 'middle' }],
       resourceLogs: [],
     })
     await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -723,7 +723,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: 'done',
-      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.tpp', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' }],
+      trace: [{ step: 2, ruleIndex: 1, sourcePath: 'examples/hello/hello.thue', lineNumber: 2, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'done', stateAfter: 'done' }],
       resourceLogs: [],
     })
     await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -749,7 +749,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: 'branch',
-      trace: [{ step: 3, ruleIndex: 2, sourcePath: 'examples/hello/hello.tpp', lineNumber: 3, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'branch', stateAfter: 'branch' }],
+      trace: [{ step: 3, ruleIndex: 2, sourcePath: 'examples/hello/hello.thue', lineNumber: 3, operator: '::=', lhs: '^middle$', matchStart: 0, matchEnd: 6, groups: {}, stateBefore: 'middle', replacement: 'branch', stateAfter: 'branch' }],
       resourceLogs: [],
     })
     await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -768,7 +768,7 @@ describe('Go-WASM demo UI', () => {
   it('keeps resource output as an append-only transcript across steps', async () => {
     vi.useFakeTimers()
     try {
-      window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+      window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
       const wrapper = await mountApp()
       await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\\\n\n^$ ::= b\n^b$ ::> stdout B\\\\n')
       await wrapper.get('[data-test="playground-state"]').setValue('a')
@@ -778,7 +778,7 @@ describe('Go-WASM demo UI', () => {
         stdout: 'A\n',
         stderr: '',
         state: '',
-        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: '' }],
+        trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: '' }],
         resourceLogs: [{ name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' }],
       })
       await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -809,7 +809,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('reset clears every resource transcript and the engine counters', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp()
     await wrapper.get('[data-test="playground-rules"]').setValue('^a$ ::> stdout A\\n\n^b$ ::> bar hi\\n')
     await wrapper.get('[data-test="playground-state"]').setValue('a')
@@ -820,7 +820,7 @@ describe('Go-WASM demo UI', () => {
       stderr: '',
       state: 'b',
       evalCount: 3,
-      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: 'b' }],
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: 'b' }],
       resourceLogs: [
         { name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' },
         { name: 'bar', reads: [], writes: ['hi\n'], errors: [], remainingInputText: 'kept', outputText: 'hi\n' },
@@ -849,7 +849,7 @@ describe('Go-WASM demo UI', () => {
       stderr: '',
       state: 'b',
       evalCount: 1,
-      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.tpp', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: 'b' }],
+      trace: [{ step: 1, ruleIndex: 0, sourcePath: 'examples/hello/hello.thue', lineNumber: 1, operator: '::>', lhs: '^a$', matchStart: 0, matchEnd: 1, groups: {}, stateBefore: 'a', replacement: '', stateAfter: 'b' }],
       resourceLogs: [{ name: 'stdout', reads: [], writes: ['A\n'], errors: [], remainingInputText: '', outputText: 'A\n' }],
     })
     await wrapper.get('[data-test="playground-step"]').trigger('click')
@@ -862,7 +862,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('step pauses at resource reads and submit resumes automatically', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.thue')
     const wrapper = await mountApp({ attachTo: document.body })
 
     mockedRunWithWorker.mockResolvedValueOnce({
@@ -942,7 +942,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('renders curated example groups as navigation menu cards without command search', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="test-case-command"]').exists()).toBe(false)
@@ -965,7 +965,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('selecting a curated manifest test case loads rules, state, and resources without running', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp({ attachTo: document.body })
 
     const lispTrigger = wrapper.findAll('[data-test="test-case-menu-trigger"]').find(trigger => trigger.text() === 'Lisp')
@@ -989,7 +989,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('derives resource sections from playground rules and keeps resource inputs gated by requests', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/guess-number/guess-number.thue')
     const wrapper = await mountApp()
 
     expect(wrapper.get('[data-test="resource-section-random"]').text()).toContain('random')
@@ -1032,7 +1032,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('submit resumes with the last step or continue command', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/echo/echo.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/echo/echo.thue')
     const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.get('#resource-title-input').text()).toBe('input')
@@ -1068,7 +1068,7 @@ describe('Go-WASM demo UI', () => {
       stdout: '',
       stderr: '',
       state: 'got:Ada',
-      trace: [{ step: 1, ruleIndex: 1, sourcePath: 'examples/echo/echo.tpp', lineNumber: 8, operator: '::<', lhs: '@IN@', matchStart: 4, matchEnd: 8, groups: {}, stateBefore: 'got:@IN@', replacement: 'Ada', stateAfter: 'got:Ada' }],
+      trace: [{ step: 1, ruleIndex: 1, sourcePath: 'examples/echo/echo.thue', lineNumber: 8, operator: '::<', lhs: '@IN@', matchStart: 4, matchEnd: 8, groups: {}, stateBefore: 'got:@IN@', replacement: 'Ada', stateAfter: 'got:Ada' }],
       resourceLogs: [
         { name: 'input', reads: ['Ada'], writes: [], errors: [], remainingInputText: '', outputText: '' },
         { name: 'stdout', reads: [], writes: [], errors: [], remainingInputText: '', outputText: '' },
@@ -1115,7 +1115,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('renders the standalone playground outside the docs shell', async () => {
-    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/playground?file=./examples/hello/hello.thue')
     const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="site-header"]').exists()).toBe(true)
@@ -1131,7 +1131,7 @@ describe('Go-WASM demo UI', () => {
   })
 
   it('renders /embed as the same workbench without site chrome', async () => {
-    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp&editable=0')
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.thue&editable=0')
     const wrapper = await mountApp({ attachTo: document.body })
 
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
@@ -1140,11 +1140,11 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="playground-workbench"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="playground-state"]').element).toHaveProperty('value', 'START')
     expect((wrapper.get('[data-test="playground-state"]').element as HTMLTextAreaElement).readOnly).toBe(true)
-    expect(wrapper.get('[data-test="embed-open-full"]').attributes('href')).toContain('/playground?file=.%2Fexamples%2Fhello%2Fhello.tpp')
+    expect(wrapper.get('[data-test="embed-open-full"]').attributes('href')).toContain('/playground?file=.%2Fexamples%2Fhello%2Fhello.thue')
   })
 
   it('runs an embed through the shared Go-WASM path with explicit limits', async () => {
-    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp')
+    window.history.pushState({}, '', '/embed?file=./examples/hello/hello.thue')
     const wrapper = await mountApp({ attachTo: document.body })
 
     mockedRunWithWorker.mockResolvedValueOnce({ exitCode: 0, stdout: 'Hello from embed!\n', stderr: '', state: '', resourceLogs: [] })
@@ -1152,7 +1152,7 @@ describe('Go-WASM demo UI', () => {
     await flush()
 
     expect(mockedRunWithWorker).toHaveBeenCalledTimes(1)
-    expect(mockedRunWithWorker.mock.calls[0][0].sourcePath).toBe('examples/hello/hello.tpp')
+    expect(mockedRunWithWorker.mock.calls[0][0].sourcePath).toBe('examples/hello/hello.thue')
     expect(mockedRunWithWorker.mock.calls[0][0].maxSteps).toBe(1_000_000)
     expect(mockedRunWithWorker.mock.calls[0][0].maxEvals).toBe(1_000_000)
     expect(mockedRunWithWorker.mock.calls[0][0].maxStateBytes).toBe(8_388_608)

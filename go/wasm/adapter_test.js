@@ -1,7 +1,7 @@
 const assert = require('assert');
 const path = require('path');
 const { Worker } = require('worker_threads');
-const wasmPath = process.env.THUEPP_WASM || path.join(__dirname, '..', '..', 'build', 'thuepp.wasm');
+const wasmPath = process.env.THUE_WASM || path.join(__dirname, '..', '..', 'build', 'thue.wasm');
 
 function request(worker, message) {
   return new Promise((resolve, reject) => {
@@ -20,12 +20,12 @@ function request(worker, message) {
 }
 
 (async () => {
-  const { initThuePP } = await import('../../js/src/node.js');
-  const thuepp = await initThuePP({ wasmPath });
+  const { initThue } = await import('../../js/src/node.js');
+  const thue = await initThue({ wasmPath });
 
   const limits = { maxSteps: 1000, maxStateBytes: 1000000, maxEvals: 1000 };
-  const hello = await thuepp.run({
-    sourcePath: 'adapter-hello.tpp',
+  const hello = await thue.run({
+    sourcePath: 'adapter-hello.thue',
     sourceText: '^hello$ ::> stdout Hello, World!\\n\n::=\nhello',
     coverage: true,
     ...limits,
@@ -33,9 +33,9 @@ function request(worker, message) {
   });
   assert.strictEqual(hello.exitCode, 0, JSON.stringify(hello));
   assert.strictEqual(hello.stdout, 'Hello, World!\n');
-  assert.match(hello.coverageTSV || '', /adapter-hello\.tpp:1\t1/);
+  assert.match(hello.coverageTSV || '', /adapter-hello\.thue:1\t1/);
 
-  const stdin = await thuepp.run({
+  const stdin = await thue.run({
     ...limits,
     sourceText: '^start$ ::< 1 stdin\n^(?<name>[A-Za-z]+)$ ::> stdout hello {{name|pctdec}}!\\n\n::=\nstart',
     resources: { stdin: { readLine: () => 'Ada' } },
@@ -44,7 +44,7 @@ function request(worker, message) {
   assert.strictEqual(stdin.stdout, 'hello Ada!\n');
 
   const queue = [];
-  const roundtrip = await thuepp.run({
+  const roundtrip = await thue.run({
     ...limits,
     sourceText: '^start$ ::= WRITE\\nread\n^WRITE$ ::> echo ping\\n\n^read$ ::= response:@R@\n@R@ ::< 1 echo\n^response:(?<value>(?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*)$ ::> stdout {{value|pctdec}}\n\n::=\nstart',
     resources: {
@@ -57,11 +57,11 @@ function request(worker, message) {
   assert.strictEqual(roundtrip.exitCode, 0, JSON.stringify(roundtrip));
   assert.strictEqual(roundtrip.stdout, 'ping');
 
-  const missing = await thuepp.run({ ...limits, sourceText: '^start$ ::< 5 missing\n::=\nstart' });
+  const missing = await thue.run({ ...limits, sourceText: '^start$ ::< 5 missing\n::=\nstart' });
   assert.strictEqual(missing.exitCode, 1, JSON.stringify(missing));
   assert.match(missing.error || '', /Unknown resource 'missing'/);
 
-  const timeout = await thuepp.run({
+  const timeout = await thue.run({
     ...limits,
     sourceText: '^start$ ::< 1 sleepy\n::=\nstart',
     resources: { sleepy: { readLine: () => ({ error: 'timeout' }) } },
@@ -70,18 +70,18 @@ function request(worker, message) {
   assert.strictEqual(timeout.limit, 'timeout');
   assert.match(timeout.error || '', /ERR:resource:sleepy:timeout/);
 
-  const inertInclude = await thuepp.run({
+  const inertInclude = await thue.run({
     ...limits,
-    sourcePath: 'main.tpp',
-    sourceText: '::=\n@include lib.tpp',
+    sourcePath: 'main.thue',
+    sourceText: '::=\n@include lib.thue',
   });
   assert.strictEqual(inertInclude.exitCode, 0, JSON.stringify(inertInclude));
   assert.strictEqual(inertInclude.stdout, '');
-  assert.strictEqual(inertInclude.state, '@include lib.tpp');
+  assert.strictEqual(inertInclude.state, '@include lib.thue');
 
-  const invalidData = await thuepp.run({
+  const invalidData = await thue.run({
     ...limits,
-    sourcePath: 'bad.tpp',
+    sourcePath: 'bad.thue',
     sourceText: '^x$ ::% data\n::=\nx',
   });
   assert.strictEqual(invalidData.exitCode, 1, JSON.stringify(invalidData));

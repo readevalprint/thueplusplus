@@ -59,7 +59,7 @@ def classify(paths: list[str], *, cpp_present: bool) -> dict[str, bool]:
 
 
 def _shared(path: str) -> bool:
-    if path in {"Makefile", "pyproject.toml", "uv.lock", "tpp.peg", "SPEC_VERSION"}:
+    if path in {"Makefile", "pyproject.toml", "uv.lock", "thue.peg", "SPEC_VERSION"}:
         return True
     return path.startswith("tools/") or path.startswith(".github/workflows/")
 

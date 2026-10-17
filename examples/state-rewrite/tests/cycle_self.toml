@@ -1,4 +1,4 @@
-program = "../cycle-self.tpp"
+program = "../cycle-self.thue"
 
 [[case]]
 name = "state row cycles before output"

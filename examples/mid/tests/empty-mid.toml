@@ -1,5 +1,5 @@
 name = "empty mid step"
-program = "../empty-mid.tpp"
+program = "../empty-mid.thue"
 
 [expect]
 exit_code = 1

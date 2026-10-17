@@ -1,4 +1,4 @@
-program = "fixtures/bad-arity.tpp"
+program = "fixtures/bad-arity.thue"
 timeout = 5
 
 [[case]]

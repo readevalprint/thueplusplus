@@ -1,5 +1,5 @@
 name = "commit and discard without transaction report errors"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "commit; discard"
 
 [expect]

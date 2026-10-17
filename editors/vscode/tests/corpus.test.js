@@ -21,7 +21,7 @@ function programFiles() {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           stack.push(full);
-        } else if (entry.isFile() && entry.name.endsWith(".tpp")) {
+        } else if (entry.isFile() && entry.name.endsWith(".thue")) {
           files.push(full);
         }
       }
@@ -40,7 +40,7 @@ function assertClassified(file, lines, tokenLines) {
     if (inState) {
       for (const token of tokens) {
         assert.ok(
-          hasScope(token.scopes, "string.unquoted.state.thuepp"),
+          hasScope(token.scopes, "string.unquoted.state.thue"),
           `${where} state text is not initial state: ${JSON.stringify(token.scopes)} in ${JSON.stringify(line)}`
         );
         assert.ok(
@@ -54,8 +54,8 @@ function assertClassified(file, lines, tokenLines) {
     if (classified.kind === "separator") {
       const start = line.indexOf("::=");
       const scopes = scopeAt(tokens, start);
-      assert.ok(hasScope(scopes, "keyword.control.separator.thuepp"), `${where} separator scope ${JSON.stringify(scopes)}`);
-      assert.ok(!hasScope(scopes, "string.unquoted.state.thuepp"), `${where} separator was swallowed by state`);
+      assert.ok(hasScope(scopes, "keyword.control.separator.thue"), `${where} separator scope ${JSON.stringify(scopes)}`);
+      assert.ok(!hasScope(scopes, "string.unquoted.state.thue"), `${where} separator was swallowed by state`);
       inState = true;
       continue;
     }
@@ -69,7 +69,7 @@ function assertClassified(file, lines, tokenLines) {
         }
         const scopes = scopeAt(tokens, index);
         assert.ok(
-          hasScope(scopes, "comment.line.thuepp"),
+          hasScope(scopes, "comment.line.thue"),
           `${where} column ${index} of comment ${JSON.stringify(line)} has ${JSON.stringify(scopes)}`
         );
       }
@@ -79,23 +79,23 @@ function assertClassified(file, lines, tokenLines) {
       const match = line.match(/^[ \t]*([A-Z][A-Z0-9_]*)[ \t]*(<-)/);
       const nameAt = line.indexOf(match[1]);
       const arrowAt = line.indexOf(match[2], nameAt);
-      assert.ok(hasScope(scopeAt(tokens, nameAt), "entity.name.type.alias.thuepp"), `${where} alias name ${JSON.stringify(line)}`);
-      assert.ok(hasScope(scopeAt(tokens, arrowAt), "keyword.operator.alias.thuepp"), `${where} alias arrow ${JSON.stringify(line)}`);
-      assert.ok(!hasScope(scopeAt(tokens, nameAt), "comment.line.thuepp"), `${where} alias classified as comment`);
+      assert.ok(hasScope(scopeAt(tokens, nameAt), "entity.name.type.alias.thue"), `${where} alias name ${JSON.stringify(line)}`);
+      assert.ok(hasScope(scopeAt(tokens, arrowAt), "keyword.operator.alias.thue"), `${where} alias arrow ${JSON.stringify(line)}`);
+      assert.ok(!hasScope(scopeAt(tokens, nameAt), "comment.line.thue"), `${where} alias classified as comment`);
       continue;
     }
     if (classified.kind === "invalid") {
       const match = line.match(/(?:^|[^\\])::[^\s\w=<>!|-]/);
       const at = match.index + (line[match.index] === ":" ? 0 : 1);
       assert.ok(
-        hasScope(scopeAt(tokens, at), "invalid.illegal.operator.thuepp"),
+        hasScope(scopeAt(tokens, at), "invalid.illegal.operator.thue"),
         `${where} invalid operator ${JSON.stringify(line)} scopes ${JSON.stringify(scopeAt(tokens, at))}`
       );
       continue;
     }
     if (classified.kind === "dangling-mid") {
       const scopes = scopeAt(tokens, classified.first.index);
-      assert.ok(hasScope(scopes, "keyword.operator.mid.thuepp"), `${where} dangling ::| ${JSON.stringify(scopes)} in ${JSON.stringify(line)}`);
+      assert.ok(hasScope(scopes, "keyword.operator.mid.thue"), `${where} dangling ::| ${JSON.stringify(scopes)} in ${JSON.stringify(line)}`);
       assert.ok(
         tokens.some((token) => token.scopes.some((scope) => scope.startsWith("invalid.illegal"))),
         `${where} dangling ::| is not invalid in ${JSON.stringify(line)}`
@@ -130,7 +130,7 @@ function assertClassified(file, lines, tokenLines) {
 test("every example and guest program tokenizes", async () => {
   const grammar = await loadGrammar();
   const files = programFiles();
-  assert.ok(files.length > 0, "no .tpp programs found");
+  assert.ok(files.length > 0, "no .thue programs found");
   const failures = [];
   for (const file of files) {
     const text = fs.readFileSync(file, "utf8");

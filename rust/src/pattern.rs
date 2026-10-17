@@ -287,7 +287,7 @@ fn expand_alias_refs(
 fn annotate(source_path: &str, content: &str) -> String {
     let mut out = String::new();
     for (index, line) in source_lines(content).into_iter().enumerate() {
-        out.push_str("# thuepp-source: ");
+        out.push_str("# thue-source: ");
         out.push_str(source_path);
         out.push(':');
         out.push_str(&(index + 1).to_string());
@@ -304,7 +304,7 @@ fn iter_source_rows(content: &str, program_path: &str) -> Vec<SourceRow> {
     let mut current_line = 0usize;
     for (index, line) in source_lines(content).into_iter().enumerate() {
         let trimmed = line.trim();
-        if let Some(marker) = trimmed.strip_prefix("# thuepp-source: ") {
+        if let Some(marker) = trimmed.strip_prefix("# thue-source: ") {
             if let Some((path, line_text)) = marker.rsplit_once(':') {
                 if let Ok(source_line) = line_text.parse::<usize>() {
                     if source_line > 0 {
@@ -335,7 +335,7 @@ fn annotated_from_rows(rows: &[SourceRow]) -> String {
         if index > 0 {
             out.push('\n');
         }
-        out.push_str("# thuepp-source: ");
+        out.push_str("# thue-source: ");
         out.push_str(&row.source_path);
         out.push(':');
         out.push_str(&row.source_line.to_string());
@@ -352,7 +352,7 @@ fn expand_patterns(content: &str) -> Result<String, String> {
     for (index, line) in source_lines(content).into_iter().enumerate() {
         let line_number = index + 1;
         let stripped = line.trim();
-        if let Some(marker) = stripped.strip_prefix("# thuepp-source: ") {
+        if let Some(marker) = stripped.strip_prefix("# thue-source: ") {
             if let Some((_, source_line)) = marker.rsplit_once(':') {
                 if let Ok(parsed) = source_line.parse::<usize>() {
                     current_source_line = parsed;
@@ -516,7 +516,7 @@ pub fn parse_program(source_path: &str, content: &str) -> Result<ParsedProgram, 
     let mut current_line = 0usize;
     for line in source_lines(&expanded) {
         let trimmed = line.trim();
-        if let Some(marker) = trimmed.strip_prefix("# thuepp-source: ") {
+        if let Some(marker) = trimmed.strip_prefix("# thue-source: ") {
             if let Some((path, line_text)) = marker.rsplit_once(':') {
                 if let Ok(source_line) = line_text.parse::<usize>() {
                     if source_line > 0 {

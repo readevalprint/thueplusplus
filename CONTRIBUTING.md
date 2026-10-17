@@ -6,7 +6,7 @@
 
 - `problem.md` states the contract, links the Rosetta task, and credits that task under the GNU Free Documentation License 1.3.
 - `problem_test.go` holds the reference output and the seeded input generator. The test passes that input on stdin. Each test chooses its own cases. A constant answer must fail a seeded case.
-- `solutions/*.tpp` are Thue++ programs. A solution file ends with a newline.
+- `solutions/*.thue` are Thue++ programs. A solution file ends with a newline.
 
 `make problems` builds the native Go host, runs those tests, and writes `build/problems/results.json`.
 
@@ -30,12 +30,12 @@ Problem and language counters are properties of the program. Rankings and Pareto
 | `regex_matches` | Searches that find a match |
 | `state_bytes` | Sum of the UTF-8 state length at the start and after every applied rewrite |
 | `state_peak` | Maximum of those lengths |
-| `rule_count` | Trimmed rule rows in the `.tpp` source. Aliases and comments are not rows |
+| `rule_count` | Trimmed rule rows in the `.thue` source. Aliases and comments are not rows |
 | `rule_chars` | UTF-8 bytes of those rows |
 | `applied_steps` | Applied rewrites. An exit rule does not count |
 | `duration_ms` | Wall clock. Recorded. Not a Pareto axis |
 
-Rule count and rule chars come from the `.tpp` source. The Go engine counts them when it parses the file.
+Rule count and rule chars come from the `.thue` source. The Go engine counts them when it parses the file.
 
 A language row sums steps, regex evals, regex matches, cumulative state size, and duration across the common cases. State peak is the maximum. Rule count and rule chars are the interpreter source.
 
@@ -48,7 +48,7 @@ The minimized axes are regex evals, regex matches, cumulative state size, rule c
 Remove a dominated file. The check names the dominator:
 
 ```text
-factorial/slow.tpp is dominated by factorial/direct.tpp
+factorial/slow.thue is dominated by factorial/direct.thue
 ```
 
 `make problems` and `make langs` run that check after the tests pass.

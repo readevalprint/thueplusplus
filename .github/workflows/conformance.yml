@@ -72,7 +72,7 @@ jobs:
           enable-cache: true
       - uses: actions/cache@v6
         with:
-          path: build/go-thuepp
+          path: build/go-thue
           key: go-native-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
       - run: make test-core HOST=go
 
@@ -96,7 +96,7 @@ jobs:
           enable-cache: true
       - uses: actions/cache@v6
         with:
-          path: build/thuepp.wasm
+          path: build/thue.wasm
           key: wasm-node-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
       - run: make test-core HOST=wasm
 
@@ -147,7 +147,7 @@ jobs:
           enable-cache: true
       - uses: actions/cache@v6
         with:
-          path: build/go-thuepp
+          path: build/go-thue
           key: go-native-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
       - run: make test-guests
 

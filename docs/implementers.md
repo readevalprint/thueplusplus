@@ -4,7 +4,7 @@ Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
-The site is [thuelang.org](https://thuelang.org). The reference implementations are the Python package `thuepp` (`uv run thuepp`), the Go package `github.com/thuelang/thueplusplus/go/thuepp` (`go/cmd/thuepp`), the npm package `thuepp` (`node js/src/cli.js`), the Rust crate `thuepp` (`rust/target/release/thuepp`), and the C++ library `thuepp` (`cpp/`, CLI `build/cpp/thuepp`). `make test` runs the core suite on all five and the guest programs on native Go. `make test-full` runs every manifest on all five. Both require identical results. The embedder API is [host-api.md](host-api.md).
+The site is [thuelang.org](https://thuelang.org). The reference implementations are the Python distribution `thuelang` (module `thuelang`, `uv run thue`), the Go package `github.com/thuelang/thueplusplus/go/thuelang` (`go/cmd/thue`), the npm package `thuelang` (`node js/src/cli.js`), the Rust crate and library `thuelang` (`rust/target/release/thue`), and the C++ library `thuelang` (`cpp/`, CLI `build/cpp/thue`). `make test` runs the core suite on all five and the guest programs on native Go. `make test-full` runs every manifest on all five. Both require identical results. The embedder API is [host-api.md](host-api.md).
 
 Patterns are compiled by the regex engine. The syntax reference is <https://github.com/google/re2/wiki/Syntax>. Do not use backreferences, lookaround, or recursion.
 
@@ -13,7 +13,7 @@ Patterns are compiled by the regex engine. The syntax reference is <https://gith
 An implementation is a command. The runner appends arguments; it does not wrap the command in a shell.
 
 ```text
-<command> <program.tpp> [flags...]
+<command> <program.thue> [flags...]
 ```
 
 Required flags, including the `--flag=value` form:
@@ -27,10 +27,10 @@ Required flags, including the `--flag=value` form:
 | `--debug` | Optional diagnostic logging. Manifests do not compare debug text. |
 | `--trace` | Write one JSON object per trace event to stderr, before any `Error:` line. The object is specified in [host-api.md](host-api.md). |
 | `--proc:NAME COMMAND` | Bind resource `NAME` to a host process. The next argument is the command. This is the only subprocess opt-in. |
-| `--rule-coverage PATH` | Write TSV `source.tpp:line<TAB>count` for applied rules. Required of the Python coverage oracle. |
+| `--rule-coverage PATH` | Write TSV `source.thue:line<TAB>count` for applied rules. Required of the Python coverage oracle. |
 | `--counts PATH` | After a run, write `{"applied_steps": N, "probes": N}` JSON. `probes` is the eval count. `--list-rules` does not write it. |
 | `--metrics PATH` | After a run, write the shared counters JSON from [host-api.md](host-api.md). The keys, in order, are `applied_steps`, `regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars`. `--list-rules` does not write it. |
-| `--list-rules` | Write TSV `source.tpp:line<TAB>lhs` and do not run. Required of the Python coverage oracle. |
+| `--list-rules` | Write TSV `source.thue:line<TAB>lhs` and do not run. Required of the Python coverage oracle. |
 
 The program path is the first argument. Standard input is the `stdin` resource. Standard output and standard error are captured and compared to `expect`. Exit `0` is quiescence or `::-`. Every resource-limit stop prints `Error: <message>` and uses its own code:
 
@@ -62,7 +62,7 @@ Default resources are only `stdin`, `stdout`, and `stderr`. There is no ambient 
 From the repository root:
 
 ```bash
-uv run python tools/example_runner.py --impl 'mine=./thuepp' examples/hello/tests/basic.toml
+uv run python tools/example_runner.py --impl 'mine=./thue' examples/hello/tests/basic.toml
 ```
 
 `--impl` may be repeated. The value is `NAME=COMMAND`. `COMMAND` is split with shell quoting rules, so a multi-word command stays one argument:
@@ -75,10 +75,10 @@ uv run python tools/example_runner.py \
 
 `NAME` is an identifier and must not be `python`, `go`, or `wasm`. The runner still builds those three, then runs your command in the same parity set. A mismatch prints both results and exits non-zero.
 
-Omit the manifest paths to run every `examples/**/tests/*.toml` file. `make test-full` does that after it builds `rust/target/release/thuepp` and `build/cpp/thuepp`, then passes `--impl rust=./rust/target/release/thuepp` and `--impl cpp=./build/cpp/thuepp`. `make test` runs the core tier on those hosts and the guest programs on native Go. The runner still builds Python, Go, and wasm itself.
+Omit the manifest paths to run every `examples/**/tests/*.toml` file. `make test-full` does that after it builds `rust/target/release/thue` and `build/cpp/thue`, then passes `--impl rust=./rust/target/release/thue` and `--impl cpp=./build/cpp/thue`. `make test` runs the core tier on those hosts and the guest programs on native Go. The runner still builds Python, Go, and wasm itself.
 
 Rule coverage is computed from the Python interpreter. Your command does not need `--rule-coverage` for the gate. It does need to apply the same rules, because parity compares the observable output of every case, including cases whose only purpose is to cover a rule.
 
 ## Child programs
 
-A `bindings.tpp` entry starts your same command as a child, with the child program path appended. The child inherits the parent's environment. If your command needs an environment variable (the wasm host needs `THUEPP_WASM`), export it before invoking the runner.
+A `bindings.thue` entry starts your same command as a child, with the child program path appended. The child inherits the parent's environment. If your command needs an environment variable (the wasm host needs `THUE_WASM`), export it before invoking the runner.

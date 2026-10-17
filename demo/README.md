@@ -9,7 +9,7 @@ The demo is intentionally not a JavaScript implementation of Thue++. It imports 
 From the repository root:
 
 ```bash
-make wasm            # build build/thuepp.wasm and build/wasm_exec.js
+make wasm            # build build/thue.wasm and build/wasm_exec.js
 make demo-test       # run focused Vitest/Vue plus browser adapter unit tests
 make demo-build      # build WASM, type-check, build, and smoke-check production dist
 ```
@@ -24,9 +24,9 @@ npm run test:ui      # focused Vitest UI tests only
 npm run build        # compile WASM, type-check, build, and smoke-check dist
 ```
 
-`npm run build` and `npm run dev` compile the Go interpreter with `scripts/build-wasm.mjs`. That script requires Go 1.24 or newer. When the `go` on `PATH` is older, and the host is linux, it downloads Go 1.24.6 into the ignored `demo/.cache/` directory. It writes `build/thuepp.wasm` and `build/wasm_exec.js` for the repo WASM checks, then copies only those two files to `demo/.wasm-public/`, which is Vite's `publicDir`. The repo `build/` directory is not the public directory: other build outputs must not be published.
+`npm run build` and `npm run dev` compile the Go interpreter with `scripts/build-wasm.mjs`. That script requires Go 1.24 or newer. When the `go` on `PATH` is older, and the host is linux, it downloads Go 1.24.6 into the ignored `demo/.cache/` directory. It writes `build/thue.wasm` and `build/wasm_exec.js` for the repo WASM checks, then copies only those two files to `demo/.wasm-public/`, which is Vite's `publicDir`. The repo `build/` directory is not the public directory: other build outputs must not be published.
 
-The production page uses origin-root asset URLs (`/assets/...`, `/thuepp.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
+The production page uses origin-root asset URLs (`/assets/...`, `/thue.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
 
 `make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. It reads `problems/` and marks those rows unmeasured. The Tasks pages stay at `/tasks/<id>`. Metrics charts read `demo/src/generated/summary.json`, which `make metrics` feeds through `metrics/latest.json` and the archived bench files.
 
@@ -46,13 +46,13 @@ Vercel is production, at [thuelang.org](https://thuelang.org). Import this repos
 
 ## What the demo tests cover
 
-The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/browser-adapter.test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker. The playground imports that client from the `thuepp` package.
+The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/browser-adapter.test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker. The playground imports that client from the `thue` package.
 
 The site is a Vue 3, Vite, Tailwind 4, and shadcn-vue shell styled on a 1px-line, 2px-radius dark theme (light mode included). `/playground` is a full-screen route outside the docs layout. These tests intentionally do not run `examples/**/tests/*.toml`. The semantic conformance suite remains `make test` at the repository root.
 
 ## Playground source and state
 
-The playground treats the program editor as an exact source view. Loading a bundled `.tpp` file must preserve blank lines, hash-prefixed rows, aliases, and the final bare `::=` state block in the Program rules panel. `#` is ordinary Thue++ source text, not a browser-demo comment marker.
+The playground treats the program editor as an exact source view. Loading a bundled `.thue` file must preserve blank lines, hash-prefixed rows, aliases, and the final bare `::=` state block in the Program rules panel. `#` is ordinary Thue++ source text, not a browser-demo comment marker.
 
 The state textarea is derived from an explicit first bare `::=` separator and preserves all following text as the initial state, including embedded newlines, or from a selected manifest case input. Files without a separator start with an empty state. Clearing the state textarea sends an explicit empty input override to the Go-WASM runner; it must not fall back to hidden state embedded in the source text.
 
@@ -73,7 +73,7 @@ The same shared playground surface powers the playground page and the embeddable
 Supported embed query parameters:
 
 ```text
-file=./examples/hello/hello.tpp
+file=./examples/hello/hello.thue
 test=./examples/.../tests/foo.toml
 case=<case name>
 section=output|state|input|trace|resources|source
@@ -90,9 +90,9 @@ syncUrl=0|1
 Useful examples:
 
 ```text
-/embed?file=./examples/hello/hello.tpp&section=output&tab=stdout
-/embed?file=./examples/hello/hello.tpp&section=state
-/embed?file=./examples/guess-number/guess-number.tpp&section=input&controls=debug
+/embed?file=./examples/hello/hello.thue&section=output&tab=stdout
+/embed?file=./examples/hello/hello.thue&section=state
+/embed?file=./examples/guess-number/guess-number.thue&section=input&controls=debug
 ```
 
 For native Vue embedding, use `PlaygroundSurface.vue` with the same concepts as props (`file`, `test`, `caseName`, `section`, `tab`, `mode`, `chrome`, `controls`, `editable`, `showOpenFull`). Large arbitrary source/state payloads are intentionally not encoded in the URL in this first version; pass them through component props or add a deliberate `postMessage`/share-link API later.

@@ -10,7 +10,7 @@ defineProps<{
   <ResizablePanelGroup
     v-if="stacked"
     direction="vertical"
-    auto-save-id="thuepp-playground-split-stack"
+    auto-save-id="thue-playground-split-stack"
     data-test="playground-split"
     data-direction="vertical"
     class="min-h-0 flex-1"
@@ -27,7 +27,7 @@ defineProps<{
   <ResizablePanelGroup
     v-else
     direction="horizontal"
-    auto-save-id="thuepp-playground-split"
+    auto-save-id="thue-playground-split"
     data-test="playground-split"
     data-direction="horizontal"
     class="min-h-0 flex-1"

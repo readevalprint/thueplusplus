@@ -1,10 +1,10 @@
 import { parentPort, workerData } from 'node:worker_threads'
-import { initThuePP } from './node.js'
+import { initThue } from './node.js'
 
 let ready
 
 function init(options = {}) {
-  if (!ready) ready = initThuePP({ ...(workerData || {}), ...options })
+  if (!ready) ready = initThue({ ...(workerData || {}), ...options })
   return ready
 }
 

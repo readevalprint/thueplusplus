@@ -1,0 +1,407 @@
+>A row that is not a rule or an alias is a comment.
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.thue comment.line.thue
+>PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
+#^^^ source.thue meta.alias.thue entity.name.type.alias.thue
+#   ^ source.thue meta.alias.thue
+#    ^^ source.thue meta.alias.thue keyword.operator.alias.thue
+#      ^ source.thue meta.alias.thue meta.pattern.alias.thue
+#       ^^^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.control.group.regexp.thue
+#          ^^^^^^^^^^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                        ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.alternation.regexp.thue
+#                         ^ source.thue meta.alias.thue meta.pattern.alias.thue
+#                          ^^^^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                                  ^^^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                                     ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.bracket.thue
+#                                      ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+>NUM <- -?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)
+#^^^ source.thue meta.alias.thue entity.name.type.alias.thue
+#   ^ source.thue meta.alias.thue
+#    ^^ source.thue meta.alias.thue keyword.operator.alias.thue
+#      ^^ source.thue meta.alias.thue meta.pattern.alias.thue
+#        ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#         ^^^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.control.group.regexp.thue
+#            ^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                 ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                  ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.alternation.regexp.thue
+#                   ^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                        ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                         ^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.character.escape.regexp.thue
+#                           ^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                                ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                                 ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.alternation.regexp.thue
+#                                  ^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                                       ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                                        ^ source.thue meta.alias.thue meta.pattern.alias.thue
+#                                         ^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                                              ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                                               ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.bracket.thue
+>BAD <- (?<x>[a-z]+)
+#^^^ source.thue meta.alias.thue entity.name.type.alias.thue
+#   ^ source.thue meta.alias.thue
+#    ^^ source.thue meta.alias.thue keyword.operator.alias.thue
+#      ^ source.thue meta.alias.thue meta.pattern.alias.thue
+#       ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.definition.group.begin.regexp.thue
+#        ^^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.definition.group.regexp.thue
+#          ^ source.thue meta.alias.thue meta.pattern.alias.thue entity.name.capture.thue
+#           ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.definition.group.regexp.thue
+#            ^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                 ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                  ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.bracket.thue
+>OLD <- (?P<x>[a-z]+)
+#^^^ source.thue meta.alias.thue entity.name.type.alias.thue
+#   ^ source.thue meta.alias.thue
+#    ^^ source.thue meta.alias.thue keyword.operator.alias.thue
+#      ^ source.thue meta.alias.thue meta.pattern.alias.thue
+#       ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.definition.group.begin.regexp.thue
+#        ^^^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.definition.group.regexp.thue
+#           ^ source.thue meta.alias.thue meta.pattern.alias.thue entity.name.capture.thue
+#            ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.definition.group.regexp.thue
+#             ^^^^^ source.thue meta.alias.thue meta.pattern.alias.thue constant.other.character-class.regexp.thue
+#                  ^ source.thue meta.alias.thue meta.pattern.alias.thue keyword.operator.quantifier.regexp.thue
+#                   ^ source.thue meta.alias.thue meta.pattern.alias.thue punctuation.bracket.thue
+>^<|PCT|>$ ::> stdout old\n
+#^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^ source.thue meta.rule.write.thue meta.pattern.thue invalid.illegal.deprecated.thue
+#   ^^^ source.thue meta.rule.write.thue meta.pattern.thue invalid.illegal.deprecated.thue entity.name.type.alias.thue
+#      ^^ source.thue meta.rule.write.thue meta.pattern.thue invalid.illegal.deprecated.thue
+#        ^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#         ^ source.thue meta.rule.write.thue meta.pattern.thue
+#          ^^^ source.thue meta.rule.write.thue keyword.operator.write.thue
+#             ^ source.thue meta.rule.write.thue
+#              ^^^^^^ source.thue meta.rule.write.thue support.class.resource.thue
+#                    ^^^^ source.thue meta.rule.write.thue meta.rhs.write.thue
+#                        ^^ source.thue meta.rule.write.thue meta.rhs.write.thue constant.character.escape.thue
+>^price \$USD$ ::= literal
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#       ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.character.escape.regexp.thue
+#         ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#            ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#             ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#              ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                 ^^^^^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^step::(?<a>[0-9]+):(?<b>[0-9]+) ::= done:{{a}}:{{b}}
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#       ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#        ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#          ^ source.thue meta.rule.rewrite.thue meta.pattern.thue entity.name.capture.thue
+#           ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#            ^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.other.character-class.regexp.thue
+#                 ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#                  ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#                   ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#                     ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#                       ^ source.thue meta.rule.rewrite.thue meta.pattern.thue entity.name.capture.thue
+#                        ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#                         ^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.other.character-class.regexp.thue
+#                              ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#                               ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#                                ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                                 ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                                    ^^^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+#                                          ^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue variable.other.template.thue
+#                                            ^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue variable.other.template.thue entity.name.capture.thue
+#                                             ^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue variable.other.template.thue
+#                                               ^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+#                                                ^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue variable.other.template.thue
+#                                                  ^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue variable.other.template.thue entity.name.capture.thue
+#                                                   ^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue variable.other.template.thue
+>^pre=(?<k>[^\n]*)\n.*$ ::| {{k|quote}} ::= HIT
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#      ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#        ^ source.thue meta.rule.rewrite.thue meta.pattern.thue entity.name.capture.thue
+#         ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#          ^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.other.character-class.regexp.thue
+#               ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#                ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#                 ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.character.escape.regexp.thue
+#                   ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#                     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#                      ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                       ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.mid.thue
+#                          ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                           ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue
+#                             ^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue entity.name.capture.thue
+#                              ^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue support.function.filter.thue
+#                                    ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue
+#                                      ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                                       ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                                          ^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^ENC=(?<k>[^\n]*)\nrest= ::| rest={{k|pctenc|quote}} ::= HIT
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#      ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#        ^ source.thue meta.rule.rewrite.thue meta.pattern.thue entity.name.capture.thue
+#         ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#          ^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.other.character-class.regexp.thue
+#               ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#                ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#                 ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.character.escape.regexp.thue
+#                   ^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                         ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.mid.thue
+#                            ^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                                  ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue
+#                                    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue entity.name.capture.thue
+#                                     ^^^^^^^^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue support.function.filter.thue
+#                                                  ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue
+#                                                    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                                                     ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                                                        ^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^Q2$ ::| a{2} ::= HIT
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#   ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#     ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.mid.thue
+#        ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#          ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#             ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#              ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                 ^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^OPEN$ ::| {{ ::= HIT
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#      ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#       ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.mid.thue
+#          ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#           ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#            ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#             ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#              ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                 ^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^NUM$ ::| {{2}} ::= HIT
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#      ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.mid.thue
+#         ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#          ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#           ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#              ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#               ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                   ^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^DBL=(?<name>[^\n]+)$ ::| {{{{name}} ::= HIT
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#      ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#        ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue entity.name.capture.thue
+#            ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#             ^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.other.character-class.regexp.thue
+#                  ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#                   ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#                    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#                     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                      ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.mid.thue
+#                         ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                          ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#                           ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#                            ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue
+#                              ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue entity.name.capture.thue
+#                                  ^^ source.thue meta.rule.rewrite.thue meta.pattern.thue variable.other.template.thue
+#                                    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#                                     ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                                        ^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^a$ ::| ::= b
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#  ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#   ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#    ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.operator.mid.thue invalid.illegal.empty-step.thue
+#        ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#           ^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^add:(?<a>$NUM),(?<b>$NUM)$ ::! add a b
+#^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#     ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#      ^^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#        ^ source.thue meta.rule.builtin.thue meta.pattern.thue entity.name.capture.thue
+#         ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#          ^^^^ source.thue meta.rule.builtin.thue meta.pattern.thue variable.other.alias.thue
+#              ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.bracket.thue
+#               ^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#                ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#                 ^^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#                   ^ source.thue meta.rule.builtin.thue meta.pattern.thue entity.name.capture.thue
+#                    ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#                     ^^^^ source.thue meta.rule.builtin.thue meta.pattern.thue variable.other.alias.thue
+#                         ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.bracket.thue
+#                          ^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#                           ^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#                            ^^^ source.thue meta.rule.builtin.thue keyword.operator.builtin.thue
+#                               ^ source.thue meta.rule.builtin.thue
+#                                ^^^ source.thue meta.rule.builtin.thue support.function.builtin.thue
+#                                   ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue
+#                                    ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue variable.parameter.thue
+#                                     ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue
+#                                      ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue variable.parameter.thue
+>^missing$ ::! nope a
+#^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^^^^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#        ^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#         ^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#          ^^^ source.thue meta.rule.builtin.thue keyword.operator.builtin.thue
+#             ^ source.thue meta.rule.builtin.thue
+#              ^^^^ source.thue meta.rule.builtin.thue invalid.illegal.builtin.thue
+#                  ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue
+#                   ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue variable.parameter.thue
+>^read$ ::< 30 stdin
+#^ source.thue meta.rule.read.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.read.thue meta.pattern.thue
+#     ^ source.thue meta.rule.read.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#      ^ source.thue meta.rule.read.thue meta.pattern.thue
+#       ^^^ source.thue meta.rule.read.thue keyword.operator.read.thue
+#          ^ source.thue meta.rule.read.thue
+#           ^^ source.thue meta.rule.read.thue constant.numeric.timeout.thue
+#             ^ source.thue meta.rule.read.thue
+#              ^^^^^ source.thue meta.rule.read.thue support.class.resource.thue
+>^out:(?<x>$PCT)$ ::> stdout {{x|pctdec}}\n
+#^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.write.thue meta.pattern.thue
+#     ^ source.thue meta.rule.write.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#      ^^ source.thue meta.rule.write.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#        ^ source.thue meta.rule.write.thue meta.pattern.thue entity.name.capture.thue
+#         ^ source.thue meta.rule.write.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#          ^^^^ source.thue meta.rule.write.thue meta.pattern.thue variable.other.alias.thue
+#              ^ source.thue meta.rule.write.thue meta.pattern.thue punctuation.bracket.thue
+#               ^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#                ^ source.thue meta.rule.write.thue meta.pattern.thue
+#                 ^^^ source.thue meta.rule.write.thue keyword.operator.write.thue
+#                    ^ source.thue meta.rule.write.thue
+#                     ^^^^^^ source.thue meta.rule.write.thue support.class.resource.thue
+#                           ^ source.thue meta.rule.write.thue meta.rhs.write.thue
+#                            ^^ source.thue meta.rule.write.thue meta.rhs.write.thue variable.other.template.thue
+#                              ^ source.thue meta.rule.write.thue meta.rhs.write.thue variable.other.template.thue entity.name.capture.thue
+#                               ^^^^^^^ source.thue meta.rule.write.thue meta.rhs.write.thue variable.other.template.thue support.function.filter.thue
+#                                      ^^ source.thue meta.rule.write.thue meta.rhs.write.thue variable.other.template.thue
+#                                        ^^ source.thue meta.rule.write.thue meta.rhs.write.thue constant.character.escape.thue
+>^idx$ ::= {{rule_index}}
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#    ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#      ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#         ^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+#          ^^^^^^^^^^^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue variable.language.rule-index.thue
+>^badf$ ::= {{x|quote}}
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#     ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#      ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#       ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#          ^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+#           ^^^^^^^^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue invalid.illegal.template.thue
+>^badidx$ ::= {{rule_index|pctenc}}
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#       ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#        ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#         ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#            ^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+#             ^^^^^^^^^^^^^^^^^^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue invalid.illegal.template.thue
+>^eq:(?<a>.*)\|(?<b>.*)$ ::! eq a b
+#^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#    ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#     ^^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#       ^ source.thue meta.rule.builtin.thue meta.pattern.thue entity.name.capture.thue
+#        ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#         ^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#          ^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#           ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.bracket.thue
+#            ^^ source.thue meta.rule.builtin.thue meta.pattern.thue constant.character.escape.regexp.thue
+#              ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.begin.regexp.thue
+#               ^^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#                 ^ source.thue meta.rule.builtin.thue meta.pattern.thue entity.name.capture.thue
+#                  ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.definition.group.regexp.thue
+#                   ^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#                    ^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.operator.quantifier.regexp.thue
+#                     ^ source.thue meta.rule.builtin.thue meta.pattern.thue punctuation.bracket.thue
+#                      ^ source.thue meta.rule.builtin.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#                       ^ source.thue meta.rule.builtin.thue meta.pattern.thue
+#                        ^^^ source.thue meta.rule.builtin.thue keyword.operator.builtin.thue
+#                           ^ source.thue meta.rule.builtin.thue
+#                            ^^ source.thue meta.rule.builtin.thue support.function.builtin.thue
+#                              ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue
+#                               ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue variable.parameter.thue
+#                                ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue
+#                                 ^ source.thue meta.rule.builtin.thue meta.rhs.builtin.thue variable.parameter.thue
+>(?=ahead) ::= no
+#^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue invalid.illegal.unsupported.thue
+#   ^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#        ^ source.thue meta.rule.rewrite.thue meta.pattern.thue punctuation.bracket.thue
+#         ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#          ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#             ^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>\1 ::= backref
+#^^ source.thue meta.rule.rewrite.thue meta.pattern.thue invalid.illegal.unsupported.thue
+#  ^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#   ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#      ^^^^^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^x$ ::% data
+#^^^^^^^^^^^^ source.thue invalid.illegal.operator.thue
+>foo \::= not an operator
+#^^^^^^^^^^^^^^^^^^^^^^^^ source.thue comment.line.thue
+>kept \::= text ::= yes
+#^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#     ^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue constant.character.escape.thue
+#        ^^^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#               ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#                  ^^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^start$::=out
+#^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^^ source.thue meta.rule.rewrite.thue meta.pattern.thue
+#      ^ source.thue meta.rule.rewrite.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#       ^^^ source.thue meta.rule.rewrite.thue keyword.operator.rewrite.thue
+#          ^^^ source.thue meta.rule.rewrite.thue meta.rhs.rewrite.thue
+>^out$::>stdout ok\n
+#^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^ source.thue meta.rule.write.thue meta.pattern.thue
+#    ^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#     ^^^ source.thue meta.rule.write.thue keyword.operator.write.thue
+#        ^^^^^^ source.thue meta.rule.write.thue support.class.resource.thue
+#              ^^^ source.thue meta.rule.write.thue meta.rhs.write.thue
+#                 ^^ source.thue meta.rule.write.thue meta.rhs.write.thue constant.character.escape.thue
+>^$::-0
+#^ source.thue meta.rule.exit.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^ source.thue meta.rule.exit.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#  ^^^ source.thue meta.rule.exit.thue keyword.operator.exit.thue
+#     ^ source.thue meta.rule.exit.thue constant.numeric.integer.thue
+>done ::- {1}
+#^^^^^ source.thue meta.rule.exit.thue meta.pattern.thue
+#     ^^^ source.thue meta.rule.exit.thue keyword.operator.exit.thue
+#        ^ source.thue meta.rule.exit.thue
+#         ^ source.thue meta.rule.exit.thue punctuation.bracket.thue
+#          ^ source.thue meta.rule.exit.thue constant.numeric.integer.thue
+#           ^ source.thue meta.rule.exit.thue punctuation.bracket.thue
+>^stop$ ::- stop
+#^ source.thue meta.rule.exit.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.exit.thue meta.pattern.thue
+#     ^ source.thue meta.rule.exit.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#      ^ source.thue meta.rule.exit.thue meta.pattern.thue
+#       ^^^ source.thue meta.rule.exit.thue keyword.operator.exit.thue
+#          ^^^^^ source.thue meta.rule.exit.thue meta.rhs.exit.thue
+>^bare$ ::>
+#^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+# ^^^^ source.thue meta.rule.write.thue meta.pattern.thue
+#     ^ source.thue meta.rule.write.thue meta.pattern.thue keyword.control.anchor.regexp.thue
+#      ^ source.thue meta.rule.write.thue meta.pattern.thue
+#       ^^^ source.thue meta.rule.write.thue keyword.operator.write.thue
+>::=
+#^^^ source.thue keyword.control.separator.thue
+>START
+#^^^^^^ source.thue string.unquoted.state.thue
+>^x$ ::= y
+#^^^^^^^^^^ source.thue string.unquoted.state.thue
+>ALIAS <- x
+#^^^^^^^^^^^ source.thue string.unquoted.state.thue
+>

@@ -1,4 +1,4 @@
-program = "../builtin.tpp"
+program = "../builtin.thue"
 timeout = 5
 
 [[case]]

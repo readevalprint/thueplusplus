@@ -1,5 +1,5 @@
 name = "sequential newline process reads"
-program = "../sequential-line-read.tpp"
+program = "../sequential-line-read.thue"
 timeout = 10
 
 [bindings.procs]

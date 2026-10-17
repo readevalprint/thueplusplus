@@ -229,7 +229,7 @@ def run_benchmarks(suite: dict) -> dict:
         if not program.is_file():
             raise RecordError(f"benchmark program does not exist: {program}")
         timeout = host_timeout(float(workload["timeout_seconds"]), host)
-        with tempfile.TemporaryDirectory(prefix=f"thuepp-bench-{workload['id']}-{host}-") as tmpname:
+        with tempfile.TemporaryDirectory(prefix=f"thue-bench-{workload['id']}-{host}-") as tmpname:
             counts_path = Path(tmpname) / "counts.json"
             metrics_path = Path(tmpname) / "metrics.json"
             argv = [*interpreter.argv, str(program)]
@@ -251,16 +251,31 @@ def run_benchmarks(suite: dict) -> dict:
             )
             env = os.environ.copy()
             env.update(dict(interpreter.env))
-            started = time.perf_counter()
-            completed = bounded_run(
-                list(argv),
-                timeout=timeout,
-                cwd=ROOT,
-                env=env,
-                input_text=workload["stdin"] if workload["stdin"] else None,
-                memory_cap=workload["memory_cap_bytes"],
-            )
-            duration_ms = int((time.perf_counter() - started) * 1000)
+            # Hosts run together. A sub-10ms process can exit before this thread
+            # reads /proc, which stores a zero peak. Retry that sample. Duration
+            # is the attempt that produced the resident-memory reading.
+            completed = None
+            duration_ms = 0
+            memory = 0
+            for _attempt in range(5):
+                started = time.perf_counter()
+                completed = bounded_run(
+                    list(argv),
+                    timeout=timeout,
+                    cwd=ROOT,
+                    env=env,
+                    input_text=workload["stdin"] if workload["stdin"] else None,
+                    memory_cap=workload["memory_cap_bytes"],
+                )
+                duration_ms = int((time.perf_counter() - started) * 1000)
+                if completed.returncode != 0:
+                    break
+                sample = getattr(completed, "peak_rss_bytes", 0)
+                if isinstance(sample, int) and not isinstance(sample, bool) and sample > 0:
+                    memory = sample
+                    break
+            if completed is None:
+                raise RecordError(f"benchmark {workload['id']} {host} did not run")
             if completed.returncode != 0:
                 detail = completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}"
                 raise RecordError(f"benchmark {workload['id']} {host} exited {completed.returncode}: {detail}")
@@ -277,7 +292,7 @@ def run_benchmarks(suite: dict) -> dict:
                 raise RecordError(
                     f"{host} {workload['program']} applied_steps: {metrics['applied_steps']}, counts {applied}"
                 )
-            memory = require_memory(workload["id"], host, getattr(completed, "peak_rss_bytes", None))
+            memory = require_memory(workload["id"], host, memory)
         row = {
             "environment": historylib.environment_for(host),
             "applied_steps": applied,

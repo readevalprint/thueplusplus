@@ -32,9 +32,9 @@ async function mountAt(path: string) {
 describe('catalog pages', () => {
   it('ranks guests by passes, then steps, then rules', () => {
     const ranked = rankGuests([
-      { id: 'lisp', name: 'Lisp', program: 'lisp.tpp', ruleCount: 394, passCount: 4, taskCount: 10, stepCount: 13000 },
-      { id: 'forth', name: 'Forth', program: 'forth.tpp', ruleCount: 45, passCount: 2, taskCount: 10, stepCount: 128 },
-      { id: 'basic', name: 'Basic', program: 'basic.tpp', ruleCount: 10, passCount: 4, taskCount: 10, stepCount: 13000 },
+      { id: 'lisp', name: 'Lisp', program: 'lisp.thue', ruleCount: 394, passCount: 4, taskCount: 10, stepCount: 13000 },
+      { id: 'forth', name: 'Forth', program: 'forth.thue', ruleCount: 45, passCount: 2, taskCount: 10, stepCount: 128 },
+      { id: 'basic', name: 'Basic', program: 'basic.thue', ruleCount: 10, passCount: 4, taskCount: 10, stepCount: 13000 },
     ])
     expect(ranked.map(guest => guest.id)).toEqual(['basic', 'lisp', 'forth'])
   })

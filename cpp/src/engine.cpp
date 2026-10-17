@@ -1,4 +1,4 @@
-#include "thuepp/thuepp.hpp"
+#include "thuelang/thuelang.hpp"
 
 #include "prefix.hpp"
 #include "rational.hpp"
@@ -31,7 +31,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-namespace thuepp {
+namespace thuelang {
 namespace {
 
 constexpr int kMaxNumericLiteralChars = 4096;
@@ -1117,8 +1117,8 @@ std::string ExpandPatterns(const std::string& content) {
     const std::string& line = lines[idx];
     int line_number = static_cast<int>(idx) + 1;
     std::string stripped = TrimSpace(line);
-    if (stripped.rfind("# thuepp-source: ", 0) == 0) {
-      std::string marker = stripped.substr(std::string("# thuepp-source: ").size());
+    if (stripped.rfind("# thue-source: ", 0) == 0) {
+      std::string marker = stripped.substr(std::string("# thue-source: ").size());
       auto colon = marker.rfind(':');
       if (colon != std::string::npos) {
         try {
@@ -1305,7 +1305,7 @@ std::string Annotate(const std::string& source_path, const std::string& content)
   int line_number = 0;
   for (const std::string& line : FileLines(content)) {
     ++line_number;
-    out += "# thuepp-source: " + source_path + ":" + std::to_string(line_number) + "\n";
+    out += "# thue-source: " + source_path + ":" + std::to_string(line_number) + "\n";
     out += line;
     out.push_back('\n');
   }
@@ -1320,8 +1320,8 @@ std::vector<SourceRow> IterRows(const std::string& content, const std::string& p
   for (size_t idx = 0; idx < lines.size(); ++idx) {
     const std::string& line = lines[idx];
     std::string trimmed = TrimSpace(line);
-    if (trimmed.rfind("# thuepp-source: ", 0) == 0) {
-      std::string marker = trimmed.substr(std::string("# thuepp-source: ").size());
+    if (trimmed.rfind("# thue-source: ", 0) == 0) {
+      std::string marker = trimmed.substr(std::string("# thue-source: ").size());
       auto colon = marker.rfind(':');
       if (colon != std::string::npos) {
         try {
@@ -1351,7 +1351,7 @@ std::string AnnotatedFromRows(const std::vector<SourceRow>& rows) {
     if (i != 0) {
       out.push_back('\n');
     }
-    out += "# thuepp-source: " + rows[i].source_path + ":" + std::to_string(rows[i].source_line) + "\n";
+    out += "# thue-source: " + rows[i].source_path + ":" + std::to_string(rows[i].source_line) + "\n";
     out += rows[i].text;
   }
   return out;
@@ -2028,8 +2028,8 @@ struct Interpreter::Impl {
     for (size_t idx = 0; idx < lines.size(); ++idx) {
       const std::string& line = lines[idx];
       std::string trimmed = TrimSpace(line);
-      if (trimmed.rfind("# thuepp-source: ", 0) == 0) {
-        std::string marker = trimmed.substr(std::string("# thuepp-source: ").size());
+      if (trimmed.rfind("# thue-source: ", 0) == 0) {
+        std::string marker = trimmed.substr(std::string("# thue-source: ").size());
         auto colon = marker.rfind(':');
         if (colon != std::string::npos) {
           try {
@@ -2431,4 +2431,4 @@ void Interpreter::Cleanup() {
   }
 }
 
-}  // namespace thuepp
+}  // namespace thuelang

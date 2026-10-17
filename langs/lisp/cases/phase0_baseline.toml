@@ -2,7 +2,7 @@
 # This manifest now contains only baseline literal behavior that is part of
 # the current Lisp core. Legacy nil/internal-state/curly fail-loud expectations
 # were either removed as out-of-scope (nil) or moved to fail_loud_debt.toml.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 5
 args = ["--max-evals", "60000"]
 

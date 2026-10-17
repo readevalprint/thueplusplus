@@ -1,4 +1,4 @@
-program = "../invalid-rule-forward.tpp"
+program = "../invalid-rule-forward.thue"
 
 [[case]]
 name = "rule pattern rejects dollar alias reference before definition"

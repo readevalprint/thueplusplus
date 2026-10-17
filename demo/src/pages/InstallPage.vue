@@ -11,7 +11,7 @@ const notes = new Map(navGroups.find(group => group.title === 'Install')?.items.
 for (const host of siteHosts) {
   if (!notes.get(host.href)) throw new Error(`install page has no note for ${host.href}`)
 }
-const quickStart = `uv run thuepp program.tpp`
+const quickStart = `uv run thue program.thue`
 </script>
 
 <template>
@@ -21,7 +21,7 @@ const quickStart = `uv run thuepp program.tpp`
     </template>
     <section id="quick-start" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Quick start</h2>
-      <p class="leading-7">A host runs the Thue++ engine. The engine runs a program, any <code>.tpp</code> file. The program handles input and output.</p>
+      <p class="leading-7">A host runs the Thue++ engine. The engine runs a program, any <code>.thue</code> file. The program handles input and output.</p>
       <p class="leading-7">Nothing is published to a registry yet. From a checkout of this repository, the Python host runs a program with:</p>
       <pre class="bg-surface border-line overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7]">{{ quickStart }}</pre>
       <p class="leading-7">{{ shippedHosts }} run that same program. Each platform page covers the install, a short library example, the command, and the API.</p>

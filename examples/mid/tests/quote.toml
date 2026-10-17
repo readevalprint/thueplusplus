@@ -1,5 +1,5 @@
 name = "mid quote filter"
-program = "../quote.tpp"
+program = "../quote.thue"
 
 [[case]]
 name = "quoted dot matches a dot"

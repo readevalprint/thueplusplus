@@ -1,5 +1,5 @@
 name = "mid verbatim pattern text"
-program = "../verbatim.tpp"
+program = "../verbatim.thue"
 
 [[case]]
 name = "filled source matches"

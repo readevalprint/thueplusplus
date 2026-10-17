@@ -97,7 +97,7 @@ func Run(t *testing.T, problem Problem) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if os.Getenv("THUEPP_PROBLEM_RECORD") == "1" {
+	if os.Getenv("THUE_PROBLEM_RECORD") == "1" {
 		if err := writePart(part, "problems"); err != nil {
 			t.Fatal(err)
 		}
@@ -265,7 +265,7 @@ func Failure(item Case, run ProgramRun, want string) string {
 }
 
 func runProgram(binary, program string, input *string, stdin string, limits Limits) ProgramRun {
-	dir, err := os.MkdirTemp("", "thuepp-problem-")
+	dir, err := os.MkdirTemp("", "thue-problem-")
 	if err != nil {
 		return ProgramRun{Err: err}
 	}
@@ -415,8 +415,8 @@ func loadSolutions(root, problemID string) ([]Solution, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tpp") {
-			return nil, fmt.Errorf("%s/solutions: only .tpp files are solutions", problemID)
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".thue") {
+			return nil, fmt.Errorf("%s/solutions: only .thue files are solutions", problemID)
 		}
 		names = append(names, entry.Name())
 	}
@@ -436,7 +436,7 @@ func loadSolutions(root, problemID string) ([]Solution, error) {
 		if strings.TrimSpace(string(data)) == "" {
 			return nil, fmt.Errorf("%s is empty", name)
 		}
-		stem := strings.TrimSuffix(name, ".tpp")
+		stem := strings.TrimSuffix(name, ".thue")
 		rel := filepath.ToSlash(filepath.Join("problems", problemID, "solutions", name))
 		out = append(out, Solution{Name: stem, Path: rel, PathAbs: filepath.Join(dir, name)})
 	}
@@ -471,7 +471,7 @@ func mustWd() string {
 var binaryOnce sync.Mutex
 
 func ensureBinary(root string) (string, error) {
-	path := filepath.Join(root, "build", "go-thuepp")
+	path := filepath.Join(root, "build", "go-thue")
 	binaryOnce.Lock()
 	defer binaryOnce.Unlock()
 	if _, err := os.Stat(path); err == nil {
@@ -493,7 +493,7 @@ func ensureBinary(root string) (string, error) {
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	}
-	cmd := exec.Command("go", "build", "-o", path, "./cmd/thuepp")
+	cmd := exec.Command("go", "build", "-o", path, "./cmd/thue")
 	cmd.Dir = filepath.Join(root, "go")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

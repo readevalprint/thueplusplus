@@ -30,18 +30,18 @@ class ParetoTests(unittest.TestCase):
         better = {**axes, "regex_evals": 4}
         found = messages(
             [
-                row("factorial/slow.tpp", "factorial", **axes),
-                row("factorial/direct.tpp", "factorial", **better),
-                row("fizzbuzz/direct.tpp", "fizzbuzz", **axes),
+                row("factorial/slow.thue", "factorial", **axes),
+                row("factorial/direct.thue", "factorial", **better),
+                row("fizzbuzz/direct.thue", "fizzbuzz", **axes),
             ]
         )
-        self.assertEqual(found, ["factorial/slow.tpp is dominated by factorial/direct.tpp"])
+        self.assertEqual(found, ["factorial/slow.thue is dominated by factorial/direct.thue"])
 
     def test_a_failure_is_not_a_dominator(self) -> None:
         axes = {"regex_evals": 1, "regex_matches": 1, "state_bytes": 1, "rule_count": 1, "rule_chars": 1}
-        failed = row("factorial/broken.tpp", "factorial", **axes)
+        failed = row("factorial/broken.thue", "factorial", **axes)
         failed["status"] = "fail"
-        self.assertEqual(messages([failed, row("factorial/direct.tpp", "factorial", **{**axes, "regex_evals": 2})]), [])
+        self.assertEqual(messages([failed, row("factorial/direct.thue", "factorial", **{**axes, "regex_evals": 2})]), [])
 
 
 if __name__ == "__main__":

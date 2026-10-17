@@ -1,4 +1,4 @@
-program = "../toggle-self.tpp"
+program = "../toggle-self.thue"
 
 [[case]]
 name = "state row toggles before output"

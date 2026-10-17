@@ -311,7 +311,7 @@ function escapeXml(value) {
 function loadSuite() {
   const suite = parseToml(readFileSync(join(repoRoot, 'problems', 'suite.toml'), 'utf8'))
   const taskOrder = requireStringList(suite.order, 'problems/suite.toml order')
-  const guests = [{ id: 'direct', program: 'solutions/direct.tpp', extension: 'tpp' }]
+  const guests = [{ id: 'direct', program: 'solutions/direct.thue', extension: 'thue' }]
   return { taskOrder, guests }
 }
 
@@ -411,7 +411,7 @@ function unmeasuredGuestResult(file, taskId, guestId) {
     status: 'unmeasured',
     stepCount: null,
     solution: solution.text,
-    solutionPath: `problems/${taskId}/solutions/${guestId}.tpp`,
+    solutionPath: `problems/${taskId}/solutions/${guestId}.thue`,
     reason: null,
     error: null,
   }

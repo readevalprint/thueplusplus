@@ -1,4 +1,4 @@
-program = "../pattern-order.tpp"
+program = "../pattern-order.thue"
 timeout = 5
 
 [expect]

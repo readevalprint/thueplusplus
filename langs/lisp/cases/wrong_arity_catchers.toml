@@ -1,7 +1,7 @@
 # Exact routing for special-form arity and unsupported-form catchers. These
 # cases pin public errors so cleanup cannot drift into unbound_name,
 # not_function, or the wrong fail-loud class.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

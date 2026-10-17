@@ -22,7 +22,7 @@ export const examples: DemoExample[] = [
     id: 'mid',
     name: 'Mid lookup',
     description: 'Uses ::| to fill a captured key and replace the KEY line with the value found elsewhere in the state.',
-    sourcePath: 'mid-lookup.tpp',
+    sourcePath: 'mid-lookup.thue',
     sourceText: `^KEY=(?<k>[^\\n]+)\\n.*$ ::| {{k}}=(?<v>[^,\\n]*) ::= {{v}}
 ^hello$ ::- 0
 ^KEY= ::- 3
@@ -38,7 +38,7 @@ a=hello,b=world
     id: 'hello',
     name: 'Hello stdout',
     description: 'Writes a greeting through the WASM stdout resource.',
-    sourcePath: 'hello.tpp',
+    sourcePath: 'hello.thue',
     sourceText: `^hello$ ::> stdout Hello from Go-WASM!\\n
 
 hello
@@ -51,7 +51,7 @@ hello
     id: 'stdin',
     name: 'Stdin greeting',
     description: 'Reads one browser-provided stdin line and writes a greeting.',
-    sourcePath: 'stdin-greeting.tpp',
+    sourcePath: 'stdin-greeting.thue',
     sourceText: `^start$ ::< 1 stdin
 ^(?<name>[A-Za-z]+)$ ::> stdout hello {{name|pctdec}}!\\n
 
@@ -64,7 +64,7 @@ start
     id: 'resource-echo',
     name: 'Custom resource echo',
     description: 'Uses a named callback resource. Writes are logged, and reads consume its input text.',
-    sourcePath: 'resource-echo.tpp',
+    sourcePath: 'resource-echo.thue',
     sourceText: `^start$ ::= WRITE\\nread
 ^WRITE$ ::> echo ping\\n
 ^read$ ::= response:@R@
@@ -80,7 +80,7 @@ start
     id: 'coverage',
     name: 'Coverage TSV',
     description: 'Runs with coverage enabled and shows both raw TSV and a parsed table.',
-    sourcePath: 'coverage-demo.tpp',
+    sourcePath: 'coverage-demo.thue',
     sourceText: `^start$ ::= middle
 ^middle$ ::= done
 ^done$ ::> stdout covered\\n
@@ -95,7 +95,7 @@ start
     id: 'error',
     name: 'Resource error',
     description: 'A callback read error is surfaced intact as ERR:resource:<name>:...',
-    sourcePath: 'resource-error.tpp',
+    sourcePath: 'resource-error.thue',
     sourceText: `^start$ ::< 1 broken
 start
 `,
@@ -106,7 +106,7 @@ start
     id: 'timeout',
     name: 'Resource timeout',
     description: 'A resource timeout callback returns an error without any JS subprocess emulation.',
-    sourcePath: 'timeout.tpp',
+    sourcePath: 'timeout.thue',
     sourceText: `^start$ ::< 1 sleepy
 start
 `,

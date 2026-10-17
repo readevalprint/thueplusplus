@@ -19,15 +19,15 @@ from hosts import build_registered  # noqa: E402
 
 # Existing programs keep their names. The limit case is a new file, so it uses .thue.
 PROGRAMS = (
-    ("problems/hello-world/solutions/direct.tpp", None, ""),
-    ("problems/99-bottles-of-beer/solutions/direct.tpp", None, "4\n"),
-    ("problems/fizzbuzz/solutions/direct.tpp", None, "5\n"),
-    ("problems/factorial/solutions/direct.tpp", None, "6\n"),
-    ("metrics/workloads/probe-cost.tpp", None, ""),
-    ("metrics/workloads/state-rewrite.tpp", None, ""),
-    ("metrics/workloads/regex.tpp", None, ""),
-    ("metrics/workloads/io.tpp", None, "alpha\nbeta\ngamma\ndelta\nepsilon\nzeta\neta\ntheta\n"),
-    ("langs/forth/forth.tpp", "1 2 + .", ""),
+    ("problems/hello-world/solutions/direct.thue", None, ""),
+    ("problems/99-bottles-of-beer/solutions/direct.thue", None, "4\n"),
+    ("problems/fizzbuzz/solutions/direct.thue", None, "5\n"),
+    ("problems/factorial/solutions/direct.thue", None, "6\n"),
+    ("metrics/workloads/probe-cost.thue", None, ""),
+    ("metrics/workloads/state-rewrite.thue", None, ""),
+    ("metrics/workloads/regex.thue", None, ""),
+    ("metrics/workloads/io.thue", None, "alpha\nbeta\ngamma\ndelta\nepsilon\nzeta\neta\ntheta\n"),
+    ("langs/forth/forth.thue", "1 2 + .", ""),
 )
 LIST_RULES_HOSTS = frozenset({"python", "wasm", "rust", "cpp"})
 LIMIT_PROGRAM = "a ::= b\nb ::= a\n::=\na\n"
@@ -114,7 +114,7 @@ def main() -> None:
             target = Path(tmp) / f"list-{interpreter.name}.json"
             completed = run(
                 interpreter,
-                "problems/hello-world/solutions/direct.tpp",
+                "problems/hello-world/solutions/direct.thue",
                 None,
                 "",
                 target,

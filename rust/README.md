@@ -1,19 +1,19 @@
-# thuepp
+# thuelang
 
-Rust host for Thue++ v0.5. The library crate is `thuepp`. The binary of the same name is a thin CLI over that library.
+Rust host for Thue++ v0.5. The Cargo package name and the Rust library are `thuelang`. The CLI binary is `thue`.
 
 This crate is not published. `publish = false` is set in `Cargo.toml`.
 
 ## Library
 
 ```rust
-use thuepp::Interpreter;
+use thuelang::Interpreter;
 
 let mut interp = Interpreter::new();
 interp.max_steps = Some(1_000_000);
 interp.max_evals = Some(1_000_000);
 interp.max_state_bytes = Some(8 * 1024 * 1024);
-interp.load_program("hello.tpp")?;
+interp.load_program("hello.thue")?;
 let code = interp.run()?;
 ```
 
@@ -26,7 +26,7 @@ Do not call `run` without an explicit step limit, probe limit, and state limit. 
 ## CLI
 
 ```text
-thuepp <program.tpp> [flags...]
+thue <program.thue> [flags...]
 ```
 
 | Flag | Effect |
@@ -38,10 +38,10 @@ thuepp <program.tpp> [flags...]
 | `--debug` | Diagnostic lines on stderr. Manifests do not compare them. |
 | `--trace` | One JSON object per trace event on stderr, before any `Error:` line. |
 | `--proc:NAME COMMAND` | Bind `NAME` to a process. The next argument is the command. |
-| `--rule-coverage PATH` | TSV `source.tpp:line<TAB>count`, sorted. |
+| `--rule-coverage PATH` | TSV `source.thue:line<TAB>count`, sorted. |
 | `--counts PATH` | `{"applied_steps":N,"probes":N}` after a run. Not written for `--list-rules`. |
 | `--metrics PATH` | The shared counters JSON. `Interpreter::metrics` returns the same value. Not written for `--list-rules`. |
-| `--list-rules` | TSV `source.tpp:line<TAB>lhs`. Does not run. |
+| `--list-rules` | TSV `source.thue:line<TAB>lhs`. Does not run. |
 
 `--flag VALUE` and `--flag=value` both work. No arguments exits 2. An unknown argument exits 1 with `Error: Unknown argument: ...`. A non-integer limit exits 2 and prints the Go `strconv.Atoi` message with no `Error:` prefix. A missing program exits 1 with `Error: File not found: <absolute path>`.
 
@@ -80,7 +80,7 @@ Remaining gaps, none of which the conformance programs use:
 From the repository root, after `cargo build --release --manifest-path rust/Cargo.toml`:
 
 ```bash
-uv run python tools/example_runner.py --impl 'rust=./rust/target/release/thuepp'
+uv run python tools/example_runner.py --impl 'rust=./rust/target/release/thue'
 ```
 
 `make test` builds the release binary and passes that `--impl`. The runner supplies `timeout(1)`, a 256 MiB resident-memory cap, and explicit finite limits.

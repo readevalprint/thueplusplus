@@ -1,4 +1,4 @@
-//! Thin CLI over the `thuepp` library.
+//! Thin CLI over the `thue` library.
 
 use std::env;
 use std::fs;
@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use thuepp::{display_path, format_trace, parse_limit, Interpreter, RunMetrics};
+use thuelang::{display_path, format_trace, parse_limit, Interpreter, RunMetrics};
 
 fn main() -> ExitCode {
     match run() {
@@ -20,7 +20,7 @@ fn run() -> Result<u8, u8> {
     if args.is_empty() {
         let _ = writeln!(
             io::stderr(),
-            "usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options]"
+            "usage: thue <program> [--proc:<name> <command>]... [--input <state>] [options]"
         );
         return Err(2);
     }

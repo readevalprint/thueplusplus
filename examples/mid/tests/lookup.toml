@@ -1,5 +1,5 @@
 name = "mid lookup"
-program = "../lookup.tpp"
+program = "../lookup.thue"
 
 [[case]]
 name = "hit binds value"

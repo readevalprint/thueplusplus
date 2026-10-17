@@ -1,7 +1,7 @@
-# Core acceptance cases for examples/lisp/lisp.tpp.
+# Core acceptance cases for examples/lisp/lisp.thue.
 # Originally generated from learnings/hard_acceptance_cases.tsv, then promoted
 # into the stable Lisp contract.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

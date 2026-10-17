@@ -2,7 +2,7 @@ SHELL := /bin/sh
 
 .PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics
 
-RUST_BIN := ./rust/target/release/thuepp
+RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
 
 # HOST selects one conformance host: python, go, wasm, rust, or cpp.
@@ -16,17 +16,17 @@ else
 endif
 
 ifneq ($(wildcard cpp/CMakeLists.txt),)
-  FULL_IMPL := $(RUST_IMPL) --impl cpp=./build/cpp/thuepp
+  FULL_IMPL := $(RUST_IMPL) --impl cpp=./build/cpp/thue
   ifeq ($(HOST),)
-    CORE_ARGS += --impl cpp=./build/cpp/thuepp
+    CORE_ARGS += --impl cpp=./build/cpp/thue
   else ifeq ($(HOST),cpp)
-    CORE_ARGS := --tier core --only cpp --impl cpp=./build/cpp/thuepp
+    CORE_ARGS := --tier core --only cpp --impl cpp=./build/cpp/thue
   endif
 else
   FULL_IMPL := $(RUST_IMPL)
 endif
 
-# C++17 host. The binary is build/cpp/thuepp. g++ is required: the default c++
+# C++17 host. The binary is build/cpp/thue. g++ is required: the default c++
 # on some images is clang without libstdc++.
 cpp:
 	@command -v cmake >/dev/null 2>&1 || { echo "Error: cmake is required to build the C++ host" >&2; exit 127; }
@@ -84,11 +84,11 @@ test-full: test-static
 problems:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the problem suite" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the problem suite" >&2; exit 127; }
-	go build -C go -o ../build/go-thuepp ./cmd/thuepp
+	go build -C go -o ../build/go-thue ./cmd/thue
 	rm -rf build/problems/parts
 	mkdir -p build/problems/parts
 	status=0; \
-	cd problems && THUEPP_PROBLEM_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
+	cd problems && THUE_PROBLEM_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
 	go run ./cmd/collect -o ../build/problems/results.json || exit 1; \
 	if [ $$status -eq 0 ]; then python3 ../tools/pareto.py ../build/problems/results.json || status=$$?; fi; \
 	exit $$status
@@ -96,11 +96,11 @@ problems:
 langs:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the language cases" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the language cases" >&2; exit 127; }
-	go build -C go -o ../build/go-thuepp ./cmd/thuepp
+	go build -C go -o ../build/go-thue ./cmd/thue
 	rm -rf build/langs/parts
 	mkdir -p build/langs/parts
 	status=0; \
-	cd langs && THUEPP_LANG_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
+	cd langs && THUE_LANG_RECORD=1 go test ./... -count=1 -p 2 -timeout 20m || status=$$?; \
 	go run ./cmd/collect -o ../build/langs/results.json || exit 1; \
 	if [ $$status -eq 0 ]; then python3 ../tools/pareto.py ../build/langs/results.json || status=$$?; fi; \
 	exit $$status
@@ -119,11 +119,11 @@ wasm:
 
 wasm-smoke: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM smoke tests" >&2; exit 127; }
-	GOROOT="$$(go env GOROOT)" THUEPP_WASM="$$(pwd)/build/thuepp.wasm" node go/wasm/smoke_test.js
+	GOROOT="$$(go env GOROOT)" THUE_WASM="$$(pwd)/build/thue.wasm" node go/wasm/smoke_test.js
 
 wasm-adapter-test: wasm
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run WASM adapter tests" >&2; exit 127; }
-	GOROOT="$$(go env GOROOT)" THUEPP_WASM="$$(pwd)/build/thuepp.wasm" node go/wasm/adapter_test.js
+	GOROOT="$$(go env GOROOT)" THUE_WASM="$$(pwd)/build/thue.wasm" node go/wasm/adapter_test.js
 
 demo-test:
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required to run the browser demo tests" >&2; exit 127; }

@@ -21,16 +21,16 @@ function loadWasmExec(wasmExecPath) {
 
 async function waitForAPI() {
   for (let i = 0; i < 100; i += 1) {
-    if (globalThis.ThuePP && typeof globalThis.ThuePP.run === 'function') return globalThis.ThuePP
+    if (globalThis.Thue && typeof globalThis.Thue.run === 'function') return globalThis.Thue
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
-  throw new Error('ThuePP.run was not registered by the Go WASM module')
+  throw new Error('Thue.run was not registered by the Go WASM module')
 }
 
-export async function initThuePP(options = {}) {
+export async function initThue(options = {}) {
   if (singleton && !options.fresh) return singleton
   loadWasmExec(options.wasmExecPath)
-  const wasmPath = options.wasmPath || process.env.THUEPP_WASM || join(here, '..', '..', 'build', 'thuepp.wasm')
+  const wasmPath = options.wasmPath || process.env.THUE_WASM || join(here, '..', '..', 'build', 'thue.wasm')
   const bytes = readFileSync(wasmPath)
   const go = new globalThis.Go()
   const { instance } = await WebAssembly.instantiate(bytes, go.importObject)

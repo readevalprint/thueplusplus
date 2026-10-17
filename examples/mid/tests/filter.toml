@@ -1,5 +1,5 @@
 name = "mid pctenc inserted raw"
-program = "../filter.tpp"
+program = "../filter.thue"
 
 [[case]]
 name = "pctenc text is inserted as regex source"

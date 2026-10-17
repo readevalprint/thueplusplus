@@ -25,7 +25,7 @@ pub const EXIT_EVAL_LIMIT: i32 = 11;
 pub const EXIT_STATE_LIMIT: i32 = 12;
 pub const EXIT_READ_TIMEOUT: i32 = 13;
 
-/// Counters for one run. The same fields as `thuepp --metrics`.
+/// Counters for one run. The same fields as `thue --metrics`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RunMetrics {
     pub applied_steps: i64,
@@ -969,7 +969,7 @@ mod tests {
         interp.max_steps = Some(1000);
         interp.max_evals = Some(10_000);
         interp.max_state_bytes = Some(1_000_000);
-        interp.load_program_text("t.tpp", source).unwrap();
+        interp.load_program_text("t.thue", source).unwrap();
         interp.apply_input_override(input);
         interp.run()
     }
@@ -988,7 +988,7 @@ mod tests {
         interp.max_state_bytes = Some(100);
         interp.trace_enabled = true;
         interp
-            .load_program_text("state-limit.tpp", "^a$ ::= bb\n::=\n")
+            .load_program_text("state-limit.thue", "^a$ ::= bb\n::=\n")
             .unwrap();
         interp.apply_input_override("a");
         interp.max_state_bytes = Some(1);
@@ -1010,7 +1010,7 @@ mod tests {
         interp.max_evals = Some(10);
         interp.max_state_bytes = Some(100);
         interp
-            .load_program_text("t.tpp", "^a$ ::= b\n::=\n")
+            .load_program_text("t.thue", "^a$ ::= b\n::=\n")
             .unwrap();
         interp.apply_input_override("a");
         let err = interp.run().unwrap_err();

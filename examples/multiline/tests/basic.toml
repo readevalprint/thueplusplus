@@ -1,5 +1,5 @@
 name = "multiline state processing"
-program = "../multiline.tpp"
+program = "../multiline.thue"
 
 [expect]
 stdout = "(+ 1 2)\n"

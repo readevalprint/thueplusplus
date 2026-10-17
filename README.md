@@ -14,7 +14,7 @@ This is a [semi-Thue system](https://grokipedia.com/page/Semi-Thue_system): repl
 
 John Colagioia's esolang [Thue](https://github.com/jcolag/Thue) turned that idea into a small programming language. Thue++ keeps the same core model, then adds [regular-expression](https://en.wikipedia.org/wiki/Regular_expression) captures and templates:
 
-```thuepp
+```thue
 ^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}
 ```
 
@@ -22,7 +22,7 @@ A rule matches the current state. If it applies, it rewrites with the template. 
 
 Optional context links are included where they help. You do not need a formal-language background to read this README, and the links are there for whichever terms you want to chase further.
 
-This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [mid](#mid), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](langs/forth/README.md), and [Lisp](langs/lisp/README.md).
+This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [mid](#mid), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.thue), [Forth](langs/forth/README.md), and [Lisp](langs/lisp/README.md).
 
 ## Use cases
 
@@ -38,7 +38,7 @@ That makes Thue++ a candidate for anything that needs to run untrusted code. For
 
 ## Rules
 
-```thuepp
+```thue
 ^hello$ ::= world
 
 ::=
@@ -55,7 +55,7 @@ Rules scan top to bottom. After a match, scanning starts again from the first ru
 
 The pattern can capture text, and the replacement can use it:
 
-```thuepp
+```thue
 ^hello (?<name>[A-Za-z]+)$ ::= hi {{name}}
 
 ::=
@@ -68,7 +68,7 @@ The capture `name` matches `Ada`, so the state rewrites to `hi Ada`.
 
 When a regex fragment gets reused or hard to read, give it a name:
 
-```thuepp
+```thue
 NAME_ALIAS <- [A-Za-z_][A-Za-z0-9_]*
 ^hello (?<name>$NAME_ALIAS)$ ::= hi {{name}}
 ```
@@ -91,16 +91,16 @@ A filled `{{name}}` is pasted in as regex source. A captured `.` matches any cha
 
 This program reads `a` and `b` out of one map line:
 
-<!-- thuepp-readme-example: source=examples/mid/chain.tpp expected-output=examples/mid/tests/chain.toml -->
-<!-- thuepp-readme-example:start -->
-Example source (`examples/mid/chain.tpp`):
+<!-- thue-readme-example: source=examples/mid/chain.thue expected-output=examples/mid/tests/chain.toml -->
+<!-- thue-readme-example:start -->
+Example source (`examples/mid/chain.thue`):
 
 Run it now in the browser playground:
-https://thuelang.org/playground?file=./examples/mid/chain.tpp
+https://thuelang.org/playground?file=./examples/mid/chain.thue
 
-See the source: [examples/mid/chain.tpp](https://github.com/thuelang/thueplusplus/blob/main/examples/mid/chain.tpp)
+See the source: [examples/mid/chain.thue](https://github.com/thuelang/thueplusplus/blob/main/examples/mid/chain.thue)
 
-```thuepp
+```thue
 ^MAP:.*$ ::| a=(?<ak>[^,]*) ::| b=(?<bv>[^,]*) ::= {{ak}}-{{bv}}
 ^1-2$ ::> stdout 1-2\n
 
@@ -113,9 +113,9 @@ Expected output:
 ```text
 1-2
 ```
-<!-- thuepp-readme-example:end -->
+<!-- thue-readme-example:end -->
 
-`examples/mid/lookup.tpp` uses the same operator to find `KEY`'s value anywhere in the state. `examples/mid/literal.tpp` shows that metacharacters in a capture stay literal.
+`examples/mid/lookup.thue` uses the same operator to find `KEY`'s value anywhere in the state. `examples/mid/literal.thue` shows that metacharacters in a capture stay literal.
 
 ## IO, resources, and builtins
 
@@ -135,16 +135,16 @@ The default resources are `stdin`, `stdout`, and `stderr`. A runner can bind mor
 
 This program writes one line, then exits:
 
-<!-- thuepp-readme-example: source=examples/hello/hello.tpp expected-output=examples/hello/tests/basic.toml -->
-<!-- thuepp-readme-example:start -->
-Example source (`examples/hello/hello.tpp`):
+<!-- thue-readme-example: source=examples/hello/hello.thue expected-output=examples/hello/tests/basic.toml -->
+<!-- thue-readme-example:start -->
+Example source (`examples/hello/hello.thue`):
 
 Run it now in the browser playground:
-https://thuelang.org/playground?file=./examples/hello/hello.tpp
+https://thuelang.org/playground?file=./examples/hello/hello.thue
 
-See the source: [examples/hello/hello.tpp](https://github.com/thuelang/thueplusplus/blob/main/examples/hello/hello.tpp)
+See the source: [examples/hello/hello.thue](https://github.com/thuelang/thueplusplus/blob/main/examples/hello/hello.thue)
 
-```thuepp
+```thue
 ^START$ ::= hello\ndone
 hello ::> stdout Hello, World!\n
 done ::- 0
@@ -158,13 +158,13 @@ Expected output:
 ```text
 Hello, World!
 ```
-<!-- thuepp-readme-example:end -->
+<!-- thue-readme-example:end -->
 
 ## Input and processes
 
 Reads and writes go through named resources.
 
-```thuepp
+```thue
 PCT <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
 
 ^START$ ::= @PROMPT@NAME<@READ@>
@@ -192,21 +192,21 @@ It also shows process resources. The program reads `@RANDOM_NUMBER@` from the `r
 
 ```bash
 printf 'x\n3\n8\n7\n' | \
-  go -C go run ./cmd/thuepp \
-    ../examples/guess-number/guess-number.tpp \
+  go -C go run ./cmd/thue \
+    ../examples/guess-number/guess-number.thue \
     --proc:random 'printf 7; echo'
 ```
 
-<!-- thuepp-readme-example: source=examples/guess-number/guess-number.tpp source-lines=1-30 expected-output=examples/guess-number/tests/basic.toml -->
-<!-- thuepp-readme-example:start -->
-Example source excerpt (`examples/guess-number/guess-number.tpp`, lines 1-30):
+<!-- thue-readme-example: source=examples/guess-number/guess-number.thue source-lines=1-30 expected-output=examples/guess-number/tests/basic.toml -->
+<!-- thue-readme-example:start -->
+Example source excerpt (`examples/guess-number/guess-number.thue`, lines 1-30):
 
 Run it now in the browser playground:
-https://thuelang.org/playground?file=./examples/guess-number/guess-number.tpp
+https://thuelang.org/playground?file=./examples/guess-number/guess-number.thue
 
-See the source: [examples/guess-number/guess-number.tpp](https://github.com/thuelang/thueplusplus/blob/main/examples/guess-number/guess-number.tpp)
+See the source: [examples/guess-number/guess-number.thue](https://github.com/thuelang/thueplusplus/blob/main/examples/guess-number/guess-number.thue)
 
-```thuepp
+```thue
 NUMBER <- [0-9]+
 
 PAYLOAD <- (?:[A-Za-z0-9_.-]|%[0-9A-F]{2})*
@@ -251,7 +251,7 @@ Too high.
 Guess:
 Correct!
 ```
-<!-- thuepp-readme-example:end -->
+<!-- thue-readme-example:end -->
 
 ## Structured state: copy-on-write KV store
 
@@ -283,7 +283,7 @@ Transactions are copy-on-write overlays. `set` and `del` write only to the top f
 
 ## A smaller language inside the language: Forth
 
-[`langs/forth/forth.tpp`](langs/forth/forth.tpp) is a compact [stack machine](https://en.wikipedia.org/wiki/Stack_machine) in the spirit of [Forth](https://www.forth.com/resources/forth-programming-language/), written as rewrite rules. It is smaller than the Lisp evaluator, but it shows the same idea: a language can live inside state transitions.
+[`langs/forth/forth.thue`](langs/forth/forth.thue) is a compact [stack machine](https://en.wikipedia.org/wiki/Stack_machine) in the spirit of [Forth](https://www.forth.com/resources/forth-programming-language/), written as rewrite rules. It is smaller than the Lisp evaluator, but it shows the same idea: a language can live inside state transitions.
 
 ```text
 1 2 + 3 *
@@ -299,7 +299,7 @@ Tokens are whitespace-delimited. The data stack renders top-first, so `1 2 3` be
 
 ## A larger language inside the language: Lisp
 
-Apparently, you can write a powerful [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) as regex rewrite rules. [`langs/lisp/lisp.tpp`](langs/lisp/lisp.tpp) is still only Thue++ rules. The reader, typed values, [lexical scope](https://www.scheme.com/tspl4/binding.html), closures, lists, quote, eval, and macro expansion all live in `.tpp`.
+Apparently, you can write a powerful [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) as regex rewrite rules. [`langs/lisp/lisp.thue`](langs/lisp/lisp.thue) is still only Thue++ rules. The reader, typed values, [lexical scope](https://www.scheme.com/tspl4/binding.html), closures, lists, quote, eval, and macro expansion all live in `.thue`.
 
 ```lisp
 (add (mul 2 3) 4)
@@ -315,7 +315,7 @@ The key boundary is source text versus runtime state. The reader protects string
 
 A leading `'` means `quote`: `'x` reads as `(quote x)`, and `'(add 1 2)` reads as `(quote (add 1 2))` before evaluation.
 
-```thuepp
+```thue
 ^READ<(?<pre>[\s\S]*)'(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quote {{datum}}){{post}}> {{k}}
 ^READ<(?<pre>[\s\S]*)`(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(quasiquote {{datum}}){{post}}> {{k}}
 ^READ<(?<pre>[\s\S]*),(?<datum>$READER_DATUM)(?<post>[\s\S]*)> (?<k>K(?:TOP|PARSE<.*>))$ ::= READ<{{pre}}(unquote {{datum}}){{post}}> {{k}}
@@ -325,7 +325,7 @@ A leading `'` means `quote`: `'x` reads as `(quote x)`, and `'(add 1 2)` reads a
 
 Top-level input then boots an explicit environment. Primitive functions are values in that environment (`VPRIM<add>`, `VPRIM<parse>`, `VPRIM<macroexpand>`, and friends). They can be passed around, shadowed, or left out of later eval scopes.
 
-```thuepp
+```thue
 ^READ<L<(?<payload>$PCT)>> KTOP$ ::= CBOOT<{{payload|pctdec}}|KDONE>
 ^CBOOT<(?<expr>[^|]*)\|(?<k>.*)>$ ::= EENV<{{expr}}|add=VPRIM%3Cadd%3E;mul=VPRIM%3Cmul%3E;parse=VPRIM%3Cparse%3E;macroexpand=VPRIM%3Cmacroexpand%3E;write=VPRIM%3Cwrite%3E;|{{k}}>
 ```
@@ -336,7 +336,7 @@ The real rule has more primitives; this is the shape.
 
 `quote` is lazy: it returns source as data instead of evaluating it. Symbols become `VSYM<...>`. Lists become `VLIST<...>` with [percent-encoded](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1) items. Output renders them back as readable Lisp.
 
-```thuepp
+```thue
 ^EENV<quote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QUOTE<{{item}}|{{k}}>
 ^QUOTE<(?<sym>$SYM)\|(?<k>.*)>$ ::= RET<VSYM<{{sym|pctenc}}>|{{k}}>
 ^QUOTE<L<(?<payload>$PCT)>\|(?<k>.*)>$ ::= QUOTELIST<{{payload|pctdec}}|{{k}}|>
@@ -355,7 +355,7 @@ Expected output:
 
 `quasiquote` uses the same data boundary, but escape forms can evaluate. `unquote` inserts one value. `splice` inserts the items of a list.
 
-```thuepp
+```thue
 ^EENV<quasiquote (?<item>(?:$OPSYM|$EXPR))\|(?<env>[^|]*)\|(?<k>.*)>$ ::= QQ<{{item}}|{{env}}|{{k}}>
 ^QQESC<unquote\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KKEEPENV<{{env}}> KQQITEM<{{rest}}|{{env}}|{{acc}}> {{k}}>
 ^QQESC<splice\|list\|(?<expr>$PCT)\|(?<rest>[^|]*)\|(?<env>[^|]*)\|(?<acc>$ITEMS)> (?<k>.*)>$ ::= ARGENV<{{expr|pctdec}}|{{env}}|KKEEPENV<{{env}}> KQQSPLICE<{{rest}}|{{env}}|{{acc}}> {{k}}>
@@ -375,7 +375,7 @@ Expected output:
 
 `parse` turns string data into Lisp code-as-data. It is not `eval`. It uses the same reader as top-level input, but returns the quoted data value instead of running it.
 
-```thuepp
+```thue
 ^APPLY<VPRIM<parse>\|(?<a>[^;]*);\|(?<k>.*)>$ ::= BPARSE<{{a|pctdec}}|{{k}}>
 ^BPARSE<VSTR<(?<s>$PCT)>\|(?<k>.*)>$ ::= READ<{{s|pctdec}}> KPARSE<{{k}}>
 ^READ<L<(?<payload>$PCT)>> KPARSE<(?<k>.*)>$ ::= QUOTE<L<{{payload}}>|{{k}}>
@@ -422,7 +422,7 @@ Expected output:
 
 `eval` does not use caller locals or the default core environment. It evaluates its `code` and `scope` operands, converts the association-list scope into an environment, and runs the code there. The code can only see names in that alist.
 
-```thuepp
+```thue
 ^EENV<eval (?<code>$EXPR) (?<scope>$EXPR)\|(?<env>[^|]*)\|(?<k>.*)>$ ::= ARGENV<{{code}}|{{env}}|KEVALSCOPE<{{scope|pctenc}}^{{env}}> {{k}}>
 ^RET<(?<code>$VAL)\|KEVALSCOPE<(?<scope>$PCT)\^(?<env>[^>]*)> (?<k>.*)>$ ::= ARGENV<{{scope|pctdec}}|{{env}}|KEVALRUN<{{code}}> {{k}}>
 ^ALIST2ENV<\|(?<code>$VAL)\|(?<k>.*)\|(?<acc>(?:$NAME=[^;]*;)*)>$ ::= CODEVAL<{{code}}|{{acc}}|{{k}}>
@@ -469,7 +469,7 @@ That returns `36`. The helper only exposes the API it installs:
 
 There is no `defmacro`, global macro registry, or implicit macro pass. `macroexpand` takes two arguments: code-as-data and an association list of `(symbol transformer)` pairs. The transformer receives the raw operand list and returns new code-as-data. Expansion then repeats on the result.
 
-```thuepp
+```thue
 ^APPLY<VPRIM<macroexpand>\|(?<code>[^;]*);(?<scope>[^;]*);\|(?<k>.*)>$ ::= BMACROEXPAND<{{code|pctdec}}|{{scope|pctdec}}|{{k}}>
 ^BMACROEXPAND<(?<code>$VAL)\|VLIST<(?<macros>$ITEMS)>\|(?<k>.*)>$ ::= MEXP<N|{{code}}|{{macros}}|{{k}}>
 ^MEXP<(?<mode>N|Q)\|VLIST<(?<head>[^;]*);(?<tail>$ITEMS)>\|(?<macros>$ITEMS)\|(?<k>.*)>$ ::= MEXPHEAD<{{mode}}|{{head|pctdec}}|{{head}}|{{tail}}|{{macros}}|{{k}}>
@@ -520,24 +520,24 @@ This repository has five current conformance backends:
 
 ```bash
 # Python package
-uv run thuepp <program.tpp>
+uv run thue <program.thue>
 
-# Go package github.com/thuelang/thueplusplus/go/thuepp
-(cd go && go run ./cmd/thuepp ../<program.tpp>)
+# Go package github.com/thuelang/thueplusplus/go/thuelang
+(cd go && go run ./cmd/thue ../<program.thue>)
 
-# npm package thuepp
-node js/src/cli.js <program.tpp>
+# npm package thuelang
+node js/src/cli.js <program.thue>
 
-# Rust crate thuepp
-./rust/target/release/thuepp <program.tpp>
+# Rust crate thuelang
+./rust/target/release/thue <program.thue>
 
-# C++ library thuepp (CMake target thuepp, CLI build/cpp/thuepp)
+# C++ library thuelang (CMake target thuelang, CLI build/cpp/thue)
 cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
 cmake --build build/cpp --parallel
-build/cpp/thuepp <program.tpp>
+build/cpp/thue <program.thue>
 ```
 
-`uv run thuepp` is the Python console script. The Go library import is `github.com/thuelang/thueplusplus/go/thuepp`. The npm package name is `thuepp`. The Rust crate is `thuepp` under `rust/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
+`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package name is `thuelang`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -551,7 +551,7 @@ make test
 
 `make test` is the per-PR check. It has two tiers.
 
-Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thuepp`), and, when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thuepp`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
+Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thue`), and, when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thue`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
 
 Forth, Lisp, and BASIC live in `langs/`. Brainfuck stays in `examples/brainfuck/` as an esolang demo. `make problems` and `make langs` measure solutions and language cases on the native Go host. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of that suite.
 
@@ -611,15 +611,15 @@ uv run python tools/check_contract.py --update-readme
 Backends can write successful rule application counts:
 
 ```bash
-uv run thuepp langs/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
-(cd go && go run ./cmd/thuepp ../langs/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.go.coverage.tsv)
+uv run thue langs/lisp/lisp.thue --input '(add 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
+(cd go && go run ./cmd/thue ../langs/lisp/lisp.thue --input '(add 1 2)' --rule-coverage /tmp/lisp.go.coverage.tsv)
 ```
 
 Coverage files are TSV with no header:
 
 ```text
-langs/lisp/lisp.tpp:97	1
-langs/lisp/lisp.tpp:156	1
+langs/lisp/lisp.thue:97	1
+langs/lisp/lisp.thue:156	1
 ```
 
 A rule counts only after it applies. Failed probes, failed builtins, missing resources, and failed writes do not count.
@@ -630,13 +630,13 @@ Coverage ignores are unsupported. Every surviving rule in manifest-declared exam
 
 ```text
 examples/        Shared Thue++ programs and manifest tests
-python/thuepp/   Python package. The thuepp console script is the CLI.
-go/thuepp/       Go package github.com/thuelang/thueplusplus/go/thuepp
-go/cmd/thuepp/   Thin Go CLI
-js/              npm package thuepp (ESM, types, Node CLI, browser worker)
-rust/            Rust crate thuepp and its thin CLI. Not published.
-cpp/             C++17 library thuepp and the thuepp CLI. Not published.
-demo/            Playground. It depends on the thuepp package.
+python/thuelang/ Python package. The thue console script is the CLI.
+go/thuelang/     Go package github.com/thuelang/thueplusplus/go/thuelang
+go/cmd/thue/     Thin Go CLI
+js/              npm package thuelang (ESM, types, Node CLI, browser worker)
+rust/            Rust library thuelang and the thue CLI. Not published.
+cpp/             C++17 library thuelang and the thue CLI. Not published.
+demo/            Playground. It depends on the thuelang package.
 docs/            Language contracts, host API, and release steps
 tools/           Repository conformance checker and shared manifest runner
 learnings/       Preserved design notes and failed attempts worth not repeating
@@ -673,29 +673,29 @@ External context:
 The Go, Python, and npm hosts are packages. The Rust crate and the C++ library are not published. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). From a checkout:
 
 ```bash
-uv run thuepp <program.tpp>
-(cd go && go run ./cmd/thuepp ../<program.tpp>)
-node js/src/cli.js <program.tpp>
-cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thuepp <program.tpp>
-build/cpp/thuepp <program.tpp>
+uv run thue <program.thue>
+(cd go && go run ./cmd/thue ../<program.thue>)
+node js/src/cli.js <program.thue>
+cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
+build/cpp/thue <program.thue>
 ```
 
-Import `thuepp` in Python, `github.com/thuelang/thueplusplus/go/thuepp` in Go, `thuepp` from npm, and crate `thuepp` from `rust/`. C++ includes `thuepp/thuepp.hpp` and links `thuepp::thuepp`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
+Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from `rust/`. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. The playground depends on the npm package. The Rust crate and the C++ library are not published.
 
 Copy-pasteable agent prompt:
 
 ```text
-Implement Thue++ in this project. Use this repository as the reference. Preserve .tpp semantics, especially ordered rewrites, template captures, explicit resources, exact-rational numeric builtins with no decimal/binary floats, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
+Implement Thue++ in this project. Use this repository as the reference. Preserve .thue semantics, especially ordered rewrites, template captures, explicit resources, exact-rational numeric builtins with no decimal/binary floats, execution limits, and fail-loud errors. Port only what the project needs, but verify it against equivalent examples/manifests from examples/**/tests/*.toml. Do not silently degrade unsupported behavior.
 ```
 
 To run this repository's current reference tooling locally:
 
 ```bash
-uv run thuepp <program.tpp>
-(cd go && go run ./cmd/thuepp ../<program.tpp>)
-node js/src/cli.js <program.tpp>
-cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thuepp <program.tpp>
-build/cpp/thuepp <program.tpp>
+uv run thue <program.thue>
+(cd go && go run ./cmd/thue ../<program.thue>)
+node js/src/cli.js <program.thue>
+cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
+build/cpp/thue <program.thue>
 ```
 
 Repository development requirements:
@@ -710,13 +710,13 @@ Repository development requirements:
 
 ## Editor install
 
-The extension in [`editors/vscode`](editors/vscode) highlights `.tpp` files and adds snippets and **Run Thue++ file**. It installs in VS Code, Cursor, VSCodium, and Windsurf. Build it with `npm --prefix editors/vscode ci && npm --prefix editors/vscode run package`, or download the `.vsix` from the CI job artifact. From the Extensions view, choose **Install from VSIX**. From a terminal:
+The extension in [`editors/vscode`](editors/vscode) highlights `.thue` files and adds snippets and **Run Thue++ file**. It installs in VS Code, Cursor, VSCodium, and Windsurf. Build it with `npm --prefix editors/vscode ci && npm --prefix editors/vscode run package`, or download the `.vsix` from the CI job artifact. From the Extensions view, choose **Install from VSIX**. From a terminal:
 
 ```bash
-code --install-extension editors/vscode/thuepp-0.5.0.vsix
-cursor --install-extension editors/vscode/thuepp-0.5.0.vsix
-codium --install-extension editors/vscode/thuepp-0.5.0.vsix
-windsurf --install-extension editors/vscode/thuepp-0.5.0.vsix
+code --install-extension editors/vscode/thue-0.5.0.vsix
+cursor --install-extension editors/vscode/thue-0.5.0.vsix
+codium --install-extension editors/vscode/thue-0.5.0.vsix
+windsurf --install-extension editors/vscode/thue-0.5.0.vsix
 ```
 
-**Run Thue++ file** calls the `thuepp` already on your `PATH`. It always passes `--max-steps`, `--max-evals`, and `--max-state-bytes`. The defaults are 1000000, 1000000, and 8388608. The command has no unlimited setting. Publishing to the VS Code Marketplace and to Open VSX is documented in [`editors/vscode/README.md`](editors/vscode/README.md). This repository does not publish the extension. Cursor installs extensions from Open VSX.
+**Run Thue++ file** calls the `thue` already on your `PATH`. It always passes `--max-steps`, `--max-evals`, and `--max-state-bytes`. The defaults are 1000000, 1000000, and 8388608. The command has no unlimited setting. Publishing to the VS Code Marketplace and to Open VSX is documented in [`editors/vscode/README.md`](editors/vscode/README.md). This repository does not publish the extension. Cursor installs extensions from Open VSX.

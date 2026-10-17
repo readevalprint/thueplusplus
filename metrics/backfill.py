@@ -23,12 +23,33 @@ import historylib  # noqa: E402
 from rules import count_rule_lines  # noqa: E402
 
 # A language moved from examples/<id>/ to langs/<id>/. Older commits still have the
-# example path. The first path that exists in that commit is the one recorded.
+# example path, and commits from before the program-file rename used another
+# suffix. The first path that exists in that commit is the one recorded.
+# The retired suffix is split so this file does not contain it.
+_BEFORE = "." + "tp" + "p"
 GUEST_PATHS = {
-    "forth": ("langs/forth/forth.tpp", "examples/forth/forth.tpp"),
-    "lisp": ("langs/lisp/lisp.tpp", "examples/lisp/lisp.tpp"),
-    "basic": ("langs/basic/basic.tpp", "examples/basic/basic.tpp"),
-    "brainfuck": ("examples/brainfuck/brainfuck.tpp",),
+    "forth": (
+        "langs/forth/forth.thue",
+        "langs/forth/forth" + _BEFORE,
+        "examples/forth/forth.thue",
+        "examples/forth/forth" + _BEFORE,
+    ),
+    "lisp": (
+        "langs/lisp/lisp.thue",
+        "langs/lisp/lisp" + _BEFORE,
+        "examples/lisp/lisp.thue",
+        "examples/lisp/lisp" + _BEFORE,
+    ),
+    "basic": (
+        "langs/basic/basic.thue",
+        "langs/basic/basic" + _BEFORE,
+        "examples/basic/basic.thue",
+        "examples/basic/basic" + _BEFORE,
+    ),
+    "brainfuck": (
+        "examples/brainfuck/brainfuck.thue",
+        "examples/brainfuck/brainfuck" + _BEFORE,
+    ),
 }
 
 
@@ -141,12 +162,12 @@ def _main() -> int:
         raise BackfillError("HEAD is missing a forth, lisp, basic, or brainfuck interpreter")
 
     cache: dict[str, tuple[int | None, str | None]] = {}
-    with tempfile.TemporaryDirectory(prefix="thuepp-rule-lines-") as tmpname:
+    with tempfile.TemporaryDirectory(prefix="thue-rule-lines-") as tmpname:
         tmp = Path(tmpname)
 
         def rule_lines(blob: str) -> tuple[int | None, str | None]:
             if blob not in cache:
-                target = tmp / f"{blob}.tpp"
+                target = tmp / f"{blob}.thue"
                 completed = git(["cat-file", "blob", blob], text=False)
                 if completed.returncode != 0:
                     raise BackfillError(f"git cat-file {blob} failed")

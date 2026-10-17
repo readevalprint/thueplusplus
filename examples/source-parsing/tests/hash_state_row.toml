@@ -1,4 +1,4 @@
-program = "../hash-state-row.tpp"
+program = "../hash-state-row.thue"
 
 [expect]
 exit_code = 0

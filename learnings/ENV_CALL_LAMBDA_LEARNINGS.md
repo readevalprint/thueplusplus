@@ -4,7 +4,7 @@ Disposable. No repo files changed.
 
 ## Attempt L: Thue++ generic n-ary CALL/APPLY for builtins
 
-File: `/tmp/thuepp-lisp-pda/attempt-l-env-generic-call-builtins.tpp`
+File: `/tmp/thue-lisp-pda/attempt-l-env-generic-call-builtins.thue`
 
 Goal:
 
@@ -39,7 +39,7 @@ Learning:
 
 ## Attempt M: Thue++ generic binary CALL/APPLY
 
-File: `/tmp/thuepp-lisp-pda/attempt-m-env-generic-binary-call.tpp`
+File: `/tmp/thue-lisp-pda/attempt-m-env-generic-binary-call.thue`
 
 Goal: reduce moving parts. Prove env lookup + generic binary call without n-ary arg loop.
 
@@ -67,7 +67,7 @@ Learning:
 
 ## Attempt N: explicit non-recursive Python state machine with real closures
 
-File: `/tmp/thuepp-lisp-pda/attempt-n-python-explicit-state-closures.py`
+File: `/tmp/thue-lisp-pda/attempt-n-python-explicit-state-closures.py`
 
 Goal: exact target machine, no Python recursion, no substitution. This is blueprint for Thue++ states.
 
@@ -105,7 +105,7 @@ Learning:
 
 ## Attempt O: safe-entry generic binary CALL/APPLY
 
-File: `/tmp/thuepp-lisp-pda/attempt-o-safe-entry-generic-binary-call.tpp`
+File: `/tmp/thue-lisp-pda/attempt-o-safe-entry-generic-binary-call.thue`
 
 Change from Attempt M:
 
@@ -238,7 +238,7 @@ KCALL2|A=<item>|B=<item>|ENV=<env>|K=<rest_k>
 
 because building this with `::%` decodes `rest_k`; nested frame separators leak as raw `|` and spaces inside the child frame payload.
 
-See `/tmp/thuepp-lisp-pda/KSTREAM_PCT_LEARNINGS.md` for Attempt P/Q/R details.
+See `/tmp/thue-lisp-pda/KSTREAM_PCT_LEARNINGS.md` for Attempt P/Q/R details.
 
 ## Consolidated design choices
 

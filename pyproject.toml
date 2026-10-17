@@ -1,5 +1,5 @@
 [project]
-name = "thuepp"
+name = "thuelang"
 version = "0.5.0"
 description = "Thue++ interpreter"
 readme = "README.md"
@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.scripts]
-thuepp = "thuepp.cli:main"
+thue = "thuelang.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
