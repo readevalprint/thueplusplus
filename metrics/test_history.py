@@ -423,6 +423,16 @@ class LatestTests(unittest.TestCase):
             with self.assertRaises(historylib.HistoryError):
                 check_history.assert_archives(root, benches)
 
+    def test_a_missing_bench_commit_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            sha = "001f72effa3eff4e042612736f1ca9d7a69e0d65"
+            with self.assertRaises(historylib.HistoryError) as caught:
+                check_history.assert_archives(root, {sha: {}})
+            self.assertIn(sha, str(caught.exception))
+            self.assertIn("not a commit in this clone", str(caught.exception))
+
     def test_a_latest_commit_without_a_bench_is_valid(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

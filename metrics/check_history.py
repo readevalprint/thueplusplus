@@ -3,7 +3,8 @@
 
 latest.json must exist and match the schema. Each bench.json on disk must
 match the latest.json at the commit the bench names. A later commit of
-latest.json does not need a new bench. This command does not measure and
+latest.json does not need a new bench. The clone must contain those
+commits; a shallow checkout fails. This command does not measure and
 does not push.
 """
 
@@ -53,7 +54,7 @@ def bench_from_commit(root: Path, sha: str) -> dict:
 def _commit_has_latest(root: Path, sha: str) -> bool:
     commit = subprocess.run(["git", "cat-file", "-e", sha], cwd=root, capture_output=True, text=True)
     if commit.returncode != 0:
-        raise historylib.HistoryError(f"{sha} is not a commit")
+        raise historylib.HistoryError(f"{sha} is not a commit in this clone")
     blob = subprocess.run(["git", "cat-file", "-e", f"{sha}:{historylib.LATEST_REL}"], cwd=root, capture_output=True, text=True)
     return blob.returncode == 0
 

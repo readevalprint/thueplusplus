@@ -20,8 +20,9 @@ jobs:
       pull-requests: write
     env:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      METRICS_COMMENT: ${{ runner.temp }}/metrics-comment.md
     steps:
+      - name: Set the comment path
+        run: echo "METRICS_COMMENT=${RUNNER_TEMP}/metrics-comment.md" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0

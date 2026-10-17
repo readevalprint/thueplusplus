@@ -238,6 +238,8 @@ class PublishTest(unittest.TestCase):
         self.assertIn("pr_check.py", workflow)
         self.assertIn("record.py --publish", workflow)
         self.assertIn("git push origin HEAD:main", workflow)
+        self.assertNotIn("${{ runner.", workflow)
+        self.assertIn("RUNNER_TEMP", workflow)
         self.assertIn(BOT_ACTOR, workflow)
         self.assertNotIn("check_history.py", workflow)
         self.assertNotIn("--base", workflow.split("pr_check.py --base", 1)[0])

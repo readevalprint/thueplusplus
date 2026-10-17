@@ -31,6 +31,8 @@ cache:
 
 test:
   image: golang:1.24.6-bookworm
+  variables:
+    GIT_DEPTH: "0"
   rules:
     - if: '$CI_SERVER_HOST != "gitlab.com"'
   before_script:
