@@ -22,12 +22,13 @@ const PRESENTATION: Record<string, Presentation> = {
   wasm: { landing: 'js', title: 'JavaScript', anchor: 'javascript' },
   rust: { landing: 'rust', title: 'Rust', anchor: 'rust' },
   cpp: { landing: 'cpp', title: 'C++', anchor: 'cpp' },
+  ruby: { landing: 'ruby', title: 'Ruby', anchor: 'ruby' },
 }
 
 // Landing sentence and install page order. Every hosts.toml id is required.
-const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp']
+const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp', 'ruby']
 
-export const soonLanguages = ['erlang', 'ocaml', 'perl', 'ruby', 'haskell']
+export const soonLanguages = ['erlang', 'ocaml', 'perl', 'haskell']
 
 export const repositoryUrl = 'https://github.com/thuelang/thueplusplus'
 export const mirrorUrl = 'https://gitlab.com/thuelang/thueplusplus'
@@ -59,6 +60,7 @@ const PLATFORM_PAGE: Record<string, string> = {
   wasm: 'installJs',
   rust: 'installRust',
   cpp: 'installCpp',
+  ruby: 'installRuby',
 }
 
 const PLATFORM_LINKS = [

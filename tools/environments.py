@@ -1,6 +1,6 @@
 """Host id to environment label.
 
-Ids stay stable in bench.json (`python`, `go`, `wasm`, `rust`, `cpp`).
+Ids stay stable in bench.json (`python`, `go`, `wasm`, `rust`, `cpp`, `ruby`).
 The label names the runtime. `go` is the native Go binary. `wasm` is that
 same interpreter compiled to WebAssembly and run by Node. The browser
 playground is `wasm (browser)` and is not a history series.
@@ -20,6 +20,7 @@ REQUIRED = {
     "wasm": "wasm (node)",
     "rust": "rust",
     "cpp": "cpp",
+    "ruby": "ruby",
 }
 
 

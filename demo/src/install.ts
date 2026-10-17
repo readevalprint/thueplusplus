@@ -6,6 +6,7 @@ export const installNotes: Record<string, string> = {
   wasm: 'The thuelang package with the thue CLI.',
   rust: 'The thuelang package with the thue CLI.',
   cpp: 'The CMake library and the thue command.',
+  ruby: 'The thuelang gem and the thue command.',
 }
 
 for (const host of siteHosts) {
@@ -155,6 +156,27 @@ int code = interp.Run();`,
 make cpp
 build/cpp/thue program.thue`,
     api: [hostApi, { href: `${blob}/cpp/README.md`, label: 'cpp/README.md' }],
+  },
+  ruby: {
+    prose: 'The Ruby host is a native implementation. The gem is thuelang and the command is thue. It uses the regex engine and the same default limits. Process bindings stay opt-in. The gem is not published.',
+    installLead: 'The gem is not published. From a checkout of this repository:',
+    install: `cd ruby
+bundle config set --local path vendor/bundle
+bundle install
+bundle exec thue ../program.thue`,
+    moreInstall: [],
+    libraryLead: 'Interpreter.new binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. nil clears one.',
+    library: `require "thuelang"
+
+interp = Thuelang::Interpreter.new
+interp.load_program("hello.thue")
+code = interp.run`,
+    cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',
+    cli: `thue <program.thue> [--max-steps N] [--max-evals N] [--max-state-bytes N]
+
+make ruby
+ruby/exe/thue program.thue`,
+    api: [hostApi, { href: `${blob}/ruby/README.md`, label: 'ruby/README.md' }],
   },
 }
 

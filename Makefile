@@ -1,11 +1,11 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
+.PHONY: test test-static test-core test-guests test-full cpp ruby wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
 
 RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
 
-# HOST selects one conformance host: python, go, wasm, rust, or cpp.
+# HOST selects one conformance host: python, go, wasm, rust, cpp, or ruby.
 # Empty runs every host that is present. Guest programs run on native Go.
 ifeq ($(HOST),)
   CORE_ARGS := --tier core $(RUST_IMPL)
@@ -26,6 +26,15 @@ else
   FULL_IMPL := $(RUST_IMPL)
 endif
 
+ifneq ($(wildcard ruby/thuelang.gemspec),)
+  FULL_IMPL += --impl ruby=./ruby/exe/thue
+  ifeq ($(HOST),)
+    CORE_ARGS += --impl ruby=./ruby/exe/thue
+  else ifeq ($(HOST),ruby)
+    CORE_ARGS := --tier core --only ruby --impl ruby=./ruby/exe/thue
+  endif
+endif
+
 # C++17 host. The binary is build/cpp/thue. g++ is required: the default c++
 # on some images is clang without libstdc++.
 # THUELANG_RE2_STATIC=1 links the static RE2 archive. The release archives use it.
@@ -40,6 +49,11 @@ cpp:
 	@command -v pkg-config >/dev/null 2>&1 || { echo "Error: pkg-config is required to build the C++ host" >&2; exit 127; }
 	cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ $(CPP_RE2_FLAG)
 	cmake --build build/cpp --parallel
+
+# Ruby host. The executable is ruby/exe/thue. Gems install into ruby/vendor/bundle.
+ruby:
+	@command -v bundle >/dev/null 2>&1 || { echo "Error: bundle is required to build the Ruby host" >&2; exit 127; }
+	cd ruby && bundle config set --local path vendor/bundle && bundle install
 
 # Per-PR check. Core features on every host, guest programs on native Go.
 test: test-static test-core test-guests
@@ -155,5 +169,14 @@ ifeq ($(HOST),)
 test-core: cpp
 else ifeq ($(HOST),cpp)
 test-core: cpp
+endif
+endif
+
+ifneq ($(wildcard ruby/thuelang.gemspec),)
+test-full: ruby
+ifeq ($(HOST),)
+test-core: ruby
+else ifeq ($(HOST),ruby)
+test-core: ruby
 endif
 endif

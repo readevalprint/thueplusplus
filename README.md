@@ -516,7 +516,7 @@ This is all with humble `lhs ::= rhs` rewrite rules.
 
 ## Current reference runners
 
-This repository has five current conformance backends:
+This repository has six current conformance backends:
 
 ```bash
 # Python package
@@ -535,9 +535,13 @@ node js/src/cli.js <program.thue>
 cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
 cmake --build build/cpp --parallel
 build/cpp/thue <program.thue>
+
+# Ruby gem thuelang (executable ruby/exe/thue)
+make ruby
+ruby/exe/thue <program.thue>
 ```
 
-`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package name is `thuelang`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
+`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package name is `thuelang`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. The Ruby gem is `thuelang` under `ruby/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -551,11 +555,11 @@ make test
 
 `make test` is the per-PR check. It has two tiers.
 
-Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thue`), and, when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thue`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
+Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thue`), when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thue`), and, when `ruby/thuelang.gemspec` is present, the Ruby executable (`--impl ruby=./ruby/exe/thue`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
 
 Forth, Lisp, and BASIC live in `langs/`. Brainfuck stays in `examples/brainfuck/` as an esolang demo. `make problems` and `make langs` measure solutions and language cases on the native Go host. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of that suite.
 
-`make test-full` runs every manifest on every host, checks parity, and enforces rule coverage. A nightly workflow runs that command. Timings name the runtime: `python`, `go native`, `wasm (node)`, `rust`, and `cpp`. A wasm time is not a Go time.
+`make test-full` runs every manifest on every host, checks parity, and enforces rule coverage. A nightly workflow runs that command. Timings name the runtime: `python`, `go native`, `wasm (node)`, `rust`, `cpp`, and `ruby`. A wasm time is not a Go time.
 
 Spec version v0.5 is `SPEC_VERSION`. The manifest schema is [`docs/conformance.md`](docs/conformance.md). To test another command, see [`docs/implementers.md`](docs/implementers.md).
 
@@ -636,6 +640,7 @@ go/cmd/thue/     Thin Go CLI
 js/              npm package thuelang (ESM, types, Node CLI, browser worker)
 rust/            Rust library thuelang and the thue CLI. Not published.
 cpp/             C++17 library thuelang and the thue CLI. Not published.
+ruby/            Ruby gem thuelang and the thue CLI. Not published.
 demo/            Playground. It depends on the thuelang package.
 docs/            Language contracts, host API, and release steps
 tools/           Repository conformance checker and shared manifest runner
@@ -656,6 +661,7 @@ Project docs and examples:
 - [`docs/host-api.md`](docs/host-api.md) — embedder API for the host packages
 - [`rust/README.md`](rust/README.md) — Rust crate API, regex gaps, and the crates.io steps
 - [`cpp/README.md`](cpp/README.md) — C++ build, and the unpublished vcpkg and Conan sketches
+- [`ruby/README.md`](ruby/README.md) — Ruby gem API and the unpublished gem
 - [`docs/releasing.md`](docs/releasing.md) — tag publish for PyPI, npm, crates.io, and the GitHub Release
 - [`js/README.md`](js/README.md) — npm package API
 
@@ -678,9 +684,10 @@ uv run thue <program.thue>
 node js/src/cli.js <program.thue>
 cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
 build/cpp/thue <program.thue>
+make ruby && ruby/exe/thue <program.thue>
 ```
 
-Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from crates.io. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. The playground depends on the npm package in this repository.
+Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from crates.io. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. Ruby requires `thuelang` and runs `ruby/exe/thue`. The playground depends on the npm package in this repository.
 
 Copy-pasteable agent prompt:
 
@@ -696,6 +703,7 @@ uv run thue <program.thue>
 node js/src/cli.js <program.thue>
 cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
 build/cpp/thue <program.thue>
+make ruby && ruby/exe/thue <program.thue>
 ```
 
 Repository development requirements:
@@ -707,6 +715,7 @@ Repository development requirements:
 - `make` for verification targets
 - Node.js only for Go-WASM adapter and browser-demo checks
 - `g++`, CMake, `pkg-config`, and `libre2-dev` for the C++ host
+- Ruby 3.1+ and Bundler for the Ruby host
 
 ## Editor install
 

@@ -11,6 +11,7 @@ Pull requests run `make release-check` and do not publish. Do not run `uv publis
 | npm | `thuelang` (CLI `thue`) | `js/package.json` `version` |
 | Rust | crate and library `thuelang`, binary `thue` | `rust/Cargo.toml` `version` |
 | C++ | CMake project and library `thuelang`, CLI `thue` | `cpp/CMakeLists.txt` `VERSION` |
+| Ruby | gem `thuelang`, executable `thue` | `ruby/lib/thuelang/version.rb` `VERSION` |
 | Editor | `.vsix` `thue` | `editors/vscode/package.json` `version` |
 | vcpkg sketch | `thuelang` | `cpp/vcpkg.json` `version` |
 | Conan sketch | `thuelang` | `cpp/conanfile.py` `version` |
@@ -24,7 +25,7 @@ Pull requests run `make release-check` and do not publish. Do not run `uv publis
 - **crates.io.** `cargo publish --manifest-path rust/Cargo.toml`, authenticated with the `CARGO_REGISTRY_TOKEN` repository secret.
 - **GitHub Release.** `thue-<version>-<host>-<os>-<arch>.tar.gz` for hosts `go`, `rust`, and `cpp`, and targets `linux-x86_64`, `linux-arm64`, `darwin-x86_64`, and `darwin-arm64`. The archive contains one `thue` binary. `thue-<version>.vsix` is attached. `SHA256SUMS` covers those files. The Go binary is `CGO_ENABLED=0`. The C++ binary links RE2 and Abseil statically.
 
-The workflow does not upload the vcpkg port, the Conan recipe, or the extension listing on the Marketplace or Open VSX.
+The workflow does not upload the vcpkg port, the Conan recipe, the Ruby gem, or the extension listing on the Marketplace or Open VSX.
 
 ## Go
 
@@ -40,3 +41,7 @@ Push that tag at the same commit as `v0.1.0`. A root tag does not version this m
 ## C++ registries
 
 `cpp/vcpkg.json` and `cpp/conanfile.py` keep the same version as the other manifests so the tag check can see them. This repository does not upload them to a registry. `cpp/README.md` is the build note.
+
+## RubyGems
+
+`ruby/lib/thuelang/version.rb` keeps the same version as the other manifests so the tag check can see it. This repository does not upload the gem. `ruby/README.md` is the build note.

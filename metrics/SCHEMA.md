@@ -45,7 +45,7 @@ Schema 5 is the current runs document. Schema 4 runs documents are the same obje
 | --- | --- |
 | `program` | Repo-relative `.thue` path |
 | `problem`, `ruleset`, `case` | Slugs. `ruleset` is `direct` or a language |
-| `host`, `environment` | Host id and its environment label |
+| `host`, `environment` | Host id and its environment label. A host missing from an older run is a gap, not an error. The group includes `go` |
 | `state` | `--input` text for a language solution. Empty for a direct solution |
 | `reads` | Schema 5. Object of resource name to the lines that resource served, without newlines |
 | `stdin` | Schema 4 only. Bytes written to standard input |
@@ -166,7 +166,7 @@ The workloads are:
 | `input` | `--input` text. Empty means the program's own initial state |
 | `stdin` | Bytes written to standard input. Empty means no input |
 | `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes` | The limits on the command and the process |
-| `hosts.HOST.environment` | `python`, `go native`, `wasm (node)`, `rust`, or `cpp`. The key stays the host id. `wasm` in this file is the Go interpreter compiled to wasm and run under Node, not the browser and not the native Go binary |
+| `hosts.HOST.environment` | `python`, `go native`, `wasm (node)`, `rust`, `cpp`, or `ruby`. The key stays the host id. `wasm` in this file is the Go interpreter compiled to wasm and run under Node, not the browser and not the native Go binary |
 | `hosts.HOST.duration_ms` | Wall clock in milliseconds for that environment on `machine` |
 | `hosts.HOST.memory_bytes` | Peak resident set size in bytes, or `null` when that commit did not record it |
 | `hosts.HOST.exit_code` | Process exit code. A recorded workload exited 0 |
