@@ -13,4 +13,5 @@ host = [
   { id = "cpp", command = "build/cpp/thue", build = "make cpp" },
   { id = "ruby", command = "ruby/exe/thue", build = "make ruby" },
   { id = "csharp", command = "build/csharp/thue", build = "dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/csharp --nologo" },
+  { id = "java", command = "java/build/install/thue/bin/thue", build = "./gradlew --no-daemon installDist", cwd = "java" },
 ]

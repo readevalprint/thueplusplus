@@ -152,6 +152,7 @@ REQUIRED_ENVIRONMENTS = {
     "cpp": "cpp",
     "ruby": "ruby",
     "csharp": "csharp",
+    "java": "java",
 }
 ENVIRONMENTS_PATH = Path(__file__).resolve().parent / "environments.json"
 

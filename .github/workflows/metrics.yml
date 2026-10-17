@@ -47,6 +47,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
       - name: Install the C++ toolchain and RE2
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
       - uses: ruby/setup-ruby@v1
@@ -94,6 +98,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
       - name: Install the C++ toolchain and RE2
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
       - uses: ruby/setup-ruby@v1

@@ -166,7 +166,7 @@ The workloads are:
 | `input` | `--input` text. Empty means the program's own initial state |
 | `stdin` | Bytes written to standard input. Empty means no input |
 | `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes` | The limits on the command and the process |
-| `hosts.HOST.environment` | `python`, `go native`, `wasm (node)`, `rust`, `cpp`, or `ruby`. The key stays the host id. `wasm` in this file is the Go interpreter compiled to wasm and run under Node, not the browser and not the native Go binary |
+| `hosts.HOST.environment` | `python`, `go native`, `wasm (node)`, `rust`, `cpp`, `ruby`, `csharp`, or `java`. The key stays the host id. `wasm` in this file is the Go interpreter compiled to wasm and run under Node, not the browser and not the native Go binary |
 | `hosts.HOST.duration_ms` | Wall clock in milliseconds for that environment on `machine` |
 | `hosts.HOST.memory_bytes` | Peak resident set size in bytes, or `null` when that commit did not record it |
 | `hosts.HOST.exit_code` | Process exit code. A recorded workload exited 0 |

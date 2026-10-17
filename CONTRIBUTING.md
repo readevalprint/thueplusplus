@@ -132,7 +132,7 @@ The dated archives already in the tree stay. The recorder does not add a new ben
 
 ## First release
 
-Package version `0.1.0` is the version in every manifest: `pyproject.toml`, `rust/Cargo.toml`, `js/package.json`, `editors/vscode/package.json`, `cpp/CMakeLists.txt`, `cpp/vcpkg.json`, and `cpp/conanfile.py`. Spec version stays in `SPEC_VERSION`. Nothing is published until a `vX.Y.Z` tag is pushed. The workflow is `.github/workflows/release.yml`. It does not run on pull requests, on branch pushes, or on `workflow_dispatch`.
+Package version `0.1.0` is the version in every manifest: `pyproject.toml`, `rust/Cargo.toml`, `js/package.json`, `editors/vscode/package.json`, `cpp/CMakeLists.txt`, `cpp/vcpkg.json`, `cpp/conanfile.py`, `ruby/lib/thuelang/version.rb`, `csharp/Directory.Build.props`, and `java/build.gradle.kts`. Spec version stays in `SPEC_VERSION`. Nothing is published until a `vX.Y.Z` tag is pushed. The workflow is `.github/workflows/release.yml`. It does not run on pull requests, on branch pushes, or on `workflow_dispatch`.
 
 Do these steps before `git push origin v0.1.0`. The names `thuelang` were free on PyPI, npm, and crates.io when this was written. A pending publisher does not reserve the PyPI name, so create it and tag promptly.
 

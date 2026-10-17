@@ -24,10 +24,11 @@ const PRESENTATION: Record<string, Presentation> = {
   cpp: { landing: 'cpp', title: 'C++', anchor: 'cpp' },
   ruby: { landing: 'ruby', title: 'Ruby', anchor: 'ruby' },
   csharp: { landing: 'csharp', title: 'C#', anchor: 'csharp' },
+  java: { landing: 'java', title: 'Java', anchor: 'java' },
 }
 
 // Landing sentence and install page order. Every hosts.toml id is required.
-const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp', 'ruby', 'csharp']
+const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp', 'ruby', 'csharp', 'java']
 
 export const soonLanguages = ['erlang', 'ocaml', 'perl', 'haskell']
 
@@ -63,6 +64,7 @@ const PLATFORM_PAGE: Record<string, string> = {
   cpp: 'installCpp',
   ruby: 'installRuby',
   csharp: 'installCsharp',
+  java: 'installJava',
 }
 
 const PLATFORM_LINKS = [

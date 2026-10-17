@@ -188,6 +188,21 @@
       { "title": "API", "href": "#api" }
     ]
   },
+  "installJava": {
+    "path": "/install/java",
+    "kicker": "Install",
+    "title": "Java.",
+    "description": "Install the Java host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — Java",
+    "canonical": "https://thuelang.org/install/java",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
   "projects": {
     "path": "/projects",
     "kicker": "Projects",

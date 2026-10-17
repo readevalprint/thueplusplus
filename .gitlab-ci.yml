@@ -46,7 +46,7 @@ test:
     - uv --version
     - go version
     - apt-get update
-    - apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev ruby ruby-dev bundler
+    - apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev ruby ruby-dev bundler openjdk-21-jdk
     - g++ --version
     - |
       if ! command -v cargo >/dev/null 2>&1; then

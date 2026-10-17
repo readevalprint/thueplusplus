@@ -20,3 +20,5 @@ ruby/.bundle/
 *.gem
 csharp/**/bin/
 csharp/**/obj/
+java/build/
+java/.gradle/

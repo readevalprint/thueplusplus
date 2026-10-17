@@ -32,6 +32,10 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
       - uses: actions/cache@v6
         with:
           path: |
