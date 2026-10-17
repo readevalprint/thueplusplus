@@ -112,7 +112,18 @@ def measure(*, write_metrics: bool, commit: str, hosts: tuple[str, ...] | None =
 
 
 def _run_host(interpreter, jobs: list[tuple[Solution, Case]], limits: Limits) -> list[dict]:
-    return [_run_one(interpreter, solution, case, limits) for solution, case in jobs]
+    return [_run_measured(interpreter, solution, case, limits) for solution, case in jobs]
+
+
+def _run_measured(interpreter, solution: Solution, case: Case, limits: Limits) -> dict:
+    """Rerun a pass that exited before the resident-memory sample, up to five times."""
+    row = _run_one(interpreter, solution, case, limits)
+    for _attempt in range(4):
+        memory = row["memory_bytes"]
+        if row["pass"] is not True or (isinstance(memory, int) and not isinstance(memory, bool) and memory > 0):
+            return row
+        row = _run_one(interpreter, solution, case, limits)
+    return row
 
 
 def _run_one(interpreter, solution: Solution, case: Case, limits: Limits) -> dict:
