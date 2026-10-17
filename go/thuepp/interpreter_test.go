@@ -579,3 +579,32 @@ func TestLiteralPrefixSkipsCaseFold(t *testing.T) {
 		t.Fatal("case-insensitive pattern must not use a case-sensitive prefix")
 	}
 }
+
+func TestRunMetrics(t *testing.T) {
+	interp := New()
+	interp.ProgramPath = "metrics.tpp"
+	program := "a ::= b\nb ::- 0\nmiss ::= z\n\n::=\na\n"
+	if err := interp.parseProgram(program); err != nil {
+		t.Fatal(err)
+	}
+	count, chars := interp.RuleSourceStats()
+	if count != 3 || chars != len("a ::= b")+len("b ::- 0")+len("miss ::= z") {
+		t.Fatalf("rules=%d chars=%d", count, chars)
+	}
+	code, err := interp.Run()
+	if err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v state=%q", code, err, interp.State)
+	}
+	if interp.AppliedSteps != 1 || interp.RegexMatches != 2 {
+		t.Fatalf("steps=%d matches=%d evals=%d", interp.AppliedSteps, interp.RegexMatches, interp.RegexEvals)
+	}
+	if interp.RegexEvals < interp.RegexMatches {
+		t.Fatalf("evals %d < matches %d", interp.RegexEvals, interp.RegexMatches)
+	}
+	if interp.StatePeak != 1 || interp.StateBytes != 2 {
+		t.Fatalf("peak=%d cumulative=%d", interp.StatePeak, interp.StateBytes)
+	}
+	if interp.Rules[2].literalPrefix == "miss" && interp.RegexEvals != 2 {
+		t.Fatalf("literal miss still searched: evals=%d", interp.RegexEvals)
+	}
+}

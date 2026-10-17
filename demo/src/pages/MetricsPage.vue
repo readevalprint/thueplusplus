@@ -133,7 +133,7 @@ function last(count: number): number {
     </section>
     <section id="tasks" data-test="task-trends" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Tasks</h2>
-      <p class="leading-7">A point is the first commit where that program's count changed. The line stays flat while the count stays the same. Tasks are measured with <code>make tasks</code> on native Go. A pass is that run. Steps are applied rewrites on the passing tasks.</p>
+      <p class="leading-7">A point is the first commit where that program's count changed. The line stays flat while the count stays the same. Older task points were measured with <code>make tasks</code> on native Go. A new measurement records problems and languages with <code>make problems</code> and <code>make langs</code>.</p>
       <h3 id="passes" class="font-display text-[18px] font-semibold tracking-[-0.03em]">Passes</h3>
       <MetricChart
         v-if="passAxis.length > 0"

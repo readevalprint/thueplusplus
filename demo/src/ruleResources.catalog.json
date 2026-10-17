@@ -1,6 +1,6 @@
 [
   {
-    "path": "examples/basic/basic.tpp",
+    "path": "langs/basic/basic.tpp",
     "resources": [
       {
         "name": "stdin",
@@ -127,7 +127,7 @@
     "errors": []
   },
   {
-    "path": "examples/forth/forth.tpp",
+    "path": "langs/forth/forth.tpp",
     "resources": [
       {
         "name": "stdout",
@@ -254,7 +254,7 @@
     "errors": []
   },
   {
-    "path": "examples/lisp/lisp.tpp",
+    "path": "langs/lisp/lisp.tpp",
     "resources": [
       {
         "name": "stdout",

@@ -14,7 +14,7 @@ describe('summary', () => {
     const latest = JSON.parse(readFileSync(join(repoRoot, 'metrics', 'latest.json'), 'utf8'))
     const summary = JSON.parse(readFileSync(join(demoRoot, 'src', 'generated', 'summary.json'), 'utf8'))
     const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim()
-    assert.equal(latest.schema_version, 2)
+    assert.ok(latest.schema_version === 2 || latest.schema_version === 3)
     assert.equal(latest.commit, undefined)
     assert.ok(latest.machine)
     assert.equal(summary.schema_version, 1)

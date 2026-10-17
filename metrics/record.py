@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run every host benchmark and the Go task suite, then write metrics/latest.json.
+"""Run every host benchmark and the native Go problem and language suites, then write metrics/latest.json.
 
 When metrics/latest.json is already committed, the script first resolves
 `git log -1 --format=%H -- metrics/latest.json` and moves that file to
@@ -34,8 +34,8 @@ from rules import count_rule_lines  # noqa: E402
 from run_limits import RUN_MEMORY_CAP_BYTES, bounded_run  # noqa: E402
 
 WORKLOADS_PATH = ROOT / "metrics" / "workloads.toml"
-GUESTS_PATH = ROOT / "tasks" / "guests.toml"
-RESULTS_PATH = ROOT / "build" / "tasks" / "results.json"
+PROBLEM_RESULTS = ROOT / "build" / "problems" / "results.json"
+LANG_RESULTS = ROOT / "build" / "langs" / "results.json"
 SUITE_TIMEOUT_SECONDS = 1200
 SUITE_TIMEOUT_KILL_SECONDS = 30
 
@@ -123,28 +123,28 @@ def move_latest(root: Path, sha: str, document: dict) -> Path:
     return root / rel
 
 
-def run_make_tasks() -> None:
+def run_make(target: str, results: Path) -> None:
     timeout_bin = shutil.which("timeout")
     if timeout_bin is None:
-        raise RecordError("timeout(1) is required to run make tasks")
+        raise RecordError(f"timeout(1) is required to run make {target}")
     command = [
         timeout_bin,
         "-k",
         str(SUITE_TIMEOUT_KILL_SECONDS),
         str(SUITE_TIMEOUT_SECONDS),
         "make",
-        "tasks",
+        target,
     ]
     completed = subprocess.run(command, cwd=ROOT)
-    if not RESULTS_PATH.is_file():
-        raise RecordError(f"make tasks did not write {RESULTS_PATH} (exit {completed.returncode})")
+    if not results.is_file():
+        raise RecordError(f"make {target} did not write {results} (exit {completed.returncode})")
     if completed.returncode in (124, 137):
-        raise RecordError(f"make tasks exceeded the {SUITE_TIMEOUT_SECONDS}s OS timeout")
+        raise RecordError(f"make {target} exceeded the {SUITE_TIMEOUT_SECONDS}s OS timeout")
     if completed.returncode != 0:
-        print(f"make tasks exited {completed.returncode}; recording the result rows", file=sys.stderr)
+        raise RecordError(f"make {target} exited {completed.returncode}")
 
 
-def load_tasks(path: Path, head: str) -> dict:
+def load_suite(path: Path, head: str) -> dict:
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -160,25 +160,44 @@ def load_tasks(path: Path, head: str) -> dict:
     return document
 
 
-def guest_counts(tasks_document: dict) -> dict[str, dict]:
-    guests = historylib.load_guests(GUESTS_PATH)
-    reported = {item["id"]: item for item in tasks_document["guests"]}
+def guest_counts() -> dict[str, dict]:
     counted: dict[str, dict] = {}
-    for guest in guests:
-        guest_id = guest["id"]
-        if guest_id not in reported:
-            raise RecordError(f"tasks JSON has no guest {guest_id}")
-        if reported[guest_id]["program"] != guest["program"]:
-            raise RecordError(f"{guest_id} program path disagrees with tasks/guests.toml")
+    for guest in historylib.INTERPRETERS:
         program = ROOT / guest["program"]
         rule_lines, error = count_rule_lines(program)
-        if error is not None or rule_lines != reported[guest_id]["rule_count"]:
-            raise RecordError(
-                f"{guest_id} rule_lines {rule_lines} disagrees with make tasks "
-                f"({reported[guest_id]['rule_count']}); {error}"
-            )
-        counted[guest_id] = {"program": guest["program"], "rule_lines": rule_lines}
+        if error is not None or rule_lines is None:
+            raise RecordError(f"{guest['id']} rule_lines failed: {error}")
+        counted[guest["id"]] = {"program": guest["program"], "rule_lines": rule_lines}
     return counted
+
+
+def counter_document(source: str, suite: dict) -> dict:
+    results = []
+    for row in suite["results"]:
+        built = {
+            "status": row["status"],
+            "applied_steps": row["applied_steps"],
+            "regex_evals": row["regex_evals"],
+            "regex_matches": row["regex_matches"],
+            "state_bytes": row["state_bytes"],
+            "state_peak": row["state_peak"],
+            "rule_count": row["rule_count"],
+            "rule_chars": row["rule_chars"],
+            "duration_ms": row["duration_ms"],
+        }
+        if "problem" in row:
+            built["problem"] = row["problem"]
+            built["solution"] = row["solution"]
+        else:
+            built["lang"] = row["lang"]
+            built["program"] = row["program"]
+        results.append(built)
+    return {
+        "source": source,
+        "host": historylib.TASK_HOST,
+        "environment": historylib.environment_for(historylib.TASK_HOST),
+        "results": results,
+    }
 
 
 def _timeout_number(timeout: float) -> int | float:
@@ -301,8 +320,10 @@ def measure() -> int:
     # runs. The file stays in place until the new measurement is ready, then
     # it is moved and the new latest.json is written.
     pending = read_committed_latest(ROOT)
-    run_make_tasks()
-    tasks_document = load_tasks(RESULTS_PATH, head)
+    run_make("problems", PROBLEM_RESULTS)
+    run_make("langs", LANG_RESULTS)
+    problems = load_suite(PROBLEM_RESULTS, head)
+    langs = load_suite(LANG_RESULTS, head)
     benchmarks = run_benchmarks(historylib.load_workloads(WORKLOADS_PATH))
     print_benchmarks(benchmarks)
     if pending is not None:
@@ -312,9 +333,11 @@ def measure() -> int:
     latest = {
         "schema_version": historylib.SCHEMA_VERSION,
         "machine": machine_info(),
-        "guests": guest_counts(tasks_document),
-        "tasks": historylib.tasks_document(historylib.rows_from_tasks(tasks_document)),
+        "guests": guest_counts(),
+        "tasks": None,
         "benchmarks": benchmarks,
+        "problems": counter_document(historylib.PROBLEM_SOURCE, problems),
+        "langs": counter_document(historylib.LANG_SOURCE, langs),
     }
     historylib.save_latest(ROOT, latest)
     print(f"metrics: wrote {historylib.LATEST_REL}")

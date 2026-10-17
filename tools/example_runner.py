@@ -31,7 +31,7 @@ from run_limits import (
 ROOT = Path(__file__).resolve().parents[1]
 # Eight workers oversubscribe a 4-core runner. Cap at the machine's CPU count.
 INTERNAL_JOBS = min(8, os.cpu_count() or 1)
-DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"
+DEFAULT_MANIFEST_GLOBS = ("examples/**/tests/*.toml", "langs/**/cases/*.toml")
 
 
 def timeout_scale() -> float:
@@ -552,7 +552,7 @@ def build_interpreters(build_root: Path, hosts: tuple[str, ...] | None = None) -
     return interpreters
 
 
-GUEST_DIRS = frozenset({"forth", "lisp", "basic", "brainfuck"})
+LANG_DIRS = frozenset({"forth", "lisp", "basic"})
 # One case per core feature. Guest languages are not in this list.
 CORE_CASES: tuple[tuple[str, str | None], ...] = (
     ("examples/hello/tests/basic.toml", None),
@@ -576,8 +576,8 @@ CORE_CASES: tuple[tuple[str, str | None], ...] = (
 
 
 def is_guest_manifest(path: Path) -> bool:
-    rel = path.resolve().relative_to((ROOT / "examples").resolve())
-    return bool(rel.parts) and rel.parts[0] in GUEST_DIRS
+    rel = path.resolve().relative_to(ROOT.resolve())
+    return len(rel.parts) > 2 and rel.parts[0] == "langs" and rel.parts[1] in LANG_DIRS and rel.parts[2] == "cases"
 
 
 def core_work() -> list[tuple[Path, dict]]:
@@ -657,9 +657,12 @@ def collect_configs(configs: list[Path]) -> list[Path]:
     if configs:
         collected = [path if path.is_absolute() else ROOT / path for path in configs]
     else:
-        collected = sorted(ROOT.glob(DEFAULT_MANIFEST_GLOB))
+        collected = []
+        for pattern in DEFAULT_MANIFEST_GLOBS:
+            collected.extend(ROOT.glob(pattern))
+        collected = sorted(set(collected))
     if not collected:
-        raise RuntimeError(f"no shared manifest files matched {DEFAULT_MANIFEST_GLOB}")
+        raise RuntimeError(f"no shared manifest files matched {', '.join(DEFAULT_MANIFEST_GLOBS)}")
     missing = [path for path in collected if not path.exists()]
     if missing:
         raise RuntimeError("manifest file(s) do not exist: " + ", ".join(str(path) for path in missing))

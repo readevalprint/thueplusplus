@@ -28,7 +28,7 @@ npm run build        # compile WASM, type-check, build, and smoke-check dist
 
 The production page uses origin-root asset URLs (`/assets/...`, `/thuepp.wasm`). Nested routes such as `/playground` load those files from the site root. Host the demo at the domain root.
 
-`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. It reads the committed `build/tasks/results.json`. Run `make tasks` and commit that file when the suite changes. The Tasks pages are generated from it. Metrics charts read `demo/src/generated/summary.json`, which `make metrics` feeds through `metrics/latest.json` and the archived bench files.
+`make demo-build` from the repository root installs dependencies and runs that same production build. It does not execute the full examples manifest suite. It reads `problems/` and marks those rows unmeasured. The Tasks pages stay at `/tasks/<id>`. Metrics charts read `demo/src/generated/summary.json`, which `make metrics` feeds through `metrics/latest.json` and the archived bench files.
 
 ## Vercel
 
@@ -68,7 +68,7 @@ The same shared playground surface powers the playground page and the embeddable
 
 - `/playground` is its own full-screen route: header, resizable editor and output, and a status bar. It does not use the docs shell.
 - `/embed` renders that same surface with no docs chrome. It is for iframe embeds.
-- `/`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, and `/tasks` are the other prerendered pages. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/tasks` is the task index and the leaderboard, and each task is also prerendered at `/tasks/<id>`. Run `make tasks` before `npm test`, `npm run dev`, or `npm run build`. Hash links such as `/metrics#host-time` open that section.
+- `/`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, and `/tasks` are the other prerendered pages. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/tasks` is the problem index, and each problem is also prerendered at `/tasks/<id>`. Hash links such as `/metrics#host-time` open that section.
 
 Supported embed query parameters:
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-GUEST_DIRS = frozenset({"forth", "lisp", "basic", "brainfuck"})
+LANG_DIRS = frozenset({"forth", "lisp", "basic"})
 HOST_JOBS = ("python", "go", "wasm", "rust", "cpp", "guests")
 
 
@@ -41,13 +41,9 @@ def classify(paths: list[str], *, cpp_present: bool) -> dict[str, bool]:
             jobs["cpp"] = True
             continue
         if path.startswith("examples/"):
-            parts = path.split("/")
-            if len(parts) > 1 and parts[1] in GUEST_DIRS:
-                jobs["guests"] = True
-            else:
-                shared = True
+            shared = True
             continue
-        if path.startswith("tasks/"):
+        if path.startswith("langs/") or path.startswith("problems/"):
             jobs["guests"] = True
     if shared:
         jobs["python"] = True
