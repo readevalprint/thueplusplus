@@ -30,6 +30,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div class="overflow-x-clip">
   <div class="mx-auto w-full max-w-[1320px]">
     <div class="page-screen page-screen-bare">
       <section data-test="page-hero" class="page-hero px-4 sm:px-6 lg:px-14">
@@ -70,5 +71,6 @@ onBeforeUnmount(() => {
     </section>
 
     <SiteFooter data-shard class="px-4 sm:px-6 lg:px-14" />
+  </div>
   </div>
 </template>

@@ -6,9 +6,45 @@ export const VIEW_H = 420
 export const BELT_TOP = 292
 export const BELT_H = 72
 export const BELT_Y = BELT_TOP + BELT_H / 2
-/** Rex stands on the far side, so his feet fall behind the belt's front face. */
-export const GROUND = BELT_TOP + 28
+/**
+ * Rex stands on the far side of the belt. His feet are behind the belt face.
+ * His hands rest on that face, so the lowest visible dots are not floating.
+ */
+export const GROUND = BELT_TOP + 60
 export const SCALE = 2.5
+
+/** Score block in the hero viewBox. The label does not scale with the number. */
+export const SCORE_X = VIEW_W - 36
+export const SCORE_LABEL_Y = 22
+export const SCORE_LABEL_SIZE = 14
+export const SCORE_NUMBER_Y = 108
+export const SCORE_NUMBER_SIZE = 48
+const SCORE_CAP = 0.34
+
+export function scoreNumberCenterY(): number {
+  return SCORE_NUMBER_Y - SCORE_NUMBER_SIZE * SCORE_CAP
+}
+
+/** Baseline plus a little room for the label's descenders. */
+export function scoreLabelBottom(): number {
+  return SCORE_LABEL_Y + 4
+}
+
+/** Top of the digits after the jump scale, around the number's visual center. */
+export function scoreNumberTop(scale: number): number {
+  if (!Number.isFinite(scale) || scale <= 0) throw new Error(`scale must be > 0, got ${scale}`)
+  return scoreNumberCenterY() - SCORE_NUMBER_SIZE * SCORE_CAP * scale
+}
+
+/** Flash circle radius. It stays under the label at this scale. */
+export function scoreFlashRadius(scale: number, flash: number): number {
+  if (!Number.isFinite(flash) || flash < 0 || flash > 1) throw new Error(`flash must be from 0 to 1, got ${flash}`)
+  if (flash === 0) return 0
+  const room = scoreNumberCenterY() - scoreLabelBottom() - 8
+  if (room <= 4) throw new Error(`score label has no room under it, got ${room}`)
+  const around = SCORE_NUMBER_SIZE * SCORE_CAP * scale + 10
+  return Math.min(around, room)
+}
 
 /** Rex root (point between the feet) at rest, and where he stands to pull. */
 export const REX_HOME = 944

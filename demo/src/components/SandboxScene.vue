@@ -16,9 +16,16 @@ import {
   LEVER_PIVOT,
   MACHINE,
   SCALE,
+  SCORE_LABEL_SIZE,
+  SCORE_LABEL_Y,
+  SCORE_NUMBER_SIZE,
+  SCORE_NUMBER_Y,
+  SCORE_X,
   VIEW_H,
   VIEW_W,
   beltPoint,
+  scoreFlashRadius,
+  scoreNumberCenterY,
   cageOrigin,
   leverDegrees,
   leverKnob,
@@ -144,24 +151,25 @@ const zone = computed(() => {
   const end = beltPoint(1)
   return { x: start.x, w: Math.max(8, end.x - start.x) }
 })
-const SCORE_X = VIEW_W - 36
-const SCORE_Y = 58
 const jump = computed(() => scoreJump(
   game.value.pop,
   game.value.streak,
   Math.max(diff.value.beltRate, 0.01),
   reduced.value,
 ))
+const numberCenterY = computed(() => scoreNumberCenterY())
+const flashRadius = computed(() => scoreFlashRadius(jump.value.scale, reduced.value ? 0 : jump.value.flash))
 const scoreTransform = computed(() => {
   const scale = jump.value.scale
-  return `translate(${SCORE_X} ${SCORE_Y}) scale(${scale}) translate(${-SCORE_X} ${-SCORE_Y})`
+  const y = numberCenterY.value
+  return `translate(${SCORE_X} ${y}) scale(${scale}) translate(${-SCORE_X} ${-y})`
 })
 const floatPos = computed(() => {
   const from = floatFrom.value ?? beltPoint(1)
   const travel = jump.value.travel
   return {
     x: from.x + (SCORE_X - 80 - from.x) * travel,
-    y: from.y - 36 + (SCORE_Y - 18 - (from.y - 36)) * travel,
+    y: from.y - 36 + (numberCenterY.value - (from.y - 36)) * travel,
   }
 })
 const bubblePath = computed(() => {
@@ -242,6 +250,11 @@ function onButtonKey(event: KeyboardEvent): void {
 }
 
 function tick(now: number): void {
+  if (document.hidden) {
+    raf = 0
+    last = 0
+    return
+  }
   const dt = last === 0 ? 0 : Math.min(0.05, (now - last) / 1000)
   last = now
   if (dt > 0) {
@@ -254,6 +267,17 @@ function tick(now: number): void {
     if (miss > 0 && game.value.miss === 0) note()
   }
   raf = requestAnimationFrame(tick)
+}
+
+function onVisibility(): void {
+  if (document.hidden) {
+    cancelAnimationFrame(raf)
+    raf = 0
+    last = 0
+    return
+  }
+  if (import.meta.env.MODE === 'test') return
+  if (raf === 0) raf = requestAnimationFrame(tick)
 }
 
 function advance(dt: number): void {
@@ -284,6 +308,7 @@ onMounted(() => {
     pull()
   }
   window.addEventListener('keydown', onWindowKey)
+  document.addEventListener('visibilitychange', onVisibility)
   if (import.meta.env.MODE === 'test') return
   raf = requestAnimationFrame(tick)
 })
@@ -291,6 +316,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (media && onMedia) media.removeEventListener('change', onMedia)
   if (onWindowKey) window.removeEventListener('keydown', onWindowKey)
+  document.removeEventListener('visibilitychange', onVisibility)
   cancelAnimationFrame(raf)
 })
 
@@ -341,6 +367,15 @@ defineExpose({ game, advance })
       </defs>
       <path :d="`M0 ${BELT_TOP + BELT_H + 18} H${VIEW_W}`" stroke="currentColor" stroke-width="2" opacity="0.28" />
 
+      <circle
+        v-if="flashRadius > 0"
+        data-test="score-flash"
+        :cx="SCORE_X - 20"
+        :cy="numberCenterY"
+        :r="flashRadius"
+        fill="var(--signal)"
+        :opacity="jump.flash * 0.28"
+      />
       <g
         data-test="score-jump"
         :data-scale="jump.scale.toFixed(2)"
@@ -350,23 +385,17 @@ defineExpose({ game, advance })
         font-family="JetBrains Mono, ui-monospace, monospace"
         text-anchor="end"
       >
-        <circle
-          v-if="!reduced && jump.flash > 0"
-          :cx="SCORE_X - 18"
-          :cy="SCORE_Y - 16"
-          :r="22 + jump.flash * 18"
-          fill="var(--signal)"
-          :opacity="jump.flash * 0.28"
-        />
-        <text :x="SCORE_X" y="28" font-size="14" opacity="0.7">score</text>
         <text
           data-test="score"
           :x="SCORE_X"
-          :y="SCORE_Y"
-          font-size="48"
+          :y="SCORE_NUMBER_Y"
+          :font-size="SCORE_NUMBER_SIZE"
           :fill="jump.flash > 0.2 ? 'var(--signal)' : 'currentColor'"
         >{{ game.score }}</text>
-        <text v-if="game.best > 0" data-test="best" :x="SCORE_X" y="84" font-size="16" opacity="0.75">best {{ game.best }}</text>
+      </g>
+      <g fill="currentColor" font-family="JetBrains Mono, ui-monospace, monospace" text-anchor="end">
+        <text data-test="score-label" :x="SCORE_X" :y="SCORE_LABEL_Y" :font-size="SCORE_LABEL_SIZE" opacity="0.7">score</text>
+        <text v-if="game.best > 0" data-test="best" :x="SCORE_X" :y="SCORE_NUMBER_Y + 28" font-size="16" opacity="0.75">best {{ game.best }}</text>
       </g>
 
       <g v-if="waiting" data-test="speech-bubble">
@@ -402,7 +431,7 @@ defineExpose({ game, advance })
         v-if="game.miss > 0"
         data-test="miss"
         :x="SCORE_X"
-        y="112"
+        :y="SCORE_NUMBER_Y + 52"
         fill="var(--signal)"
         font-family="JetBrains Mono, ui-monospace, monospace"
         font-size="18"
