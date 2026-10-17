@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import os
+import select
 import shutil
 import signal
 import subprocess
@@ -28,7 +29,8 @@ RUN_MEMORY_CAP_BYTES = 256 * 1024 * 1024
 POLL_SECONDS = 0.1
 # Go, Rust, and C++ often exit in under 10ms. A 100ms poll samples /proc after
 # timeout(1) has reaped them, and the missing tree reads as 0 bytes. The first
-# window polls fast enough to see VmHWM while the host is still alive.
+# window polls fast enough to see VmHWM while the host is still alive. The
+# kernel ru_maxrss from wait4 covers a host that exits before any /proc read.
 OBSERVE_POLL_SECONDS = 0.001
 OBSERVE_WINDOW_SECONDS = 0.1
 
@@ -174,6 +176,40 @@ def _kill_group(pid: int) -> None:
         pass
 
 
+def _reap(proc: subprocess.Popen, timeout: float) -> int:
+    """Reap ``proc`` if it exits within ``timeout`` seconds.
+
+    Returns Linux ``ru_maxrss`` in bytes, or 0 when the process is still
+    running. ``timeout(1)`` waits for the program, and that peak includes it.
+    """
+    if proc.returncode is not None:
+        return 0
+    fd = None
+    try:
+        fd = os.pidfd_open(proc.pid)
+    except OSError:
+        fd = None
+    try:
+        if fd is not None:
+            ready, _, _ = select.select([fd], [], [], max(timeout, 0))
+            if not ready:
+                return 0
+        else:
+            time.sleep(max(timeout, 0))
+        try:
+            pid, status, usage = os.wait4(proc.pid, os.WNOHANG)
+        except ChildProcessError:
+            return 0
+    finally:
+        if fd is not None:
+            os.close(fd)
+    if pid == 0:
+        return 0
+    proc.returncode = os.waitstatus_to_exitcode(status)
+    # Linux getrusage reports ru_maxrss in kilobytes.
+    return usage.ru_maxrss * 1024
+
+
 def bounded_run(
     argv: list[str],
     *,
@@ -214,11 +250,12 @@ def bounded_run(
     deadline = time.monotonic() + timeout
     observe_until = time.monotonic() + OBSERVE_WINDOW_SECONDS
     peak_rss = 0
+    kernel_rss = 0
 
     def note() -> int:
         nonlocal peak_rss
         rss = _process_tree_rss(proc.pid)
-        peak_rss = max(peak_rss, rss, _tree_peak_rss(proc.pid))
+        peak_rss = max(peak_rss, rss, _tree_peak_rss(proc.pid), kernel_rss)
         return rss
 
     # Sample before the reader threads. A native host can exit while those start.
@@ -246,12 +283,10 @@ def bounded_run(
     note()
     while True:
         poll = OBSERVE_POLL_SECONDS if time.monotonic() < observe_until else POLL_SECONDS
-        try:
-            proc.wait(timeout=poll)
+        kernel_rss = max(kernel_rss, _reap(proc, poll))
+        if proc.returncode is not None:
             note()
             break
-        except subprocess.TimeoutExpired:
-            pass
         rss = note()
         if rss > memory_cap:
             reason = f"memory cap ({memory_cap} bytes) exceeded (rss {rss} bytes)"
@@ -261,7 +296,9 @@ def bounded_run(
             reason = f"timed out after {timeout}s"
             _kill_group(proc.pid)
             break
-    proc.wait(timeout=5)
+    if proc.returncode is None:
+        proc.wait(timeout=5)
+    peak_rss = max(peak_rss, kernel_rss)
     for reader in readers:
         reader.join(timeout=5)
     stdout = stdout_parts[0] if stdout_parts else ""

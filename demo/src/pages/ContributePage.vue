@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import { repositoryBlob, repositoryUrl } from '@/hosts'
 import DocPage from '@/components/DocPage.vue'
 import FinishLine from '@/components/marks/FinishLine.vue'
@@ -23,7 +24,7 @@ const contributing = repositoryBlob('CONTRIBUTING.md')
     </section>
     <section id="cost" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Cost</h2>
-      <p class="leading-7">A changed solution must pass, and its Go cost must be strictly lower than the committed <code>metric.json</code>. Cost is UTF-8 bytes: each regex eval adds the state length plus the pattern, and each applied step adds the replacement. A direct solution is <code>solution.thue</code>. Commit <code>metrics/latest.json</code> with the change.</p>
+      <p class="leading-7">A changed solution must pass, and its Go cost must be strictly lower than the committed <code>metric.json</code>. Cost is UTF-8 bytes: each regex eval adds the state length plus the pattern, and each applied step adds the replacement. A direct solution is <code>solution.thue</code>. Commit <code>metrics/latest.json</code> with the change. The <RouterLink to="/autoresearch" class="underline underline-offset-4">autoresearch prompt</RouterLink> is the copy an agent runs.</p>
     </section>
   </DocPage>
 </template>

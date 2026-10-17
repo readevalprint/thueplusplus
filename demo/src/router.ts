@@ -11,6 +11,7 @@ declare module 'vue-router' {
 }
 import { problemRouteMeta, rulesetRouteMeta } from './catalog'
 import ContributePage from './pages/ContributePage.vue'
+import DocsPage from './pages/DocsPage.vue'
 import EmbedPage from './pages/EmbedPage.vue'
 import HomePage from './pages/HomePage.vue'
 import InstallPage from './pages/InstallPage.vue'
@@ -28,6 +29,7 @@ import { pages } from './site'
 
 const shell = [
   { page: pages.home, component: HomePage },
+  { page: pages.docs, component: DocsPage },
   { page: pages.guides, component: LearnPage },
   { page: pages.language, component: ReferencePage },
   { page: pages.install, component: InstallPage },

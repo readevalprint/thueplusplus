@@ -17,7 +17,7 @@ A process binding exists only after the host opts in:
 | Rust | `add_proc_binding(name, command)` |
 | C++ | `AddProcBinding(name, command)` |
 | CLI | `--proc:NAME COMMAND` |
-| wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thue` package spawns a process only when it is given `--proc`. |
+| wasm module | `procs` is rejected. `subprocess resources are not supported in GOOS=js/wasm`. The Node CLI in the `thuelang` package spawns a process only when it is given `--proc`. |
 
 Limits on a new interpreter:
 

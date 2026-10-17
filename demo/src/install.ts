@@ -1,5 +1,20 @@
 import { repositoryUrl, siteHosts, type SiteHost } from './hosts'
 
+export const installNotes: Record<string, string> = {
+  go: 'The native Go engine and the thue command.',
+  python: 'The Python package and the thue console script.',
+  wasm: 'The thuelang package with the thue CLI.',
+  rust: 'The thuelang package with the thue CLI.',
+  cpp: 'The CMake library and the thue command.',
+}
+
+for (const host of siteHosts) {
+  if (!installNotes[host.id]) throw new Error(`install page has no note for ${host.id}`)
+}
+if (installNotes.wasm !== installNotes.rust) {
+  throw new Error('the JavaScript install note must match the Rust package and CLI')
+}
+
 const blob = `${repositoryUrl}/blob/main`
 const hostApi = { href: `${blob}/docs/host-api.md`, label: 'docs/host-api.md' }
 

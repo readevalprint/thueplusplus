@@ -11,6 +11,29 @@
       })()
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      html, body { margin: 0; height: 100%; }
+      html { background: #0a0a0c; color: #e8e6e1; }
+      html:not(.dark) { background: #f4f3ef; color: #1a1916; }
+      #boot {
+        min-height: 100%;
+        display: grid;
+        place-items: center;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      #boot span {
+        font-size: 28px;
+        letter-spacing: 0.08em;
+        animation: boot-pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes boot-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.25; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot span { animation: none !important; opacity: 1; }
+      }
+    </style>
     <title>Thue++ — The safest, smallest, sandbox.</title>
     <meta
       name="description"
@@ -52,7 +75,7 @@
     </script>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app"><div id="boot" data-test="boot"><span>::=</span></div></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
