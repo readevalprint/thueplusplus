@@ -47,8 +47,8 @@ test('mobile projects page keeps the hero and the cards', async ({ page }) => {
   await expect(page.getByTestId('page-hero')).toBeVisible()
   await expect(page.getByTestId('project-cards')).toBeVisible()
   await expect(page.getByTestId('page-sidebar')).toBeHidden()
-  await page.getByTestId('menu-toggle').click()
-  await expect(page.getByTestId('site-menu').getByRole('link', { name: /Sandboxed projects/ })).toBeVisible()
+  await expect(page.getByTestId('site-nav').getByRole('link')).toHaveCount(4)
+  await expect(page.getByTestId('site-footer').getByRole('link', { name: 'Projects' })).toBeVisible()
 })
 
 test('metrics chart headings are deep links', async ({ page }) => {

@@ -13,6 +13,19 @@
       { "title": "Sandbox", "href": "#sandbox" }
     ]
   },
+  "docs": {
+    "path": "/docs",
+    "kicker": "Docs",
+    "title": "The reference and a short tour.",
+    "description": "The Thue++ language reference and a short tour of a program.",
+    "documentTitle": "Thue++ Docs — The reference and a short tour",
+    "canonical": "https://thuelang.org/docs",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Language", "href": "#language" },
+      { "title": "Guides", "href": "#guides" }
+    ]
+  },
   "guides": {
     "path": "/docs/guides",
     "kicker": "Guides",

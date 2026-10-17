@@ -39,13 +39,6 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
-async function openMenu(wrapper: ReturnType<typeof mount>, title: string): Promise<void> {
-  const button = wrapper.get('[data-test="site-nav"]').findAll('button').find(item => item.text().startsWith(title))
-  if (!button) throw new Error(`no ${title} menu`)
-  await button.trigger('click')
-  await flush()
-}
-
 let active: ReturnType<typeof mount> | undefined
 
 async function mountApp(options?: Parameters<typeof mount>[1]): Promise<ReturnType<typeof mount>> {
@@ -72,6 +65,7 @@ describe('Go-WASM demo UI', () => {
     window.history.pushState({}, '', '/')
     document.body.innerHTML = ''
     document.documentElement.classList.remove('dark')
+    localStorage.removeItem('theme')
     mockedRunWithWorker.mockReset()
     if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
     window.scrollTo = vi.fn()
@@ -101,35 +95,118 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.get('[data-test="landing-rewrite"]').text()).toContain('hi Ada')
     expect(wrapper.text()).not.toContain('RE2')
     const nav = wrapper.get('[data-test="site-nav"]')
-    expect(nav.text()).toContain('Docs')
-    expect(nav.text()).toContain('Install')
-    expect(nav.text()).toContain('Projects')
-    expect(nav.text()).toContain('Metrics')
-    expect(nav.text()).toContain('Playground')
-    expect(nav.text()).toContain('Contribute')
-    expect(nav.text()).toContain('Autoresearch prompt')
-    await openMenu(wrapper, 'Docs')
-    expect(wrapper.text()).toContain('Language reference')
-    expect(wrapper.text()).toContain('Problems')
-    expect(wrapper.text()).toContain('Guides')
-    await openMenu(wrapper, 'Install')
-    expect(wrapper.text()).toContain('Quick start')
-    expect(wrapper.text()).toContain('JavaScript')
-    await openMenu(wrapper, 'Projects')
-    expect(wrapper.text()).toContain('Sandboxed projects')
-    expect(wrapper.text()).toContain('Forth')
+    expect(nav.findAll('a').map(link => `${link.text()} ${link.attributes('href')}`)).toEqual([
+      'Install /install',
+      'Docs /docs',
+      'Leaderboard /problems',
+      'Contribute /contribute',
+    ])
+    expect(nav.findAll('button')).toHaveLength(0)
     const menu = wrapper.text()
     expect(menu).not.toMatch(/\bGuests?\b/)
     expect(menu).not.toMatch(/\bHosts?\b/)
     expect(menu).not.toMatch(/\bLearn\b/)
     expect(wrapper.findAll('a[href="/"]').some(link => link.attributes('aria-current') === 'page')).toBe(true)
-    expect(nav.get('a[href="/playground"]').attributes('aria-current')).toBeUndefined()
+    expect(nav.find('a[href="/playground"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="page-sidebar"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="aside-trigger"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="rewrite-motif"]').exists()).toBe(true)
     expect(wrapper.find('a[href="https://github.com/thuelang/thueplusplus"]').exists()).toBe(true)
     expect(wrapper.find('a[href="https://gitlab.com/thuelang/thueplusplus"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
+    const theme = wrapper.get('[data-test="theme-toggle"]')
+    expect(theme.attributes('aria-label')).toBe('Dark theme')
+    expect(theme.attributes('title')).toBe('Dark theme')
+    expect(wrapper.get('[data-test="site-header"]').find('a[href="https://github.com/thuelang/thueplusplus"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="site-footer"]').find('a[href="/playground"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="nav-progress"]').classes()).toContain('bg-primary')
+  })
+
+  it('header is four plain links', async () => {
+    const wrapper = await mountApp()
+    const header = wrapper.get('[data-test="site-header"]')
+    const links = header.get('[data-test="site-nav"]').findAll('a')
+    expect(links).toHaveLength(4)
+    expect(links.map(link => link.attributes('href'))).toEqual(['/install', '/docs', '/problems', '/contribute'])
+    expect(header.get('[data-test="site-nav"]').findAll('button')).toHaveLength(0)
+    expect(header.findAll('a').map(link => link.attributes('href'))).toEqual(['/', '/install', '/docs', '/problems', '/contribute'])
+    expect(header.find('[data-slot="dropdown-menu"]').exists()).toBe(false)
+    expect(header.find('[data-slot="navigation-menu"]').exists()).toBe(false)
+  })
+
+  it('displaced pages stay linked', async () => {
+    const home = await mountApp()
+    const footer = home.get('[data-test="site-footer"]')
+    expect(footer.find('a[href="/playground"]').exists()).toBe(true)
+    expect(footer.find('a[href="/projects"]').exists()).toBe(true)
+    expect(footer.find('a[href="/metrics"]').exists()).toBe(true)
+    expect(footer.find('a[href="/autoresearch"]').exists()).toBe(true)
+
+    window.history.pushState({}, '', '/problems')
+    const problems = await mountApp()
+    expect(problems.find('a[href="/projects"]').exists()).toBe(true)
+    expect(problems.find('a[href="/metrics"]').exists()).toBe(true)
+    expect(problems.find('a[href="/autoresearch"]').exists()).toBe(true)
+
+    window.history.pushState({}, '', '/contribute')
+    const contribute = await mountApp()
+    expect(contribute.find('a[href="/autoresearch"]').exists()).toBe(true)
+  })
+
+  it('renders the docs index', async () => {
+    window.history.pushState({}, '', '/docs')
+    const wrapper = await mountApp()
+    expect(wrapper.get('h1').text()).toBe('The reference and a short tour.')
+    expect(wrapper.get('a[href="/docs/language"]').text()).toContain('Language reference')
+    expect(wrapper.get('a[href="/docs/guides"]').text()).toContain('Guides')
+    expect(wrapper.get('[data-test="site-nav"]').get('a[href="/docs"]').attributes('aria-current')).toBe('page')
+  })
+
+  it('names the thuelang package', async () => {
+    window.history.pushState({}, '', '/install')
+    const wrapper = await mountApp()
+    const text = wrapper.text()
+    expect(text.split('The thuelang package with the thue CLI').length - 1).toBe(2)
+    expect(text).not.toContain('thue crate')
+    expect(text).not.toContain('Node command')
+  })
+
+  it('theme cycles without a menu', async () => {
+    const wrapper = await mountApp()
+    const toggle = wrapper.get('[data-test="theme-toggle"]')
+    expect(wrapper.find('[data-test="theme-light"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="theme-dark"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="theme-system"]').exists()).toBe(false)
+    expect(wrapper.find('[data-slot="dropdown-menu"]').exists()).toBe(false)
+    expect(toggle.attributes('data-mode')).toBe('dark')
+    expect(toggle.attributes('aria-label')).toBe('Dark theme')
+    expect(toggle.attributes('title')).toBe('Dark theme')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('data-mode')).toBe('system')
+    expect(toggle.attributes('aria-label')).toBe('System theme')
+    expect(toggle.attributes('title')).toBe('System theme')
+    expect(localStorage.getItem('theme')).toBe('system')
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('data-mode')).toBe('light')
+    expect(toggle.attributes('aria-label')).toBe('Light theme')
+    expect(toggle.attributes('title')).toBe('Light theme')
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(localStorage.getItem('theme')).toBe('light')
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('data-mode')).toBe('dark')
+    expect(localStorage.getItem('theme')).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
+  it('progress line uses the primary color', async () => {
+    const wrapper = await mountApp()
+    const line = wrapper.get('[data-test="nav-progress"]')
+    expect(line.classes()).toContain('bg-primary')
+    expect(line.attributes('data-state')).toBe('idle')
+    expect(line.attributes('role')).toBe('progressbar')
   })
 
   it('renders each section as its own page and leaves embed without chrome', async () => {
@@ -140,8 +217,7 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.text()).not.toContain('RE2')
     expect(wrapper.text()).not.toMatch(/\bguest\b/i)
     expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('A program')
-    await openMenu(wrapper, 'Docs')
-    expect(wrapper.get('a[href="/docs/guides"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.get('[data-test="site-nav"]').get('a[href="/docs"]').attributes('aria-current')).toBe('page')
 
     window.history.pushState({}, '', '/docs/language')
     wrapper = await mountApp()
@@ -156,6 +232,7 @@ describe('Go-WASM demo UI', () => {
     wrapper = await mountApp()
     expect(wrapper.get('h1').text()).toBe('Install a host.')
     expect(wrapper.text()).toContain('Quick start')
+    expect(wrapper.text()).toContain('The thuelang package with the thue CLI')
     expect(wrapper.text()).toContain('Coming soon')
     expect(wrapper.text()).not.toContain('the regex engine')
     expect(wrapper.text()).not.toMatch(/\bguest\b/i)
@@ -237,7 +314,8 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.find('[data-test="site-header"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="playground-toolbar"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="app-shell"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="site-nav"]').get('a[href="/playground"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.get('[data-test="site-nav"]').find('a[href="/playground"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="site-nav"]').findAll('a')).toHaveLength(4)
     expect(wrapper.find('[data-test="page-hero-graphic"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="playground-share"]').text()).toBe('share')
     expect(wrapper.get('header a[href="/"]').attributes('aria-current')).toBeUndefined()

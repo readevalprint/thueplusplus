@@ -150,7 +150,7 @@ def test_memory_cap_kills() -> None:
 def test_missed_sample_does_not_fail_the_run() -> None:
     """A conformance case that exits before /proc is readable still completes.
 
-    `make metrics` is what rejects a zero peak. The runner must not.
+    The kernel peak from wait4 is the sample. The run does not fail closed.
     """
     import run_limits
 
@@ -170,9 +170,31 @@ def test_missed_sample_does_not_fail_the_run() -> None:
         run_limits._tree_peak_rss = real_peak
     if completed.returncode != 0:
         raise SystemExit(f"FAIL missed sample exited {completed.returncode}")
-    if completed.peak_rss_bytes != 0:
-        raise SystemExit(f"FAIL missed sample recorded {completed.peak_rss_bytes}")
-    print("ok missed sample stays a completed run")
+    if completed.peak_rss_bytes <= 0:
+        raise SystemExit(f"FAIL missed /proc sample recorded {completed.peak_rss_bytes}")
+    print(f"ok missed /proc sample uses kernel rss: {completed.peak_rss_bytes}")
+
+
+def test_parallel_fast_processes_report_peak_rss() -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(_index: int) -> int:
+        completed = bounded_run(
+            ["true"],
+            timeout=2,
+            cwd=ROOT,
+            memory_cap=RUN_MEMORY_CAP_BYTES,
+        )
+        if completed.returncode != 0:
+            raise SystemExit(f"FAIL true exited {completed.returncode}")
+        return completed.peak_rss_bytes
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        peaks = list(pool.map(one, range(40)))
+    missed = [peak for peak in peaks if peak <= 0]
+    if missed:
+        raise SystemExit(f"FAIL {len(missed)} of {len(peaks)} fast runs missed rss")
+    print(f"ok parallel peak rss: min {min(peaks)}")
 
 
 def test_fast_process_reports_peak_rss() -> None:
@@ -230,6 +252,7 @@ def main() -> None:
     test_memory_cap_kills()
     test_missed_sample_does_not_fail_the_run()
     test_fast_process_reports_peak_rss()
+    test_parallel_fast_processes_report_peak_rss()
     test_allocation_is_in_the_peak()
     test_timeout_kills()
     print("runner limit guards passed")

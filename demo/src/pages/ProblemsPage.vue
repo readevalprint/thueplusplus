@@ -50,7 +50,7 @@ function solvedText(id: string, point: SeriesPoint): string {
     </template>
     <section id="rulesets" data-test="program-leaderboard" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Rulesets</h2>
-      <p class="leading-7">A ruleset's cost is the sum of its Go costs on the common problems: the problems every ruleset with a passing solution passes. Coverage is how many problems that ruleset passes. {{ catalog.commonProblems.length }} problems are common.</p>
+      <p class="leading-7">A ruleset's cost is the sum of its Go costs on the common problems: the problems every ruleset with a passing solution passes. Coverage is how many problems that ruleset passes. {{ catalog.commonProblems.length }} problems are common. Host time and memory for these runs are on the <RouterLink to="/metrics" class="underline underline-offset-4">metrics</RouterLink> page.</p>
       <div class="grid gap-3 sm:grid-cols-2">
         <Card v-for="ruleset in rulesets" :key="ruleset.id" data-test="ruleset-card" :data-ruleset="ruleset.id">
           <CardHeader>
@@ -109,7 +109,7 @@ function solvedText(id: string, point: SeriesPoint): string {
     </section>
     <section id="improve" data-test="program-improve" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Improve a solution</h2>
-      <p class="leading-7">Autoresearch is a loop a person or an agent can run. Edit one solution, run <code>make problems</code>, and keep the edit when the tests pass and its Go cost is strictly lower than the other passing file in that directory.</p>
+      <p class="leading-7"><RouterLink to="/autoresearch" class="underline underline-offset-4">Autoresearch</RouterLink> is a loop a person or an agent can run. Edit one solution, run <code>make problems</code>, and keep the edit when the tests pass and its Go cost is strictly lower than the other passing file in that directory.</p>
       <ul class="flex flex-col gap-2">
         <li v-for="problem in catalog.problems" :key="problem.id">
           <template v-for="version in problem.versions" :key="version.id">

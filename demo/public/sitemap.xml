@@ -5,6 +5,10 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://thuelang.org/docs</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://thuelang.org/docs/guides</loc>
     <priority>0.7</priority>
   </url>
