@@ -300,12 +300,12 @@ class HistoryTests(unittest.TestCase):
         self.assertNotIn("public/metrics/summary.json", gitlab)
         self.assertNotIn("history.json", gitlab)
         self.assertIn("pull_request:", workflow)
-        self.assertNotIn("branches: [main]", workflow)
-        self.assertNotIn("git push", workflow)
-        self.assertNotIn("git commit", workflow)
+        self.assertIn("branches: [main]", workflow)
+        self.assertIn("git push", workflow)
         self.assertNotIn("history.json", workflow)
         self.assertNotIn("publish_checks", workflow)
-        self.assertIn("check_history.py", workflow)
+        self.assertNotIn("check_history.py", workflow)
+        self.assertIn("pr_check.py", workflow)
         self.assertIn("latest.json", workflow)
         self.assertIn("`metrics/YYYY/MM/DD/{sha}/bench.json`", schema)
         self.assertIn("`metrics/latest.json`", schema)
@@ -422,6 +422,38 @@ class LatestTests(unittest.TestCase):
             benches = {document["commit"]: document for _rel, document in historylib.iter_benches(root)}
             with self.assertRaises(historylib.HistoryError):
                 check_history.assert_archives(root, benches)
+
+    def test_a_latest_commit_without_a_bench_is_valid(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "ada@example.com"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Ada Lovelace"], cwd=root, check=True)
+            metrics = root / "metrics"
+            metrics.mkdir()
+            latest = _latest_document()
+            (metrics / "latest.json").write_text(json.dumps(latest) + "\n", encoding="utf-8")
+            subprocess.run(["git", "add", "metrics/latest.json"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "first"], cwd=root, check=True, capture_output=True)
+            first = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+            again = _latest_document()
+            again["machine"] = {**again["machine"], "cpus": 8}
+            (metrics / "latest.json").write_text(json.dumps(again) + "\n", encoding="utf-8")
+            subprocess.run(["git", "add", "metrics/latest.json"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "second"], cwd=root, check=True, capture_output=True)
+            check_history.assert_archives(root, {})
+            bench = check_history.bench_from_commit(root, first)
+            path = historylib.save_bench(root, bench)
+            loaded = {bench["commit"]: historylib.load_bench(path)}
+            check_history.assert_archives(root, loaded)
+            second = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+            self.assertNotIn(second, loaded)
+            broken = json.loads(path.read_text(encoding="utf-8"))
+            broken["machine"]["cpu"] = "other"
+            path.write_text(json.dumps(broken) + "\n", encoding="utf-8")
+            loaded = {bench["commit"]: historylib.load_bench(path)}
+            with self.assertRaises(historylib.HistoryError):
+                check_history.assert_archives(root, loaded)
 
 
 if __name__ == "__main__":

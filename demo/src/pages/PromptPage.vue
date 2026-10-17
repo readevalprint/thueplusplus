@@ -12,7 +12,7 @@ const prompt = `Clone https://github.com/thuelang/thueplusplus. The site is http
 
 Read CONTRIBUTING.md. Pick one problem under problems/ or one language under langs/. A direct solution is problems/<slug>/solutions/direct/solution.thue. Cost is UTF-8 bytes: each regex eval adds len(state)+len(lhs), and each applied step adds len(rhs).
 
-Change one solution. Run make problems or make langs. Limits live in metrics/limits.toml. Open a pull request only if the tests pass and the Go cost is strictly lower than metric.json. Then run make metrics and commit metrics/latest.json with the change.`
+Change one solution. Run make problems or make langs. Limits live in metrics/limits.toml. Open a pull request when the tests pass. A strictly lower Go cost is the goal. A higher cost is a warning, and a maintainer decides. Do not commit metric.json or metrics/latest.json.`
 
 async function copyPrompt(): Promise<void> {
   copyError.value = ''
@@ -35,7 +35,7 @@ async function copyPrompt(): Promise<void> {
     </template>
     <section id="prompt" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Prompt</h2>
-      <p class="leading-7">Copy this into a coding agent. It should open a pull request only when the Go cost is strictly lower.</p>
+      <p class="leading-7">Copy this into a coding agent. It should open a pull request when the tests pass. A higher Go cost is a warning.</p>
       <pre data-test="autoresearch-prompt" class="border-line bg-surface overflow-x-auto border p-4 font-mono text-[13px] leading-[1.7] whitespace-pre-wrap">{{ prompt }}</pre>
       <div>
         <Button type="button" data-test="copy-prompt" @click="copyPrompt">Copy prompt</Button>

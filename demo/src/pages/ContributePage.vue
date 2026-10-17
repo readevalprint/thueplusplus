@@ -20,11 +20,11 @@ const contributing = repositoryBlob('CONTRIBUTING.md')
     </section>
     <section id="commands" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Commands</h2>
-      <p class="leading-7"><code>make test</code> runs the host suite. <code>make problems</code> and <code>make langs</code> run on native Go. <code>make metrics</code> records every solution run. Limits come from <code>metrics/limits.toml</code>.</p>
+      <p class="leading-7"><code>make test</code> runs the host suite. <code>make problems</code> and <code>make langs</code> run on native Go. <code>make metrics</code> is a local preview and does not get committed. Limits come from <code>metrics/limits.toml</code>.</p>
     </section>
     <section id="cost" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Cost</h2>
-      <p class="leading-7">A changed solution must pass, and its Go cost must be strictly lower than the committed <code>metric.json</code>. Cost is UTF-8 bytes: each regex eval adds the state length plus the pattern, and each applied step adds the replacement. A direct solution is <code>solution.thue</code>. Commit <code>metrics/latest.json</code> with the change. The <RouterLink to="/autoresearch" class="underline underline-offset-4">autoresearch prompt</RouterLink> is the copy an agent runs.</p>
+      <p class="leading-7">A changed solution must pass. A strictly lower Go cost is the goal. Cost is UTF-8 bytes: each regex eval adds the state length plus the pattern, and each applied step adds the replacement. A higher cost warns on the pull request and does not block it. A direct solution is <code>solution.thue</code>. CI commits <code>metric.json</code> on main when the result changes. The <RouterLink to="/autoresearch" class="underline underline-offset-4">autoresearch prompt</RouterLink> is the copy an agent runs.</p>
     </section>
   </DocPage>
 </template>

@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Run every solution case on every host, then write schema 5 metrics/latest.json.
+"""Run every solution case on every host and write schema 5 metrics.
 
-When metrics/latest.json is already committed, the script first resolves
-`git log -1 --format=%H -- metrics/latest.json` and moves that file to
-metrics/YYYY/MM/DD/{sha}/bench.json, filling in that commit and its UTC
-author date. The suite runs against a clean work tree. The new latest.json
-is written after that move. The author commits it with the change. This
-script does not push.
+`make metrics` is a local preview. It writes a metric file only when the
+run result changed, and it does not commit. `--publish` is the main-branch
+job: it commits those files and does not push. A dated bench is not written.
+`move_latest` remains for the historical archives already in the tree.
 """
 
 from __future__ import annotations
@@ -25,6 +23,8 @@ sys.path.insert(0, str(ROOT / "metrics"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 import historylib  # noqa: E402
+import publish  # noqa: E402
+from layout import discover  # noqa: E402
 from runs import RunError, measure as measure_runs  # noqa: E402
 
 
@@ -101,6 +101,7 @@ def read_committed_latest(root: Path = ROOT) -> tuple[str, dict] | None:
 
 
 def move_latest(root: Path, sha: str, document: dict) -> Path:
+    """Archive one historical latest.json. Publish does not call this."""
     author = git_text(["log", "-1", "--format=%an <%ae>", sha], root=root)
     timestamp = commit_timestamp(git_text(["log", "-1", "--format=%aI", sha], root=root))
     bench = historylib.bench_from_latest(document, sha, author, timestamp)
@@ -118,55 +119,19 @@ def move_latest(root: Path, sha: str, document: dict) -> Path:
     return root / rel
 
 
-def _same_measurement(current: dict, runs: list[dict], machine: dict) -> bool:
-    if current.get("schema_version") != historylib.SCHEMA_VERSION:
-        return False
-    if current.get("machine") != machine:
-        return False
-    stored = current.get("runs")
-    if not isinstance(stored, list) or len(stored) != len(runs):
-        return False
-    volatile = {"duration_ms", "memory_bytes"}
-    for left, right in zip(stored, runs):
-        if not isinstance(left, dict) or set(left) != set(right):
-            return False
-        for key, value in right.items():
-            if key in volatile:
-                continue
-            if left[key] != value:
-                return False
-    return True
-
-
-def measure(*, allow_dirty: bool = False) -> int:
-    if not allow_dirty and git_text(["status", "--porcelain"]):
-        raise RecordError("make metrics refuses a dirty work tree")
+def measure(*, publish_commit: bool = False) -> int:
+    if publish_commit and publish.bot_push_from_env():
+        print("metrics: skip bot push")
+        return 0
+    if publish_commit and git_text(["status", "--porcelain"]):
+        raise RecordError("metrics publish refuses a dirty work tree")
     head = git_text(["rev-parse", "HEAD"])
-    runs = measure_runs(write_metrics=True, commit=head)
+    runs = measure_runs(write_metrics=False, commit=head)
     for row in runs:
         if row["pass"] is True:
             require_memory(f"{row['problem']}/{row['case']}", row["host"], row["memory_bytes"])
     machine = machine_info()
-    latest_path = ROOT / historylib.LATEST_REL
-    if latest_path.is_file():
-        try:
-            current = json.loads(latest_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise RecordError(f"{historylib.LATEST_REL} is not JSON: {exc}") from exc
-        if isinstance(current, dict) and _same_measurement(current, runs, machine):
-            return 0
-    pending = read_committed_latest(ROOT) if not allow_dirty else None
-    if pending is not None:
-        sha, previous = pending
-        archived = move_latest(ROOT, sha, previous)
-        print(f"metrics: archived {sha} to {archived.relative_to(ROOT)}")
-    latest = {
-        "schema_version": historylib.SCHEMA_VERSION,
-        "commit": head,
-        "machine": machine,
-        "runs": runs,
-    }
-    historylib.save_latest(ROOT, latest)
+    paths = publish.apply_files(ROOT, discover(), runs, head, machine)
     costs: dict[str, int] = {}
     printed: set[str] = set()
     for row in runs:
@@ -177,16 +142,25 @@ def measure(*, allow_dirty: bool = False) -> int:
             costs[row["problem"]] = costs.get(row["problem"], 0) + row["cost"]
     for problem, cost in costs.items():
         print(f"cost {problem} {cost}")
-    print(f"metrics: wrote {historylib.LATEST_REL} ({len(runs)} runs)")
+    if publish_commit:
+        publish.commit_paths(ROOT, paths)
+        return 0
+    if paths:
+        print("metrics: preview wrote " + " ".join(paths))
+        print("metrics: preview does not commit")
+    else:
+        print("metrics: unchanged")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    if argv:
-        raise RecordError("make metrics takes no arguments")
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args not in ([], ["--publish"]):
+        print("usage: record.py [--publish]", file=sys.stderr)
+        return 2
     try:
-        return measure()
-    except (RecordError, RunError, historylib.HistoryError, RuntimeError) as exc:
+        return measure(publish_commit=args == ["--publish"])
+    except (RecordError, RunError, publish.PublishError, historylib.HistoryError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

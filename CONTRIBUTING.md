@@ -100,21 +100,29 @@ A ruleset's cost is the sum of its passing solution costs on the common problems
 
 ## Acceptance
 
-A changed solution must still pass, and its Go cost must be strictly lower than the committed `metric.json` on the base. A new ruleset folder must pass. An equal cost is not lower. That comparison stops when `problem_test.go` or a file in `cases/` changed in the same diff: the contract moved, the solution must still pass, and the new cost replaces the old one.
+A changed solution must still pass. The goal is a Go cost strictly lower than the committed `metric.json` on main. An equal or higher cost is a warning on the pull request, and the check stays green. A maintainer decides whether a worse solution is worth merging. A new ruleset folder must pass. That cost comparison stops when `problem_test.go` or a file in `cases/` changed in the same diff: the contract moved, the solution must still pass, and the new cost replaces the old one.
 
-A change to an interpreter `langs/<ruleset>/*.thue` re-records that ruleset. It must still pass every problem it passed on the previous common set, and the sum of those costs must not go up.
+A change to an interpreter `langs/<ruleset>/*.thue` is re-measured. It must still pass every problem it passed on the previous common set. A higher sum of those costs is a warning. Stopping passing is a failure.
 
-`metrics/accept.py --base SHA` checks a clean tree. `metrics/check_solutions.py` reruns every case on every host and fails when pass or cost differs from `metric.json` or from Go.
+Pull request CI runs the suite. Go is the ranking host. A host whose pass or cost differs from Go fails the job. Broken frontmatter fails the job. The job posts one sticky comment with the per-solution cost diff against main, the ruleset sums, and any warnings. It updates that comment in place.
+
+`metrics/check_solutions.py` reruns every case on every host and fails when a solution does not pass or a host disagrees with Go. It does not fail on cost drift.
+
+Do not commit `metric.json`, `metrics/latest.json`, or `metrics/YYYY/MM/DD/<sha>/bench.json`.
 
 Autoresearch prompt:
 
 ```text
-Lower the Go cost of one solution. Cost is UTF-8 bytes: each regex eval adds len(state)+len(lhs), and each applied step adds len(rhs). A literal-prefix miss is not an eval. An exit rule is not an applied step. A direct entry is solution.thue. Edit problems/<slug>/solutions/<ruleset>/ and its metric.json. Run make problems or make langs, then metrics/check_solutions.py. Keep the edit only when the tests pass and the Go cost is strictly lower. Do not change the reference output. Do not put limits in the README. Limits live in metrics/limits.toml.
+Lower the Go cost of one solution. Cost is UTF-8 bytes: each regex eval adds len(state)+len(lhs), and each applied step adds len(rhs). A literal-prefix miss is not an eval. An exit rule is not an applied step. A direct entry is solution.thue. Edit problems/<slug>/solutions/<ruleset>/. Run make problems or make langs, then metrics/check_solutions.py. Keep the edit when the tests pass. A strictly lower Go cost is the goal. A higher cost is a warning, and a maintainer decides. Do not change the reference output. Do not commit metric.json or metrics/latest.json. Do not put limits in the README. Limits live in metrics/limits.toml.
 ```
 
 ## Metrics
 
-`make metrics` refuses a dirty work tree. It runs every committed solution case on every host and writes schema 5 `metrics/latest.json` as `{schema_version, commit, machine, runs}`. Each run is one program, one case, and one host, with `pass`, `cost`, the diagnostic counters, `reads`, and the global limits. Pass and cost must match Go. Cost is the sum of those fixed cases. The previous file moves to `metrics/YYYY/MM/DD/{sha}/bench.json`. A second run that measures the same counters leaves the tree clean. Commit `latest.json` and any changed `metric.json` with the change. Schema 2 and 3 benches stay valid. A schema 4 bench without `runs` is the older problem and language record. A schema 4 runs document stores `stdin` and stays valid. The site reads `runs` and ignores the older keys.
+`make metrics` is a local preview. It runs every committed solution case on every host and writes schema 5 `metrics/latest.json` as `{schema_version, commit, machine, runs}` when the run results changed. Each run is one program, one case, and one host, with `pass`, `cost`, the diagnostic counters, `reads`, and the global limits from `metrics/limits.toml`. Every run passes `--max-steps`, `--max-evals`, and `--max-state-bytes`, and `timeout(1)` enforces `timeout_seconds` and `memory_cap_bytes`. Pass and cost must match Go. Cost is the sum of those fixed cases. A solution `metric.json` is written only when pass, cost, or a diagnostic differs. `latest.json` is written only when a run result differs. A different commit hash, machine, duration, or resident memory is not a change. The preview does not commit and does not push.
+
+A push to `main` runs the same suite as `github-actions[bot]` with `contents: write`. It commits the files whose results changed. No change means no commit. The workflow skips a push whose actor or pusher is the bot. The job timeout is 45 minutes.
+
+The dated archives already in the tree stay. The recorder does not add a new bench. Problem charts read the git history of each `metric.json`, so a commit only when that file changed keeps one point per real change. Host charts read those archives plus the current `metrics/latest.json`. Schema 2 and 3 benches stay valid. A schema 4 bench without `runs` is the older problem and language record. A schema 4 runs document stores `stdin` and stays valid. The site reads `runs` and ignores the older keys.
 
 ## Tests
 
