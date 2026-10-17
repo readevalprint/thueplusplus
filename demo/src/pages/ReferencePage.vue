@@ -48,7 +48,7 @@ const limits = [
     </section>
     <section id="resources" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Resources</h2>
-      <p class="leading-7">A new interpreter binds <code>stdin</code>, <code>stdout</code>, and <code>stderr</code>. A program cannot open files, sockets, or processes. A host may bind more resources by name. The WebAssembly host rejects process bindings. A <code>::&lt;</code> read that passes its timeout exits 13.</p>
+      <p class="leading-7">A new interpreter binds <code>stdin</code>, <code>stdout</code>, and <code>stderr</code>. A program cannot open files, sockets, or processes. A host may bind more resources by name. The browser playground rejects process bindings. A <code>::&lt;</code> read that passes its timeout exits 13.</p>
     </section>
     <section id="limits" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Limits</h2>

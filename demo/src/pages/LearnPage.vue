@@ -33,7 +33,7 @@ hello Ada`
     </section>
     <section id="try-it" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Try it</h2>
-      <p class="leading-7">The <RouterLink to="/playground" class="underline underline-offset-4">playground</RouterLink> loads the Go host compiled to WebAssembly. Step runs one rewrite, and the step limit is on before you press anything.</p>
+      <p class="leading-7">The <RouterLink to="/playground" class="underline underline-offset-4">playground</RouterLink> loads the native JavaScript host. Step runs one rewrite, and the step limit is on before you press anything.</p>
       <div class="flex flex-wrap gap-2">
         <Button as-child>
           <RouterLink to="/playground?file=./examples/hello/hello.thue">Open the playground</RouterLink>

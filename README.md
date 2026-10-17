@@ -516,7 +516,7 @@ This is all with humble `lhs ::= rhs` rewrite rules.
 
 ## Current reference runners
 
-This repository has eight current conformance backends:
+This repository has nine current conformance backends:
 
 ```bash
 # Python package
@@ -525,8 +525,11 @@ uv run thue <program.thue>
 # Go package github.com/thuelang/thueplusplus/go/thuelang
 (cd go && go run ./cmd/thue ../<program.thue>)
 
-# npm package thuelang
+# JavaScript (native), npm package thuelang
 node js/src/cli.js <program.thue>
+
+# WebAssembly, npm package @thuelang/wasm
+node wasm/src/cli.js <program.thue>
 
 # Rust crate thuelang
 ./rust/target/release/thue <program.thue>
@@ -549,7 +552,7 @@ build/csharp/thue <program.thue>
 java/build/install/thue/bin/thue <program.thue>
 ```
 
-`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package name is `thuelang`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. The Ruby gem is `thuelang` under `ruby/`. The C# package and namespace are `Thuelang` under `csharp/`. The Java package is `org.thuelang:thuelang`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
+`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package for JavaScript (native) is `thuelang`. The WebAssembly package is `@thuelang/wasm`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. The Ruby gem is `thuelang` under `ruby/`. The C# package and namespace are `Thuelang` under `csharp/`. The Java package is `org.thuelang:thuelang`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -675,7 +678,8 @@ Project docs and examples:
 - [`csharp/README.md`](csharp/README.md) — C# library, CLI, and regex gaps
 - [`java/README.md`](java/README.md) — Java library, CLI, and the Gradle build
 - [`docs/releasing.md`](docs/releasing.md) — tag publish for PyPI, npm, crates.io, and the GitHub Release
-- [`js/README.md`](js/README.md) — npm package API
+- [`js/README.md`](js/README.md) — native JavaScript package
+- [`wasm/README.md`](wasm/README.md) — WebAssembly package
 
 External context:
 
@@ -694,6 +698,7 @@ Python, npm, and the Rust crate publish when a `vX.Y.Z` tag is pushed. That GitH
 uv run thue <program.thue>
 (cd go && go run ./cmd/thue ../<program.thue>)
 node js/src/cli.js <program.thue>
+node wasm/src/cli.js <program.thue>
 cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
 build/cpp/thue <program.thue>
 make ruby && ruby/exe/thue <program.thue>
@@ -701,7 +706,7 @@ dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/c
 ./java/gradlew -p java --no-daemon installDist && java/build/install/thue/bin/thue <program.thue>
 ```
 
-Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from crates.io. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. Ruby requires `thuelang` and runs `ruby/exe/thue`. C# references the `Thuelang` project. Java imports `org.thuelang.thuelang.Interpreter`. The playground depends on the npm package in this repository.
+Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm for JavaScript (native), and `@thuelang/wasm` for WebAssembly. Rust imports `thuelang` from crates.io. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. Ruby requires `thuelang` and runs `ruby/exe/thue`. C# references the `Thuelang` project. Java imports `org.thuelang.thuelang.Interpreter`. The playground depends on the native JavaScript package in this repository.
 
 Copy-pasteable agent prompt:
 
@@ -715,6 +720,7 @@ To run this repository's current reference tooling locally:
 uv run thue <program.thue>
 (cd go && go run ./cmd/thue ../<program.thue>)
 node js/src/cli.js <program.thue>
+node wasm/src/cli.js <program.thue>
 cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
 build/cpp/thue <program.thue>
 make ruby && ruby/exe/thue <program.thue>
@@ -729,7 +735,7 @@ Repository development requirements:
 - Go for the second conformance backend
 - Rust 1.83+ (`cargo`) for the Rust host
 - `make` for verification targets
-- Node.js only for Go-WASM adapter and browser-demo checks
+- Node.js 22+ for the native JavaScript host, the WebAssembly host, and the browser demo
 - `g++`, CMake, `pkg-config`, and `libre2-dev` for the C++ host
 - Ruby 3.1+ and Bundler for the Ruby host
 - .NET SDK 10 for the C# host

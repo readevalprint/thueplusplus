@@ -547,7 +547,7 @@ def build_interpreters(build_root: Path, hosts: tuple[str, ...] | None = None) -
     if "wasm" in wanted:
         wasm_artifact = build_wasm(build_root)
         interpreters.append(
-            Interpreter("wasm", ("node", str(ROOT / "js" / "src" / "cli.js")), (("THUE_WASM", str(wasm_artifact)),))
+            Interpreter("wasm", ("node", str(ROOT / "wasm" / "src" / "cli.js")), (("THUE_WASM", str(wasm_artifact)),))
         )
     return interpreters
 

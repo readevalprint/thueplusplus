@@ -16,6 +16,7 @@ jobs:
       python: ${{ steps.filter.outputs.python }}
       go: ${{ steps.filter.outputs.go }}
       wasm: ${{ steps.filter.outputs.wasm }}
+      js: ${{ steps.filter.outputs.js }}
       rust: ${{ steps.filter.outputs.rust }}
       cpp: ${{ steps.filter.outputs.cpp }}
       ruby: ${{ steps.filter.outputs.ruby }}
@@ -37,7 +38,7 @@ jobs:
             BASE=""
           fi
           if [ -z "$BASE" ]; then
-            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nruby=true\ncsharp=true\njava=true\nguests=true\nsolutions=true\n' >> "$GITHUB_OUTPUT"
+            printf 'python=true\ngo=true\nwasm=true\njs=true\nrust=true\ncpp=false\nruby=true\ncsharp=true\njava=true\nguests=true\nsolutions=true\n' >> "$GITHUB_OUTPUT"
           else
             git diff --name-only "$BASE" HEAD | python3 tools/ci_paths.py >> "$GITHUB_OUTPUT"
           fi
@@ -110,6 +111,23 @@ jobs:
           path: build/thue.wasm
           key: wasm-node-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
       - run: make test-core HOST=wasm
+
+  js:
+    needs: changes
+    if: needs.changes.outputs.js == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: make test-core HOST=js
 
   rust:
     needs: changes

@@ -148,6 +148,7 @@ REQUIRED_ENVIRONMENTS = {
     "python": "python",
     "go": "go native",
     "wasm": "wasm (node)",
+    "js": "js (node)",
     "rust": "rust",
     "cpp": "cpp",
     "ruby": "ruby",

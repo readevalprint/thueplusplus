@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 // Thin Node host. It speaks the same argv contract as the Go and Python CLIs.
-// Process bindings are opt-in: the wasm module never spawns a process itself.
+// Process bindings are opt-in: this process never spawns a program unless --proc is set.
 
 import { writeFileSync, readFileSync, writeSync, mkdirSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { Worker } from 'node:worker_threads'
-import { fileURLToPath } from 'node:url'
-import { initThue } from './node.js'
-
-const here = dirname(fileURLToPath(import.meta.url))
+import { run } from './engine.js'
+import { formatTrace } from './interpreter.js'
 const HEADER_BYTES = 12
 const MAX_PAYLOAD = 1024 * 1024
 const sab = new SharedArrayBuffer(HEADER_BYTES + MAX_PAYLOAD)
@@ -24,9 +22,7 @@ stdinWorker.postMessage({ sab: stdinSab })
 async function main() {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const wasmPath = process.env.THUE_WASM || resolve(here, '..', '..', 'build', 'thue.wasm')
     const sourceText = readProgram(options.program)
-    const thue = await initThue({ wasmPath })
     let resources
     let recorded = null
     if (options.resources) {
@@ -63,7 +59,13 @@ async function main() {
       resources,
     }
     if (Object.prototype.hasOwnProperty.call(options, 'input')) runOptions.input = options.input
-    const result = await thue.run(runOptions)
+    const result = await run(runOptions)
+    if (!options.listRules && !result.metrics) {
+      if (result.error) process.stderr.write(`Error: ${result.error}\n`)
+      else process.stderr.write('Error: host result missing metrics\n')
+      await cleanup()
+      process.exit(result.exitCode ?? 1)
+    }
     if (options.ruleCoverage) writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
     if (options.counts && !options.listRules) writeCounts(options.counts, result)
     if (options.metrics && !options.listRules) writeMetrics(options.metrics, result)
@@ -291,24 +293,6 @@ function readStdinLine(timeoutSeconds) {
     return text
   }
   return { error: text || 'EOF before newline' }
-}
-
-function formatTrace(events) {
-  if (!events || !events.length) return ''
-  const lines = events.map((event) => JSON.stringify({
-    step: event.step,
-    ruleIndex: event.ruleIndex,
-    lineNumber: event.lineNumber,
-    operator: event.operator,
-    matchStart: event.matchStart,
-    matchEnd: event.matchEnd,
-    error: event.error || '',
-    stateBefore: event.stateBefore,
-    replacement: event.replacement || '',
-    stateAfter: event.stateAfter,
-    exitCode: event.exitCode == null ? null : event.exitCode,
-  }).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029'))
-  return lines.join('\n') + '\n'
 }
 
 function callProc(op, proc, extra) {

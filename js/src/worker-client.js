@@ -1,75 +1,70 @@
 export class ThueWorker {
   constructor(workerURL, initOptions = {}, clientOptions = {}) {
-    // browser-worker.js deliberately stays a classic worker because Go's
-    // wasm_exec.js is a classic script loaded with importScripts(). Module
-    // workers do not expose importScripts(), so using one here makes the real
-    // browser demo fail before the Go-WASM interpreter registers Thue.run.
-    const WorkerImpl = clientOptions.Worker || globalThis.Worker;
+    const WorkerImpl = clientOptions.Worker || globalThis.Worker
     if (typeof WorkerImpl !== 'function') {
-      throw new Error('Worker is not available in this environment');
+      throw new Error('Worker is not available in this environment')
     }
-    this.worker = new WorkerImpl(workerURL);
-    this.nextId = 1;
-    this.pending = new Map();
-    this.requestTimeoutMs = clientOptions.requestTimeoutMs ?? 15000;
-    this.worker.onmessage = (event) => this.handleMessage(event.data || {});
+    this.worker = new WorkerImpl(workerURL)
+    this.nextId = 1
+    this.pending = new Map()
+    this.requestTimeoutMs = clientOptions.requestTimeoutMs ?? 15000
+    this.worker.onmessage = (event) => this.handleMessage(event.data || {})
     this.worker.onerror = (event) => {
-      const detail = event && event.message ? event.message : 'worker script failed';
-      this.rejectAll(new Error(`ThueWorker error: ${detail}`));
-    };
+      const detail = event && event.message ? event.message : 'worker script failed'
+      this.rejectAll(new Error(`ThueWorker error: ${detail}`))
+    }
     this.worker.onmessageerror = () => {
-      this.rejectAll(new Error('ThueWorker message error'));
-    };
-    this.ready = this.request({ type: 'init', ...initOptions });
+      this.rejectAll(new Error('ThueWorker message error'))
+    }
+    this.ready = this.request({ type: 'init', ...initOptions })
   }
 
   handleMessage(message) {
     if (message.type === 'runtime-error' && message.id === undefined) {
-      this.rejectAll(new Error(message.error || 'Thue WASM runtime failed'));
-      return;
+      this.rejectAll(new Error(message.error || 'Thue worker failed'))
+      return
     }
-
-    const pending = this.pending.get(message.id);
-    if (!pending) return;
-    this.pending.delete(message.id);
-    if (pending.timer) clearTimeout(pending.timer);
+    const pending = this.pending.get(message.id)
+    if (!pending) return
+    this.pending.delete(message.id)
+    if (pending.timer) clearTimeout(pending.timer)
     if (message.type === 'error' || message.type === 'runtime-error') {
-      pending.reject(new Error(message.error));
-      return;
+      pending.reject(new Error(message.error))
+      return
     }
-    pending.resolve(message.result || message);
+    pending.resolve(message.result || message)
   }
 
   request(message) {
-    const id = this.nextId++;
+    const id = this.nextId++
     return new Promise((resolve, reject) => {
-      let timer;
+      let timer
       if (this.requestTimeoutMs > 0) {
         timer = setTimeout(() => {
-          this.pending.delete(id);
-          reject(new Error(`ThueWorker request timed out: ${message.type}`));
-        }, this.requestTimeoutMs);
+          this.pending.delete(id)
+          reject(new Error(`ThueWorker request timed out: ${message.type}`))
+        }, this.requestTimeoutMs)
       }
-      this.pending.set(id, { resolve, reject, timer });
-      this.worker.postMessage({ ...message, id });
-    });
+      this.pending.set(id, { resolve, reject, timer })
+      this.worker.postMessage({ ...message, id })
+    })
   }
 
   async run(options, initOptions = {}) {
-    await this.ready;
-    return this.request({ type: 'run', options, ...initOptions });
+    await this.ready
+    return this.request({ type: 'run', options, ...initOptions })
   }
 
   rejectAll(error) {
     for (const pending of this.pending.values()) {
-      if (pending.timer) clearTimeout(pending.timer);
-      pending.reject(error);
+      if (pending.timer) clearTimeout(pending.timer)
+      pending.reject(error)
     }
-    this.pending.clear();
+    this.pending.clear()
   }
 
   terminate() {
-    this.worker.terminate();
-    this.rejectAll(new Error('ThueWorker terminated'));
+    this.worker.terminate()
+    this.rejectAll(new Error('ThueWorker terminated'))
   }
 }

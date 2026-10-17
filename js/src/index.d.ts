@@ -24,6 +24,7 @@ export interface RunOptions {
   trace?: boolean
   coverage?: boolean
   listRules?: boolean
+  replaceBindings?: boolean
   resources?: Record<string, ResourceCallbacks>
   resourceConfig?: ResourceConfig[]
   procs?: Record<string, string>
@@ -53,6 +54,7 @@ export interface TraceEvent {
 }
 
 export interface RunMetrics {
+  cost: number
   applied_steps: number
   regex_evals: number
   regex_matches: number
@@ -82,25 +84,10 @@ export interface Engine {
   run(options: RunOptions): Promise<RunResult>
 }
 
-export interface InitOptions {
-  wasmPath?: string
-  wasmExecPath?: string
-  fresh?: boolean
-  onRuntimeError?: (error: unknown) => void
-}
-
-export function initThue(options?: InitOptions): Promise<Engine>
-
-export interface BrowserInitOptions {
-  wasmURL?: string
-  wasmExecURL?: string
-  onRuntimeError?: (error: unknown) => void
-}
-
-export function initThueWasm(options?: BrowserInitOptions): Promise<Engine>
+export function initThue(): Promise<Engine>
 
 export class ThueWorker {
-  constructor(workerURL: string, initOptions?: { wasmURL: string; wasmExecURL: string }, clientOptions?: { Worker?: typeof Worker; requestTimeoutMs?: number })
+  constructor(workerURL: string, initOptions?: object, clientOptions?: { Worker?: typeof Worker; requestTimeoutMs?: number })
   run(options: RunOptions): Promise<RunResult>
   terminate(): void
 }

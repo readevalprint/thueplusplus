@@ -1,7 +1,7 @@
 {
   "name": "thuelang",
   "version": "0.1.0",
-  "description": "Thue++ interpreter for Node and the browser, backed by the Go WebAssembly build.",
+  "description": "Native Thue++ interpreter for Node and the browser.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://thuelang.org",
@@ -40,6 +40,9 @@
     "src",
     "README.md"
   ],
+  "dependencies": {
+    "re2js": "2.8.6"
+  },
   "scripts": {
     "test": "node browser-adapter.test.cjs"
   }

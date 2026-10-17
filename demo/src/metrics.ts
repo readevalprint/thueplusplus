@@ -8,6 +8,7 @@ const REQUIRED_ENVIRONMENTS: Record<string, string> = {
   python: 'python',
   go: 'go native',
   wasm: 'wasm (node)',
+  js: 'js (node)',
   rust: 'rust',
   cpp: 'cpp',
   ruby: 'ruby',

@@ -14,6 +14,6 @@ describe('shipped hosts', () => {
     expect(ids).toContain('ruby')
     expect(ids).toContain('csharp')
     expect(ids).toContain('java')
-    expect(registryHosts.map(host => host.landing)).toEqual(['python', 'go', 'js', 'rust', 'cpp', 'ruby', 'csharp', 'java'])
+    expect(registryHosts.map(host => host.landing)).toEqual(['python', 'go', 'js', 'wasm', 'rust', 'cpp', 'ruby', 'csharp', 'java'])
   })
 })

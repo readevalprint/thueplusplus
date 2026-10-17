@@ -3,7 +3,8 @@ import { repositoryUrl, siteHosts, type SiteHost } from './hosts'
 export const installNotes: Record<string, string> = {
   go: 'The native Go engine and the thue command.',
   python: 'The Python package and the thue console script.',
-  wasm: 'The thuelang package with the thue CLI.',
+  js: 'The native thuelang package and the thue CLI.',
+  wasm: 'The @thuelang/wasm package and the thue CLI.',
   rust: 'The thuelang package with the thue CLI.',
   cpp: 'The CMake library and the thue command.',
   ruby: 'The thuelang gem and the thue command.',
@@ -13,9 +14,6 @@ export const installNotes: Record<string, string> = {
 
 for (const host of siteHosts) {
   if (!installNotes[host.id]) throw new Error(`install page has no note for ${host.id}`)
-}
-if (installNotes.wasm !== installNotes.rust) {
-  throw new Error('the JavaScript install note must match the Rust package and CLI')
 }
 
 const blob = `${repositoryUrl}/blob/main`
@@ -82,9 +80,9 @@ code = interp.run()`,
     cli: 'uv run thue program.thue --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608',
     api: [hostApi],
   },
-  wasm: {
-    prose: 'The JavaScript host is the Go interpreter compiled to WebAssembly, not a second language written in JavaScript. This site\'s playground loads that module. It rejects process bindings. Runs from the page pass a step limit.',
-    installLead: 'The package is not on npm. A checkout depends on the js/ directory:',
+  js: {
+    prose: 'JavaScript (native) is an interpreter written for Node and the browser. This site\'s playground loads it. A browser run rejects process bindings. Runs from the page pass a step limit.',
+    installLead: 'The package is not on npm yet. A checkout depends on the js/ directory:',
     install: '"thuelang": "file:../js"',
     moreInstall: [],
     libraryLead: 'The npm package name is thuelang. sourceText is the program.',
@@ -95,9 +93,26 @@ const result = await engine.run({
   sourcePath: 'hello.thue',
   sourceText,
 })`,
-    cliLead: 'Build the WebAssembly module with make wasm first, or set THUE_WASM. From a checkout:',
+    cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',
     cli: 'node js/src/cli.js program.thue --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608',
     api: [hostApi, { href: `${blob}/js/README.md`, label: 'js/README.md' }],
+  },
+  wasm: {
+    prose: 'WebAssembly is the Go interpreter compiled for the browser and for Node. The package name is @thuelang/wasm. A browser run rejects process bindings.',
+    installLead: 'The package is not on npm yet. A checkout depends on the wasm/ directory:',
+    install: '"@thuelang/wasm": "file:../wasm"',
+    moreInstall: [],
+    libraryLead: 'The npm package name is @thuelang/wasm. sourceText is the program. Build the module first, or pass a module path.',
+    library: `import { initThue } from '@thuelang/wasm'
+
+const engine = await initThue()
+const result = await engine.run({
+  sourcePath: 'hello.thue',
+  sourceText,
+})`,
+    cliLead: 'Build the module with make wasm first, or set THUE_WASM. From a checkout:',
+    cli: 'node wasm/src/cli.js program.thue --max-steps 1000000 --max-evals 1000000 --max-state-bytes 8388608',
+    api: [hostApi, { href: `${blob}/wasm/README.md`, label: 'wasm/README.md' }],
   },
   rust: {
     prose: 'The Rust host is a native implementation. The crates.io package name and the Rust library are thuelang. The command is thue. It uses the regex engine and the same default limits. Process bindings stay opt-in.',

@@ -59,7 +59,7 @@
     "path": "/playground",
     "kicker": "Playground",
     "title": "Run it in the browser.",
-    "description": "Run Thue++ in the browser. The page loads the Go host compiled to WebAssembly, and every run has a step limit.",
+    "description": "Run Thue++ in the browser. The page loads the native JavaScript host, and every run has a step limit.",
     "documentTitle": "Thue++ Playground — Run it in the browser",
     "canonical": "https://thuelang.org/playground",
     "robots": "index,follow",
@@ -115,10 +115,25 @@
   "installJs": {
     "path": "/install/js",
     "kicker": "Install",
-    "title": "JavaScript.",
-    "description": "Install the JavaScript host, a short library example, the CLI, and the API.",
-    "documentTitle": "Thue++ Install — JavaScript",
+    "title": "JavaScript (native).",
+    "description": "Install the native JavaScript host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — JavaScript (native)",
     "canonical": "https://thuelang.org/install/js",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
+  "installWasm": {
+    "path": "/install/wasm",
+    "kicker": "Install",
+    "title": "WebAssembly.",
+    "description": "Install the WebAssembly host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — WebAssembly",
+    "canonical": "https://thuelang.org/install/wasm",
     "robots": "index,follow",
     "links": [
       { "title": "Install", "href": "#install" },

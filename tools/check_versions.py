@@ -35,6 +35,7 @@ def read_version(root: Path) -> str:
         "pyproject.toml": _project_version(root / "pyproject.toml"),
         "rust/Cargo.toml": _cargo_version(root / "rust" / "Cargo.toml"),
         "js/package.json": _json_version(root / "js" / "package.json"),
+        "wasm/package.json": _json_version(root / "wasm" / "package.json"),
         "editors/vscode/package.json": _json_version(root / "editors" / "vscode" / "package.json"),
         "cpp/CMakeLists.txt": _cmake_version(root / "cpp" / "CMakeLists.txt"),
         "cpp/vcpkg.json": _json_version(root / "cpp" / "vcpkg.json"),

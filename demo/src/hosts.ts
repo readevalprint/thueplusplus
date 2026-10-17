@@ -19,7 +19,8 @@ interface Presentation {
 const PRESENTATION: Record<string, Presentation> = {
   go: { landing: 'go', title: 'Go', anchor: 'go' },
   python: { landing: 'python', title: 'Python', anchor: 'python' },
-  wasm: { landing: 'js', title: 'JavaScript', anchor: 'javascript' },
+  js: { landing: 'js', title: 'JavaScript (native)', anchor: 'javascript' },
+  wasm: { landing: 'wasm', title: 'WebAssembly', anchor: 'webassembly' },
   rust: { landing: 'rust', title: 'Rust', anchor: 'rust' },
   cpp: { landing: 'cpp', title: 'C++', anchor: 'cpp' },
   ruby: { landing: 'ruby', title: 'Ruby', anchor: 'ruby' },
@@ -28,7 +29,7 @@ const PRESENTATION: Record<string, Presentation> = {
 }
 
 // Landing sentence and install page order. Every hosts.toml id is required.
-const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp', 'ruby', 'csharp', 'java']
+const SITE_ORDER = ['go', 'python', 'js', 'wasm', 'rust', 'cpp', 'ruby', 'csharp', 'java']
 
 export const soonLanguages: string[] = []
 
@@ -59,7 +60,8 @@ interface InstallPageRecord {
 const PLATFORM_PAGE: Record<string, string> = {
   go: 'installGo',
   python: 'installPython',
-  wasm: 'installJs',
+  js: 'installJs',
+  wasm: 'installWasm',
   rust: 'installRust',
   cpp: 'installCpp',
   ruby: 'installRuby',

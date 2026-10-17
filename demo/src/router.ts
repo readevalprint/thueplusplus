@@ -38,6 +38,7 @@ const shell = [
   { page: pages.installGo, component: InstallPlatformPage },
   { page: pages.installPython, component: InstallPlatformPage },
   { page: pages.installJs, component: InstallPlatformPage },
+  { page: pages.installWasm, component: InstallPlatformPage },
   { page: pages.installRust, component: InstallPlatformPage },
   { page: pages.installCpp, component: InstallPlatformPage },
   { page: pages.installRuby, component: InstallPlatformPage },
