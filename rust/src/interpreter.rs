@@ -209,17 +209,50 @@ struct Match {
     groups: HashMap<String, String>,
 }
 
+struct ScriptResource {
+    lines: Vec<String>,
+    index: usize,
+    readable: bool,
+    recorded: Option<String>,
+}
+
+impl ScriptResource {
+    fn read_line(&mut self) -> Result<String, ReadFail> {
+        if !self.readable {
+            return Err(ReadFail::Message("cannot_read_output_stream".to_string()));
+        }
+        if self.index >= self.lines.len() {
+            return Err(ReadFail::Message("EOF before newline".to_string()));
+        }
+        let line = self.lines[self.index].clone();
+        self.index += 1;
+        Ok(line)
+    }
+
+    fn write(&mut self, content: &str) -> Result<(), String> {
+        match &mut self.recorded {
+            Some(buf) => {
+                buf.push_str(content);
+                Ok(())
+            }
+            None => Err("write requires process or output stream binding".to_string()),
+        }
+    }
+}
+
 enum Binding {
     Stdin(StdinResource),
     Stdout,
     Stderr,
     Process(ProcessResource),
+    Script(ScriptResource),
 }
 
 pub struct Interpreter {
     rules: Vec<Rule>,
     state: String,
     bindings: HashMap<String, Binding>,
+    scripted: bool,
     pub max_evals: Option<i64>,
     pub max_state_bytes: Option<i64>,
     pub max_steps: Option<i64>,
@@ -255,6 +288,7 @@ impl Interpreter {
             rules: Vec::new(),
             state: String::new(),
             bindings,
+            scripted: false,
             max_evals: Some(DEFAULT_MAX_EVALS),
             max_state_bytes: Some(DEFAULT_MAX_STATE_BYTES),
             max_steps: Some(DEFAULT_MAX_STEPS),
@@ -286,6 +320,81 @@ impl Interpreter {
     pub fn add_proc_binding(&mut self, name: impl Into<String>, command: impl Into<String>) {
         self.bindings
             .insert(name.into(), Binding::Process(ProcessResource::new(command)));
+    }
+
+    /// Replace every binding with in-memory scripts. No process is started.
+    pub fn bind_scripts(
+        &mut self,
+        reads: &HashMap<String, Vec<String>>,
+        writes: &[String],
+    ) -> Result<(), Error> {
+        let mut write_set = HashMap::<String, ()>::new();
+        for name in writes {
+            if !is_name(name) {
+                return Err(Error::new(format!("invalid resource {name:?}")));
+            }
+            if write_set.insert(name.clone(), ()).is_some() {
+                return Err(Error::new(format!("duplicate writable resource {name}")));
+            }
+        }
+        for (name, lines) in reads {
+            if !is_name(name) {
+                return Err(Error::new(format!("invalid resource {name:?}")));
+            }
+            for line in lines {
+                if line.contains('\n') || line.contains('\r') {
+                    return Err(Error::new(format!("resource {name} line contains a newline")));
+                }
+            }
+        }
+        let mut names: Vec<String> = reads.keys().cloned().collect();
+        for name in writes {
+            if !reads.contains_key(name) {
+                names.push(name.clone());
+            }
+        }
+        if names.is_empty() {
+            return Err(Error::new("no resources"));
+        }
+        self.cleanup();
+        let mut bindings = HashMap::new();
+        for name in names {
+            let readable = reads.contains_key(&name);
+            let lines = reads.get(&name).cloned().unwrap_or_default();
+            let recorded = if write_set.contains_key(&name) {
+                Some(String::new())
+            } else {
+                None
+            };
+            bindings.insert(
+                name,
+                Binding::Script(ScriptResource {
+                    lines,
+                    index: 0,
+                    readable,
+                    recorded,
+                }),
+            );
+        }
+        self.bindings = bindings;
+        self.scripted = true;
+        Ok(())
+    }
+
+    /// Text recorded for each writable script.
+    pub fn script_writes(&self) -> Result<BTreeMap<String, String>, Error> {
+        if !self.scripted {
+            return Err(Error::new("this run has no scripted resources"));
+        }
+        let mut out = BTreeMap::new();
+        for (name, binding) in &self.bindings {
+            if let Binding::Script(script) = binding {
+                if let Some(text) = &script.recorded {
+                    out.insert(name.clone(), text.clone());
+                }
+            }
+        }
+        Ok(out)
     }
 
     pub fn load_program(&mut self, path: impl AsRef<Path>) -> Result<(), Error> {
@@ -752,8 +861,14 @@ impl Interpreter {
                     "ERR:resource:cannot_read_output_stream".to_string(),
                 ));
             }
+            Some(Binding::Script(script)) if !script.readable => {
+                return Err(RunFailure::Message(
+                    "ERR:resource:cannot_read_output_stream".to_string(),
+                ));
+            }
             Some(Binding::Stdin(stdin)) => stdin.read_line(timeout),
             Some(Binding::Process(process)) => process.read_line(timeout),
+            Some(Binding::Script(script)) => script.read_line(),
         };
         match read {
             Ok(line) => Ok(pct_encode(&line)),
@@ -777,6 +892,7 @@ impl Interpreter {
             Binding::Stderr => write_std(&mut io::stderr(), content),
             Binding::Stdin(_) => Err("write requires process or output stream binding".to_string()),
             Binding::Process(process) => process.write(content),
+            Binding::Script(script) => script.write(content),
         };
         match result {
             Ok(()) => (String::new(), true),

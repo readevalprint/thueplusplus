@@ -2,10 +2,12 @@ package hailstone
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/thuelang/thueplusplus/problems/harness"
+	"pgregory.net/rapid"
 )
 
 func TestProblem(t *testing.T) {
@@ -14,28 +16,37 @@ func TestProblem(t *testing.T) {
 
 func spec() harness.Problem {
 	cases := []harness.Case{
-		{Name: "one", Stdin: "1\n"},
-		{Name: "two", Stdin: "2\n"},
-		{Name: "six", Stdin: "6\n"},
+		{Name: "one", Reads: harness.Stdin("1")},
+		{Name: "two", Reads: harness.Stdin("2")},
+		{Name: "six", Reads: harness.Stdin("6")},
 	}
 	for _, seed := range []uint64{5, 11, 19} {
 		cases = append(cases, harness.Case{
-			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Stdin: fmt.Sprintf("%d\n", int(seed)),
+			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Reads: harness.Stdin(strconv.Itoa(int(seed))),
 		})
 	}
 	return harness.Problem{
-		ID:     "hailstone-sequence",
-		Cases:  cases, Reference: reference,
+		ID: "hailstone-sequence",
+		Resources: []harness.Resource{
+			{Name: "stdin", Read: true},
+			{Name: "stdout", Write: true},
+		},
+		Cases:    cases,
+		Baseline: baseline,
+		Draw: func(t *rapid.T) harness.Case {
+			n := rapid.IntRange(1, 20).Draw(t, "n")
+			return harness.Case{Name: "rapid", Reads: harness.Stdin(strconv.Itoa(n))}
+		},
 	}
 }
 
-func reference(stdin string) (string, error) {
-	n, err := harness.IntLine(stdin)
+func baseline(reads map[string][]string) (harness.Outcome, error) {
+	n, err := harness.OneInt(reads["stdin"])
 	if err != nil {
-		return "", err
+		return harness.Outcome{}, err
 	}
 	if n < 1 || n > 20 {
-		return "", fmt.Errorf("hailstone-sequence case %d is outside 1..20", n)
+		return harness.Outcome{}, fmt.Errorf("hailstone-sequence case %d is outside 1..20", n)
 	}
 	var b strings.Builder
 	for {
@@ -49,5 +60,5 @@ func reference(stdin string) (string, error) {
 			n = 3*n + 1
 		}
 	}
-	return b.String(), nil
+	return harness.Stdout(b.String()), nil
 }

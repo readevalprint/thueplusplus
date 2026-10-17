@@ -95,9 +95,7 @@ test-full: test-static
 # Problems and languages. Both are native Go tests. Hosts are not part of these counters.
 problems:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the problem suite" >&2; exit 127; }
-	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to run the problem suite" >&2; exit 127; }
-	go build -C go -o ../build/go-thue ./cmd/thue
-	cd problems && go test ./... -count=1 -p 2 -timeout 20m
+	cd problems && go test ./... -count=1 -p 2 -timeout 20m -rapid.checks=100
 
 langs:
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run the language cases" >&2; exit 127; }

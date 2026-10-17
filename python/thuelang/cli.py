@@ -107,6 +107,8 @@ def main() -> None:
             "state_bytes, state_peak, rule_count, and rule_chars JSON to this path"
         ),
     )
+    parser.add_argument("--resources", type=str, help="JSON file of scripted in-memory resources")
+    parser.add_argument("--resource-out", type=str, help="JSON file for recorded writable resources")
     args, remaining = parser.parse_known_args()
 
     limits = {}
@@ -154,6 +156,13 @@ def main() -> None:
         else:
             if args.input is not None:
                 interpreter.apply_input_override(args.input)
+            if args.resources:
+                payload = json.loads(Path(args.resources).read_text(encoding="utf-8"))
+                if not isinstance(payload, dict) or set(payload) != {"reads", "writes"}:
+                    raise RuntimeError("resources file keys must be reads and writes")
+                interpreter.bind_scripts(payload["reads"], payload["writes"])
+            elif args.resource_out:
+                raise RuntimeError("--resource-out requires --resources")
             ran = True
             exit_code = interpreter.run()
     except LimitExceeded as exc:
@@ -169,6 +178,7 @@ def main() -> None:
         coverage_error = None
         counts_error = None
         metrics_error = None
+        resource_error = None
         try:
             interpreter.write_rule_coverage()
         except OSError as exc:
@@ -183,6 +193,13 @@ def main() -> None:
                 _write_metrics(args.metrics, interpreter.metrics())
             except OSError as exc:
                 metrics_error = exc
+        if ran and args.resource_out:
+            try:
+                target = Path(args.resource_out)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps(interpreter.script_writes(), indent=2) + "\n", encoding="utf-8")
+            except OSError as exc:
+                resource_error = exc
         interpreter.cleanup()
 
     if args.trace:
@@ -199,5 +216,8 @@ def main() -> None:
         exit_code = 1
     if metrics_error is not None:
         print(f"Error: failed to write metrics: {metrics_error}", file=sys.stderr)
+        exit_code = 1
+    if resource_error is not None:
+        print(f"Error: failed to write resources: {resource_error}", file=sys.stderr)
         exit_code = 1
     sys.exit(exit_code)

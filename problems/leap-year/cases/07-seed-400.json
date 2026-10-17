@@ -1,7 +1,12 @@
 {
   "name": "seed-400",
-  "stdin": "2061\n",
-  "stdout": "false\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "2061"
+    ]
+  },
+  "writes": {
+    "stdout": "false\n"
+  },
   "exit_code": 0
 }

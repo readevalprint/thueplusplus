@@ -1,7 +1,13 @@
 {
   "name": "seven",
-  "stdin": "7\n1\n",
-  "stdout": "7\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "7",
+      "1"
+    ]
+  },
+  "writes": {
+    "stdout": "7\n"
+  },
   "exit_code": 0
 }

@@ -1,7 +1,15 @@
 {
   "name": "three",
-  "stdin": "3\n10\n20\n30\n",
-  "stdout": "60\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "3",
+      "10",
+      "20",
+      "30"
+    ]
+  },
+  "writes": {
+    "stdout": "60\n"
+  },
   "exit_code": 0
 }

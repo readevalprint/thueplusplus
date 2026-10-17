@@ -1,7 +1,13 @@
 {
   "name": "five-zero",
-  "stdin": "5\n0\n",
-  "stdout": "1\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "5",
+      "0"
+    ]
+  },
+  "writes": {
+    "stdout": "1\n"
+  },
   "exit_code": 0
 }

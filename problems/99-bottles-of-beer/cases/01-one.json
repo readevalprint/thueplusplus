@@ -1,7 +1,12 @@
 {
   "name": "one",
-  "stdin": "1\n",
-  "stdout": "1 bottle of beer on the wall, 1 bottle of beer.\nTake one down and pass it around, no more bottles of beer on the wall.\n\nNo more bottles of beer on the wall, no more bottles of beer.\nGo to the store and buy some more, 1 bottle of beer on the wall.\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "1"
+    ]
+  },
+  "writes": {
+    "stdout": "1 bottle of beer on the wall, 1 bottle of beer.\nTake one down and pass it around, no more bottles of beer on the wall.\n\nNo more bottles of beer on the wall, no more bottles of beer.\nGo to the store and buy some more, 1 bottle of beer on the wall.\n"
+  },
   "exit_code": 0
 }

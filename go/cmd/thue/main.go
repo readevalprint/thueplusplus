@@ -22,6 +22,8 @@ func main() {
 	ruleCoveragePath := ""
 	countsPath := ""
 	metricsPath := ""
+	resourcesPath := ""
+	resourceOutPath := ""
 
 	for idx := 1; idx < len(args); {
 		arg := args[idx]
@@ -104,6 +106,20 @@ func main() {
 		case strings.HasPrefix(arg, "--max-steps="):
 			applyLimit(strings.TrimPrefix(arg, "--max-steps="), &interp.MaxSteps)
 			idx++
+		case arg == "--resources":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --resources requires an argument")
+				os.Exit(1)
+			}
+			resourcesPath = args[idx+1]
+			idx += 2
+		case arg == "--resource-out":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --resource-out requires an argument")
+				os.Exit(1)
+			}
+			resourceOutPath = args[idx+1]
+			idx += 2
 		case strings.HasPrefix(arg, "--proc:"):
 			name := strings.TrimPrefix(arg, "--proc:")
 			if idx+1 >= len(args) {
@@ -129,6 +145,20 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	if resourcesPath != "" {
+		script, err := thuelang.LoadResourceFile(resourcesPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := interp.UseScripts(script); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	} else if resourceOutPath != "" {
+		fmt.Fprintln(os.Stderr, "Error: --resource-out requires --resources")
+		os.Exit(1)
+	}
 	code, err := interp.Run()
 	if interp.TraceEnabled {
 		text, traceErr := thuelang.FormatTrace(interp.Trace)
@@ -153,6 +183,16 @@ func main() {
 	if metricsPath != "" {
 		if werr := writeMetrics(metricsPath, interp); werr != nil {
 			fmt.Fprintf(os.Stderr, "Error: failed to write metrics: %v\n", werr)
+			code = 1
+		}
+	}
+	if resourceOutPath != "" {
+		writes, werr := interp.ScriptWrites()
+		if werr != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", werr)
+			code = 1
+		} else if werr = thuelang.WriteResourceOutput(resourceOutPath, writes); werr != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to write resources: %v\n", werr)
 			code = 1
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/thuelang/thueplusplus/problems/harness"
+	"pgregory.net/rapid"
 )
 
 func TestProblem(t *testing.T) {
@@ -15,29 +16,49 @@ func TestProblem(t *testing.T) {
 
 func spec() harness.Problem {
 	cases := []harness.Case{
-		{Name: "zeros", Stdin: "0\n0\n"},
-		{Name: "forty-eight", Stdin: "48\n18\n"},
-		{Name: "seven", Stdin: "7\n1\n"},
+		{Name: "zeros", Reads: harness.Stdin("0", "0")},
+		{Name: "forty-eight", Reads: harness.Stdin("48", "18")},
+		{Name: "seven", Reads: harness.Stdin("7", "1")},
 	}
 	for _, seed := range []uint64{3, 11, 21} {
 		cases = append(cases, harness.Case{
-			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Stdin: pair(seed, 100),
+			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Reads: harness.Stdin(pair(seed, 100)...),
 		})
 	}
 	return harness.Problem{
-		ID:     "greatest-common-divisor",
-		Cases:  cases, Reference: reference,
+		ID: "greatest-common-divisor",
+		Resources: []harness.Resource{
+			{Name: "stdin", Read: true},
+			{Name: "stdout", Write: true},
+		},
+		Cases:    cases,
+		Baseline: baseline,
+		Draw: func(t *rapid.T) harness.Case {
+			a := rapid.IntRange(0, 100).Draw(t, "a")
+			b := rapid.IntRange(0, 100).Draw(t, "b")
+			return harness.Case{Name: "rapid", Reads: harness.Stdin(strconv.Itoa(a), strconv.Itoa(b))}
+		},
 	}
 }
 
-func pair(seed uint64, limit int) string {
+func pair(seed uint64, limit int) []string {
 	r := rand.New(rand.NewPCG(seed, 1))
-	return fmt.Sprintf("%d\n%d\n", r.IntN(limit+1), r.IntN(limit+1))
+	return []string{strconv.Itoa(r.IntN(limit + 1)), strconv.Itoa(r.IntN(limit + 1))}
 }
 
-func two(stdin string, limit int, name string) (int, int, error) {
-	lines, err := harness.Lines(stdin)
-	if err != nil || len(lines) != 2 {
+func baseline(reads map[string][]string) (harness.Outcome, error) {
+	a, b, err := two(reads["stdin"], 100, "greatest-common-divisor")
+	if err != nil {
+		return harness.Outcome{}, err
+	}
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return harness.Stdout(fmt.Sprintf("%d\n", a)), nil
+}
+
+func two(lines []string, limit int, name string) (int, int, error) {
+	if len(lines) != 2 {
 		return 0, 0, fmt.Errorf("%s wants two lines", name)
 	}
 	a, err := canon(lines[0])
@@ -60,15 +81,4 @@ func canon(text string) (int, error) {
 		return 0, fmt.Errorf("canonical non-negative integer, got %q", text)
 	}
 	return value, nil
-}
-
-func reference(stdin string) (string, error) {
-	a, b, err := two(stdin, 100, "greatest-common-divisor")
-	if err != nil {
-		return "", err
-	}
-	for b != 0 {
-		a, b = b, a%b
-	}
-	return fmt.Sprintf("%d\n", a), nil
 }

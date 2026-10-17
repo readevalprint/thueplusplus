@@ -1,7 +1,17 @@
 {
   "name": "seed-6",
-  "stdin": "17\n16\n18\n17\n",
-  "stdout": "Player 1, enter the secret:\nPlayer 2, enter a guess:\nToo low.\nPlayer 2, enter a guess:\nToo high.\nPlayer 2, enter a guess:\nCorrect.\n",
-  "stderr": "",
+  "reads": {
+    "random": [
+      "17"
+    ],
+    "stdin": [
+      "16",
+      "18",
+      "17"
+    ]
+  },
+  "writes": {
+    "stdout": "Player 1, enter the secret:\nPlayer 2, enter a guess:\nToo low.\nPlayer 2, enter a guess:\nToo high.\nPlayer 2, enter a guess:\nCorrect.\n"
+  },
   "exit_code": 0
 }

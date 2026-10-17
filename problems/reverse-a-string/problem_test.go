@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/thuelang/thueplusplus/problems/harness"
+	"pgregory.net/rapid"
 )
 
 func TestProblem(t *testing.T) {
@@ -14,17 +15,30 @@ func TestProblem(t *testing.T) {
 
 func spec() harness.Problem {
 	cases := []harness.Case{
-		{Name: "stressed", Stdin: "stressed\n"},
-		{Name: "a", Stdin: "a\n"},
+		{Name: "stressed", Reads: harness.Stdin("stressed")},
+		{Name: "a", Reads: harness.Stdin("a")},
 	}
 	for _, seed := range []uint64{1, 2, 9} {
 		cases = append(cases, harness.Case{
-			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Stdin: word(seed),
+			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Reads: harness.Stdin(word(seed)),
 		})
 	}
 	return harness.Problem{
-		ID:     "reverse-a-string",
-		Cases:  cases, Reference: reference,
+		ID: "reverse-a-string",
+		Resources: []harness.Resource{
+			{Name: "stdin", Read: true},
+			{Name: "stdout", Write: true},
+		},
+		Cases:    cases,
+		Baseline: baseline,
+		Draw: func(t *rapid.T) harness.Case {
+			n := rapid.IntRange(1, 12).Draw(t, "len")
+			buf := make([]byte, n)
+			for i := range buf {
+				buf[i] = byte('a' + rapid.IntRange(0, 25).Draw(t, fmt.Sprintf("c-%d", i)))
+			}
+			return harness.Case{Name: "rapid", Reads: harness.Stdin(string(buf))}
+		},
 	}
 }
 
@@ -35,22 +49,22 @@ func word(seed uint64) string {
 	for i := range buf {
 		buf[i] = byte('a' + r.IntN(26))
 	}
-	return string(buf) + "\n"
+	return string(buf)
 }
 
-func reference(stdin string) (string, error) {
-	lines, err := harness.Lines(stdin)
-	if err != nil || len(lines) != 1 {
-		return "", fmt.Errorf("reverse-a-string wants one line of letters")
+func baseline(reads map[string][]string) (harness.Outcome, error) {
+	lines := reads["stdin"]
+	if len(lines) != 1 {
+		return harness.Outcome{}, fmt.Errorf("reverse-a-string wants one line of letters")
 	}
 	for _, c := range lines[0] {
 		if c < 'A' || (c > 'Z' && c < 'a') || c > 'z' {
-			return "", fmt.Errorf("reverse-a-string letter %q", c)
+			return harness.Outcome{}, fmt.Errorf("reverse-a-string letter %q", c)
 		}
 	}
 	runes := []rune(lines[0])
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 		runes[i], runes[j] = runes[j], runes[i]
 	}
-	return string(runes) + "\n", nil
+	return harness.Stdout(string(runes) + "\n"), nil
 }

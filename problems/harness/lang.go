@@ -180,7 +180,7 @@ func executeLang(id, extension string) (LangPart, error) {
 			Lang: id, Program: programRel, Case: item.Name, Seed: item.Seed,
 			Host: "go", Environment: "go native", DurationMs: run.Duration.Milliseconds(),
 		}
-		message := Failure(Case{Name: item.Name, Seed: item.Seed, Stdin: item.Stdin}, run, want)
+		message := programFailure(item.Name, item.Seed, run, want)
 		if message != "" {
 			row.Status = "fail"
 			row.Error = &message

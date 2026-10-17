@@ -1,7 +1,12 @@
 {
   "name": "seed-3",
-  "stdin": "RiVf\n",
-  "stdout": "EvIs\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "RiVf"
+    ]
+  },
+  "writes": {
+    "stdout": "EvIs\n"
+  },
   "exit_code": 0
 }

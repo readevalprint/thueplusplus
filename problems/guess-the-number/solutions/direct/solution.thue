@@ -13,9 +13,10 @@
 @LT\[(?<g>0|[1-9][0-9]*),(?<s>0|[1-9][0-9]*)\]@ ::! lt g s
 @GT\[(?<g>0|[1-9][0-9]*),(?<s>0|[1-9][0-9]*)\]@ ::! gt g s
 ^read\n?$ ::< 30 stdin
+^rand\n?$ ::< 30 random
 \Ago\n?\z ::= read
 \A(?<s>0|[1-9][0-9]*)\n?\z ::= secret:{{s}}\ngo
-\Ain\n?\z ::= p1\ngo
+\Ain\n?\z ::= p1\nrand
 
 ::=
 in

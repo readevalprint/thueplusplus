@@ -1,7 +1,12 @@
 {
   "name": "stressed",
-  "stdin": "stressed\n",
-  "stdout": "desserts\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "stressed"
+    ]
+  },
+  "writes": {
+    "stdout": "desserts\n"
+  },
   "exit_code": 0
 }

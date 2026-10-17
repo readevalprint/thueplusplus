@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/thuelang/thueplusplus/problems/harness"
+	"pgregory.net/rapid"
 )
 
 func TestProblem(t *testing.T) {
@@ -15,40 +16,71 @@ func TestProblem(t *testing.T) {
 }
 
 func spec() harness.Problem {
-	cases := []harness.Case{{Name: "scripted", Stdin: "42\n10\n80\n42\n"}}
+	cases := []harness.Case{{
+		Name: "scripted",
+		Reads: map[string][]string{
+			"random": {"42"},
+			"stdin":  {"10", "80", "42"},
+		},
+	}}
 	for _, seed := range []uint64{1, 6} {
+		secret, guesses := script(seed)
 		cases = append(cases, harness.Case{
-			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Stdin: script(seed),
+			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed),
+			Reads: map[string][]string{"random": {secret}, "stdin": guesses},
 		})
 	}
 	return harness.Problem{
-		ID:     "guess-the-number",
-		Cases:  cases, Reference: reference,
+		ID: "guess-the-number",
+		Resources: []harness.Resource{
+			{Name: "random", Read: true},
+			{Name: "stdin", Read: true},
+			{Name: "stdout", Write: true},
+		},
+		Cases:    cases,
+		Baseline: baseline,
+		Draw:     draw,
 	}
 }
 
-func script(seed uint64) string {
+func script(seed uint64) (string, []string) {
 	r := rand.New(rand.NewPCG(seed, 1))
 	secret := 2 + r.IntN(40)
-	return fmt.Sprintf("%d\n%d\n%d\n%d\n", secret, secret-1, secret+1, secret)
+	return strconv.Itoa(secret), []string{strconv.Itoa(secret - 1), strconv.Itoa(secret + 1), strconv.Itoa(secret)}
 }
 
-func reference(stdin string) (string, error) {
-	lines, err := harness.Lines(stdin)
-	if err != nil || len(lines) < 2 {
-		return "", fmt.Errorf("guess-the-number wants a secret and at least one guess")
+func draw(t *rapid.T) harness.Case {
+	secret := rapid.IntRange(1, 80).Draw(t, "secret")
+	misses := rapid.IntRange(0, 3).Draw(t, "misses")
+	guesses := make([]string, 0, misses+1)
+	for i := 0; i < misses; i++ {
+		guess := rapid.IntRange(1, 80).Filter(func(n int) bool { return n != secret }).Draw(t, fmt.Sprintf("miss-%d", i))
+		guesses = append(guesses, strconv.Itoa(guess))
 	}
-	secret, err := strconv.Atoi(lines[0])
+	guesses = append(guesses, strconv.Itoa(secret))
+	return harness.Case{Name: "rapid", Reads: map[string][]string{
+		"random": {strconv.Itoa(secret)},
+		"stdin":  guesses,
+	}}
+}
+
+func baseline(reads map[string][]string) (harness.Outcome, error) {
+	secretLines := reads["random"]
+	guessLines := reads["stdin"]
+	if len(secretLines) != 1 || len(guessLines) == 0 {
+		return harness.Outcome{}, fmt.Errorf("guess-the-number wants one secret and at least one guess")
+	}
+	secret, err := strconv.Atoi(secretLines[0])
 	if err != nil || secret < 1 {
-		return "", fmt.Errorf("bad secret %q", lines[0])
+		return harness.Outcome{}, fmt.Errorf("bad secret %q", secretLines[0])
 	}
 	var b strings.Builder
 	b.WriteString("Player 1, enter the secret:\n")
 	matched := false
-	for _, line := range lines[1:] {
+	for _, line := range guessLines {
 		guess, err := strconv.Atoi(line)
 		if err != nil {
-			return "", fmt.Errorf("bad guess %q", line)
+			return harness.Outcome{}, fmt.Errorf("bad guess %q", line)
 		}
 		b.WriteString("Player 2, enter a guess:\n")
 		switch {
@@ -65,7 +97,7 @@ func reference(stdin string) (string, error) {
 		}
 	}
 	if !matched {
-		return "", fmt.Errorf("the script never guesses the secret")
+		return harness.Outcome{}, fmt.Errorf("the script never guesses the secret")
 	}
-	return b.String(), nil
+	return harness.Stdout(b.String()), nil
 }

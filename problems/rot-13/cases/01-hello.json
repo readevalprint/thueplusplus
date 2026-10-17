@@ -1,7 +1,12 @@
 {
   "name": "hello",
-  "stdin": "Hello, World!\n",
-  "stdout": "Uryyb, Jbeyq!\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "Hello, World!"
+    ]
+  },
+  "writes": {
+    "stdout": "Uryyb, Jbeyq!\n"
+  },
   "exit_code": 0
 }

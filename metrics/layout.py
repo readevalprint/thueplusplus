@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LIMITS_PATH = ROOT / "metrics" / "limits.toml"
 PROBLEM_ORDER = ROOT / "problems" / "suite.toml"
 LANG_ORDER = ROOT / "langs" / "suite.toml"
-SLUG = __import__("re").compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LIMIT_FIELDS = (
     "max_steps",
     "max_evals",
@@ -45,12 +46,15 @@ class Limits:
         }
 
 
+RESOURCE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+CASE_KEYS = frozenset({"name", "reads", "writes", "exit_code"})
+
+
 @dataclass(frozen=True)
 class Case:
     name: str
-    stdin: str
-    stdout: str
-    stderr: str
+    reads: dict[str, tuple[str, ...]]
+    writes: dict[str, str]
     exit_code: int
 
 
@@ -120,6 +124,37 @@ def discover() -> list[Solution]:
     return found
 
 
+def _reads(value, path: Path) -> dict[str, tuple[str, ...]]:
+    if not isinstance(value, dict):
+        raise LayoutError(f"{path}: reads must be an object")
+    reads: dict[str, tuple[str, ...]] = {}
+    for name, lines in value.items():
+        if not isinstance(name, str) or RESOURCE_NAME.fullmatch(name) is None:
+            raise LayoutError(f"{path}: resource {name!r} is not a name")
+        if not isinstance(lines, list):
+            raise LayoutError(f"{path}: reads.{name} must be a list of lines")
+        parsed: list[str] = []
+        for line in lines:
+            if not isinstance(line, str) or "\n" in line or "\r" in line:
+                raise LayoutError(f"{path}: reads.{name} lines must be strings without newlines")
+            parsed.append(line)
+        reads[name] = tuple(parsed)
+    return reads
+
+
+def _writes(value, path: Path) -> dict[str, str]:
+    if not isinstance(value, dict) or not value:
+        raise LayoutError(f"{path}: writes must name at least one resource")
+    writes: dict[str, str] = {}
+    for name, text in value.items():
+        if not isinstance(name, str) or RESOURCE_NAME.fullmatch(name) is None:
+            raise LayoutError(f"{path}: resource {name!r} is not a name")
+        if not isinstance(text, str):
+            raise LayoutError(f"{path}: writes.{name} must be a string")
+        writes[name] = text
+    return writes
+
+
 def load_cases(problem: str) -> list[Case]:
     directory = ROOT / "problems" / problem / "cases"
     if not directory.is_dir():
@@ -132,22 +167,21 @@ def load_cases(problem: str) -> list[Case]:
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             raise LayoutError(f"{path}: {exc}") from exc
-        if not isinstance(data, dict) or set(data) != {"name", "stdin", "stdout", "stderr", "exit_code"}:
-            raise LayoutError(f"{path}: keys must be name, stdin, stdout, stderr, exit_code")
+        if not isinstance(data, dict) or set(data) != CASE_KEYS:
+            raise LayoutError(f"{path}: keys must be name, reads, writes, exit_code")
         name = data["name"]
         if not isinstance(name, str) or SLUG.fullmatch(name) is None or name in seen:
             raise LayoutError(f"{path}: name must be a new slug")
         expected = f"{index:02d}-{name}.json"
         if path.name != expected:
             raise LayoutError(f"{path}: file must be named {expected}")
-        for key in ("stdin", "stdout", "stderr"):
-            if not isinstance(data[key], str):
-                raise LayoutError(f"{path}: {key} must be a string")
+        reads = _reads(data["reads"], path)
+        writes = _writes(data["writes"], path)
         code = data["exit_code"]
         if isinstance(code, bool) or not isinstance(code, int):
             raise LayoutError(f"{path}: exit_code must be an integer")
         seen.add(name)
-        cases.append(Case(name, data["stdin"], data["stdout"], data["stderr"], code))
+        cases.append(Case(name, reads, writes, code))
     return cases
 
 

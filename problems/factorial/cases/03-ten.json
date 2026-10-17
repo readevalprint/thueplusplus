@@ -1,7 +1,12 @@
 {
   "name": "ten",
-  "stdin": "10\n",
-  "stdout": "3628800\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "10"
+    ]
+  },
+  "writes": {
+    "stdout": "3628800\n"
+  },
   "exit_code": 0
 }

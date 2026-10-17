@@ -26,6 +26,11 @@ func unnamedResourceError(message string) error {
 	return resourceError{message: message, omitName: true}
 }
 
+// UnnamedResourceError is a resource failure whose text omits the resource name.
+func UnnamedResourceError(message string) error {
+	return unnamedResourceError(message)
+}
+
 type stdinResource struct {
 	name   string
 	reader *bufio.Reader

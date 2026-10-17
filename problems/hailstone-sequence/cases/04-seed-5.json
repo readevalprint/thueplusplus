@@ -1,7 +1,12 @@
 {
   "name": "seed-5",
-  "stdin": "5\n",
-  "stdout": "5\n16\n8\n4\n2\n1\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "5"
+    ]
+  },
+  "writes": {
+    "stdout": "5\n16\n8\n4\n2\n1\n"
+  },
   "exit_code": 0
 }

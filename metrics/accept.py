@@ -83,6 +83,17 @@ def _metric(text: str | None, path: str) -> tuple[bool, int] | None:
     return True, data["cost"]
 
 
+def _contract_changed(problem: str, names: list[str]) -> bool:
+    """The old cost is a different question once the test or the cases change."""
+    prefix = f"problems/{problem}/"
+    for name in names:
+        if name == prefix + "problem_test.go":
+            return True
+        if name.startswith(prefix + "cases/") and name.endswith(".json"):
+            return True
+    return False
+
+
 def check_against(base: str) -> None:
     dirty = _git(["status", "--porcelain"])
     if dirty:
@@ -105,6 +116,10 @@ def check_against(base: str) -> None:
         previous = _metric(_show(base, metric_path), metric_path)
         only_readme = files <= {f"problems/{problem}/solutions/{ruleset}/README.md"}
         if only_readme:
+            continue
+        if _contract_changed(problem, names):
+            if current[0] is not True:
+                raise AcceptError(f"{problem}/{ruleset}: solution does not pass")
             continue
         message = solution_change(None if previous is None else previous[1], current[1], passed=current[0])
         if message:

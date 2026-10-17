@@ -1,7 +1,12 @@
 {
   "name": "seed-11",
-  "stdin": "I!Us cCmj\n",
-  "stdout": "V!Hf pPzw\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "I!Us cCmj"
+    ]
+  },
+  "writes": {
+    "stdout": "V!Hf pPzw\n"
+  },
   "exit_code": 0
 }

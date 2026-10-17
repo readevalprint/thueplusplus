@@ -1,14 +1,19 @@
 #include "thuelang/thuelang.hpp"
 
+#include <cctype>
 #include <cerrno>
+#include <cstdio>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <optional>
+#include <sstream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -59,6 +64,295 @@ void WriteCounts(const std::string& path, int64_t applied, int64_t probes) {
   }
 }
 
+struct ResourceFile {
+  std::map<std::string, std::vector<std::string>> reads;
+  std::vector<std::string> writes;
+};
+
+class ResourceJson {
+ public:
+  explicit ResourceJson(std::string text) : text_(std::move(text)) {}
+
+  ResourceFile Parse() {
+    ResourceFile file;
+    Expect('{');
+    bool saw_reads = false;
+    bool saw_writes = false;
+    Skip();
+    if (Peek() == '}') {
+      throw std::runtime_error("resources file keys must be reads and writes");
+    }
+    while (true) {
+      std::string key = ParseString();
+      Expect(':');
+      if (key == "reads") {
+        if (saw_reads) {
+          throw std::runtime_error("resources file keys must be reads and writes");
+        }
+        saw_reads = true;
+        file.reads = ParseReads();
+      } else if (key == "writes") {
+        if (saw_writes) {
+          throw std::runtime_error("resources file keys must be reads and writes");
+        }
+        saw_writes = true;
+        file.writes = ParseStringArray();
+      } else {
+        throw std::runtime_error("resources file keys must be reads and writes");
+      }
+      Skip();
+      if (Peek() == ',') {
+        ++index_;
+        continue;
+      }
+      if (Peek() == '}') {
+        ++index_;
+        break;
+      }
+      throw std::runtime_error("resources file is not JSON");
+    }
+    Skip();
+    if (index_ != text_.size()) {
+      throw std::runtime_error("resources file has an extra JSON value");
+    }
+    if (!saw_reads || !saw_writes) {
+      throw std::runtime_error("resources file keys must be reads and writes");
+    }
+    return file;
+  }
+
+ private:
+  void Skip() {
+    while (index_ < text_.size() && std::isspace(static_cast<unsigned char>(text_[index_]))) {
+      ++index_;
+    }
+  }
+
+  char Peek() {
+    Skip();
+    if (index_ >= text_.size()) {
+      throw std::runtime_error("resources file is not JSON");
+    }
+    return text_[index_];
+  }
+
+  void Expect(char want) {
+    if (Peek() != want) {
+      throw std::runtime_error("resources file is not JSON");
+    }
+    ++index_;
+  }
+
+  std::string ParseString() {
+    Expect('"');
+    std::string out;
+    while (index_ < text_.size()) {
+      unsigned char ch = static_cast<unsigned char>(text_[index_++]);
+      if (ch == '"') {
+        return out;
+      }
+      if (ch == '\\') {
+        if (index_ >= text_.size()) {
+          throw std::runtime_error("resources file is not JSON");
+        }
+        char esc = text_[index_++];
+        switch (esc) {
+          case '"':
+          case '\\':
+          case '/':
+            out.push_back(esc);
+            break;
+          case 'b':
+            out.push_back('\b');
+            break;
+          case 'f':
+            out.push_back('\f');
+            break;
+          case 'n':
+            out.push_back('\n');
+            break;
+          case 'r':
+            out.push_back('\r');
+            break;
+          case 't':
+            out.push_back('\t');
+            break;
+          case 'u': {
+            if (index_ + 4 > text_.size()) {
+              throw std::runtime_error("resources file is not JSON");
+            }
+            int code = 0;
+            for (int i = 0; i < 4; ++i) {
+              char hex = text_[index_++];
+              code <<= 4;
+              if (hex >= '0' && hex <= '9') {
+                code += hex - '0';
+              } else if (hex >= 'a' && hex <= 'f') {
+                code += hex - 'a' + 10;
+              } else if (hex >= 'A' && hex <= 'F') {
+                code += hex - 'A' + 10;
+              } else {
+                throw std::runtime_error("resources file is not JSON");
+              }
+            }
+            if (code <= 0x7F) {
+              out.push_back(static_cast<char>(code));
+            } else if (code <= 0x7FF) {
+              out.push_back(static_cast<char>(0xC0 | (code >> 6)));
+              out.push_back(static_cast<char>(0x80 | (code & 0x3F)));
+            } else {
+              out.push_back(static_cast<char>(0xE0 | (code >> 12)));
+              out.push_back(static_cast<char>(0x80 | ((code >> 6) & 0x3F)));
+              out.push_back(static_cast<char>(0x80 | (code & 0x3F)));
+            }
+            break;
+          }
+          default:
+            throw std::runtime_error("resources file is not JSON");
+        }
+        continue;
+      }
+      if (ch < 0x20) {
+        throw std::runtime_error("resources file is not JSON");
+      }
+      out.push_back(static_cast<char>(ch));
+    }
+    throw std::runtime_error("resources file is not JSON");
+  }
+
+  std::vector<std::string> ParseStringArray() {
+    Expect('[');
+    std::vector<std::string> values;
+    Skip();
+    if (Peek() == ']') {
+      ++index_;
+      return values;
+    }
+    while (true) {
+      values.push_back(ParseString());
+      Skip();
+      if (Peek() == ',') {
+        ++index_;
+        continue;
+      }
+      if (Peek() == ']') {
+        ++index_;
+        return values;
+      }
+      throw std::runtime_error("resources file is not JSON");
+    }
+  }
+
+  std::map<std::string, std::vector<std::string>> ParseReads() {
+    Expect('{');
+    std::map<std::string, std::vector<std::string>> reads;
+    Skip();
+    if (Peek() == '}') {
+      ++index_;
+      return reads;
+    }
+    while (true) {
+      std::string key = ParseString();
+      Expect(':');
+      if (!reads.emplace(key, ParseStringArray()).second) {
+        throw std::runtime_error("resources file is not JSON");
+      }
+      Skip();
+      if (Peek() == ',') {
+        ++index_;
+        continue;
+      }
+      if (Peek() == '}') {
+        ++index_;
+        return reads;
+      }
+      throw std::runtime_error("resources file is not JSON");
+    }
+  }
+
+  std::string text_;
+  size_t index_ = 0;
+};
+
+ResourceFile LoadResourceFile(const std::string& path) {
+  std::ifstream in(path, std::ios::binary);
+  if (!in) {
+    throw std::runtime_error(path + ": " + std::strerror(errno));
+  }
+  std::ostringstream buffer;
+  buffer << in.rdbuf();
+  try {
+    return ResourceJson(buffer.str()).Parse();
+  } catch (const std::runtime_error& err) {
+    throw std::runtime_error(path + ": " + err.what());
+  }
+}
+
+std::string JsonString(const std::string& text) {
+  std::string out = "\"";
+  for (unsigned char ch : text) {
+    switch (ch) {
+      case '"':
+        out += "\\\"";
+        break;
+      case '\\':
+        out += "\\\\";
+        break;
+      case '\b':
+        out += "\\b";
+        break;
+      case '\f':
+        out += "\\f";
+        break;
+      case '\n':
+        out += "\\n";
+        break;
+      case '\r':
+        out += "\\r";
+        break;
+      case '\t':
+        out += "\\t";
+        break;
+      default:
+        if (ch < 0x20) {
+          char buf[8];
+          std::snprintf(buf, sizeof(buf), "\\u%04x", ch);
+          out += buf;
+        } else {
+          out.push_back(static_cast<char>(ch));
+        }
+    }
+  }
+  out.push_back('"');
+  return out;
+}
+
+void WriteResourceOutput(const std::string& path, const std::map<std::string, std::string>& writes) {
+  namespace fs = std::filesystem;
+  fs::path target(path);
+  if (target.has_parent_path()) {
+    fs::create_directories(target.parent_path());
+  }
+  std::ofstream out(target, std::ios::binary);
+  if (!out) {
+    throw std::runtime_error(std::strerror(errno));
+  }
+  std::string body = "{\n";
+  bool first = true;
+  for (const auto& item : writes) {
+    if (!first) {
+      body += ",\n";
+    }
+    first = false;
+    body += "  " + JsonString(item.first) + ": " + JsonString(item.second);
+  }
+  body += "\n}\n";
+  out.write(body.data(), static_cast<std::streamsize>(body.size()));
+  if (!out) {
+    throw std::runtime_error(std::strerror(errno));
+  }
+}
+
 std::string DisplaySource(const std::string& source_path) {
   namespace fs = std::filesystem;
   fs::path source = fs::path(source_path).lexically_normal();
@@ -87,6 +381,8 @@ int main(int argc, char** argv) {
   std::string coverage;
   std::string counts;
   std::string metrics;
+  std::string resources;
+  std::string resource_out;
   bool list_rules = false;
   bool saw_input = false;
 
@@ -122,6 +418,10 @@ int main(int argc, char** argv) {
         counts = need("--counts");
       } else if (IsFlag(arg, "--metrics")) {
         metrics = need("--metrics");
+      } else if (IsFlag(arg, "--resources")) {
+        resources = need("--resources");
+      } else if (IsFlag(arg, "--resource-out")) {
+        resource_out = need("--resource-out");
       } else if (IsFlag(arg, "--input")) {
         input = need("--input");
         saw_input = true;
@@ -165,6 +465,12 @@ int main(int argc, char** argv) {
       if (saw_input) {
         interp.ApplyInputOverride(*input);
       }
+      if (!resources.empty()) {
+        ResourceFile file = LoadResourceFile(resources);
+        interp.BindScripts(file.reads, file.writes);
+      } else if (!resource_out.empty()) {
+        throw std::runtime_error("--resource-out requires --resources");
+      }
       ran = true;
       code = interp.Run();
     }
@@ -193,6 +499,14 @@ int main(int argc, char** argv) {
       WriteMetrics(metrics, interp.metrics());
     } catch (const std::exception& err) {
       std::cerr << "Error: failed to write metrics: " << err.what() << "\n";
+      code = 1;
+    }
+  }
+  if (ran && !resource_out.empty()) {
+    try {
+      WriteResourceOutput(resource_out, interp.ScriptWrites());
+    } catch (const std::exception& err) {
+      std::cerr << "Error: failed to write resources: " << err.what() << "\n";
       code = 1;
     }
   }

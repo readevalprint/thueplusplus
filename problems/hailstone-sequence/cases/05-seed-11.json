@@ -1,7 +1,12 @@
 {
   "name": "seed-11",
-  "stdin": "11\n",
-  "stdout": "11\n34\n17\n52\n26\n13\n40\n20\n10\n5\n16\n8\n4\n2\n1\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "11"
+    ]
+  },
+  "writes": {
+    "stdout": "11\n34\n17\n52\n26\n13\n40\n20\n10\n5\n16\n8\n4\n2\n1\n"
+  },
   "exit_code": 0
 }

@@ -1,7 +1,13 @@
 {
   "name": "two-eight",
-  "stdin": "2\n8\n",
-  "stdout": "256\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "2",
+      "8"
+    ]
+  },
+  "writes": {
+    "stdout": "256\n"
+  },
   "exit_code": 0
 }

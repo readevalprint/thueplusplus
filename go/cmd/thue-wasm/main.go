@@ -119,6 +119,9 @@ func run(args []js.Value) wasmResult {
 	}
 	interp.Debug = truthy(opts.Get("debug"))
 	interp.TraceEnabled = truthy(opts.Get("trace"))
+	if truthy(opts.Get("replaceBindings")) {
+		interp.Bindings = map[string]*thuelang.Binding{}
+	}
 	if resources := opts.Get("resources"); resources.Type() == js.TypeObject {
 		keys := js.Global().Get("Object").Call("keys", resources)
 		for idx := 0; idx < keys.Length(); idx++ {
@@ -259,7 +262,11 @@ func jsValueToString(v js.Value) (string, error) {
 		return v.String(), nil
 	}
 	if v.Type() == js.TypeObject && v.Get("error").Type() != js.TypeUndefined {
-		return "", fmt.Errorf(v.Get("error").String())
+		message := v.Get("error").String()
+		if v.Get("omitName").Type() == js.TypeBoolean && v.Get("omitName").Bool() {
+			return "", thuelang.UnnamedResourceError(message)
+		}
+		return "", fmt.Errorf("%s", message)
 	}
 	return "", fmt.Errorf("callback returned unsupported value type %s", v.Type().String())
 }

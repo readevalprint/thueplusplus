@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -131,8 +132,12 @@ func syncCases(dir string, samples []Sample) error {
 		return fmt.Errorf("%s: %d cases, reference has %d", dir, len(loaded), len(samples))
 	}
 	for i := range samples {
-		if loaded[i] != samples[i] {
-			return fmt.Errorf("%s: case %s does not match the reference", dir, samples[i].Name)
+		same, err := sameJSON(loaded[i], samples[i])
+		if err != nil {
+			return err
+		}
+		if !same {
+			return fmt.Errorf("%s: case %s does not match the baseline", dir, samples[i].Name)
 		}
 	}
 	return nil
@@ -158,6 +163,18 @@ func writeCases(dir string, samples []Sample) error {
 	return nil
 }
 
+func sameJSON(a, b any) (bool, error) {
+	left, err := json.Marshal(a)
+	if err != nil {
+		return false, err
+	}
+	right, err := json.Marshal(b)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(left, right), nil
+}
+
 func readCases(dir string) ([]Sample, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -176,9 +193,14 @@ func readCases(dir string) ([]Sample, error) {
 		if err != nil {
 			return nil, err
 		}
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.DisallowUnknownFields()
 		var sample Sample
-		if err := json.Unmarshal(data, &sample); err != nil {
+		if err := dec.Decode(&sample); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		if dec.More() {
+			return nil, fmt.Errorf("%s: extra JSON value", name)
 		}
 		want := fmt.Sprintf("%02d-%s.json", index+1, sample.Name)
 		if name != want {
