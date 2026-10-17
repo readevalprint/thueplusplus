@@ -5,7 +5,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/readevalprint/thueplusplus/problems/harness"
+	"github.com/thuelang/thueplusplus/problems/harness"
 )
 
 func TestProblem(t *testing.T) {

@@ -1,7 +1,7 @@
-module github.com/readevalprint/thueplusplus/langs
+module github.com/thuelang/thueplusplus/langs
 
 go 1.24
 
-require github.com/readevalprint/thueplusplus/problems v0.0.0
+require github.com/thuelang/thueplusplus/problems v0.0.0
 
-replace github.com/readevalprint/thueplusplus/problems => ../problems
+replace github.com/thuelang/thueplusplus/problems => ../problems

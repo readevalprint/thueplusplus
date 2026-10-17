@@ -6,13 +6,13 @@
   "publisher": "readevalprint",
   "repository": {
     "type": "git",
-    "url": "https://github.com/readevalprint/thueplusplus.git",
+    "url": "https://github.com/thuelang/thueplusplus.git",
     "directory": "editors/vscode"
   },
   "bugs": {
-    "url": "https://github.com/readevalprint/thueplusplus/issues"
+    "url": "https://github.com/thuelang/thueplusplus/issues"
   },
-  "homepage": "https://github.com/readevalprint/thueplusplus/blob/main/editors/vscode/README.md",
+  "homepage": "https://thuelang.org",
   "engines": {
     "vscode": "^1.85.0"
   },

@@ -1,6 +1,6 @@
 # Thue++ for VS Code
 
-Syntax highlighting, snippets, and **Run Thue++ file** for [Thue++](https://github.com/readevalprint/thueplusplus) programs (`.tpp`).
+Syntax highlighting, snippets, and **Run Thue++ file** for [Thue++](https://github.com/thuelang/thueplusplus) programs (`.tpp`).
 
 The extension installs in VS Code, Cursor, VSCodium, and Windsurf. Cursor installs extensions from [Open VSX](https://open-vsx.org). This repository does not publish the extension.
 
@@ -97,4 +97,4 @@ Publishing docs: [Publishing Extensions](https://github.com/eclipse/openvsx/wiki
 
 ## Playground highlighter
 
-The playground keeps its own highlighter in `demo/src/thueppMonarch.ts`. Monaco does not load this TextMate grammar by itself, and the playground is changing separately, so the two highlighters are not shared yet. That work is [issue #42](https://github.com/readevalprint/thueplusplus/issues/42).
+The playground keeps its own highlighter in `demo/src/thueppMonarch.ts`. Monaco does not load this TextMate grammar by itself, and the playground is changing separately, so the two highlighters are not shared yet. That work is [issue #42](https://github.com/thuelang/thueplusplus/issues/42).

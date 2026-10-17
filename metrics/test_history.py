@@ -256,6 +256,12 @@ class HistoryTests(unittest.TestCase):
         with self.assertRaises(historylib.HistoryError):
             historylib.validate_bench(entry(COMMIT_A, "2026-10-16T00:00:01Z", tasks=tasks))
 
+    def test_require_memory_rejects_a_missed_sample(self) -> None:
+        self.assertEqual(record.require_memory("probe-cost", "go", 4096), 4096)
+        for memory in (0, None, -1, True):
+            with self.assertRaises(record.RecordError):
+                record.require_memory("probe-cost", "go", memory)
+
     def test_null_memory_is_allowed_and_a_negative_memory_is_not(self) -> None:
         document = entry(COMMIT_A, "2026-10-16T00:00:01Z", benchmarks=_benchmarks("go"))
         document["benchmarks"]["workloads"][0]["hosts"]["go"]["memory_bytes"] = None
@@ -290,7 +296,8 @@ class HistoryTests(unittest.TestCase):
         schema = (ROOT / "metrics" / "SCHEMA.md").read_text(encoding="utf-8")
         self.assertIn("demo/dist/metrics/summary.json", vercel)
         self.assertNotIn("history.json", vercel)
-        self.assertIn("public/metrics/summary.json", gitlab)
+        self.assertNotIn("\npages:", gitlab)
+        self.assertNotIn("public/metrics/summary.json", gitlab)
         self.assertNotIn("history.json", gitlab)
         self.assertIn("pull_request:", workflow)
         self.assertNotIn("branches: [main]", workflow)
@@ -345,7 +352,7 @@ class HistoryTests(unittest.TestCase):
                 memory_cap=RUN_MEMORY_CAP_BYTES,
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
-            self.assertGreaterEqual(completed.peak_rss_bytes, 0)
+            self.assertGreater(completed.peak_rss_bytes, 0)
             parsed = historylib.parse_counts(counts.read_text(encoding="utf-8"))
         self.assertEqual(parsed, (1, 3))
 

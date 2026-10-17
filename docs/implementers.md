@@ -4,7 +4,7 @@ Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
-The reference implementations are the Python package `thuepp` (`uv run thuepp`), the Go package `github.com/readevalprint/thueplusplus/go/thuepp` (`go/cmd/thuepp`), the npm package `thuepp` (`node js/src/cli.js`), the Rust crate `thuepp` (`rust/target/release/thuepp`), and the C++ library `thuepp` (`cpp/`, CLI `build/cpp/thuepp`). `make test` runs the core suite on all five and the guest programs on native Go. `make test-full` runs every manifest on all five. Both require identical results. The embedder API is [host-api.md](host-api.md).
+The site is [thuelang.org](https://thuelang.org). The reference implementations are the Python package `thuepp` (`uv run thuepp`), the Go package `github.com/thuelang/thueplusplus/go/thuepp` (`go/cmd/thuepp`), the npm package `thuepp` (`node js/src/cli.js`), the Rust crate `thuepp` (`rust/target/release/thuepp`), and the C++ library `thuepp` (`cpp/`, CLI `build/cpp/thuepp`). `make test` runs the core suite on all five and the guest programs on native Go. `make test-full` runs every manifest on all five. Both require identical results. The embedder API is [host-api.md](host-api.md).
 
 Patterns are compiled by the regex engine. The syntax reference is <https://github.com/google/re2/wiki/Syntax>. Do not use backreferences, lookaround, or recursion.
 

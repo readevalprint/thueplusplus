@@ -200,6 +200,13 @@ def counter_document(source: str, suite: dict) -> dict:
     }
 
 
+def require_memory(workload_id: str, host: str, memory: object) -> int:
+    """A measured host reports a positive peak RSS. Zero is a missed sample."""
+    if isinstance(memory, bool) or not isinstance(memory, int) or memory <= 0:
+        raise RecordError(f"benchmark {workload_id} {host} did not report resident memory")
+    return memory
+
+
 def _timeout_number(timeout: float) -> int | float:
     return int(timeout) if timeout == int(timeout) else timeout
 
@@ -270,9 +277,7 @@ def run_benchmarks(suite: dict) -> dict:
                 raise RecordError(
                     f"{host} {workload['program']} applied_steps: {metrics['applied_steps']}, counts {applied}"
                 )
-            memory = getattr(completed, "peak_rss_bytes", None)
-            if isinstance(memory, bool) or not isinstance(memory, int) or memory < 0:
-                raise RecordError(f"benchmark {workload['id']} {host} did not report resident memory")
+            memory = require_memory(workload["id"], host, getattr(completed, "peak_rss_bytes", None))
         row = {
             "environment": historylib.environment_for(host),
             "applied_steps": applied,

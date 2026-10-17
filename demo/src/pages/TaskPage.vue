@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import DocPage from '@/components/DocPage.vue'
 import FinishLine from '@/components/marks/FinishLine.vue'
 import RewriteLine from '@/components/RewriteLine.vue'
-import { paragraphs, previewLine, sourceUrl, statusVariant, taskById } from '@/catalog'
+import { improveUrl, paragraphs, previewLine, sourceUrl, statusVariant, taskById } from '@/catalog'
 
 const route = useRoute()
 const taskId = computed(() => typeof route.params.taskId === 'string' ? route.params.taskId : '')
@@ -37,6 +37,7 @@ function caseAnchor(name: string): string {
     <section id="description" data-test="task-description" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Description</h2>
       <p v-for="(paragraph, index) in paragraphs(task.description)" :key="index" class="leading-7">{{ paragraph }}</p>
+      <p><a class="underline underline-offset-4" data-test="improve-link" :href="improveUrl(`problems/${task.id}`)" rel="noreferrer">Improve this</a></p>
     </section>
     <section id="input-and-output" data-test="task-io" class="flex flex-col gap-6">
       <h2 class="text-xl font-semibold tracking-tight">Input and output</h2>

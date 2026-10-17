@@ -85,6 +85,8 @@ export const navGroups: NavGroup[] = [
 export const navDirect: NavDirect[] = [
   { title: 'Metrics', to: '/metrics' },
   { title: 'Playground', to: '/playground' },
+  { title: 'Contribute', to: '/contribute' },
+  { title: 'Autoresearch prompt', to: '/autoresearch' },
 ]
 
 export function navItemCurrent(path: string, hash: string, to: string): boolean {

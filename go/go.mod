@@ -1,4 +1,4 @@
-module github.com/readevalprint/thueplusplus/go
+module github.com/thuelang/thueplusplus/go
 
 go 1.24
 

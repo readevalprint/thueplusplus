@@ -3,7 +3,7 @@ package cases
 import (
 	"testing"
 
-	"github.com/readevalprint/thueplusplus/problems/harness"
+	"github.com/thuelang/thueplusplus/problems/harness"
 )
 
 func TestCommonCases(t *testing.T) {

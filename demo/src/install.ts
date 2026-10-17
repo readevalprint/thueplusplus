@@ -31,10 +31,10 @@ const copy: Record<string, InstallSection> = {
   go: {
     prose: 'The Go interpreter is the host behind go/cmd/thuepp and behind the WebAssembly module. A new interpreter binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits.',
     installLead: 'The module is not a released tag. This tracks main:',
-    install: 'go get github.com/readevalprint/thueplusplus/go@main',
+    install: 'go get github.com/thuelang/thueplusplus/go@main',
     moreInstall: [],
-    libraryLead: 'Import github.com/readevalprint/thueplusplus/go/thuepp.',
-    library: `import "github.com/readevalprint/thueplusplus/go/thuepp"
+    libraryLead: 'Import github.com/thuelang/thueplusplus/go/thuepp.',
+    library: `import "github.com/thuelang/thueplusplus/go/thuepp"
 
 interp := thuepp.New()
 if err := interp.LoadProgram("hello.tpp"); err != nil {

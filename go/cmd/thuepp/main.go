@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/readevalprint/thueplusplus/go/thuepp"
+	"github.com/thuelang/thueplusplus/go/thuepp"
 )
 
 func main() {
