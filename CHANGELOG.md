@@ -62,7 +62,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Fixed
 
-- Host benchmark `memory_bytes`. Go, Rust, and C++ often exit in a few milliseconds. The recorder sampled `/proc` on a 100ms poll after `timeout(1)` had reaped the host, so the missing process tree was stored as 0. It now reads `VmHWM` immediately and again through a 1ms window at the start of the run. `make metrics` fails when a host reports no resident memory. A conformance case that exits before a sample is taken still completes.
+- Host benchmark `memory_bytes`. Go, Rust, and C++ often exit in a few milliseconds. The recorder sampled `/proc` on a 100ms poll after `timeout(1)` had reaped the host, so the missing process tree was stored as 0. It now reads `VmHWM` immediately and again through a 1ms window at the start of the run. Hosts run together, so a process that exits before that sample is taken runs again, up to five times. `make metrics` fails when a host still reports no resident memory. A conformance case that exits before a sample is taken still completes.
 - Playground trace diffs. A removed line has a light red wash and the changed characters a stronger red. An added line has a light green wash and the changed characters a stronger green. Both themes use those tints.
 - Playground reset clears every resource transcript and the step and probe counters. The next run starts from that empty output instead of appending to stdout.
 - Go rule matching skips a regexp when the subject cannot contain the rule's literal prefix. Anchored Lisp rules were paying for a full regexp on every probe. A case-insensitive pattern does not use that shortcut.
