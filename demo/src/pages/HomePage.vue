@@ -2,7 +2,8 @@
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import RewriteMotif from '@/components/RewriteMotif.vue'
-import { mirrorUrl, repositoryUrl, siteHosts, soonLanguages } from '@/hosts'
+import SiteFooter from '@/components/SiteFooter.vue'
+import { siteHosts, soonLanguages } from '@/hosts'
 
 const ready = siteHosts
 const soon = soonLanguages
@@ -56,20 +57,6 @@ const pillars = [
       </article>
     </section>
 
-    <footer class="border-line flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-4 py-6 font-mono text-[13px] sm:px-6 lg:px-14">
-      <nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Site">
-        <RouterLink to="/docs/guides" class="text-ash hover:text-bone lowercase">Guides</RouterLink>
-        <RouterLink to="/docs/language" class="text-ash hover:text-bone lowercase">Language</RouterLink>
-        <RouterLink to="/install" class="text-ash hover:text-bone lowercase">Install</RouterLink>
-        <RouterLink to="/projects" class="text-ash hover:text-bone lowercase">Projects</RouterLink>
-        <RouterLink to="/metrics" class="text-ash hover:text-bone lowercase">Metrics</RouterLink>
-        <RouterLink to="/problems" class="text-ash hover:text-bone lowercase">Problems</RouterLink>
-        <RouterLink to="/playground" class="text-ash hover:text-bone lowercase">Playground</RouterLink>
-        <RouterLink to="/contribute" class="text-ash hover:text-bone lowercase">Contribute</RouterLink>
-        <RouterLink to="/autoresearch" class="text-ash hover:text-bone lowercase">Autoresearch prompt</RouterLink>
-      </nav>
-      <a class="text-ash hover:text-bone lowercase" :href="repositoryUrl" rel="noreferrer">github</a>
-      <a class="text-ash hover:text-bone lowercase" :href="mirrorUrl" rel="noreferrer">gitlab</a>
-    </footer>
+    <SiteFooter class="px-4 sm:px-6 lg:px-14" />
   </div>
 </template>

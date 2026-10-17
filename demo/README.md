@@ -46,7 +46,7 @@ Vercel is production, at [thuelang.org](https://thuelang.org). Import this repos
 
 ## What the demo tests cover
 
-The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/browser-adapter.test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker. The playground imports that client from the `thue` package.
+The focused Vitest tests mount the Vue app and exercise the browser-facing contract: hello/stdout, buffered stdin, custom callback resource write/readLine logging, resource timeout/error display, include-map resolution, coverage TSV/table rendering, educational example navigation, runtime status surfaces, output tabs, clipboard-copy affordances, and production-build compatibility through `npm run build`/`make demo-build` validation. The additional Node unit smoke in `js/browser-adapter.test.cjs` covers worker-client rejection paths plus callback-resource edge cases that jsdom cannot exercise as a real Worker. The playground imports that client from the `thuelang` package.
 
 The site is a Vue 3, Vite, Tailwind 4, and shadcn-vue shell styled on a 1px-line, 2px-radius dark theme (light mode included). `/playground` is a full-screen route outside the docs layout. These tests intentionally do not run `examples/**/tests/*.toml`. The semantic conformance suite remains `make test` at the repository root.
 
@@ -60,7 +60,7 @@ The state history below the State editor is a raw chronological shadcn-vue/TanSt
 
 ## Page layout
 
-The docs shell is a 52px sticky header. Docs, Install, and Projects are navigation menus. Each dropdown link has a title and a short description in a two-column grid. Metrics, Playground, Contribute, and the autoresearch prompt are direct links, with the theme toggle and GitHub and GitLab links. Below 1024px those links move into a menu button. The left column is the sticky On this page list: the page's h2 and h3 headings, a vertical rail, and a brighter segment on the section in view. Below 1024px that list collapses behind a Contents toggle at the top of the article. The article is one centered column at about 65ch. There is no right column. `/playground` uses the same header and is outside that shell.
+The docs shell is a 52px sticky header. The header is four plain links: Install, Docs, Leaderboard, and Contribute. The logo links home. The theme control is one button that cycles system, light, and dark. A thin line on the header's bottom border shows route progress. Playground, projects, host benchmarks, and the autoresearch prompt are in the footer. The left column is the sticky On this page list: the page's h2 and h3 headings, a vertical rail, and a brighter segment on the section in view. Below 1024px that list collapses behind a Contents toggle at the top of the article. The article is one centered column at about 65ch. There is no right column. `/playground` uses the same header and is outside that shell.
 
 ## Embeddable playground routes
 
@@ -68,7 +68,7 @@ The same shared playground surface powers the playground page and the embeddable
 
 - `/playground` is its own full-screen route: header, resizable editor and output, and a status bar. It does not use the docs shell.
 - `/embed` renders that same surface with no docs chrome. It is for iframe embeds.
-- `/`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, `/problems`, `/contribute`, and `/autoresearch` are the other prerendered pages. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/problems` is the problem index, and each problem is also prerendered at `/problems/<id>`. Each ruleset is prerendered at `/rulesets/<id>`. `/contribute` is the contributor loop. `/autoresearch` is the copyable agent prompt. Hash links such as `/metrics#host-time` open that section.
+- `/`, `/docs`, `/docs/guides`, `/docs/language`, `/install`, `/install/go`, `/install/python`, `/install/js`, `/install/rust`, `/install/cpp`, `/projects`, `/metrics`, `/problems`, `/contribute`, and `/autoresearch` are the other prerendered pages. `/docs` links the language reference and the guides. `/` is the landing page. `/projects` is the sandboxed projects. `/metrics` is the per-commit charts from the generated `demo/src/generated/summary.json`. `/problems` is the problem index, and each problem is also prerendered at `/problems/<id>`. Each ruleset is prerendered at `/rulesets/<id>`. `/contribute` is the contributor loop. `/autoresearch` is the copyable agent prompt. Hash links such as `/metrics#host-time` open that section.
 
 Supported embed query parameters:
 

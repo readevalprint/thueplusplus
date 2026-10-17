@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import { mirrorUrl, repositoryUrl } from '@/hosts'
 import OnThisPage from './OnThisPage.vue'
+import SiteFooter from './SiteFooter.vue'
 import SiteHeader from './SiteHeader.vue'
 
 const route = useRoute()
@@ -45,9 +45,6 @@ watch(() => route.path, () => {
         <RouterView />
       </div>
     </div>
-    <footer v-if="!home" data-test="site-footer" class="border-line mx-auto flex w-full max-w-[calc(65ch+13.5rem)] flex-wrap gap-x-4 gap-y-2 border-t px-4 py-6 font-mono text-[13px] sm:px-6">
-      <a class="text-ash hover:text-bone lowercase" :href="repositoryUrl" rel="noreferrer">github</a>
-      <a class="text-ash hover:text-bone lowercase" :href="mirrorUrl" rel="noreferrer">gitlab</a>
-    </footer>
+    <SiteFooter v-if="!home" class="mx-auto w-full max-w-[calc(65ch+13.5rem)] px-4 sm:px-6" />
   </div>
 </template>

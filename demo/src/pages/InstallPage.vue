@@ -3,11 +3,11 @@ import { Package } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 import DocPage from '@/components/DocPage.vue'
 import { shippedHosts, siteHosts, soonLanguages } from '@/hosts'
-import { navGroups } from '@/nav'
+import { installNotes } from '@/install'
 import { pages } from '@/site'
 
 const page = pages.install
-const notes = new Map(navGroups.find(group => group.title === 'Install')?.items.map(item => [item.to, item.description]) ?? [])
+const notes = new Map(siteHosts.map(host => [host.href, installNotes[host.id]]))
 for (const host of siteHosts) {
   if (!notes.get(host.href)) throw new Error(`install page has no note for ${host.href}`)
 }

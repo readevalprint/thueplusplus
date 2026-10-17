@@ -43,6 +43,8 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Changed
 
+- **Breaking:** The header is four plain links: Install (`/install`), Docs (`/docs`), Leaderboard (`/problems`), and Contribute (`/contribute`). The logo links home. The theme control is one button that cycles system, light, and dark, and the dropdown menu is gone. A thin line on the header's bottom border shows route progress. The first paint, before the app mounts, is a centered `::=`. Playground, projects, host benchmarks, and the autoresearch prompt stay linked from the footer.
+- Install notes name the Rust package `thuelang` with the `thue` CLI. The JavaScript package uses that same name and CLI.
 - **Breaking:** Problem pages are `/problems/<id>`. Each solution is pass or fail with its Go cost. The catalog records the commit that measured it. A ruleset with no solution on that problem is an empty cell. A solution with no metrics entry fails the build. Each problem page has one cost chart. Every solution is a scatter point at the commit that measured it, colored by ruleset, with a step line of that ruleset's running best. The tooltip shows the solution file, the cost, the commit, and the diagnostic counters. The problems index draws that chart as a sparkline and one shared "Solved problems" chart.
 - **Breaking:** `tasks/` and `make tasks` are gone. `/tasks/<id>` is `/problems/<id>`. The current measurement is schema 4 `{schema_version, commit, machine, runs}`. Archived schema 2 and schema 3 benches stay valid. The site ignores an archive that has no `runs`.
 - The Rust crate is publishable. `publish = false` is gone. A `vX.Y.Z` tag publishes it to crates.io.
