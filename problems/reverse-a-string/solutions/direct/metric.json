@@ -1,12 +1,12 @@
 {
   "pass": true,
-  "cost": 2813,
-  "commit": "e6f17d45df46198d6c0bbe0eb44122f4b5d91ba0",
-  "applied_steps": 37,
-  "regex_evals": 57,
-  "regex_matches": 42,
-  "state_bytes": 313,
+  "cost": 3128,
+  "commit": "adc0e10e31be45698427d95ad1ef4c4eeb8882fc",
+  "applied_steps": 42,
+  "regex_evals": 66,
+  "regex_matches": 48,
+  "state_bytes": 332,
   "state_peak": 13,
   "rule_count": 5,
-  "rule_chars": 188
+  "rule_chars": 187
 }
