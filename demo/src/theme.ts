@@ -24,7 +24,13 @@ export function readTheme(): ThemeChoice {
 
 export function applyTheme(theme: ThemeChoice): void {
   const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.documentElement.classList.toggle('dark', dark)
+  const root = document.documentElement
+  root.classList.toggle('dark', dark)
+  // Same turn as the class. color-scheme otherwise clears the canvas to the
+  // new scheme for a frame before the tokens update, and Rex vanishes.
+  root.style.colorScheme = dark ? 'dark' : 'light'
+  root.style.backgroundColor = dark ? '#0a0a0c' : '#f4f3ef'
+  root.style.color = dark ? '#e8e6e1' : '#1a1916'
 }
 
 export function setTheme(theme: ThemeChoice): void {

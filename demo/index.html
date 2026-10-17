@@ -7,7 +7,11 @@
         var theme = localStorage.getItem('theme')
         var dark = theme !== 'light'
         if (theme === 'system') dark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        document.documentElement.classList.toggle('dark', dark)
+        var root = document.documentElement
+        root.classList.toggle('dark', dark)
+        root.style.colorScheme = dark ? 'dark' : 'light'
+        root.style.backgroundColor = dark ? '#0a0a0c' : '#f4f3ef'
+        root.style.color = dark ? '#e8e6e1' : '#1a1916'
       })()
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

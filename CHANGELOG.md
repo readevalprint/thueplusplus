@@ -51,6 +51,8 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Changed
 
+- The header blink scales Rex's eyes only. Hovering him no longer runs that scale on the button, which was squashing his whole body.
+- The header reach hands off between Rex's hands when the pointer crosses him. His body, his eyes, and his hat keep their side. A theme change during a hat swap leaves him drawn.
 - Header Rex reaches toward the pointer. Clicking him swaps hats: he pulls the new one out of his body, and the old one scales to 0 at the center as he tucks it away. The wardrobe is the hard hat, a top hat, a party hat, a beanie, a wizard hat, and a crown. Each hat sits a little off center at its own tilt. A new hat wobbles into that tilt unless motion is reduced. The choice is stored in `localStorage` and every Rex wears it, including the header, the heroes, and the game. The favicon and the open-graph image keep the hard hat, cocked the same way. The wordmark still links home. Reduced motion swaps instantly and does not reach. A touch swaps and does not reach.
 - The header logo and the favicon are Rex. The header mark is the shared rest-pose figure, in `currentColor`, with the hard hat in `--signal`. `favicon.svg` follows the browser light and dark scheme. The PNG icons are regenerated from that same geometry. At 16 and 32 pixels the icon is a bolder Rex: a smaller hard hat, thicker and taller eye bars, and larger hand and foot dots, in black or white ink. The open-graph image is Rex on the dark card.
 - **Breaking:** The home sandbox is a lever-timing game. Calm glyphs and evil glyphs are gone. A box that gets through the machine breaks the page.

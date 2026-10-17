@@ -20,23 +20,28 @@ const props = withDefaults(defineProps<{
   pose: Pose
   hatPaint?: string
   markPaint?: string
-  reachSide?: 'left' | 'right' | 'none'
-  reachRadius?: number
+  /** Header locks the hat to the rest of the head so a glance cannot drag it. */
+  hatOriginX?: number
+  hatOriginY?: number
+  reachRadiusL?: number
+  reachRadiusR?: number
 }>(), {
   hatPaint: hatFill,
   markPaint: 'currentColor',
-  reachSide: 'none',
-  reachRadius: MARK.dotR,
+  reachRadiusL: MARK.dotR,
+  reachRadiusR: MARK.dotR,
 })
 
 const bulge = computed(() => 1 + (1 - props.pose.squash) * 0.45)
 const eyeMidX = computed(() => (props.pose.eyeLX + props.pose.eyeRX) / 2)
 const eyeMidY = computed(() => (props.pose.eyeLY + props.pose.eyeRY) / 2)
+const hatX = computed(() => props.hatOriginX ?? eyeMidX.value)
+const hatY = computed(() => props.hatOriginY ?? eyeMidY.value)
 const eyeRx = computed(() => Math.min(MARK.eyeW / 2, Math.max(props.pose.eyeH, 0.8) / 2))
 
 const layers = computed(() => {
-  const eyeX = eyeMidX.value
-  const eyeY = eyeMidY.value
+  const eyeX = hatX.value
+  const eyeY = hatY.value
   const motion = swap.value
   const reduced = prefersReduced()
   if (!motion || reduced) {
@@ -63,14 +68,14 @@ function placed(id: string, x: number, y: number, scale: number, incoming: boole
     scale,
     tilt,
     test: id === 'hard' ? 'hard-hat' : 'rex-hat',
-    transform: `translate(${eyeMidX.value + x + shift.x} ${eyeMidY.value + y + shift.y}) rotate(${tilt}) scale(${scale})`,
+    offsetX: shape.offset.x,
+    transform: `translate(${hatX.value + x + shift.x} ${hatY.value + y + shift.y}) rotate(${tilt}) scale(${scale})`,
     parts: shape.parts,
   }
 }
 
 function dotRadius(side: 'left' | 'right'): number {
-  if (props.reachSide === side) return props.reachRadius
-  return MARK.dotR
+  return side === 'left' ? props.reachRadiusL : props.reachRadiusR
 }
 
 function partFill(role: string): string {
@@ -89,6 +94,7 @@ function partFill(role: string): string {
       :data-test="layer.test"
       :data-hat="layer.id"
       :data-tilt="layer.tilt"
+      :data-offset-x="layer.offsetX"
       :transform="layer.transform"
     >
       <template v-for="(part, index) in layer.parts" :key="index">
