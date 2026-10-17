@@ -311,7 +311,7 @@ function escapeXml(value) {
 function loadSuite() {
   const suite = parseToml(readFileSync(join(repoRoot, 'problems', 'suite.toml'), 'utf8'))
   const taskOrder = requireStringList(suite.order, 'problems/suite.toml order')
-  const guests = [{ id: 'direct', program: 'solutions/direct.thue', extension: 'tpp' }]
+  const guests = [{ id: 'direct', program: 'solutions/direct.thue', extension: 'thue' }]
   return { taskOrder, guests }
 }
 

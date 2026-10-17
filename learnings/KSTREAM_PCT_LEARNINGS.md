@@ -10,7 +10,7 @@ Goal: verify source correction: use `::%` for frame payloads.
 
 Rule:
 
-```tpp
+```thue
 ^MAKE\[(?<a>$ITEM),(?<b>$ITEM),(?<env>$PCT),(?<rest>$PCT)\]$ ::% KCALL2|A={{a}}|B={{b}}|ENV={{env}}|REST={{rest}}
 ```
 

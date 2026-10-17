@@ -12,7 +12,7 @@ This keeps escape results safe to store inside rewrite-state delimiters such as 
 
 ## Builtins
 
-```tpp
+```thue
 ESC<(?<s>$PCT)> ::! escape s
 UNESC<(?<s>$PCT)> ::! unescape s
 ```
