@@ -20,7 +20,7 @@ A rule matches the current state. If it applies, it rewrites with the template. 
 
 Optional context links are included where they help. You do not need a formal-language background to read this README, and the links are there for whichever terms you want to chase further.
 
-This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [mid](#mid), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](examples/forth/README.md), and [Lisp](examples/lisp/README.md).
+This README builds up from the [rules](#rules) then to [captures](#captures-and-templates), [mid](#mid), [IO](#io-resources-and-builtins), [state machines](examples/guess-number/guess-number.tpp), [Forth](langs/forth/README.md), and [Lisp](langs/lisp/README.md).
 
 ## Use cases
 
@@ -281,7 +281,7 @@ Transactions are copy-on-write overlays. `set` and `del` write only to the top f
 
 ## A smaller language inside the language: Forth
 
-[`examples/forth/forth.tpp`](examples/forth/forth.tpp) is a compact [stack machine](https://en.wikipedia.org/wiki/Stack_machine) in the spirit of [Forth](https://www.forth.com/resources/forth-programming-language/), written as rewrite rules. It is smaller than the Lisp evaluator, but it shows the same idea: a language can live inside state transitions.
+[`langs/forth/forth.tpp`](langs/forth/forth.tpp) is a compact [stack machine](https://en.wikipedia.org/wiki/Stack_machine) in the spirit of [Forth](https://www.forth.com/resources/forth-programming-language/), written as rewrite rules. It is smaller than the Lisp evaluator, but it shows the same idea: a language can live inside state transitions.
 
 ```text
 1 2 + 3 *
@@ -293,11 +293,11 @@ Expected output:
 9
 ```
 
-Tokens are whitespace-delimited. The data stack renders top-first, so `1 2 3` becomes `3 2 1`. The executable cases are in [`examples/forth/tests/core.toml`](examples/forth/tests/core.toml), with more notes in [`examples/forth/README.md`](examples/forth/README.md).
+Tokens are whitespace-delimited. The data stack renders top-first, so `1 2 3` becomes `3 2 1`. The executable cases are in [`langs/forth/cases/core.toml`](langs/forth/cases/core.toml), with more notes in [`langs/forth/README.md`](langs/forth/README.md).
 
 ## A larger language inside the language: Lisp
 
-Apparently, you can write a powerful [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) as regex rewrite rules. [`examples/lisp/lisp.tpp`](examples/lisp/lisp.tpp) is still only Thue++ rules. The reader, typed values, [lexical scope](https://www.scheme.com/tspl4/binding.html), closures, lists, quote, eval, and macro expansion all live in `.tpp`.
+Apparently, you can write a powerful [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) as regex rewrite rules. [`langs/lisp/lisp.tpp`](langs/lisp/lisp.tpp) is still only Thue++ rules. The reader, typed values, [lexical scope](https://www.scheme.com/tspl4/binding.html), closures, lists, quote, eval, and macro expansion all live in `.tpp`.
 
 ```lisp
 (add (mul 2 3) 4)
@@ -461,7 +461,7 @@ That returns `36`. The helper only exposes the API it installs:
 
 `add` without the quote is different: it is the current value of the `add` binding. That is what exposes the primitive to evaluated code.
 
-`add` is available while constructing `safe-add`, but not to user code unless the scope exposes it. Caller locals are not ambient capabilities either. If the caller binds `secret`, `(sandbox "secret")` still fails with `unbound_name` unless `secret` is placed in the scope. The executable fixture is [`examples/lisp/tests/sandbox_demo.toml`](examples/lisp/tests/sandbox_demo.toml).
+`add` is available while constructing `safe-add`, but not to user code unless the scope exposes it. Caller locals are not ambient capabilities either. If the caller binds `secret`, `(sandbox "secret")` still fails with `unbound_name` unless `secret` is placed in the scope. The executable fixture is [`langs/lisp/cases/sandbox_demo.toml`](langs/lisp/cases/sandbox_demo.toml).
 
 ## Lisp macros: explicit expansion, then eval
 
@@ -551,7 +551,7 @@ make test
 
 Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thuepp`), and, when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thuepp`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
 
-Sandboxed projects (Forth, Lisp, BASIC, and Brainfuck) and `make tasks` run on the native Go host. `make tasks` is the Go test in each task directory. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of that suite.
+Forth, Lisp, and BASIC live in `langs/`. Brainfuck stays in `examples/brainfuck/` as an esolang demo. `make problems` and `make langs` measure solutions and language cases on the native Go host. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of that suite.
 
 `make test-full` runs every manifest on every host, checks parity, and enforces rule coverage. A nightly workflow runs that command. Timings name the runtime: `python`, `go native`, `wasm (node)`, `rust`, and `cpp`. A wasm time is not a Go time.
 
@@ -609,15 +609,15 @@ uv run python tools/check_contract.py --update-readme
 Backends can write successful rule application counts:
 
 ```bash
-uv run thuepp examples/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
-(cd go && go run ./cmd/thuepp ../examples/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.go.coverage.tsv)
+uv run thuepp langs/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.coverage.tsv
+(cd go && go run ./cmd/thuepp ../langs/lisp/lisp.tpp --input '(add 1 2)' --rule-coverage /tmp/lisp.go.coverage.tsv)
 ```
 
 Coverage files are TSV with no header:
 
 ```text
-examples/lisp/lisp.tpp:97	1
-examples/lisp/lisp.tpp:156	1
+langs/lisp/lisp.tpp:97	1
+langs/lisp/lisp.tpp:156	1
 ```
 
 A rule counts only after it applies. Failed probes, failed builtins, missing resources, and failed writes do not count.
@@ -644,9 +644,9 @@ learnings/       Preserved design notes and failed attempts worth not repeating
 
 Project docs and examples:
 
-- [`examples/forth/README.md`](examples/forth/README.md) — compact stack-language example
-- [`examples/lisp/README.md`](examples/lisp/README.md) — Lisp evaluator contract
-- [`examples/lisp/tests/sandbox_demo.toml`](examples/lisp/tests/sandbox_demo.toml) — explicit-scope sandbox demo
+- [`langs/forth/README.md`](langs/forth/README.md) — compact stack-language example
+- [`langs/lisp/README.md`](langs/lisp/README.md) — Lisp evaluator contract
+- [`langs/lisp/cases/sandbox_demo.toml`](langs/lisp/cases/sandbox_demo.toml) — explicit-scope sandbox demo
 - [`docs/rfc-language.md`](docs/rfc-language.md) — standalone Thue++ language contract
 - [`docs/numeric-builtins.md`](docs/numeric-builtins.md) — exact numeric grammar and display policy
 - [`docs/string-escape-builtins.md`](docs/string-escape-builtins.md) — escape/unescape contract

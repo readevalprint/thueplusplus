@@ -69,6 +69,17 @@ struct RuleInfo {
   int line_number = 0;
 };
 
+// Counters for one run. The same fields as `thuepp --metrics`.
+struct RunMetrics {
+  int64_t applied_steps = 0;
+  int64_t regex_evals = 0;
+  int64_t regex_matches = 0;
+  int64_t state_bytes = 0;
+  int64_t state_peak = 0;
+  int64_t rule_count = 0;
+  int64_t rule_chars = 0;
+};
+
 // "unlimited" clears the limit. Any other value is a decimal integer.
 // Zero is a real limit. Throws std::invalid_argument with the Go Atoi text
 // when the text is not an integer.
@@ -107,6 +118,7 @@ class Interpreter {
 
   int64_t eval_count() const;
   int64_t applied_steps() const;
+  RunMetrics metrics() const;
   const std::string& state() const;
   const std::vector<TraceEvent>& trace() const;
   std::vector<RuleInfo> rules() const;

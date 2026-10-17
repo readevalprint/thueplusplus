@@ -1,0 +1,6 @@
+# Language order. Every langs/<id>/ directory must appear here once.
+order = [
+  "forth",
+  "lisp",
+  "basic",
+]

@@ -234,7 +234,7 @@ def check_contract(root: Path) -> list[Failure]:
     required_runner = [
         'Interpreter("python", ("uv", "run", "thuepp"))',
         '["go", "build", "-o", str(go_artifact), "./cmd/thuepp"]',
-        'DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"',
+        'DEFAULT_MANIFEST_GLOBS = ("examples/**/tests/*.toml", "langs/**/cases/*.toml")',
         '"--list-rules"',
         '"--rule-coverage"',
         "assert_parity",
@@ -293,7 +293,7 @@ def check_numeric_regex(root: Path) -> list[Failure]:
         (root / "go" / "thuepp" / "interpreter.go", 1, None),
         (root / "rust" / "src" / "builtin.rs", 1, None),
         (root / "examples" / "builtin" / "builtin.tpp", 1, f"N <- {grammar}"),
-        (root / "examples" / "lisp" / "lisp.tpp", 1, None),
+        (root / "langs" / "lisp" / "lisp.tpp", 1, None),
     ]
     for path, expected_count, required_snippet in checks:
         text = read(path)
@@ -309,13 +309,13 @@ def check_numeric_regex(root: Path) -> list[Failure]:
         r"-?(?:[0-9]+|[0-9]+\\.[0-9]+)",
         r"@ADD\\[\\(?<a>[^|]+\\)\\|\\(?<b>[^\\]]+\\)\\]@",
     ]:
-        if stale in read(root / "examples" / "lisp" / "lisp.tpp"):
-            failures.append(Failure(root / "examples" / "lisp" / "lisp.tpp", f"stale numeric pattern remains: {stale}"))
+        if stale in read(root / "langs" / "lisp" / "lisp.tpp"):
+            failures.append(Failure(root / "langs" / "lisp" / "lisp.tpp", f"stale numeric pattern remains: {stale}"))
     return failures
 
 
 def check_lisp_coverage_policy(root: Path) -> list[Failure]:
-    path = root / "examples" / "lisp" / "lisp.tpp"
+    path = root / "langs" / "lisp" / "lisp.tpp"
     text = read(path)
     failures: list[Failure] = []
     if "coverage: ignore" in text:
@@ -343,16 +343,16 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
         failures.append(Failure(path, "primitive callables must use the internal VPRIM tag; stale VBUILTIN reference remains"))
     if "VPRIM <- VPRIM<$NAME>" not in text or "APPLY<VPRIM<" not in text:
         failures.append(Failure(path, "primitive callable internals must keep an explicit VPRIM value tag and APPLY dispatch"))
-    readme = read(root / "examples" / "lisp" / "README.md")
+    readme = read(root / "langs" / "lisp" / "README.md")
     stale_public_builtin_terms = ["opaque builtin callables", "builtin callable values", "named builtin callables", "<builtin>"]
     for snippet in stale_public_builtin_terms:
         if snippet in readme:
-            failures.append(Failure(root / "examples" / "lisp" / "README.md", f"public docs must describe primitive callables, not builtin callables: {snippet}"))
+            failures.append(Failure(root / "langs" / "lisp" / "README.md", f"public docs must describe primitive callables, not builtin callables: {snippet}"))
     return failures
 
 
 def check_lisp_nested_alias_cleanup(root: Path) -> list[Failure]:
-    path = root / "examples" / "lisp" / "lisp.tpp"
+    path = root / "langs" / "lisp" / "lisp.tpp"
     text = read(path)
     failures: list[Failure] = []
     forbidden = [
@@ -389,9 +389,9 @@ def check_lisp_nested_alias_cleanup(root: Path) -> list[Failure]:
 
 def check_manifest_policy(root: Path) -> list[Failure]:
     failures: list[Failure] = []
-    manifests = sorted((root / "examples").glob("**/tests/*.toml"))
+    manifests = sorted((root / "examples").glob("**/tests/*.toml")) + sorted((root / "langs").glob("**/cases/*.toml"))
     if not manifests:
-        return [Failure(root / "examples", "no shared manifest files matched examples/**/tests/*.toml")]
+        return [Failure(root / "examples", "no shared manifest files matched examples/**/tests/*.toml or langs/**/cases/*.toml")]
     for path in manifests:
         data = load_toml(path)
         try:
@@ -408,7 +408,9 @@ def check_manifest_policy(root: Path) -> list[Failure]:
 
 def check_no_off_sweep_manifests(root: Path) -> list[Failure]:
     failures: list[Failure] = []
-    default_manifests = {path.resolve() for path in root.glob(example_runner.DEFAULT_MANIFEST_GLOB)}
+    default_manifests = set()
+    for pattern in example_runner.DEFAULT_MANIFEST_GLOBS:
+        default_manifests.update(path.resolve() for path in root.glob(pattern))
     for path in sorted((root / "examples").glob("**/tests/**/*.toml")):
         if path.resolve() not in default_manifests:
             failures.append(Failure(path, "executable-looking TOML under examples must be matched by examples/**/tests/*.toml; promote it into the default sweep, delete it, or move historical evidence to learnings"))

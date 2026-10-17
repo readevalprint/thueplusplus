@@ -61,6 +61,7 @@ type wasmResult struct {
 	EvalCount    int
 	AppliedSteps int
 	Limit        string
+	Metrics      *thuepp.RunMetrics
 }
 
 func main() {
@@ -160,7 +161,8 @@ func run(args []js.Value) wasmResult {
 	}
 	exitCode, runErr := interp.Run()
 	interp.Cleanup()
-	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount, AppliedSteps: interp.AppliedSteps}
+	metrics := interp.Metrics()
+	res := wasmResult{ExitCode: exitCode, Stdout: stdout.String(), Stderr: stderr.String(), State: interp.State, EvalCount: interp.EvalCount, AppliedSteps: interp.AppliedSteps, Metrics: &metrics}
 	if runErr != nil {
 		if res.ExitCode == 0 {
 			res.ExitCode = thuepp.ExitRuntime
@@ -192,6 +194,18 @@ func resultToJS(r wasmResult) js.Value {
 	}
 	if r.CoverageTSV != "" {
 		obj["coverageTSV"] = r.CoverageTSV
+	}
+	if r.Metrics != nil {
+		m := r.Metrics
+		obj["metrics"] = map[string]any{
+			"applied_steps": m.AppliedSteps,
+			"regex_evals":   m.RegexEvals,
+			"regex_matches": m.RegexMatches,
+			"state_bytes":   m.StateBytes,
+			"state_peak":    m.StatePeak,
+			"rule_count":    m.RuleCount,
+			"rule_chars":    m.RuleChars,
+		}
 	}
 	if r.Trace != nil {
 		trace := make([]any, 0, len(r.Trace))

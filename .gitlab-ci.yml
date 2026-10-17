@@ -72,13 +72,17 @@ tasks:
   before_script:
     - go version
     - command -v timeout
+    - apt-get update
+    - apt-get install -y --no-install-recommends python3
   script:
-    - make tasks
+    - make problems
+    - make langs
   artifacts:
     when: always
     expire_in: 14 days
     paths:
-      - build/tasks/results.json
+      - build/problems/results.json
+      - build/langs/results.json
 
 e2e:
   image: node:22-bookworm

@@ -1,0 +1,19 @@
+# Grid order. Every problems/<id>/ directory must appear here once.
+order = [
+  "hello-world",
+  "fibonacci-sequence",
+  "fizzbuzz",
+  "factorial",
+  "reverse-a-string",
+  "99-bottles-of-beer",
+  "guess-the-number",
+  "sum-and-product-of-an-array",
+  "palindrome-detection",
+  "rot-13",
+  "greatest-common-divisor",
+  "least-common-multiple",
+  "primality-by-trial-division",
+  "hailstone-sequence",
+  "leap-year",
+  "exponentiation-operator",
+]

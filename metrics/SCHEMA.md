@@ -13,7 +13,7 @@ GitLab Pages copies the summary to `public/metrics/summary.json` after the demo 
 
 ## Who writes a file
 
-The pull request author runs `make metrics` before the pull request is accepted and commits `metrics/latest.json` with the change. The script runs the host benchmarks on every host and the task suite on native Go.
+The pull request author runs `make metrics` before the pull request is accepted and commits `metrics/latest.json` with the change. The script runs the host benchmarks on every host. It runs the problem suite and the language cases on native Go.
 
 If `metrics/latest.json` already exists, the script resolves the commit that added it and moves that measurement to `metrics/YYYY/MM/DD/{sha}/bench.json`, filling in the commit, the author, and the UTC author date. It then writes a new `latest.json`. The script refuses a dirty work tree. It does not push.
 
@@ -27,7 +27,7 @@ Every Thue++ process uses explicit `--max-steps`, `--max-evals`, and `--max-stat
 
 The host workloads are `metrics/workloads.toml`. There is no omitted-limit fallback. `memory_cap_bytes` in that file must equal `RUN_MEMORY_CAP_BYTES`. Each workload names its program, its `input`, its `stdin`, and the four limits.
 
-`make tasks` runs guest programs on the native Go host. Each task is a Go test. A pass is an exact match on every case that test chose, and `applied_steps` and `probes` are the sums. The metrics script calls `make tasks`, wrapped in `timeout(1)` for 1200 seconds, and stores `tasks.source` as `make tasks`. It records those rows once, from native Go. Each case keeps its own step, probe, and state limits, OS timeout, and memory cap. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
+`make problems` and `make langs` run on the native Go host. A problem pass is an exact stdout match on every case that test chose. A language pass is the same match on the shared cases. The metrics script calls each target, wrapped in `timeout(1)` for 1200 seconds. Schema 3 stores `problems.source` as `make problems` and `langs.source` as `make langs`. Schema 2 benches still store the older `make tasks` rows. Each run keeps its own step, probe, and state limits, OS timeout, and memory cap. Host benchmark workloads are unchanged. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
 
 Steps and probes are properties of the program and the host. Durations and resident memory are properties of the machine that ran `make metrics`. `machine` records that machine. An archived row converted from the old history has `machine: null` because that file did not record one.
 
@@ -35,11 +35,13 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | `2` |
+| `schema_version` | `3` for a new measurement. An archived bench may still be `2` |
 | `machine` | The machine that ran the script. Required |
-| `guests` | Object keyed by guest id |
-| `tasks` | The native Go task run. Required |
-| `benchmarks` | `{ "workloads": [ ... ] }`. Required |
+| `guests` | Object keyed by interpreter id. Rule lines for forth, lisp, basic, and brainfuck |
+| `tasks` | `null` on schema 3. Schema 2 benches still hold the old native Go task run |
+| `problems` | Schema 3. Native Go counters for each problem solution |
+| `langs` | Schema 3. Native Go counters for each language on the common cases |
+| `benchmarks` | `{ "workloads": [ ... ] }`. Required on `latest.json` |
 
 `latest.json` has no `commit`, `author`, or `timestamp`. The summary stamps the pull request head, or the merge commit when the site is built from that checkout, using `git rev-parse HEAD`.
 
@@ -47,13 +49,15 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | `2` |
+| `schema_version` | `2` or `3` |
 | `commit` | Full lowercase SHA of the commit that added the archived `latest.json`. It is the directory name |
 | `author` | `Name <email>` from `git log -1 --format=%an <%ae>` on that commit |
 | `timestamp` | That commit's author time, UTC, `YYYY-MM-DDTHH:MM:SSZ`. The `YYYY/MM/DD` directories are this date |
 | `machine` | The machine that produced the durations, or `null` when the row was not recorded by `make metrics` |
 | `guests` | Object keyed by guest id. Absent means that guest program was not in the commit |
-| `tasks` | `null` when this commit was not measured with `make tasks` |
+| `tasks` | Schema 2 task rows, or `null`. Schema 3 leaves this `null` |
+| `problems` | Schema 3. Native Go counters for each problem solution. Absent on schema 2 |
+| `langs` | Schema 3. Native Go counters for each language on the common cases. Absent on schema 2 |
 | `benchmarks` | `null` when this commit was not benchmarked. Otherwise `{ "workloads": [ ... ] }` |
 
 ## Machine
@@ -70,7 +74,7 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 | Field | Meaning |
 | --- | --- |
-| `program` | Path from the current `tasks/guests.toml` |
+| `program` | Path of the interpreter. Current paths are `langs/forth/forth.tpp`, `langs/lisp/lisp.tpp`, `langs/basic/basic.tpp`, and `examples/brainfuck/brainfuck.tpp` |
 | `rule_lines` | Rows from the current Python host `--list-rules`, or `null` |
 | `error` | Present only when `rule_lines` is `null`. The host could not parse that historical file |
 
@@ -78,7 +82,7 @@ Steps and probes are properties of the program and the host. Durations and resid
 
 ## Tasks
 
-`tasks.source` is `make tasks`. `tasks.host` is `go`. `tasks.environment` is `go native`. `tasks.results` has one object per task and guest. The rows come from `build/tasks/results.json`. A result whose host is not `go` is an error. Hosts are not repeated on the row.
+Schema 2 only. `tasks.source` is `make tasks`. `tasks.host` is `go`. `tasks.environment` is `go native`. `tasks.results` has one object per task and guest. A result whose host is not `go` is an error. Hosts are not repeated on the row. Schema 3 sets `tasks` to `null` and records `problems` and `langs` instead.
 
 | Field | Meaning |
 | --- | --- |
@@ -89,6 +93,27 @@ Steps and probes are properties of the program and the host. Durations and resid
 | `probes` | `probe_count` from the task JSON. Same null rules |
 
 `probe_count` is the `probes` field of the `--counts` JSON. A passing row has both numbers. An unsupported row has neither.
+
+## Problems and languages
+
+Schema 3. Both objects use `source`, `host`, `environment`, and `results`. `problems.source` is `make problems`. `langs.source` is `make langs`. `host` is `go`. `environment` is `go native`.
+
+Problem and language rows are the native Go measurement. Rankings and Pareto use those numbers. Every host also reports the same counters. `--counts` on every host stays `applied_steps` and `probes`. `--metrics` writes the object below. Rule count and rule chars are the trimmed rule rows, counted when that host parses the program.
+
+| Field | Meaning |
+| --- | --- |
+| `problem`, `solution` | Problem row. `solution` is the file name without `.tpp` |
+| `lang`, `program` | Language row. `program` is the interpreter path |
+| `status` | `pass` or `fail` |
+| `applied_steps` | Applied rewrites. `null` on fail |
+| `regex_evals` | Regex searches. A literal-prefix miss does not count. `null` on fail |
+| `regex_matches` | Searches that find a match. `null` on fail |
+| `state_bytes` | Sum of the UTF-8 state length at the start and after every applied rewrite. `null` on fail |
+| `state_peak` | Maximum of those lengths. `null` on fail |
+| `rule_count`, `rule_chars` | Trimmed rule rows and their UTF-8 bytes. A pass has both at least 1. Both are `null` on fail |
+| `duration_ms` | Wall clock. It is recorded and it is not a Pareto axis |
+
+A language row sums `applied_steps`, `regex_evals`, `regex_matches`, `state_bytes`, and `duration_ms` across the common cases. `state_peak` is the maximum. `rule_count` and `rule_chars` are the interpreter source.
 
 ## Workloads
 
@@ -117,11 +142,12 @@ The workloads are:
 | `hosts.HOST.memory_bytes` | Peak resident set size in bytes, or `null` when that commit did not record it |
 | `hosts.HOST.exit_code` | Process exit code. A recorded workload exited 0 |
 | `hosts.HOST.applied_steps`, `hosts.HOST.probes` | From `--counts`. Hosts that ran one workload must agree. A host missing from an older commit is a gap in the chart, not an error |
+| `hosts.HOST.regex_evals`, `regex_matches`, `state_bytes`, `state_peak`, `rule_count`, `rule_chars` | Schema 3 only, from `--metrics`. The same object every host writes. Each value must equal the `go` row. Schema 2 rows do not have these keys |
 | `hosts.HOST.host_timeout_seconds` | The `timeout(1)` budget for that host |
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "machine": {
     "os": "Linux",
     "release": "6.12.0",
@@ -130,20 +156,46 @@ The workloads are:
     "cpus": 4
   },
   "guests": {
-    "forth": { "program": "examples/forth/forth.tpp", "rule_lines": 45 }
+    "forth": { "program": "langs/forth/forth.tpp", "rule_lines": 86 }
   },
-  "tasks": {
-    "source": "make tasks",
+  "tasks": null,
+  "problems": {
+    "source": "make problems",
     "host": "go",
     "environment": "go native",
     "results": [
       {
-        "task": "factorial",
-        "guest": "lisp",
-        "pass": true,
+        "problem": "factorial",
+        "solution": "direct",
         "status": "pass",
         "applied_steps": 4,
-        "probes": 9
+        "regex_evals": 9,
+        "regex_matches": 4,
+        "state_bytes": 20,
+        "state_peak": 8,
+        "rule_count": 3,
+        "rule_chars": 40,
+        "duration_ms": 12
+      }
+    ]
+  },
+  "langs": {
+    "source": "make langs",
+    "host": "go",
+    "environment": "go native",
+    "results": [
+      {
+        "lang": "forth",
+        "program": "langs/forth/forth.tpp",
+        "status": "pass",
+        "applied_steps": 4,
+        "regex_evals": 9,
+        "regex_matches": 4,
+        "state_bytes": 20,
+        "state_peak": 8,
+        "rule_count": 86,
+        "rule_chars": 4000,
+        "duration_ms": 12
       }
     ]
   },
@@ -164,6 +216,12 @@ The workloads are:
             "environment": "go native",
             "applied_steps": 1,
             "probes": 51,
+            "regex_evals": 2,
+            "regex_matches": 1,
+            "state_bytes": 8,
+            "state_peak": 4,
+            "rule_count": 2,
+            "rule_chars": 20,
             "duration_ms": 40,
             "memory_bytes": 12000000,
             "exit_code": 0,

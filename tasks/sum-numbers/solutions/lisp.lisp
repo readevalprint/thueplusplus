@@ -1,5 +1,0 @@
-(let ((k (parse (readline))) (sum 0) (i 0))
-  (while (lt i k)
-    (set sum (add sum (parse (readline))))
-    (set i (add i 1)))
-  sum)

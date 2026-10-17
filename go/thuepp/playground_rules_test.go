@@ -58,37 +58,43 @@ type catalogFile struct {
 }
 
 func TestPlaygroundRuleCatalog(t *testing.T) {
-	root := filepath.Join("..", "..", "examples")
+	repo := filepath.Join("..", "..")
 	var files []catalogFile
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() || !strings.HasSuffix(path, ".tpp") {
+	var err error
+	for _, dir := range []string{"examples", "langs"} {
+		err = filepath.WalkDir(filepath.Join(repo, dir), func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || !strings.HasSuffix(path, ".tpp") {
+				return nil
+			}
+			text, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return readErr
+			}
+			rel, relErr := filepath.Rel(repo, path)
+			if relErr != nil {
+				return relErr
+			}
+			resources, errors := classifyPlaygroundRules(rulesBeforeSeparator(string(text)))
+			if resources == nil {
+				resources = []catalogResource{}
+			}
+			if errors == nil {
+				errors = []string{}
+			}
+			files = append(files, catalogFile{
+				Path:      filepath.ToSlash(rel),
+				Resources: resources,
+				Errors:    errors,
+			})
 			return nil
-		}
-		text, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(filepath.Join("..", ".."), path)
-		if err != nil {
-			return err
-		}
-		resources, errors := classifyPlaygroundRules(rulesBeforeSeparator(string(text)))
-		if resources == nil {
-			resources = []catalogResource{}
-		}
-		if errors == nil {
-			errors = []string{}
-		}
-		files = append(files, catalogFile{
-			Path:      filepath.ToSlash(rel),
-			Resources: resources,
-			Errors:    errors,
 		})
-		return nil
-	})
+		if err != nil {
+			break
+		}
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

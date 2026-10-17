@@ -10,19 +10,19 @@ export const projects: SandboxProject[] = [
     id: 'forth',
     name: 'Forth',
     description: 'A stack language. The script is the program input.',
-    program: 'examples/forth/forth.tpp',
+    program: 'langs/forth/forth.tpp',
   },
   {
     id: 'lisp',
     name: 'Lisp',
     description: 'A Lisp evaluator. The script is the program input.',
-    program: 'examples/lisp/lisp.tpp',
+    program: 'langs/lisp/lisp.tpp',
   },
   {
     id: 'basic',
     name: 'BASIC',
     description: 'A line-oriented BASIC. The script is the program input.',
-    program: 'examples/basic/basic.tpp',
+    program: 'langs/basic/basic.tpp',
   },
   {
     id: 'brainfuck',

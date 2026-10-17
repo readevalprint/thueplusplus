@@ -42,13 +42,16 @@ const MaxPatternAliasSubstitutionsPerLine = 10000
 const MaxExpandedPatternBytes = 1000000
 
 type Rule struct {
-	LHS         string
-	Pattern     *regexp.Regexp
-	Mids        []Mid
-	Operator    Operator
-	RHS         string
-	LineNumber  int
-	SourcePath  string
+	LHS        string
+	Pattern    *regexp.Regexp
+	Mids       []Mid
+	Operator   Operator
+	RHS        string
+	LineNumber int
+	SourcePath string
+	// Source is the trimmed rule row. Rule count and rule chars are
+	// properties of this text, not of a run.
+	Source      string
 	BuiltinName string
 	BuiltinArgs []string
 	// literalPrefix is text that begins every match. An empty prefix means
@@ -87,14 +90,23 @@ type TraceEvent struct {
 }
 
 type Interpreter struct {
-	Rules              []Rule
-	State              string
-	Bindings           map[string]*Binding
-	MaxEvals           *int
-	MaxStateBytes      *int
-	MaxSteps           *int
-	EvalCount          int
-	AppliedSteps       int
+	Rules         []Rule
+	State         string
+	Bindings      map[string]*Binding
+	MaxEvals      *int
+	MaxStateBytes *int
+	MaxSteps      *int
+	EvalCount     int
+	AppliedSteps  int
+	// RegexEvals counts regex searches during Run. A literal-prefix miss
+	// does not search. RegexMatches counts searches that find a match.
+	// StateBytes is the sum of the UTF-8 state length at the start of Run
+	// and after every applied rewrite. StatePeak is the maximum of those
+	// lengths. Run resets these four. EvalCount is not reset.
+	RegexEvals         int
+	RegexMatches       int
+	StateBytes         int
+	StatePeak          int
 	Debug              bool
 	Stdout             io.Writer
 	Stderr             io.Writer
@@ -537,7 +549,43 @@ func parseRule(line string, lineNumber int, sourcePath string) (*Rule, error) {
 			return nil, err
 		}
 	}
-	return &Rule{LHS: lhs, Pattern: re, Mids: mids, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, BuiltinName: builtinName, BuiltinArgs: builtinArgs, literalPrefix: literalPrefix}, nil
+	return &Rule{LHS: lhs, Pattern: re, Mids: mids, Operator: op, RHS: rhs, LineNumber: lineNumber, SourcePath: sourcePath, Source: trimmed, BuiltinName: builtinName, BuiltinArgs: builtinArgs, literalPrefix: literalPrefix}, nil
+}
+
+// RuleSourceStats reports the compiled rule count and the total UTF-8 bytes
+// of the trimmed rule rows.
+func (i *Interpreter) RuleSourceStats() (count int, chars int) {
+	for _, rule := range i.Rules {
+		count++
+		chars += len(rule.Source)
+	}
+	return count, chars
+}
+
+// RunMetrics is the --metrics JSON object. Field order is the file order.
+type RunMetrics struct {
+	AppliedSteps int `json:"applied_steps"`
+	RegexEvals   int `json:"regex_evals"`
+	RegexMatches int `json:"regex_matches"`
+	StateBytes   int `json:"state_bytes"`
+	StatePeak    int `json:"state_peak"`
+	RuleCount    int `json:"rule_count"`
+	RuleChars    int `json:"rule_chars"`
+}
+
+// Metrics returns the counters for the most recent Run. Rule count and rule
+// chars come from the trimmed rule rows. EvalCount is not included.
+func (i *Interpreter) Metrics() RunMetrics {
+	rules, chars := i.RuleSourceStats()
+	return RunMetrics{
+		AppliedSteps: i.AppliedSteps,
+		RegexEvals:   i.RegexEvals,
+		RegexMatches: i.RegexMatches,
+		StateBytes:   i.StateBytes,
+		StatePeak:    i.StatePeak,
+		RuleCount:    rules,
+		RuleChars:    chars,
+	}
 }
 
 func (i *Interpreter) ApplyInputOverride(value string) error {
@@ -1173,9 +1221,22 @@ type stateRow struct {
 	index      int
 }
 
+func (i *Interpreter) noteState() {
+	n := len(i.State)
+	i.StateBytes += n
+	if n > i.StatePeak {
+		i.StatePeak = n
+	}
+}
+
 func (i *Interpreter) Run() (int, error) {
 	i.AppliedSteps = 0
+	i.RegexEvals = 0
+	i.RegexMatches = 0
+	i.StateBytes = 0
+	i.StatePeak = 0
 	i.Trace = nil
+	i.noteState()
 	for {
 		var rows []stateRow
 		parts := strings.Split(i.State, "\n")
@@ -1193,7 +1254,7 @@ func (i *Interpreter) Run() (int, error) {
 			}
 			i.EvalCount++
 
-			match, ok := findMatch(rule, i.State)
+			match, ok := i.findMatch(rule, i.State)
 			if !ok {
 				continue
 			}
@@ -1307,6 +1368,7 @@ func (i *Interpreter) Run() (int, error) {
 				}
 				return ExitRuntime, err
 			}
+			i.noteState()
 			i.recordTrace(rule, ruleIndex, match, stateBefore, repl, nil)
 			i.AppliedSteps++
 			if i.MaxSteps != nil && i.AppliedSteps >= *i.MaxSteps {
@@ -1323,8 +1385,8 @@ func (i *Interpreter) Run() (int, error) {
 	}
 }
 
-func findMatch(rule Rule, state string) (matchInfo, bool) {
-	return findMatchFrom(rule, state, 0)
+func (i *Interpreter) findMatch(rule Rule, state string) (matchInfo, bool) {
+	return i.findMatchFrom(rule, state, 0)
 }
 
 // literalPrefixOf is the literal text that begins every match of lhs.
@@ -1349,7 +1411,7 @@ func literalPrefixOf(lhs string) string {
 	return prefix
 }
 
-func findMatchFrom(rule Rule, state string, pos int) (matchInfo, bool) {
+func (i *Interpreter) findMatchFrom(rule Rule, state string, pos int) (matchInfo, bool) {
 	if pos > len(state) {
 		return matchInfo{}, false
 	}
@@ -1360,10 +1422,12 @@ func findMatchFrom(rule Rule, state string, pos int) (matchInfo, bool) {
 	if rule.literalPrefix != "" && !strings.Contains(suffix, rule.literalPrefix) {
 		return matchInfo{}, false
 	}
+	i.RegexEvals++
 	idx := rule.Pattern.FindStringSubmatchIndex(suffix)
 	if idx == nil {
 		return matchInfo{}, false
 	}
+	i.RegexMatches++
 	names := rule.Pattern.SubexpNames()
 	groups := map[string]string{}
 	for n := 1; n < len(names) && 2*n+1 < len(idx); n++ {

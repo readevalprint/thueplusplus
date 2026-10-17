@@ -19,7 +19,7 @@ def main() -> None:
     for program in programs:
         rel = example_runner.rel(program)
         parts = Path(rel).parts
-        if parts and parts[0] == "examples" and len(parts) > 1 and parts[1] in example_runner.GUEST_DIRS:
+        if parts and parts[0] == "langs" and len(parts) > 1 and parts[1] in example_runner.LANG_DIRS:
             raise SystemExit(f"core tier includes guest program {rel}")
     guests = example_runner.guest_work()
     if len(guests) < 100:

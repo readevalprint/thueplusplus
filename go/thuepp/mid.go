@@ -146,10 +146,12 @@ func (i *Interpreter) applyMids(rule Rule, groups map[string]string) (map[string
 		if err != nil {
 			return out, false, fmt.Errorf("Line %d: Invalid ::| regex '%s'", rule.LineNumber, expanded)
 		}
+		i.RegexEvals++
 		idx := re.FindStringSubmatchIndex(i.State)
 		if idx == nil {
 			return out, false, nil
 		}
+		i.RegexMatches++
 		names := re.SubexpNames()
 		for n := 1; n < len(names) && 2*n+1 < len(idx); n++ {
 			if names[n] != "" && idx[2*n] >= 0 {

@@ -21,6 +21,7 @@ func main() {
 	var inputOverride *string
 	ruleCoveragePath := ""
 	countsPath := ""
+	metricsPath := ""
 
 	for idx := 1; idx < len(args); {
 		arg := args[idx]
@@ -50,6 +51,16 @@ func main() {
 			idx += 2
 		case strings.HasPrefix(arg, "--counts="):
 			countsPath = strings.TrimPrefix(arg, "--counts=")
+			idx++
+		case arg == "--metrics":
+			if idx+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "Error: --metrics requires an argument")
+				os.Exit(1)
+			}
+			metricsPath = args[idx+1]
+			idx += 2
+		case strings.HasPrefix(arg, "--metrics="):
+			metricsPath = strings.TrimPrefix(arg, "--metrics=")
 			idx++
 		case arg == "--input":
 			if idx+1 >= len(args) {
@@ -139,6 +150,12 @@ func main() {
 			code = 1
 		}
 	}
+	if metricsPath != "" {
+		if werr := writeMetrics(metricsPath, interp); werr != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to write metrics: %v\n", werr)
+			code = 1
+		}
+	}
 	if err := interp.WriteRuleCoverage(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to write rule coverage: %v\n", err)
 		code = 1
@@ -159,6 +176,17 @@ func writeCounts(path string, appliedSteps int, probes int) error {
 		AppliedSteps int `json:"applied_steps"`
 		Probes       int `json:"probes"`
 	}{AppliedSteps: appliedSteps, Probes: probes})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(payload, '\n'), 0o644)
+}
+
+func writeMetrics(path string, interp *thuepp.Interpreter) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	payload, err := json.Marshal(interp.Metrics())
 	if err != nil {
 		return err
 	}

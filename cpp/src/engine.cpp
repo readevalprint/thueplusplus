@@ -1,5 +1,6 @@
 #include "thuepp/thuepp.hpp"
 
+#include "prefix.hpp"
 #include "rational.hpp"
 
 #include <re2/re2.h>
@@ -67,6 +68,8 @@ struct Rule {
   std::string rhs;
   int line_number = 0;
   std::string source_path;
+  std::string source;
+  std::string literal_prefix;
   std::string builtin_name;
   std::vector<std::string> builtin_args;
 };
@@ -1238,6 +1241,8 @@ std::unique_ptr<Rule> ParseRule(const std::string& line, int line_number, const 
   rule->rhs = rhs;
   rule->line_number = line_number;
   rule->source_path = source_path;
+  rule->source = trimmed;
+  rule->literal_prefix = LiteralPrefix(lhs);
   if (rule->op == Op::kBuiltin) {
     std::set<std::string> names;
     for (const auto& item : rule->pattern->CapturingGroupNames()) {
@@ -1972,6 +1977,10 @@ struct Interpreter::Impl {
   std::optional<int64_t> max_steps = kDefaultMaxSteps;
   int64_t eval_count = 0;
   int64_t applied_steps = 0;
+  int64_t regex_evals = 0;
+  int64_t regex_matches = 0;
+  int64_t state_bytes = 0;
+  int64_t state_peak = 0;
   bool debug = false;
   bool trace_enabled = false;
   std::vector<TraceEvent> trace;
@@ -2090,6 +2099,14 @@ struct Interpreter::Impl {
     trace.push_back(std::move(event));
   }
 
+  void NoteState() {
+    int64_t size = static_cast<int64_t>(state.size());
+    state_bytes += size;
+    if (size > state_peak) {
+      state_peak = size;
+    }
+  }
+
   void SetState(const std::string& next) {
     if (max_state_bytes && static_cast<int64_t>(next.size()) > *max_state_bytes) {
       throw LimitError(LimitKind::kState, kExitStateLimit,
@@ -2118,9 +2135,11 @@ struct Interpreter::Impl {
         throw std::runtime_error("Line " + std::to_string(rule.line_number) + ": Invalid ::| regex '" + expanded + "'");
       }
       Match mid_match;
+      ++regex_evals;
       if (!FindMatch(*compiled, state, mid_match)) {
         return {out, false};
       }
+      ++regex_matches;
       for (const auto& item : mid_match.groups) {
         out[item.first] = item.second;
       }
@@ -2130,7 +2149,12 @@ struct Interpreter::Impl {
 
   int Run() {
     applied_steps = 0;
+    regex_evals = 0;
+    regex_matches = 0;
+    state_bytes = 0;
+    state_peak = 0;
     trace.clear();
+    NoteState();
     while (true) {
       bool applied = false;
       for (size_t rule_index = 0; rule_index < rules.size(); ++rule_index) {
@@ -2140,10 +2164,15 @@ struct Interpreter::Impl {
                             "Evaluation step limit (" + std::to_string(*max_evals) + ") exceeded");
         }
         ++eval_count;
+        if (!rule.literal_prefix.empty() && state.find(rule.literal_prefix) == std::string::npos) {
+          continue;
+        }
+        ++regex_evals;
         Match match;
         if (!FindMatch(*rule.pattern, state, match)) {
           continue;
         }
+        ++regex_matches;
         std::string state_before = state;
         std::map<std::string, std::string> groups;
         bool mid_ok = false;
@@ -2270,6 +2299,7 @@ struct Interpreter::Impl {
           RecordTrace(rule, static_cast<int>(rule_index), match, state_before, repl, std::nullopt, err.what());
           throw;
         }
+        NoteState();
         RecordTrace(rule, static_cast<int>(rule_index), match, state_before, repl, std::nullopt, "");
         ++applied_steps;
         if (max_steps && applied_steps >= *max_steps) {
@@ -2336,6 +2366,19 @@ void Interpreter::ApplyInputOverride(std::string value) { impl_->state = std::mo
 int Interpreter::Run() { return impl_->Run(); }
 int64_t Interpreter::eval_count() const { return impl_->eval_count; }
 int64_t Interpreter::applied_steps() const { return impl_->applied_steps; }
+RunMetrics Interpreter::metrics() const {
+  RunMetrics metrics;
+  metrics.applied_steps = impl_->applied_steps;
+  metrics.regex_evals = impl_->regex_evals;
+  metrics.regex_matches = impl_->regex_matches;
+  metrics.state_bytes = impl_->state_bytes;
+  metrics.state_peak = impl_->state_peak;
+  metrics.rule_count = static_cast<int64_t>(impl_->rules.size());
+  for (const auto& rule : impl_->rules) {
+    metrics.rule_chars += static_cast<int64_t>(rule->source.size());
+  }
+  return metrics;
+}
 const std::string& Interpreter::state() const { return impl_->state; }
 const std::vector<TraceEvent>& Interpreter::trace() const { return impl_->trace; }
 

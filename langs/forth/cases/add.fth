@@ -1,0 +1,1 @@
+input input + . cr halt

@@ -40,6 +40,7 @@ thuepp <program.tpp> [flags...]
 | `--proc:NAME COMMAND` | Bind `NAME` to a process. The next argument is the command. |
 | `--rule-coverage PATH` | TSV `source.tpp:line<TAB>count`, sorted. |
 | `--counts PATH` | `{"applied_steps":N,"probes":N}` after a run. Not written for `--list-rules`. |
+| `--metrics PATH` | The shared counters JSON. `Interpreter::metrics` returns the same value. Not written for `--list-rules`. |
 | `--list-rules` | TSV `source.tpp:line<TAB>lhs`. Does not run. |
 
 `--flag VALUE` and `--flag=value` both work. No arguments exits 2. An unknown argument exits 1 with `Error: Unknown argument: ...`. A non-integer limit exits 2 and prints the Go `strconv.Atoi` message with no `Error:` prefix. A missing program exits 1 with `Error: File not found: <absolute path>`.

@@ -9,13 +9,14 @@ mod builtin;
 mod interpreter;
 mod limits;
 mod pattern;
+mod prefix;
 mod resource;
 mod template;
 
 pub use interpreter::{
     display_path, format_trace, Error, Interpreter, LimitError, LimitKind, ListedRule, RunFailure,
-    TraceEvent, DEFAULT_MAX_EVALS, DEFAULT_MAX_STATE_BYTES, DEFAULT_MAX_STEPS, EXIT_EVAL_LIMIT,
-    EXIT_READ_TIMEOUT, EXIT_RUNTIME, EXIT_STATE_LIMIT, EXIT_STEP_LIMIT,
+    RunMetrics, TraceEvent, DEFAULT_MAX_EVALS, DEFAULT_MAX_STATE_BYTES, DEFAULT_MAX_STEPS,
+    EXIT_EVAL_LIMIT, EXIT_READ_TIMEOUT, EXIT_RUNTIME, EXIT_STATE_LIMIT, EXIT_STEP_LIMIT,
 };
 pub use limits::{parse_atoi, parse_limit};
 pub use pattern::Operator;

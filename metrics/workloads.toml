@@ -46,7 +46,7 @@ timeout_seconds = 10
 
 [[workload]]
 id = "guest"
-program = "examples/forth/forth.tpp"
+program = "langs/forth/forth.tpp"
 input = "1 2 + ."
 stdin = ""
 max_steps = 100000
