@@ -1,0 +1,12 @@
+{
+  "name": "in",
+  "reads": {
+    "stdin": [
+      "in"
+    ]
+  },
+  "writes": {
+    "stdout": "ni\n"
+  },
+  "exit_code": 0
+}

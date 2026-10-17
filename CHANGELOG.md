@@ -88,6 +88,7 @@ Versions are the Thue++ spec versions in `SPEC_VERSION`.
 
 ### Fixed
 
+- `reverse-a-string` no longer flakes when a rapid draw is the word `in`. That word was the direct solution's read marker, so the read rule matched the input and the next read hit EOF. The generator refuses `in`, and `in` is a fixed case that prints `ni`. The direct solution now reads on `@`, which is outside the letter alphabet.
 - The playground rule catalog includes the unicode trace programs. The install scene fits one socket per registered host inside the frame.
 - Trace events match on every host. A matched rule that fails before replacement records the event, leaves the state unchanged, and then returns. A state-limit stop records the rejected replacement and then returns 12. `matchStart` and `matchEnd` are UTF-8 byte offsets into `stateBefore`. `--trace` writes non-ASCII text as UTF-8, and U+2028 and U+2029 as `\u2028` and `\u2029`. Python used to report code-point offsets and `\uXXXX` for every non-ASCII character. Rust and the Node CLI used to leave U+2028 and U+2029 unescaped.
 - A solution run that exits before a resident-memory sample is taken runs again, up to five times. `make metrics` still fails when a passing host reports no resident memory after that.
