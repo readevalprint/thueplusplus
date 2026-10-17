@@ -1,7 +1,7 @@
-module github.com/readevalprint/thueplusplus/tasks
+module github.com/thuelang/thueplusplus/tasks
 
 go 1.24
 
-require github.com/readevalprint/thueplusplus/go v0.0.0
+require github.com/thuelang/thueplusplus/go v0.0.0
 
-replace github.com/readevalprint/thueplusplus/go => ../go
+replace github.com/thuelang/thueplusplus/go => ../go

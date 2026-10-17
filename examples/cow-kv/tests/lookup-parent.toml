@@ -1,5 +1,5 @@
 name = "transaction lookup falls through top frame to parent"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "begin; set a parent; begin; get a"
 
 [expect]

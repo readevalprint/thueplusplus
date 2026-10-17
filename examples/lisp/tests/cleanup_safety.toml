@@ -2,7 +2,7 @@
 # These intentionally pin public behavior touched by let, closure binding,
 # env-return, strict-arg, primitive-arity, special-catcher, and code-as-data
 # simplifications without depending on internal V* constructors.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

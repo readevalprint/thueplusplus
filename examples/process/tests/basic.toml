@@ -1,4 +1,4 @@
-program = "../process.tpp"
+program = "../process.thue"
 timeout = 10
 
 # Keep this shell command simple: both implementations prefix

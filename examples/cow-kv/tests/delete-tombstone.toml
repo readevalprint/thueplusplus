@@ -1,5 +1,5 @@
 name = "transactional delete tombstone hides parent value"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "set a base; begin; del a; get a; discard; get a; begin; del a; commit; get a"
 
 [expect]

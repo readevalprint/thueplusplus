@@ -1,4 +1,4 @@
-program = "../generated-rule-inert.tpp"
+program = "../generated-rule-inert.thue"
 
 [[case]]
 name = "generated rule text remains inert data"

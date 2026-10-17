@@ -2,17 +2,17 @@
 
 ## Inputs read
 
-- `/tmp/thuepp-lisp-pda/BI_BJ_BK_LEARNINGS.md`
+- `/tmp/thue-lisp-pda/BI_BJ_BK_LEARNINGS.md`
 - skill reference `references/bi-bj-bk-bidirectional-pipeline.md`
-- `/tmp/thuepp-lisp-pda/attempt-bj-bidir-arrays-compare-bool.tpp`
-- `python/thuepp.py` runtime source around holistic row probing and rule application
+- `/tmp/thue-lisp-pda/attempt-bj-bidir-arrays-compare-bool.thue`
+- `python/thue.py` runtime source around holistic row probing and rule application
 
 ## Attempt BL: generic closure/apply lexical env
 
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bl-generic-closure-apply.tpp
+/tmp/thue-lisp-pda/attempt-bl-generic-closure-apply.thue
 ```
 
 Purpose:
@@ -96,7 +96,7 @@ A greedy `KCALL\[(?<args>.*)\]` captured across the outer continuation and mangl
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bm-let2-env-mul.tpp
+/tmp/thue-lisp-pda/attempt-bm-let2-env-mul.thue
 ```
 
 Purpose:
@@ -120,10 +120,10 @@ E[let L[ L[x init1] L[y init2] ] body | k]
 Verification:
 
 ```text
-python3 /tmp/thuepp-lisp-pda/run_hard_acceptance.py /tmp/thuepp-lisp-pda/attempt-bm-let2-env-mul.tpp
+python3 /tmp/thue-lisp-pda/run_hard_acceptance.py /tmp/thue-lisp-pda/attempt-bm-let2-env-mul.thue
 => 15/15 passed
 
-python3 /tmp/thuepp-lisp-pda/run_cases.py /tmp/thuepp-lisp-pda/expanded_acceptance_cases.tsv /tmp/thuepp-lisp-pda/attempt-bm-let2-env-mul.tpp
+python3 /tmp/thue-lisp-pda/run_cases.py /tmp/thue-lisp-pda/expanded_acceptance_cases.tsv /tmp/thue-lisp-pda/attempt-bm-let2-env-mul.thue
 => 6/6 passed
 ```
 
@@ -140,7 +140,7 @@ Additional ad-hoc confirmations:
 
 ## Tradeoffs / remaining caveats
 
-BM reaches the current hard acceptance matrix and a small expanded suite, but it is still a probe, not yet a polished canonical `examples/lisp/lisp.tpp` replacement.
+BM reaches the current hard acceptance matrix and a small expanded suite, but it is still a probe, not yet a polished canonical `examples/lisp/lisp.thue` replacement.
 
 Known limitations:
 

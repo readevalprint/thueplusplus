@@ -1,5 +1,5 @@
 name = "guess number with validation and high low hints"
-program = "../guess-number.tpp"
+program = "../guess-number.thue"
 stdin = "x\n3\n8\n7\n"
 timeout = 10
 

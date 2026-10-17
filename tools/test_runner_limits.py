@@ -40,7 +40,7 @@ def test_rejects_unlimited_without_opt_in() -> None:
         example_runner.validate_manifest(
             path,
             {
-                "program": "../max-steps.tpp",
+                "program": "../max-steps.thue",
                 "case": [
                     {
                         "name": "open",
@@ -61,7 +61,7 @@ def test_rejects_two_opt_ins() -> None:
         example_runner.validate_manifest(
             path,
             {
-                "program": "../max-steps.tpp",
+                "program": "../max-steps.thue",
                 "case": [
                     {
                         "name": "one",
@@ -89,7 +89,7 @@ def test_rejects_manifest_wide_opt_in() -> None:
         example_runner.validate_manifest(
             path,
             {
-                "program": "../max-steps.tpp",
+                "program": "../max-steps.thue",
                 "allow_unlimited": True,
                 "args": ["--max-steps", "unlimited"],
                 "case": [
@@ -121,7 +121,7 @@ def test_injected_limits_are_explicit() -> None:
 
 
 def test_does_not_override_manifest_budget() -> None:
-    args = apply_explicit_limits(["prog.tpp", "--max-evals", "160000", "--max-steps", "3"])
+    args = apply_explicit_limits(["prog.thue", "--max-evals", "160000", "--max-steps", "3"])
     if args.count("--max-evals") != 1 or args.count("--max-steps") != 1:
         raise SystemExit(f"FAIL overrode manifest limits: {args}")
     if "--max-state-bytes" not in args:

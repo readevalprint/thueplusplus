@@ -3,7 +3,7 @@ package hello
 import (
 	"testing"
 
-	"github.com/readevalprint/thueplusplus/tasks/harness"
+	"github.com/thuelang/thueplusplus/tasks/harness"
 )
 
 func TestHelloWorld(t *testing.T) {

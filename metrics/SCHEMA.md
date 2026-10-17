@@ -103,12 +103,12 @@ The workloads are:
 | `regex` | Anchored patterns and character classes that miss before a short chain hits |
 | `io` | Eight line reads and writes |
 | `guest` | The Forth program, with the fixed input `1 2 + .` |
-| `rewrite` | The earlier single program `metrics/benchmark.tpp`. New runs do not record it |
+| `rewrite` | The earlier single program `metrics/benchmark.thue`. New runs do not record it |
 
 | Field | Meaning |
 | --- | --- |
 | `id` | Lowercase slug |
-| `program` | Repo-relative `.tpp` path |
+| `program` | Repo-relative `.thue` path |
 | `input` | `--input` text. Empty means the program's own initial state |
 | `stdin` | Bytes written to standard input. Empty means no input |
 | `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes` | The limits on the command and the process |
@@ -130,7 +130,7 @@ The workloads are:
     "cpus": 4
   },
   "guests": {
-    "forth": { "program": "examples/forth/forth.tpp", "rule_lines": 45 }
+    "forth": { "program": "examples/forth/forth.thue", "rule_lines": 45 }
   },
   "tasks": {
     "source": "make tasks",
@@ -151,7 +151,7 @@ The workloads are:
     "workloads": [
       {
         "id": "probe-cost",
-        "program": "metrics/workloads/probe-cost.tpp",
+        "program": "metrics/workloads/probe-cost.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,

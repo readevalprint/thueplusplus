@@ -77,7 +77,7 @@ const triggerClass = 'h-8 bg-transparent px-2 font-mono text-[13px] lowercase te
     </nav>
     <div class="flex-1" />
     <ThemeToggle />
-    <a class="text-ash hover:text-bone lowercase transition-colors duration-150" data-test="github-link" href="https://github.com/readevalprint/thueplusplus" rel="noreferrer">github</a>
+    <a class="text-ash hover:text-bone lowercase transition-colors duration-150" data-test="github-link" href="https://github.com/thuelang/thueplusplus" rel="noreferrer">github</a>
     <Sheet v-model:open="menuOpen">
       <SheetTrigger as-child>
         <Button variant="ghost" size="icon" class="lg:hidden" data-test="menu-toggle" aria-label="Open menu" :aria-expanded="menuOpen">

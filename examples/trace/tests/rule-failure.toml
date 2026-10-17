@@ -1,4 +1,4 @@
-program = "../rule-failure.tpp"
+program = "../rule-failure.thue"
 
 [[case]]
 name = "division result is written"

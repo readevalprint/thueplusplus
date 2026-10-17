@@ -6,7 +6,7 @@ memory_cap_bytes = 268435456
 
 [[workload]]
 id = "probe-cost"
-program = "metrics/workloads/probe-cost.tpp"
+program = "metrics/workloads/probe-cost.thue"
 input = ""
 stdin = ""
 max_steps = 20
@@ -16,7 +16,7 @@ timeout_seconds = 10
 
 [[workload]]
 id = "state-rewrite"
-program = "metrics/workloads/state-rewrite.tpp"
+program = "metrics/workloads/state-rewrite.thue"
 input = ""
 stdin = ""
 max_steps = 20
@@ -26,7 +26,7 @@ timeout_seconds = 10
 
 [[workload]]
 id = "regex"
-program = "metrics/workloads/regex.tpp"
+program = "metrics/workloads/regex.thue"
 input = ""
 stdin = ""
 max_steps = 20
@@ -36,7 +36,7 @@ timeout_seconds = 10
 
 [[workload]]
 id = "io"
-program = "metrics/workloads/io.tpp"
+program = "metrics/workloads/io.thue"
 input = ""
 stdin = "alpha\nbeta\ngamma\ndelta\nepsilon\nzeta\neta\ntheta\n"
 max_steps = 100
@@ -46,7 +46,7 @@ timeout_seconds = 10
 
 [[workload]]
 id = "guest"
-program = "examples/forth/forth.tpp"
+program = "examples/forth/forth.thue"
 input = "1 2 + ."
 stdin = ""
 max_steps = 100000

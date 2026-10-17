@@ -128,12 +128,12 @@ def _main() -> int:
             raise BackfillError(f"blob map for {guest['program']} disagrees with HEAD")
 
     cache: dict[str, tuple[int | None, str | None]] = {}
-    with tempfile.TemporaryDirectory(prefix="thuepp-rule-lines-") as tmpname:
+    with tempfile.TemporaryDirectory(prefix="thue-rule-lines-") as tmpname:
         tmp = Path(tmpname)
 
         def rule_lines(blob: str) -> tuple[int | None, str | None]:
             if blob not in cache:
-                target = tmp / f"{blob}.tpp"
+                target = tmp / f"{blob}.thue"
                 completed = git(["cat-file", "blob", blob], text=False)
                 if completed.returncode != 0:
                     raise BackfillError(f"git cat-file {blob} failed")

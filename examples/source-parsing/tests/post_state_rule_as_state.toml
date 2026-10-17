@@ -1,4 +1,4 @@
-program = "../post-state-rule-as-state.tpp"
+program = "../post-state-rule-as-state.thue"
 
 [expect]
 exit_code = 0

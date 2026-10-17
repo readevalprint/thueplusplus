@@ -1,4 +1,4 @@
-program = "../generated-substitution-inert.tpp"
+program = "../generated-substitution-inert.thue"
 
 [[case]]
 name = "generated substitution rule text remains inert data"

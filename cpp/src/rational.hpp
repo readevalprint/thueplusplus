@@ -1,8 +1,8 @@
 // Exact rationals for the numeric builtins. Canonical form matches Go's big.Rat:
 // reduced, positive denominator, integer when the denominator is 1, never -0.
 
-#ifndef THUEPP_RATIONAL_HPP_
-#define THUEPP_RATIONAL_HPP_
+#ifndef THUE_RATIONAL_HPP_
+#define THUE_RATIONAL_HPP_
 
 #include <algorithm>
 #include <cstdint>
@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace thuepp {
+namespace thue {
 namespace rat {
 namespace {
 
@@ -423,6 +423,6 @@ inline Rational Div(const Rational& a, const Rational& b) {
 
 }  // namespace
 }  // namespace rat
-}  // namespace thuepp
+}  // namespace thue
 
-#endif  // THUEPP_RATIONAL_HPP_
+#endif  // THUE_RATIONAL_HPP_

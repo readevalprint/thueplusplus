@@ -2,8 +2,8 @@
 
 ## Source/context read
 
-- Re-read `python/thuepp.py` around rule parsing, pattern expansion, PCT encode/decode, `::%`, builtins, and whole-document matching.
-- Re-read current `examples/lisp/lisp.tpp`; it is still a small scalar reducer and its comments are stale relative to the whole-document runtime.
+- Re-read `python/thue.py` around rule parsing, pattern expansion, PCT encode/decode, `::%`, builtins, and whole-document matching.
+- Re-read current `examples/lisp/lisp.thue`; it is still a small scalar reducer and its comments are stale relative to the whole-document runtime.
 - Re-read prior durable learnings: arbitrary parser/evaluator probes, BD arrays, BE/BF boundary adapters, BI/BJ/BK bidirectional parser, BL/BM closures, BN let/env forms, dynamic rule lifecycle, K-stream continuations, and dynamic-rule acceptance probes.
 
 ## Implementation facts that mattered this turn
@@ -15,7 +15,7 @@
 
 ## Attempt comparison
 
-### BO: `/tmp/thuepp-lisp-pda/bo-lisp.tpp`
+### BO: `/tmp/thue-lisp-pda/bo-lisp.thue`
 
 Base: BN hard-acceptance trunk plus two small edge fixes:
 
@@ -27,13 +27,13 @@ Base: BN hard-acceptance trunk plus two small edge fixes:
 Verification:
 
 ```text
-python3 /tmp/thuepp-lisp-pda/run_hard_acceptance.py /tmp/thuepp-lisp-pda/bo-lisp.tpp
+python3 /tmp/thue-lisp-pda/run_hard_acceptance.py /tmp/thue-lisp-pda/bo-lisp.thue
 => 15/15 passed
 
-python3 /tmp/thuepp-lisp-pda/run_cases.py /tmp/thuepp-lisp-pda/expanded_acceptance_cases.tsv /tmp/thuepp-lisp-pda/bo-lisp.tpp
+python3 /tmp/thue-lisp-pda/run_cases.py /tmp/thue-lisp-pda/expanded_acceptance_cases.tsv /tmp/thue-lisp-pda/bo-lisp.thue
 => 6/6 passed
 
-/tmp/thuepp-lisp-pda/bo_edge_cases.tsv custom runner
+/tmp/thue-lisp-pda/bo_edge_cases.tsv custom runner
 => 8/8 passed
 ```
 
@@ -59,7 +59,7 @@ Tradeoffs:
 - Bad: binding-stream parsing still relies on encoded binding node boundaries and a regex that excludes `%5D` for initializer splitting.
 - Bad: parser/framer is still static inside-out freezing, not dynamic node-local rule lifecycle.
 
-### BP: `/tmp/thuepp-lisp-pda/attempt-bp-unified-env-entry.tpp`
+### BP: `/tmp/thue-lisp-pda/attempt-bp-unified-env-entry.thue`
 
 Change: enter top-level lists as `EENV[payload||KDONE]` instead of `E[payload|KDONE]`.
 
@@ -84,7 +84,7 @@ Learning:
 - `let` is only implemented on the top-level `E` route. A true unification needs an env-aware `let` iterator and all demanded list evaluation must carry env consistently.
 - This validates BN's caveat: production should converge around one `EV/RET/APPLY` shape, but it must be designed deliberately, not by changing the entry rule.
 
-### BQ: `/tmp/thuepp-lisp-pda/attempt-bq-generated-helper-sketch.tpp`
+### BQ: `/tmp/thue-lisp-pda/attempt-bq-generated-helper-sketch.thue`
 
 Near-BN behavior-holding file with comments marking the dynamic-node-local direction. It passes 15/15 after the same BO empty-head/error lifecycle fixes.
 
@@ -93,7 +93,7 @@ Tradeoff:
 - Useful as a checkpoint file if we next start replacing static sections with dynamic helpers incrementally.
 - Not materially different enough to claim architectural progress by itself.
 
-### BR: `/tmp/thuepp-lisp-pda/attempt-br-dynamic-node-local-mini.tpp`
+### BR: `/tmp/thue-lisp-pda/attempt-br-dynamic-node-local-mini.thue`
 
 Tiny dynamic helper proof, not full acceptance.
 
@@ -122,7 +122,7 @@ Tradeoffs:
 Use:
 
 ```text
-/tmp/thuepp-lisp-pda/bo-lisp.tpp
+/tmp/thue-lisp-pda/bo-lisp.thue
 ```
 
 It currently satisfies the stated hard acceptance matrix and expanded edge probes without the BE/BF fixed-surface boundary adapters.

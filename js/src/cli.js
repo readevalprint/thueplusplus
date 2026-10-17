@@ -6,7 +6,7 @@ import { writeFileSync, readFileSync, writeSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { fileURLToPath } from 'node:url'
-import { initThuePP } from './node.js'
+import { initThue } from './node.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const HEADER_BYTES = 12
@@ -24,9 +24,9 @@ stdinWorker.postMessage({ sab: stdinSab })
 async function main() {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const wasmPath = process.env.THUEPP_WASM || resolve(here, '..', '..', 'build', 'thuepp.wasm')
+    const wasmPath = process.env.THUE_WASM || resolve(here, '..', '..', 'build', 'thue.wasm')
     const sourceText = readProgram(options.program)
-    const thuepp = await initThuePP({ wasmPath })
+    const thue = await initThue({ wasmPath })
     const resources = {
       stdin: { readLine: (timeoutSeconds) => readStdinLine(timeoutSeconds) },
       stdout: { write: (content) => { writeSync(1, String(content)); return '' } },
@@ -52,7 +52,7 @@ async function main() {
       resources,
     }
     if (Object.prototype.hasOwnProperty.call(options, 'input')) runOptions.input = options.input
-    const result = await thuepp.run(runOptions)
+    const result = await thue.run(runOptions)
     if (options.ruleCoverage) writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
     if (options.counts && !options.listRules) writeCounts(options.counts, result)
     process.stdout.write(result.stdout || '')
@@ -70,7 +70,7 @@ async function main() {
 
 function parseArgs(argv) {
   if (argv.length === 0) {
-    process.stderr.write('usage: thuepp <program> [--proc:<name> <command>]... [--input <state>] [options]\n')
+    process.stderr.write('usage: thue <program> [--proc:<name> <command>]... [--input <state>] [options]\n')
     process.exit(2)
   }
   const options = { program: resolve(argv[0]), procs: [], debug: false, listRules: false }

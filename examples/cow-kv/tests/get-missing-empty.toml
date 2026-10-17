@@ -1,5 +1,5 @@
 name = "missing key outside transaction returns nil"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "get absent"
 
 [expect]

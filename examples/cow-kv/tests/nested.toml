@@ -1,5 +1,5 @@
 name = "nested transactions commit and discard independently"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "set a root; begin; set a one; begin; set a two; get a; discard; get a; begin; set b inner; commit; get b; commit; get b; get a"
 
 [expect]

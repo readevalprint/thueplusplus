@@ -84,7 +84,7 @@ test('playground is outside the docs shell in both themes', async ({ page }) => 
 })
 
 test('embed has no site chrome', async ({ page }) => {
-  await page.goto('/embed?file=./examples/hello/hello.tpp&section=state')
+  await page.goto('/embed?file=./examples/hello/hello.thue&section=state')
   await expect(page.getByTestId('app-shell')).toHaveCount(0)
   await expect(page.getByTestId('contents-toggle')).toHaveCount(0)
   await expect(page.getByTestId('playground-workbench')).toBeVisible()

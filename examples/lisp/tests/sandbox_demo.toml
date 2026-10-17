@@ -5,7 +5,7 @@
 # scope internally, evals the code in that scope, and returns the resulting
 # value. User code can only resolve names supplied by that scope; there is no
 # ambient caller environment and no hidden core fallback.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "120000"]
 

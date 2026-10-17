@@ -29,7 +29,7 @@ const SITE_ORDER = ['go', 'python', 'wasm', 'rust', 'cpp']
 
 export const soonLanguages = ['erlang', 'ocaml', 'perl', 'ruby', 'haskell']
 
-export const repositoryUrl = 'https://github.com/readevalprint/thueplusplus'
+export const repositoryUrl = 'https://github.com/thuelang/thueplusplus'
 
 interface InstallPageRecord {
   path: string

@@ -1,4 +1,4 @@
-export async function initThuePPWasm(options = {}) {
+export async function initThueWasm(options = {}) {
   if (typeof globalThis.Go !== 'function') {
     if (!options.wasmExecURL) {
       throw new Error('Go wasm_exec.js must be loaded first or provided as wasmExecURL');
@@ -6,7 +6,7 @@ export async function initThuePPWasm(options = {}) {
     await import(options.wasmExecURL);
   }
 
-  const wasmURL = options.wasmURL || new URL('thuepp.wasm', globalThis.location && globalThis.location.href || 'http://localhost/').toString();
+  const wasmURL = options.wasmURL || new URL('thue.wasm', globalThis.location && globalThis.location.href || 'http://localhost/').toString();
   const response = await fetch(wasmURL);
   if (!response.ok) {
     throw new Error(`failed to fetch ${wasmURL}: HTTP ${response.status}`);
@@ -25,10 +25,10 @@ export async function initThuePPWasm(options = {}) {
   });
 
   for (let i = 0; i < 100; i += 1) {
-    if (globalThis.ThuePP && typeof globalThis.ThuePP.run === 'function') {
-      return { run: (runOptions) => globalThis.ThuePP.run(runOptions) };
+    if (globalThis.Thue && typeof globalThis.Thue.run === 'function') {
+      return { run: (runOptions) => globalThis.Thue.run(runOptions) };
     }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
-  throw new Error('ThuePP.run was not registered by the Go WASM module');
+  throw new Error('Thue.run was not registered by the Go WASM module');
 }

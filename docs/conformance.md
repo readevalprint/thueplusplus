@@ -12,7 +12,7 @@ Single case:
 
 ```toml
 name = "greeting"
-program = "../hello.tpp"
+program = "../hello.thue"
 input = "hello"
 timeout = 10
 
@@ -25,7 +25,7 @@ stderr = ""
 Many cases share the top-level `program`. A case may override any other top-level field. Tables (`bindings`, `expect`) merge one level deep; other fields replace the top-level value. `program` is only legal at the top level.
 
 ```toml
-program = "../max-steps.tpp"
+program = "../max-steps.thue"
 
 [[case]]
 name = "stop before a second applied rewrite"
@@ -42,17 +42,17 @@ stderr = "Error: Applied step limit (1) exceeded\n"
 | Field | Meaning |
 | --- | --- |
 | `name` | Label used in failure output. Defaults to the file stem. |
-| `program` | Path to a `.tpp` file, relative to the manifest directory. The resolved path must stay inside the example directory (the parent of the manifest directory). |
+| `program` | Path to a `.thue` file, relative to the manifest directory. The resolved path must stay inside the example directory (the parent of the manifest directory). |
 | `args` | Extra CLI arguments, inserted after the program path and before generated flags. List of strings. |
 | `input` | Replaces the program's initial state. Passed as `--input`. |
 | `stdin` | Exact bytes written to the process standard input. Omitted means the runner does not supply stdin. |
 | `timeout` | Seconds before the runner kills the process. Default `10`. The wasm host uses `max(timeout * 8, 30)` because each case starts a fresh module. |
 | `allow_unlimited` | Boolean. Lets this one case pass `unlimited` for a limit flag. At most one case in a manifest may set it. |
 | `bindings.procs` | Map of resource name to a shell command. Each entry becomes `--proc:NAME COMMAND`. |
-| `bindings.tpp` | Map of resource name to `{ program = "relative.tpp" }`. The runner starts the same interpreter on that program and passes it as `--proc:NAME`. |
+| `bindings.thue` | Map of resource name to `{ program = "relative.thue" }`. The runner starts the same interpreter on that program and passes it as `--proc:NAME`. |
 | `expect` | Required. See below. |
 
-Unknown keys are an error. A proc name and command must both be non-empty strings. A tpp binding must contain only `program`.
+Unknown keys are an error. A proc name and command must both be non-empty strings. A thue binding must contain only `program`.
 
 ## Expectations
 
@@ -78,7 +78,7 @@ timeout -k 1 <backstop> <interpreter> <program> <args...>
     [--rule-coverage <file>] [--proc:NAME <command>...] [--input <state>]
 ```
 
-Each missing limit flag is added. A flag the manifest already set is left alone. `unlimited` is rejected unless that case sets `allow_unlimited = true`, and only one case in the manifest may do so. The same three flags are added to a `bindings.tpp` child. `--rule-coverage` is added only for the Python interpreter; that file is the rule-coverage oracle. Other implementations are not asked to write coverage, but their observable results must match Python.
+Each missing limit flag is added. A flag the manifest already set is left alone. `unlimited` is rejected unless that case sets `allow_unlimited = true`, and only one case in the manifest may do so. The same three flags are added to a `bindings.thue` child. `--rule-coverage` is added only for the Python interpreter; that file is the rule-coverage oracle. Other implementations are not asked to write coverage, but their observable results must match Python.
 
 The runner also enforces the case timeout with `timeout(1)` and a 256 MiB RSS cap on the process tree (`tools/run_limits.py`). The cap is resident memory. `ulimit -v` is not used: the wasm host reserves about 12 GiB of virtual address space for a run whose RSS stays under 100 MiB, so an address-space cap either rejects that host or does not protect the machine. A timeout or an RSS cap is a runner failure, not the program's exit code. `GOMEMLIMIT` is set to the same cap.
 

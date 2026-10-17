@@ -128,8 +128,8 @@ func LoadGuests(root string) ([]Guest, error) {
 			return nil, fmt.Errorf("%s: duplicate guest %s", path, guest.ID)
 		}
 		seen[guest.ID] = struct{}{}
-		if !strings.HasSuffix(guest.Program, ".tpp") {
-			return nil, fmt.Errorf("%s: %s program must be a .tpp file", path, guest.ID)
+		if !strings.HasSuffix(guest.Program, ".thue") {
+			return nil, fmt.Errorf("%s: %s program must be a .thue file", path, guest.ID)
 		}
 	}
 	return guests, nil

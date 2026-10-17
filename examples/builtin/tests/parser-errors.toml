@@ -1,4 +1,4 @@
-program = "fixtures/parser-error-fixture.tpp"
+program = "fixtures/parser-error-fixture.thue"
 timeout = 5
 
 [[case]]

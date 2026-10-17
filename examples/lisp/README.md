@@ -2,7 +2,7 @@
 
 Apparently, you can write a powerful Lisp in 500 lines of Thue++.
 
-`lisp.tpp` is the canonical Lisp evaluator for this repository. It is implemented entirely as Thue++rewrite rules in `examples/lisp/lisp.tpp`; Python and Go only provide the generic Thue++ interpreter and builtins used by the rules.
+`lisp.thue` is the canonical Lisp evaluator for this repository. It is implemented entirely as Thue++rewrite rules in `examples/lisp/lisp.thue`; Python and Go only provide the generic Thue++ interpreter and builtins used by the rules.
 
 ## Supported input forms
 
@@ -59,7 +59,7 @@ Reader-backed outputs are intended to round trip where the reader contains a dir
 
 ## Evaluation model
 
-Implementation note: `lisp.tpp` uses nested/transitive pattern aliases for reusable lexical and runtime-value shapes (`NAME`, `EXPR`, `VAL`, and related aliases). These aliases are documentation as well as parser input: they keep evaluator type sets visible while avoiding duplicated hand-expanded regex bodies.
+Implementation note: `lisp.thue` uses nested/transitive pattern aliases for reusable lexical and runtime-value shapes (`NAME`, `EXPR`, `VAL`, and related aliases). These aliases are documentation as well as parser input: they keep evaluator type sets visible while avoiding duplicated hand-expanded regex bodies.
 
 - Lists are frozen inside-out as encoded payloads before evaluation.
 - Values are demanded lazily from encoded nodes.
@@ -255,7 +255,7 @@ Reserved unsupported-form rules are kept only where they protect a deliberate pu
 | bare `quasiquote`, `unquote`, `splice` | keep        | These forms are valid only through the quasiquote evaluator; outside that evaluator they remain unsupported syntax, not get misses.   |
 
 
-Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.tpp`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
+Being a familiar Lisp feature is not enough for inclusion. A new form must either simplify `lisp.thue`, expose a reusable Thue++ primitive need, or be required by an approved downstream card.
 
 ## Quote/list/quasiquote code-as-data boundary
 

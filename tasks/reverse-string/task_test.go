@@ -5,7 +5,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/readevalprint/thueplusplus/tasks/harness"
+	"github.com/thuelang/thueplusplus/tasks/harness"
 )
 
 func TestReverseString(t *testing.T) {

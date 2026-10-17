@@ -23,8 +23,8 @@ function sourcesFor(solutions) {
   return {
     taskOrder: ['factorial'],
     guests: [
-      { id: 'forth', program: 'examples/forth/forth.tpp', extension: 'fth' },
-      { id: 'lisp', program: 'examples/lisp/lisp.tpp', extension: 'lisp' },
+      { id: 'forth', program: 'examples/forth/forth.thue', extension: 'fth' },
+      { id: 'lisp', program: 'examples/lisp/lisp.thue', extension: 'lisp' },
     ],
     files: {
       factorial: {
@@ -57,8 +57,8 @@ function resultsFor() {
     errors: [],
     hosts,
     guests: [
-      { id: 'forth', program: 'examples/forth/forth.tpp', rule_count: 45 },
-      { id: 'lisp', program: 'examples/lisp/lisp.tpp', rule_count: 394 },
+      { id: 'forth', program: 'examples/forth/forth.thue', rule_count: 45 },
+      { id: 'lisp', program: 'examples/lisp/lisp.thue', rule_count: 394 },
     ],
     tasks: [{
       id: 'factorial',

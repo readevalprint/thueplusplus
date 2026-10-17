@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/readevalprint/thueplusplus/tasks/harness"
+	"github.com/thuelang/thueplusplus/tasks/harness"
 )
 
 func TestFactorial(t *testing.T) {

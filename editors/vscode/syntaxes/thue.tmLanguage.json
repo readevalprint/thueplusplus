@@ -1,0 +1,374 @@
+{
+  "name": "Thue++",
+  "scopeName": "source.thue",
+  "fileTypes": ["tpp"],
+  "patterns": [
+    { "include": "#separator" },
+    { "include": "#rule-rewrite" },
+    { "include": "#rule-read" },
+    { "include": "#rule-read-any" },
+    { "include": "#rule-write" },
+    { "include": "#rule-write-any" },
+    { "include": "#rule-exit-braced" },
+    { "include": "#rule-exit" },
+    { "include": "#rule-exit-any" },
+    { "include": "#rule-builtin" },
+    { "include": "#rule-builtin-unknown" },
+    { "include": "#rule-builtin-any" },
+    { "include": "#alias" },
+    { "include": "#dangling-mid" },
+    { "include": "#invalid-operator" },
+    { "include": "#comment" }
+  ],
+  "repository": {
+    "separator": {
+      "begin": "^[ \\t]*::=[ \\t]*$",
+      "beginCaptures": {
+        "0": { "name": "keyword.control.separator.thue" }
+      },
+      "end": "(?!\\s)(?!\\S).",
+      "contentName": "string.unquoted.state.thue"
+    },
+    "rule-rewrite": {
+      "name": "meta.rule.rewrite.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::=)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.rewrite.thue" },
+        "3": {
+          "name": "meta.rhs.rewrite.thue",
+          "patterns": [{ "include": "#rhs-template" }, { "include": "#replacement-escape" }]
+        }
+      }
+    },
+    "rule-read": {
+      "name": "meta.rule.read.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::<)([ \\t]*)([0-9]+(?:\\.[0-9]+)?)([ \\t]+)([A-Za-z_][A-Za-z0-9_]*)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.read.thue" },
+        "4": { "name": "constant.numeric.timeout.thue" },
+        "6": { "name": "support.class.resource.thue" },
+        "7": { "name": "meta.rhs.read.thue" }
+      }
+    },
+    "rule-write": {
+      "name": "meta.rule.write.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::>)([ \\t]*)([A-Za-z_][A-Za-z0-9_]*)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.write.thue" },
+        "4": { "name": "support.class.resource.thue" },
+        "5": {
+          "name": "meta.rhs.write.thue",
+          "patterns": [
+            { "include": "#rhs-template" },
+            { "include": "#replacement-escape" }
+          ]
+        }
+      }
+    },
+    "rule-exit-braced": {
+      "name": "meta.rule.exit.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::-)([ \\t]*)(\\{)([ \\t]*)(-?[0-9]+)([ \\t]*)(\\})(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.exit.thue" },
+        "4": { "name": "punctuation.bracket.thue" },
+        "6": { "name": "constant.numeric.integer.thue" },
+        "8": { "name": "punctuation.bracket.thue" }
+      }
+    },
+    "rule-exit": {
+      "name": "meta.rule.exit.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::-)([ \\t]*)(-?[0-9]+)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.exit.thue" },
+        "4": { "name": "constant.numeric.integer.thue" }
+      }
+    },
+    "rule-builtin": {
+      "name": "meta.rule.builtin.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::!)([ \\t]*)(eq|add|sub|mul|div|mod|numeq|lt|le|gt|ge|num|b64enc|b64dec|pctenc|pctdec|escape|unescape)\\b(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.builtin.thue" },
+        "4": { "name": "support.function.builtin.thue" },
+        "5": {
+          "name": "meta.rhs.builtin.thue",
+          "patterns": [{ "include": "#builtin-arg" }]
+        }
+      }
+    },
+    "rule-read-any": {
+      "name": "meta.rule.read.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::<)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.read.thue" },
+        "3": { "name": "meta.rhs.read.thue" }
+      }
+    },
+    "rule-write-any": {
+      "name": "meta.rule.write.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::>)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.write.thue" },
+        "3": {
+          "name": "meta.rhs.write.thue",
+          "patterns": [
+            { "include": "#rhs-template" },
+            { "include": "#replacement-escape" }
+          ]
+        }
+      }
+    },
+    "rule-exit-any": {
+      "name": "meta.rule.exit.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::-)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.exit.thue" },
+        "3": { "name": "meta.rhs.exit.thue" }
+      }
+    },
+    "rule-builtin-any": {
+      "name": "meta.rule.builtin.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::!)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.builtin.thue" },
+        "3": { "name": "meta.rhs.builtin.thue" }
+      }
+    },
+    "rule-builtin-unknown": {
+      "name": "meta.rule.builtin.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::[|=<>!-])((?:\\\\::|::\\||\\\\.|(?!::[=<>!-]).)*?)((?<!\\\\)::!)([ \\t]*)(\\S+)(.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#pattern-body" }]
+        },
+        "2": { "name": "keyword.operator.builtin.thue" },
+        "4": { "name": "invalid.illegal.builtin.thue" },
+        "5": {
+          "name": "meta.rhs.builtin.thue",
+          "patterns": [{ "include": "#builtin-arg" }]
+        }
+      }
+    },
+    "alias": {
+      "name": "meta.alias.thue",
+      "match": "^([ \\t]*)([A-Z][A-Z0-9_]*)([ \\t]*)(<-)(.*)$",
+      "captures": {
+        "2": { "name": "entity.name.type.alias.thue" },
+        "4": { "name": "keyword.operator.alias.thue" },
+        "5": {
+          "name": "meta.pattern.alias.thue",
+          "patterns": [{ "include": "#regex" }]
+        }
+      }
+    },
+    "dangling-mid": {
+      "name": "invalid.illegal.missing-operator.thue",
+      "match": "^(?=[ \\t]*\\S)(?![ \\t]*::\\|)((?:\\\\::|\\\\.|(?!::\\|).)*?)((?<!\\\\)::\\|.*)$",
+      "captures": {
+        "1": {
+          "name": "meta.pattern.thue",
+          "patterns": [{ "include": "#regex" }]
+        },
+        "2": {
+          "patterns": [
+            { "include": "#mid-operator" },
+            { "include": "#step-template" },
+            { "include": "#regex" }
+          ]
+        }
+      }
+    },
+    "invalid-operator": {
+      "name": "invalid.illegal.operator.thue",
+      "match": "^(?=.*(?<!\\\\)::[^\\s\\w=<>!|\\-]).+$"
+    },
+    "comment": {
+      "name": "comment.line.thue",
+      "match": "^(?=\\s*\\S).+$"
+    },
+    "pattern-body": {
+      "patterns": [
+        { "include": "#empty-step" },
+        { "include": "#mid-operator" },
+        { "include": "#step-template" },
+        { "include": "#invalid-template" },
+        { "include": "#regex" }
+      ]
+    },
+    "empty-step": {
+      "match": "::\\|[ \\t]*(?=$|::\\|)",
+      "name": "keyword.operator.mid.thue invalid.illegal.empty-step.thue"
+    },
+    "mid-operator": {
+      "match": "::\\|",
+      "name": "keyword.operator.mid.thue"
+    },
+    "step-template": {
+      "patterns": [
+        {
+          "name": "variable.other.template.thue",
+          "match": "(?<!\\\\)\\{\\{([A-Za-z_][A-Za-z0-9_]*)(\\|(?:pctenc|pctdec|quote)(?:\\|(?:pctenc|pctdec|quote))*)\\}\\}",
+          "captures": {
+            "1": { "name": "entity.name.capture.thue" },
+            "2": { "name": "support.function.filter.thue" }
+          }
+        },
+        {
+          "name": "variable.other.template.thue",
+          "match": "(?<!\\\\)\\{\\{([A-Za-z_][A-Za-z0-9_]*)\\}\\}",
+          "captures": {
+            "1": { "name": "entity.name.capture.thue" }
+          }
+        }
+      ]
+    },
+    "invalid-template": {
+      "name": "invalid.illegal.template.thue",
+      "match": "(?<!\\\\)\\{\\{[^}\\r\\n]*\\|[^}\\r\\n]*\\}\\}"
+    },
+    "rhs-template": {
+      "patterns": [
+        {
+          "name": "invalid.illegal.template.thue",
+          "match": "(?<!\\\\)\\{\\{rule_index\\|[^}\\r\\n]*\\}\\}"
+        },
+        {
+          "name": "variable.language.rule-index.thue",
+          "match": "(?<!\\\\)\\{\\{rule_index\\}\\}"
+        },
+        {
+          "name": "variable.other.template.thue",
+          "match": "(?<!\\\\)\\{\\{([A-Za-z_][A-Za-z0-9_]*)(\\|(?:pctenc|pctdec))\\}\\}",
+          "captures": {
+            "1": { "name": "entity.name.capture.thue" },
+            "2": { "name": "support.function.filter.thue" }
+          }
+        },
+        {
+          "name": "variable.other.template.thue",
+          "match": "(?<!\\\\)\\{\\{([A-Za-z_][A-Za-z0-9_]*)\\}\\}",
+          "captures": {
+            "1": { "name": "entity.name.capture.thue" }
+          }
+        },
+        { "include": "#invalid-template" }
+      ]
+    },
+    "replacement-escape": {
+      "name": "constant.character.escape.thue",
+      "match": "\\\\[ntr\\\\]"
+    },
+    "builtin-arg": {
+      "name": "variable.parameter.thue",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+    },
+    "regex": {
+      "patterns": [
+        {
+          "name": "invalid.illegal.unsupported.thue",
+          "match": "\\\\[0-9]+"
+        },
+        {
+          "name": "constant.character.escape.thue",
+          "match": "\\\\::"
+        },
+        {
+          "name": "invalid.illegal.deprecated.thue",
+          "match": "<\\|([A-Z][A-Z0-9_]*)\\|>",
+          "captures": {
+            "1": { "name": "entity.name.type.alias.thue" }
+          }
+        },
+        {
+          "match": "(\\()(\\?(?:P<|<))([A-Za-z_][A-Za-z0-9_]*)(>)",
+          "captures": {
+            "1": { "name": "punctuation.definition.group.begin.regexp.thue" },
+            "2": { "name": "punctuation.definition.group.regexp.thue" },
+            "3": { "name": "entity.name.capture.thue" },
+            "4": { "name": "punctuation.definition.group.regexp.thue" }
+          }
+        },
+        {
+          "name": "invalid.illegal.unsupported.thue",
+          "match": "\\(\\?(?:[=!]|<[=!])"
+        },
+        {
+          "name": "keyword.control.group.regexp.thue",
+          "match": "\\(\\?(?::|[imsU-]+(?::|\\)))"
+        },
+        {
+          "name": "constant.other.character-class.regexp.thue",
+          "match": "\\[(?:\\\\.|(?!::[|=<>!-])[^\\]\\\\\\n])*\\]"
+        },
+        {
+          "name": "constant.character.escape.regexp.thue",
+          "match": "\\\\."
+        },
+        {
+          "name": "variable.other.alias.thue",
+          "match": "(?<!\\\\)\\$[A-Z][A-Z0-9_]*"
+        },
+        {
+          "name": "keyword.control.anchor.regexp.thue",
+          "match": "(?<!\\\\)[$^]"
+        },
+        {
+          "name": "keyword.operator.quantifier.regexp.thue",
+          "match": "\\{[0-9]+(?:,[0-9]*)?\\}|[+*?]"
+        },
+        {
+          "name": "constant.numeric.percent.thue",
+          "match": "%[0-9A-F]{2}"
+        },
+        {
+          "name": "keyword.operator.alternation.regexp.thue",
+          "match": "\\|"
+        },
+        {
+          "name": "punctuation.bracket.thue",
+          "match": "[(){}\\[\\]]"
+        }
+      ]
+    }
+  }
+}

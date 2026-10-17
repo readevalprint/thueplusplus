@@ -1,6 +1,6 @@
 # Thue++ for VS Code
 
-Syntax highlighting, snippets, and **Run Thue++ file** for [Thue++](https://github.com/readevalprint/thueplusplus) programs (`.tpp`).
+Syntax highlighting, snippets, and **Run Thue++ file** for [Thue++](https://github.com/thuelang/thueplusplus) programs (`.thue`).
 
 The extension installs in VS Code, Cursor, VSCodium, and Windsurf. Cursor installs extensions from [Open VSX](https://open-vsx.org). This repository does not publish the extension.
 
@@ -9,7 +9,7 @@ The extension installs in VS Code, Cursor, VSCodium, and Windsurf. Cursor instal
 - A TextMate grammar for the current language: rules, `::=`, `::<`, `::>`, `::-`, `::!`, `::|` steps, `{{name}}`, `{{name|pctenc}}`, `{{name|pctdec}}`, `{{name|quote}}`, `{{rule_index}}`, `$NAME` aliases, and the initial state after a `::=` row.
 - A language configuration. `{` `}` `(` `)` `[` `]` and `{{` `}}` auto-close. Thue++ has no comment introducer: a row that is not a rule or an alias is a comment, and `#` is ordinary text, so the editor does not bind a comment toggle.
 - Snippets for a rewrite, a `::|` step, a quoted step, read, write, exit, a builtin call, an alias, a named capture, and a small program.
-- **Run Thue++ file**, which runs the installed `thuepp` CLI.
+- **Run Thue++ file**, which runs the installed `thue` CLI.
 
 ## Install a `.vsix` by hand
 
@@ -21,34 +21,34 @@ npm --prefix editors/vscode test
 npm --prefix editors/vscode run package
 ```
 
-That writes `editors/vscode/thuepp-0.5.0.vsix`. A CI job also builds that file and keeps it as an artifact. Nothing in CI publishes it.
+That writes `editors/vscode/thue-0.5.0.vsix`. A CI job also builds that file and keeps it as an artifact. Nothing in CI publishes it.
 
 In the Extensions view, open the `...` menu and choose **Install from VSIX**, then pick the file. The same menu exists in VS Code, Cursor, VSCodium, and Windsurf.
 
 From a terminal, if the matching command is on your `PATH`:
 
 ```bash
-code --install-extension thuepp-0.5.0.vsix
-cursor --install-extension thuepp-0.5.0.vsix
-codium --install-extension thuepp-0.5.0.vsix
-windsurf --install-extension thuepp-0.5.0.vsix
+code --install-extension thue-0.5.0.vsix
+cursor --install-extension thue-0.5.0.vsix
+codium --install-extension thue-0.5.0.vsix
+windsurf --install-extension thue-0.5.0.vsix
 ```
 
-Reload the window if an open `.tpp` file does not pick up the grammar.
+Reload the window if an open `.thue` file does not pick up the grammar.
 
 ## Run Thue++ file
 
 The command is **Thue++: Run Thue++ file**. It is in the Command Palette and the editor run menu when the active file is Thue++.
 
-It does not install an interpreter. Set `thuepp.executable` to the `thuepp` command or to an absolute path. Each host in this repository provides a `thuepp` command.
+It does not install an interpreter. Set `thue.executable` to the `thue` command or to an absolute path. Each host in this repository provides a `thue` command.
 
 Every run passes three finite limits. There is no unlimited value in these settings. `0` is a real limit.
 
 | Setting | CLI flag | Default |
 | --- | --- | --- |
-| `thuepp.maxSteps` | `--max-steps` | `1000000` |
-| `thuepp.maxProbes` | `--max-evals` | `1000000` |
-| `thuepp.maxStateBytes` | `--max-state-bytes` | `8388608` |
+| `thue.maxSteps` | `--max-steps` | `1000000` |
+| `thue.maxProbes` | `--max-evals` | `1000000` |
+| `thue.maxStateBytes` | `--max-state-bytes` | `8388608` |
 
 A negative number, a fraction, or the text `unlimited` is rejected and the terminal is not started. The program's standard input and output are the terminal that the command opens.
 
@@ -58,7 +58,7 @@ A negative number, a fraction, or the text `unlimited` is rejected and the termi
 npm --prefix editors/vscode test
 ```
 
-`vscode-tmgrammar-snap` checks the committed snapshots in `tests/snap/`. `tests/corpus.test.js` tokenizes every `.tpp` program under `examples/` and, when that directory exists, `guests/`. Update snapshots with `npm run test:update-snapshots` after an intentional grammar change, then read the diff.
+`vscode-tmgrammar-snap` checks the committed snapshots in `tests/snap/`. `tests/corpus.test.js` tokenizes every `.thue` program under `examples/` and, when that directory exists, `guests/`. Update snapshots with `npm run test:update-snapshots` after an intentional grammar change, then read the diff.
 
 ## Publish to the VS Code Marketplace
 
@@ -90,11 +90,11 @@ Do this yourself. Do not put the token in the repository or in CI.
 3. From `editors/vscode`, after `npm run package`:
 
 ```bash
-npx ovsx publish thuepp-0.5.0.vsix -p "$OVSX_TOKEN"
+npx ovsx publish thue-0.5.0.vsix -p "$OVSX_TOKEN"
 ```
 
 Publishing docs: [Publishing Extensions](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions).
 
 ## Playground highlighter
 
-The playground keeps its own highlighter in `demo/src/thueppMonarch.ts`. Monaco does not load this TextMate grammar by itself, and the playground is changing separately, so the two highlighters are not shared yet. That work is [issue #42](https://github.com/readevalprint/thueplusplus/issues/42).
+The playground keeps its own highlighter in `demo/src/thueMonarch.ts`. Monaco does not load this TextMate grammar by itself, and the playground is changing separately, so the two highlighters are not shared yet. That work is [issue #42](https://github.com/thuelang/thueplusplus/issues/42).

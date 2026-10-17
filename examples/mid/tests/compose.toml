@@ -1,5 +1,5 @@
 name = "mid filter composition"
-program = "../compose.tpp"
+program = "../compose.thue"
 
 [[case]]
 name = "pctenc then quote matches the encoded text literally"

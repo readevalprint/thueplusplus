@@ -42,7 +42,7 @@ The process is wrapped in `timeout(1)` for that many seconds, with a two-second 
 
 ## Results
 
-`make tasks` builds `build/go-thuepp`, runs `go test ./...` in this module, and writes `build/tasks/results.json`.
+`make tasks` builds `build/go-thue`, runs `go test ./...` in this module, and writes `build/tasks/results.json`.
 
 The file is schema 1. `hosts` is `["go"]`. A row's `status` is `pass` only when every case matched. `step_count` and `probe_count` are the sums, and they are null unless the row passed. `grid` repeats that status. The task object carries `cases`: the stdin and the reference stdout for each case the test ran. The catalog shows those cases.
 

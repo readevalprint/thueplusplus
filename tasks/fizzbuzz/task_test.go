@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/readevalprint/thueplusplus/tasks/harness"
+	"github.com/thuelang/thueplusplus/tasks/harness"
 )
 
 func TestFizzBuzz(t *testing.T) {

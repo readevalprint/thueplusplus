@@ -3,7 +3,7 @@ import catalog from './ruleResources.catalog.json'
 import { analyzeRules } from './ruleResources'
 import { splitProgramSource } from './thueSource'
 
-const exampleSources = import.meta.glob('../../examples/**/*.tpp', {
+const exampleSources = import.meta.glob('../../examples/**/*.thue', {
   query: '?raw',
   import: 'default',
   eager: true,

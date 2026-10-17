@@ -1,4 +1,4 @@
-program = "fixtures/bad-template-arg.tpp"
+program = "fixtures/bad-template-arg.thue"
 timeout = 5
 
 [[case]]

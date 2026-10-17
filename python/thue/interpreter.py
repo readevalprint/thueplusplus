@@ -1,0 +1,1213 @@
+"""
+Thue++ interpreter.
+"""
+
+import base64
+import binascii
+import json
+import math
+import re as py_re
+import re2 as re
+import select
+import subprocess
+import sys
+from dataclasses import dataclass
+from enum import Enum
+from fractions import Fraction
+from pathlib import Path
+from typing import Any, Optional
+
+
+DEFAULT_MAX_EVALS = 1_000_000
+DEFAULT_MAX_STATE_BYTES = 8 * 1024 * 1024
+DEFAULT_MAX_STEPS = 1_000_000
+MAX_NUMERIC_LITERAL_CHARS = 4096
+
+EXIT_RUNTIME = 1
+EXIT_STEP_LIMIT = 10
+EXIT_EVAL_LIMIT = 11
+EXIT_STATE_LIMIT = 12
+EXIT_READ_TIMEOUT = 13
+
+
+def format_trace(events: list[dict[str, Any]]) -> str:
+    """One JSON object per trace event, in the conformance key order.
+
+    ``error`` is an empty string when unset. ``exitCode`` is JSON null except
+    for ``::-``. Each object is one line, and the result ends with a newline
+    when it is not empty.
+    """
+    if not events:
+        return ""
+    lines: list[str] = []
+    for event in events:
+        payload = {
+            "step": event["step"],
+            "ruleIndex": event["ruleIndex"],
+            "lineNumber": event["lineNumber"],
+            "operator": event["operator"],
+            "matchStart": event["matchStart"],
+            "matchEnd": event["matchEnd"],
+            "error": event.get("error") or "",
+            "stateBefore": event["stateBefore"],
+            "replacement": event.get("replacement") or "",
+            "stateAfter": event["stateAfter"],
+            "exitCode": event.get("exitCode"),
+        }
+        lines.append(json.dumps(payload, ensure_ascii=True, separators=(",", ":")))
+    return "\n".join(lines) + "\n"
+
+
+class LimitExceeded(RuntimeError):
+    """A resource limit stopped the run.
+
+    ``kind`` is ``steps``, ``evals``, ``state``, or ``timeout``. ``code`` is
+    the process exit code. The exception text is the stderr message without
+    the CLI's ``Error: `` prefix.
+    """
+
+    def __init__(self, kind: str, code: int, message: str):
+        super().__init__(message)
+        self.kind = kind
+        self.code = code
+
+
+class _OmittedLimit:
+    """CLI sentinel: the flag was absent, so the constructor default applies."""
+
+
+OMITTED_LIMIT = _OmittedLimit()
+
+
+MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE = 10000
+MAX_EXPANDED_PATTERN_BYTES = 1000000
+ALIAS_DEF_RE = py_re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*<-\s*(.*)$")
+ALIAS_REF_RE = py_re.compile(r"(?<!\\)\$([A-Z][A-Z0-9_]*)")
+INVALID_ALIAS_TOKEN_RE = py_re.compile(r"<\|([A-Z][A-Z0-9_]*)\|>")
+NAMED_CAPTURE_RE = py_re.compile(r"\(\?(?:<|P<)([A-Za-z_][A-Za-z0-9_]*)>")
+_RE_META = set("\\.+*?()|[]{}^$")
+_TERMINAL_OPS = set("=<>!-")
+
+
+class _RuleSplit:
+    def __init__(self, lhs: str, mids: list[str], op: str, rhs: str):
+        self.lhs = lhs
+        self.mids = mids
+        self.op = op
+        self.rhs = rhs
+
+
+def _structural_op_at(line: str, index: int) -> str | None:
+    if index + 2 >= len(line) or line[index] != ":" or line[index + 1] != ":":
+        return None
+    if index > 0 and line[index - 1] == "\\":
+        return None
+    op = line[index + 2]
+    if op == "|" or op in _TERMINAL_OPS:
+        return op
+    return None
+
+
+def _has_terminal_operator(line: str) -> bool:
+    index = 0
+    while index + 2 < len(line):
+        op = _structural_op_at(line, index)
+        if op is not None and op != "|":
+            return True
+        index += 1
+    return False
+
+
+def _split_rule_line(line: str) -> _RuleSplit | None:
+    """Split a row into LHS, ::| steps, a terminal operator, and RHS.
+
+    A '::' sequence is structural only when it is not immediately preceded by
+    '\\'. '|' starts a step. '=', '<', '>', '-', and '!' end the rule. A step
+    with no terminal operator is an error. Other '::' sequences stay in the
+    surrounding text. Returns None when the row is not a rule.
+    """
+    saw_mid = False
+    lhs = ""
+    mids: list[str] = []
+    index = 0
+    while index + 2 < len(line):
+        op = _structural_op_at(line, index)
+        if op is None:
+            index += 1
+            continue
+        if op == "|":
+            if not saw_mid:
+                lhs = line[:index]
+                saw_mid = True
+            next_at = index + 3
+            found = False
+            while next_at + 2 < len(line):
+                next_op = _structural_op_at(line, next_at)
+                if next_op is not None:
+                    found = True
+                    break
+                next_at += 1
+            if not found:
+                raise RuntimeError("::| requires a terminal operator")
+            mids.append(line[index + 3:next_at])
+            if next_op == "|":
+                index = next_at
+                continue
+            return _RuleSplit(lhs, mids, next_op, line[next_at + 3:])
+        if not saw_mid:
+            lhs = line[:index]
+        return _RuleSplit(lhs, mids, op, line[index + 3:])
+    if saw_mid:
+        raise RuntimeError("::| requires a terminal operator")
+    return None
+
+
+def _is_mid_name(value: str) -> bool:
+    return py_re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value) is not None
+
+
+def _quote_meta(value: str) -> str:
+    """Quote a string the way Go's regexp.QuoteMeta does.
+
+    This is the {{name|quote}} filter. Only RE2 metacharacters are escaped.
+    Newlines, tabs, spaces, and non-ASCII characters stay as themselves.
+    Python re.escape is not used: it also escapes space, '#', '&', '~', and
+    writes a backslash in front of a newline.
+    """
+    out: list[str] = []
+    for ch in value:
+        if ch in _RE_META:
+            out.append("\\")
+        out.append(ch)
+    return "".join(out)
+
+
+class Operator(Enum):
+    SUBSTITUTE = "::="
+    READ = "::<"   # Read from stdin or proc character streams
+    WRITE = "::>"
+    EXIT = "::-"
+    BUILTIN = "::!"
+
+
+@dataclass(frozen=True)
+class SourceRow:
+    text: str
+    source_path: str
+    source_line: int
+
+
+@dataclass(frozen=True)
+class Mid:
+    """One ::| step. Pattern may contain {{name}} holes."""
+    pattern: str
+
+
+@dataclass
+class Rule:
+    """A single thue++ rule."""
+    lhs: str
+    lhs_pattern: Any
+    operator: Operator
+    rhs: str
+    line_number: int
+    source_path: str
+    builtin_name: str = ""
+    builtin_args: tuple[str, ...] = ()
+    mids: tuple[Mid, ...] = ()
+
+
+@dataclass
+class Binding:
+    """A resource binding (stdin/stdout/stderr or process)."""
+    name: str
+    is_process: bool
+    path_or_command: str
+    process: Optional[subprocess.Popen] = None
+
+
+class ThueInterpreter:
+    """The main thue++ interpreter.
+
+    ``max_evals`` counts each rule examined in ``run()``'s inner loop (every
+    ordered rule probe across outer steps), including probes that do not match.
+    ``max_steps`` counts applied rewrites only. The rewrite that reaches the
+    limit raises ``LimitExceeded`` and the run does not scan further. A run
+    that quiesces before that many rewrites returns 0. ``::-`` does not count
+    as a step. ``max_state_bytes``
+    is checked on the UTF-8 length of the state after each replacement.
+
+    Omitted limits use ``DEFAULT_MAX_EVALS``, ``DEFAULT_MAX_STATE_BYTES``, and
+    ``DEFAULT_MAX_STEPS``. Explicit ``None`` means unlimited. ``0`` is a real
+    limit: no probe, no rewrite, or no bytes of state.
+    """
+
+    def __init__(
+        self,
+        max_evals: Any = OMITTED_LIMIT,
+        max_state_bytes: Any = OMITTED_LIMIT,
+        max_steps: Any = OMITTED_LIMIT,
+        debug: bool = False,
+        rule_coverage_path: Optional[str] = None,
+        trace_enabled: bool = False,
+    ):
+        if max_evals is OMITTED_LIMIT:
+            max_evals = DEFAULT_MAX_EVALS
+        if max_state_bytes is OMITTED_LIMIT:
+            max_state_bytes = DEFAULT_MAX_STATE_BYTES
+        if max_steps is OMITTED_LIMIT:
+            max_steps = DEFAULT_MAX_STEPS
+        self.rules: list[Rule] = []
+        self.state: str = ""
+        self.bindings: dict[str, Binding] = {}
+        self.max_evals = max_evals
+        self.max_state_bytes = max_state_bytes
+        self.max_steps = max_steps
+        self.eval_count = 0
+        self.applied_steps = 0
+        self.trace_enabled = trace_enabled
+        self.trace: list[dict[str, Any]] = []
+        self.debug = debug
+        self.rule_coverage_path = rule_coverage_path
+        self.rule_coverage_counts: dict[str, int] = {}
+        self.program_path = ""
+        self._initial_rows: list[str] = []
+        self._row_sources: list[tuple[str, int]] = []
+
+        # Predefined bindings
+        self.bindings["stdin"] = Binding("stdin", False, "stdin")
+        self.bindings["stdout"] = Binding("stdout", False, "stdout")
+        self.bindings["stderr"] = Binding("stderr", False, "stderr")
+
+
+    def add_proc_binding(self, name: str, command: str) -> None:
+        """Bind a symbolic name to a process command."""
+        self.bindings[name] = Binding(name, True, command)
+
+    def load_program(self, program_path: str) -> None:
+        """Load and parse a thue++ program."""
+        resolved_program_path = Path(program_path).resolve()
+        self.program_path = str(resolved_program_path)
+        if not resolved_program_path.exists():
+            raise RuntimeError(f"File not found: {resolved_program_path}")
+        content = []
+        with open(resolved_program_path, "r", encoding="utf-8") as f:
+            for line_number, line in enumerate(f, 1):
+                content.append(f"# thue-source: {resolved_program_path}:{line_number}\n")
+                content.append(line)
+        self._parse_program("".join(content))
+
+    def _alias_line_number(self, fallback_line: int, current_source: tuple[str, int] | None) -> int:
+        return current_source[1] if current_source else fallback_line
+
+    def _iter_source_rows(self, content: str) -> list[SourceRow]:
+        rows: list[SourceRow] = []
+        current_source: tuple[str, int] | None = None
+        for line_number, line in enumerate(content.splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith("# thue-source: "):
+                marker = stripped[len("# thue-source: "):]
+                source_path, sep, source_line = marker.rpartition(":")
+                if sep and source_line.isdigit():
+                    current_source = (source_path, int(source_line))
+                continue
+            source_path, source_line = current_source or (self.program_path, line_number)
+            rows.append(SourceRow(line, source_path, source_line))
+        return rows
+
+    def _annotated_content_from_rows(self, rows: list[SourceRow]) -> str:
+        lines: list[str] = []
+        for row in rows:
+            lines.append(f"# thue-source: {row.source_path}:{row.source_line}")
+            lines.append(row.text)
+        return "\n".join(lines)
+
+    def _expand_alias_refs(self, pattern: str, aliases: dict[str, str], line_number: int) -> str:
+        invalid = INVALID_ALIAS_TOKEN_RE.search(pattern)
+        if invalid:
+            name = invalid.group(1)
+            raise RuntimeError(
+                f"Line {line_number}: Invalid pattern alias token '<|{name}|>'; use '${name}' aliases"
+            )
+        substitutions = 0
+
+        def replace(match: py_re.Match[str]) -> str:
+            nonlocal substitutions
+            name = match.group(1)
+            if name not in aliases:
+                raise RuntimeError(f"Line {line_number}: Unknown pattern alias '${name}'")
+            substitutions += 1
+            if substitutions > MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE:
+                raise RuntimeError(
+                    f"Line {line_number}: Pattern alias expansion exceeded substitution limit "
+                    f"({MAX_PATTERN_ALIAS_SUBSTITUTIONS_PER_LINE})"
+                )
+            return aliases[name]
+
+        expanded = ALIAS_REF_RE.sub(replace, pattern)
+        if len(expanded.encode("utf-8")) > MAX_EXPANDED_PATTERN_BYTES:
+            raise RuntimeError(
+                f"Line {line_number}: Pattern alias expansion exceeded byte limit "
+                f"({MAX_EXPANDED_PATTERN_BYTES})"
+            )
+        return expanded
+
+    def _expand_patterns(self, content: str) -> str:
+        """Expand ordered pattern aliases in pattern contexts.
+
+        Aliases are defined as: NAME <- pattern
+        Referenced as: $NAME
+        """
+        aliases: dict[str, str] = {}
+        result_lines: list[str] = []
+        current_source: tuple[str, int] | None = None
+
+        for line_number, line in enumerate(content.split('\n'), 1):
+            stripped = line.strip()
+            if stripped.startswith("# thue-source: "):
+                marker = stripped[len("# thue-source: "):]
+                source_path, sep, source_line = marker.rpartition(":")
+                if sep and source_line.isdigit():
+                    current_source = (source_path, int(source_line))
+                result_lines.append(line)
+                continue
+
+            effective_line = self._alias_line_number(line_number, current_source)
+
+            if not stripped:
+                result_lines.append(line)
+                continue
+
+            alias_match = ALIAS_DEF_RE.match(line)
+            if alias_match and not _has_terminal_operator(line):
+                name = alias_match.group(1)
+                pattern = alias_match.group(2).strip()
+                if name in aliases:
+                    raise RuntimeError(f"Line {effective_line}: Duplicate pattern alias '{name}'")
+                if NAMED_CAPTURE_RE.search(pattern):
+                    raise RuntimeError(f"Line {effective_line}: Pattern alias '{name}' must not contain named captures")
+                expanded = self._expand_alias_refs(pattern, aliases, effective_line)
+                aliases[name] = f"(?:{expanded})"
+                continue
+
+            try:
+                split = _split_rule_line(line)
+            except RuntimeError as exc:
+                raise RuntimeError(f"Line {effective_line}: {exc}") from exc
+            if split is not None:
+                expanded_lhs = self._expand_alias_refs(split.lhs, aliases, effective_line)
+                pieces = [expanded_lhs]
+                for mid in split.mids:
+                    pieces.append("::|")
+                    pieces.append(self._expand_alias_refs(mid, aliases, effective_line))
+                pieces.append(f"::{split.op}{split.rhs}")
+                result_lines.append("".join(pieces))
+                continue
+
+            result_lines.append(line)
+
+        return '\n'.join(result_lines)
+
+    def _parse_program(self, content: str) -> None:
+        """Compile source rules once and load the optional final one-row state."""
+        source_rows = self._iter_source_rows(content)
+        separator_index = next((index for index, row in enumerate(source_rows) if row.text.strip() == "::="), None)
+        if separator_index is not None:
+            prefix_rows = source_rows[:separator_index]
+            state_rows = source_rows[separator_index + 1:]
+        else:
+            prefix_rows = source_rows
+            state_rows = []
+
+        content = self._expand_patterns(self._annotated_content_from_rows(prefix_rows))
+        self.rules = []
+        current_source: tuple[str, int] | None = None
+        for line_number, line in enumerate(content.splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith("# thue-source: "):
+                marker = stripped[len("# thue-source: "):]
+                source_path, sep, source_line = marker.rpartition(":")
+                if sep and source_line.isdigit():
+                    current_source = (source_path, int(source_line))
+                continue
+            source_path, source_line = current_source or (self.program_path, line_number)
+            rule = self._parse_rule(line, source_line, source_path)
+            if rule is not None:
+                self.rules.append(rule)
+
+        self._initial_rows = [row.text for row in state_rows]
+        self._row_sources = [(row.source_path, row.source_line) for row in state_rows]
+        self.state = "\n".join(row.text for row in state_rows)
+
+    def apply_input_override(self, value: str) -> None:
+        """Replace source data rows with explicit input while preserving compiled rules."""
+        self._initial_rows = [value]
+        self._row_sources = [(self.program_path, 1)]
+        self.state = value
+
+    def _translate_lhs(self, lhs: str) -> str:
+        """Translate supported RE2-style named captures for google-re2."""
+        if not lhs:
+            return ""
+        pattern_lhs = lhs
+
+        # Convert RE2-style named captures (?<name>...) to google-re2's Python spelling.
+        pattern_lhs = py_re.sub(r"\(\?<([^>]+)>", r"(?P<\1>", pattern_lhs)
+        return pattern_lhs
+
+    def _parse_rule(self, line: str, line_number: int, source_path: str) -> Optional[Rule]:
+        """Parse a single rule line."""
+        stripped = line.strip()
+        if not stripped or stripped == "::=":
+            return None
+
+        try:
+            split = _split_rule_line(line)
+        except RuntimeError as exc:
+            raise RuntimeError(f"Line {line_number}: {exc}") from exc
+        if split is None:
+            if py_re.search(r"(?<!\\)::[^\s\w=<>!-]", line):
+                raise RuntimeError(f"Line {line_number}: Invalid rule syntax: {line}")
+            return None
+
+        lhs = split.lhs.rstrip(" \t")
+        rhs = split.rhs.lstrip(" \t")
+        op = {
+            "=": Operator.SUBSTITUTE,
+            "<": Operator.READ,
+            ">": Operator.WRITE,
+            "-": Operator.EXIT,
+            "!": Operator.BUILTIN,
+        }[split.op]
+
+        if not lhs:
+            return None
+
+        mids: list[Mid] = []
+        for text in split.mids:
+            pattern_text = text.strip(" \t")
+            if not pattern_text:
+                raise RuntimeError(f"Line {line_number}: ::| requires a regex")
+            mids.append(Mid(pattern_text))
+
+        try:
+            pattern_lhs = self._translate_lhs(lhs)
+            # Rules match the mutable state string.
+            # Enable line anchors by default so row-style rules using ^...$ still
+            # match individual rows inside that suffix; dot remains non-newline
+            # unless a rule explicitly opts into (?s).
+            pattern = re.compile("(?m)" + pattern_lhs)
+        except re.error as e:
+            raise RuntimeError(f"Line {line_number}: Invalid regex '{lhs}': {e}")
+
+        builtin_name = ""
+        builtin_args: tuple[str, ...] = ()
+        if op == Operator.BUILTIN:
+            capture_names = set(pattern.groupindex.keys())
+            for mid in mids:
+                capture_names.update(NAMED_CAPTURE_RE.findall(mid.pattern))
+            builtin_name, builtin_args = self._parse_builtin_call(
+                rhs, line_number, capture_names
+            )
+
+        return Rule(
+            lhs, pattern, op, rhs, line_number, source_path, builtin_name, builtin_args, tuple(mids)
+        )
+
+    def _parse_builtin_call(
+        self,
+        rhs: str,
+        line_number: int,
+        capture_names: set[str],
+    ) -> tuple[str, tuple[str, ...]]:
+        """Parse and validate a ::! builtin call RHS."""
+        tokens = rhs.split()
+        if not tokens:
+            raise RuntimeError(f"Line {line_number}: ::! requires a builtin name")
+
+        name = tokens[0]
+        args = tuple(tokens[1:])
+        expected = self._builtin_arity(name)
+        if expected is None:
+            raise RuntimeError(f"Line {line_number}: Unknown builtin '{name}'")
+        if len(args) != expected:
+            raise RuntimeError(
+                f"Line {line_number}: Builtin '{name}' expects {expected} args, got {len(args)}"
+            )
+        for arg in args:
+            if not py_re.fullmatch(r"[A-Za-z_]\w*", arg):
+                raise RuntimeError(
+                    f"Line {line_number}: ::! arguments must be capture names, got '{arg}'"
+                )
+            if arg not in capture_names:
+                raise RuntimeError(
+                    f"Line {line_number}: ::! argument '{arg}' is not a named capture"
+                )
+        return name, args
+
+    def _builtin_arity(self, name: str) -> Optional[int]:
+        return {
+            "eq": 2,
+            "add": 2,
+            "sub": 2,
+            "mul": 2,
+            "div": 2,
+            "mod": 2,
+            "numeq": 2,
+            "lt": 2,
+            "le": 2,
+            "gt": 2,
+            "ge": 2,
+            "num": 1,
+            "b64enc": 1,
+            "b64dec": 1,
+            "pctenc": 1,
+            "pctdec": 1,
+            "escape": 1,
+            "unescape": 1,
+        }.get(name)
+
+    def _b64url_encode(self, value: str) -> str:
+        return base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii").rstrip("=")
+
+    def _b64url_decode(self, value: str) -> str:
+        if "=" in value:
+            raise RuntimeError("Builtin 'b64dec' expected unpadded Base64url input")
+        if not py_re.fullmatch(r"[A-Za-z0-9_-]*", value):
+            raise RuntimeError("Builtin 'b64dec' expected Base64url input")
+        if len(value) % 4 == 1:
+            raise RuntimeError("Builtin 'b64dec' invalid Base64url length")
+        padded = value + "=" * ((4 - len(value) % 4) % 4)
+        try:
+            decoded = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
+        except binascii.Error as exc:
+            raise RuntimeError(f"Builtin 'b64dec' invalid Base64url input: {exc}")
+        try:
+            text = decoded.decode("utf-8")
+        except UnicodeDecodeError:
+            raise RuntimeError("Builtin 'b64dec' decoded bytes are not valid UTF-8")
+        if self._b64url_encode(text) != value:
+            raise RuntimeError("Builtin 'b64dec' expected canonical unpadded Base64url input")
+        return text
+
+
+    def _pct_encode(self, value: str) -> str:
+        safe = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"
+        out = []
+        for byte in value.encode("utf-8"):
+            if byte in safe:
+                out.append(chr(byte))
+            else:
+                out.append(f"%{byte:02X}")
+        return "".join(out)
+
+    def _pct_decode(self, value: str) -> str:
+        data = bytearray()
+        i = 0
+        while i < len(value):
+            ch = value[i]
+            if ch == "%":
+                if i + 2 >= len(value):
+                    raise RuntimeError("PCT payload has incomplete percent escape")
+                hx = value[i + 1:i + 3]
+                if not py_re.fullmatch(r"[0-9A-F]{2}", hx):
+                    raise RuntimeError("PCT payload has malformed or non-canonical percent escape")
+                data.append(int(hx, 16))
+                i += 3
+            else:
+                if not py_re.fullmatch(r"[A-Za-z0-9_.-]", ch):
+                    raise RuntimeError("PCT payload contains unencoded unsafe byte")
+                data.append(ord(ch))
+                i += 1
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise RuntimeError(f"PCT payload decoded bytes are not valid UTF-8: {exc}")
+
+    def _escape(self, value: str) -> str:
+        text = self._pct_decode(value)
+        replacements = {
+            "\\": "\\\\",
+            '"': '\\"',
+            "\n": "\\n",
+            "\t": "\\t",
+            "\r": "\\r",
+            "\b": "\\b",
+            "\f": "\\f",
+        }
+        return self._pct_encode("".join(replacements.get(ch, ch) for ch in text))
+
+    def _unescape(self, value: str) -> str:
+        text = self._pct_decode(value)
+        replacements = {
+            "\\": "\\",
+            '"': '"',
+            "n": "\n",
+            "t": "\t",
+            "r": "\r",
+            "b": "\b",
+            "f": "\f",
+        }
+        out = []
+        i = 0
+        while i < len(text):
+            ch = text[i]
+            if ch != "\\":
+                out.append(ch)
+                i += 1
+                continue
+            if i + 1 >= len(text):
+                raise RuntimeError("Builtin 'unescape' has trailing backslash escape")
+            esc = text[i + 1]
+            if esc not in replacements:
+                raise RuntimeError(f"Builtin 'unescape' unsupported escape '\\{esc}'")
+            out.append(replacements[esc])
+            i += 2
+        return self._pct_encode("".join(out))
+
+    def _is_numeric_literal(self, value: str) -> bool:
+        return py_re.fullmatch(r"-?(?:[0-9]+|[0-9]+\.[0-9]+|[0-9]+/[0-9]+)", value) is not None
+
+    def _parse_number(self, value: str, builtin: str) -> Fraction:
+        if not self._is_numeric_literal(value):
+            raise RuntimeError(f"Builtin '{builtin}' expected numeric input, got '{value}'")
+        if len(value) > MAX_NUMERIC_LITERAL_CHARS:
+            raise RuntimeError(
+                f"Builtin '{builtin}' numeric input exceeds maximum length "
+                f"({MAX_NUMERIC_LITERAL_CHARS} characters)"
+            )
+        if "/" in value:
+            denominator = int(value.rsplit("/", 1)[1])
+            if denominator == 0:
+                raise RuntimeError(f"Builtin '{builtin}' fraction denominator must be non-zero")
+        try:
+            return Fraction(value)
+        except (ValueError, ZeroDivisionError):
+            raise RuntimeError(f"Builtin '{builtin}' expected numeric input, got '{value}'")
+
+    def _format_rational(self, value: Fraction) -> str:
+        if value.denominator == 1:
+            return str(value.numerator)
+        return f"{value.numerator}/{value.denominator}"
+
+    def _eval_builtin(self, name: str, values: list[str]) -> str:
+        expected = self._builtin_arity(name)
+        if expected is None or len(values) != expected:
+            raise AssertionError(
+                f"internal error: invalid validated builtin '{name}' with {len(values)} values"
+            )
+        if name == "eq":
+            return "1" if values[0] == values[1] else "0"
+        if name == "b64enc":
+            return self._b64url_encode(values[0])
+        if name == "b64dec":
+            return self._b64url_decode(values[0])
+        if name == "pctenc":
+            return self._pct_encode(values[0])
+        if name == "pctdec":
+            return self._pct_decode(values[0])
+        if name == "escape":
+            return self._escape(values[0])
+        if name == "unescape":
+            return self._unescape(values[0])
+        if name == "num":
+            return f"<num>{self._format_rational(self._parse_number(values[0], name))}</num>"
+
+        a = self._parse_number(values[0], name)
+        b = self._parse_number(values[1], name)
+        if name == "add":
+            return self._format_rational(a + b)
+        if name == "sub":
+            return self._format_rational(a - b)
+        if name == "mul":
+            return self._format_rational(a * b)
+        if name == "div":
+            if b == 0:
+                raise RuntimeError("Builtin 'div' division by zero")
+            return self._format_rational(a / b)
+        if name == "mod":
+            if b == 0:
+                raise RuntimeError("Builtin 'mod' modulo by zero")
+            if a.denominator != 1 or b.denominator != 1:
+                raise RuntimeError("Builtin 'mod' expected integer inputs")
+            if a < 0 or b < 0:
+                raise RuntimeError("Builtin 'mod' expected non-negative integer inputs")
+            return str(a.numerator % b.numerator)
+
+        if name == "numeq":
+            return "1" if a == b else "0"
+        if name == "lt":
+            return "1" if a < b else "0"
+        if name == "le":
+            return "1" if a <= b else "0"
+        if name == "gt":
+            return "1" if a > b else "0"
+        if name == "ge":
+            return "1" if a >= b else "0"
+        raise AssertionError(f"internal error: validated builtin '{name}' has no evaluator")
+
+
+    def _expand_template(self, template: str, groups: dict, extra: dict = None) -> str:
+        """Expand a template string with captured groups, extras, and strict PCT filters."""
+        if extra is None:
+            extra = {}
+        raw_vars = {**groups, **extra}
+        escaped_vars = {
+            k: v.replace("\\", "\\\\") if isinstance(v, str) else v
+            for k, v in raw_vars.items()
+        }
+
+        pieces = []
+        pos = 0
+        for match in py_re.finditer(r"{{([^}]*)}}", template):
+            pieces.append(self._decode_replacement_escapes(template[pos:match.start()]))
+            inner = match.group(1)
+            if "|" in inner:
+                name, filt = inner.split("|", 1)
+                if not py_re.fullmatch(r"[A-Za-z_]\w*", name) or not py_re.fullmatch(r"[A-Za-z_]\w*", filt):
+                    raise RuntimeError(f"Malformed template filter '{{{{{inner}}}}}'")
+                if name not in raw_vars:
+                    raise RuntimeError(f"Missing template capture '{name}'")
+                value = str(raw_vars[name])
+                if filt == "pctenc":
+                    pieces.append(self._pct_encode(value))
+                elif filt == "pctdec":
+                    pieces.append(self._pct_decode(value))
+                else:
+                    raise RuntimeError(f"Unknown template filter '{filt}'")
+            elif py_re.fullmatch(r"\w+", inner):
+                value = escaped_vars.get(inner, "")
+                pieces.append(str(value) if value else "")
+            else:
+                pieces.append(match.group(0))
+            pos = match.end()
+        pieces.append(self._decode_replacement_escapes(template[pos:]))
+        return "".join(pieces)
+
+    def _expand_mid_pattern(self, pattern: str, groups: dict) -> str:
+        """Fill holes in a ::| step.
+
+        A hole is {{name}} or {{name|filter|filter...}}. An unfiltered value
+        is inserted verbatim. Filters run left to right; quote is QuoteMeta.
+        A '{{' that is not a well-formed hole contributes one '{' and scanning
+        continues. Step text outside a hole is copied unchanged.
+        """
+        pieces: list[str] = []
+        pos = 0
+        while pos < len(pattern):
+            if pattern.startswith("{{", pos):
+                end = pattern.find("}}", pos + 2)
+                if end >= 0:
+                    inside = pattern[pos + 2:end]
+                    if "|" in inside:
+                        pieces.append(self._expand_mid_filters(inside, groups))
+                        pos = end + 2
+                        continue
+                    if _is_mid_name(inside):
+                        raw = groups.get(inside, "")
+                        pieces.append("" if raw is None else str(raw))
+                        pos = end + 2
+                        continue
+            next_hole = pattern.find("{{", pos)
+            if next_hole < 0:
+                pieces.append(pattern[pos:])
+                break
+            if next_hole == pos:
+                pieces.append(pattern[pos])
+                pos += 1
+                continue
+            pieces.append(pattern[pos:next_hole])
+            pos = next_hole
+        return "".join(pieces)
+
+    def _expand_mid_filters(self, inside: str, groups: dict) -> str:
+        parts = inside.split("|")
+        if len(parts) < 2 or not _is_mid_name(parts[0]) or any(not _is_mid_name(part) for part in parts[1:]):
+            raise RuntimeError(f"Malformed template filter '{{{{{inside}}}}}'")
+        if parts[0] not in groups or groups[parts[0]] is None:
+            raise RuntimeError(f"Missing template capture '{parts[0]}'")
+        value = str(groups[parts[0]])
+        for filt in parts[1:]:
+            if filt == "pctenc":
+                value = self._pct_encode(value)
+            elif filt == "pctdec":
+                value = self._pct_decode(value)
+            elif filt == "quote":
+                value = _quote_meta(value)
+            else:
+                raise RuntimeError(f"Unknown template filter '{filt}'")
+        return value
+
+    def _apply_mids(self, rule: Rule, groups: dict) -> tuple[dict, bool]:
+        if not rule.mids:
+            return groups, True
+        out = {key: value for key, value in groups.items() if isinstance(value, str)}
+        for mid in rule.mids:
+            try:
+                expanded = self._expand_mid_pattern(mid.pattern, out)
+            except RuntimeError as exc:
+                raise RuntimeError(f"Line {rule.line_number}: {exc}") from exc
+            options = re.Options()
+            options.log_errors = False
+            try:
+                compiled = re.compile("(?m)" + self._translate_lhs(expanded), options=options)
+            except re.error:
+                raise RuntimeError(f"Line {rule.line_number}: Invalid ::| regex '{expanded}'")
+            found = compiled.search(self.state)
+            if not found:
+                return groups, False
+            for name in compiled.groupindex:
+                value = found.group(name)
+                if value is not None:
+                    out[name] = value
+        return out, True
+
+    def _decode_replacement_escapes(self, text: str) -> str:
+        placeholder = "\x00BACKSLASH\x00"
+        text = text.replace("\\\\", placeholder)
+        text = text.replace("\\n", "\n")
+        text = text.replace("\\t", "\t")
+        text = text.replace("\\r", "\r")
+        text = text.replace(placeholder, "\\")
+        return text
+
+    def _ensure_process(self, binding: Binding) -> None:
+        """Ensure a process binding has a running process."""
+        if binding.is_process and binding.process is None:
+            # Use stdbuf to force line-buffered output (avoids PTY issues)
+            cmd = f"stdbuf -oL {binding.path_or_command}"
+            binding.process = subprocess.Popen(
+                cmd,
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=0,  # Unbuffered
+            )
+
+    def _read_line(self, binding: Binding, timeout: float) -> tuple[str, Optional[str]]:
+        """Read one newline-delimited message, stripping one line terminator."""
+        if binding.name == "stdout" or binding.name == "stderr":
+            return "", "ERR:resource:cannot_read_output_stream"
+
+        if binding.name == "stdin":
+            ready, _, _ = select.select([sys.stdin], [], [], timeout)
+            if not ready:
+                return "", "ERR:resource:stdin:timeout"
+            line = sys.stdin.readline()
+            if line == "":
+                return "", "ERR:resource:stdin:EOF before newline"
+            if line.endswith("\n"):
+                line = line[:-1]
+                if line.endswith("\r"):
+                    line = line[:-1]
+                return line, None
+            return "", "ERR:resource:stdin:EOF before newline"
+
+        if binding.is_process:
+            self._ensure_process(binding)
+            try:
+                ready, _, _ = select.select([binding.process.stdout], [], [], timeout)
+                if not ready:
+                    if binding.process.poll() not in (None, 0):
+                        stderr = binding.process.stderr.read()
+                        if isinstance(stderr, bytes):
+                            stderr = stderr.decode("utf-8", errors="replace")
+                        stderr = stderr.strip() or f"process exited {binding.process.returncode}"
+                        return "", f"ERR:resource:{binding.name}:{stderr}"
+                    return "", f"ERR:resource:{binding.name}:timeout"
+                line = binding.process.stdout.readline()
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8", errors="replace")
+                if line == "":
+                    return "", f"ERR:resource:{binding.name}:EOF before newline"
+                if line.endswith("\n"):
+                    line = line[:-1]
+                    if line.endswith("\r"):
+                        line = line[:-1]
+                    return line, None
+                return "", f"ERR:resource:{binding.name}:EOF before newline"
+            except OSError as e:
+                return "", f"ERR:resource:{binding.name}:{e}"
+
+        return "", f"ERR:resource:{binding.name}:line read requires process or stdin binding"
+
+    def _write_string(self, binding: Binding, content: str) -> Optional[str]:
+        """Write a string to a binding. Returns error or None."""
+        if binding.name == "stdout":
+            sys.stdout.write(content)
+            sys.stdout.flush()
+            return None
+        elif binding.name == "stderr":
+            sys.stderr.write(content)
+            sys.stderr.flush()
+            return None
+
+        if binding.is_process:
+            self._ensure_process(binding)
+            try:
+                binding.process.stdin.write(content.encode("utf-8"))
+                binding.process.stdin.flush()
+                return None
+            except OSError as e:
+                return f"ERR:resource:{binding.name}:{e}"
+        return f"ERR:resource:{binding.name}:write requires process or output stream binding"
+
+    def _set_state(self, new_state: str) -> None:
+        """Set the state, checking size limits."""
+        if self.max_state_bytes is not None:
+            n_bytes = len(new_state.encode("utf-8"))
+            if n_bytes > self.max_state_bytes:
+                raise LimitExceeded(
+                    "state",
+                    EXIT_STATE_LIMIT,
+                    f"State size ({n_bytes} bytes) exceeds "
+                    f"maximum ({self.max_state_bytes} bytes)",
+                )
+        self.state = new_state
+
+    def _replace_match(self, match: Any, replacement: str) -> str:
+        """Replace a regex match in state, preserving max-state validation."""
+        new_state = self.state[:match.start()] + replacement + self.state[match.end():]
+        self._set_state(new_state)
+        return new_state
+
+    def _rule_id(self, rule: Rule) -> str:
+        source = Path(rule.source_path)
+        try:
+            source_text = source.relative_to(Path.cwd()).as_posix()
+        except ValueError:
+            source_text = source.as_posix()
+        return f"{source_text}:{rule.line_number}"
+
+    def _record_rule_coverage(self, rule: Rule) -> None:
+        if not self.rule_coverage_path:
+            return
+        rule_id = self._rule_id(rule)
+        self.rule_coverage_counts[rule_id] = self.rule_coverage_counts.get(rule_id, 0) + 1
+
+    def write_rule_coverage(self) -> None:
+        if not self.rule_coverage_path:
+            return
+        path = Path(self.rule_coverage_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        lines = [
+            f"{rule_id}\t{self.rule_coverage_counts[rule_id]}"
+            for rule_id in sorted(self.rule_coverage_counts)
+        ]
+        path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+    def _match_state(self, rule: Rule, state_rows: list[tuple]) -> Any:
+        return rule.lhs_pattern.search(self.state)
+
+    def _record_trace(
+        self,
+        rule: Rule,
+        rule_index: int,
+        match: Any,
+        state_before: str,
+        replacement: str,
+        exit_code: Optional[int] = None,
+        error: str = "",
+    ) -> None:
+        if not self.trace_enabled:
+            return
+        groups = {key: value for key, value in match.groupdict().items() if value is not None}
+        self.trace.append(
+            {
+                "step": self.eval_count,
+                "ruleIndex": rule_index,
+                "sourcePath": rule.source_path,
+                "lineNumber": rule.line_number,
+                "operator": rule.operator.value,
+                "lhs": rule.lhs,
+                "matchStart": match.start(),
+                "matchEnd": match.end(),
+                "groups": groups,
+                "stateBefore": state_before,
+                "replacement": replacement,
+                "stateAfter": self.state,
+                "exitCode": exit_code,
+                "error": error,
+            }
+        )
+
+    def run(self) -> int:
+        """Execute rules against mutable state until quiescence."""
+        self.applied_steps = 0
+        self.trace = []
+        while True:
+            state_rows = []
+            offset = 0
+            if self.state:
+                for index, segment in enumerate(self.state.splitlines(keepends=True)):
+                    line_number = index + 1
+                    row = segment[:-1] if segment.endswith("\n") else segment
+                    if row.endswith("\r"):
+                        row = row[:-1]
+                    end = offset + len(segment)
+                    source_path, source_line = (self.program_path, line_number)
+                    if index < len(self._initial_rows) and self._initial_rows[index] == row:
+                        source_path, source_line = self._row_sources[index]
+                    state_rows.append((line_number, row, offset, end, source_path, source_line, index))
+                    offset = end
+                if self.state.endswith("\n"):
+                    line_number = len(state_rows) + 1
+                    state_rows.append((line_number, "", offset, offset, self.program_path, line_number, len(state_rows)))
+
+            applied = False
+
+            for rule_index, rule in enumerate(self.rules):
+                if self.max_evals is not None and self.eval_count >= self.max_evals:
+                    raise LimitExceeded(
+                        "evals",
+                        EXIT_EVAL_LIMIT,
+                        f"Evaluation step limit ({self.max_evals}) exceeded",
+                    )
+                self.eval_count += 1
+
+                match = self._match_state(rule, state_rows)
+                if not match:
+                    continue
+
+                state_before = self.state
+                lhs_groups = match.groupdict()
+                try:
+                    groups, mid_ok = self._apply_mids(rule, lhs_groups)
+                except RuntimeError as exc:
+                    self._record_trace(rule, rule_index, match, state_before, "", error=str(exc))
+                    raise
+                if not mid_ok:
+                    continue
+                applied = True
+
+                if self.debug:
+                    escaped_state = self.state.replace("\n", "\\n")
+                    print(f"[{self.eval_count}] STATE: {escaped_state}", file=sys.stderr)
+                    print(
+                        f"[{self.eval_count}] RULE {rule.line_number} MATCHES STATE AT "
+                        f"{match.start()}:{match.end()}: {rule.lhs}",
+                        file=sys.stderr,
+                    )
+                    print(f"[{self.eval_count}] GROUPS: {groups}", file=sys.stderr)
+
+                if (
+                    rule.operator != Operator.EXIT
+                    and self.max_steps is not None
+                    and self.applied_steps >= self.max_steps
+                ):
+                    raise LimitExceeded(
+                        "steps",
+                        EXIT_STEP_LIMIT,
+                        f"Applied step limit ({self.max_steps}) exceeded",
+                    )
+
+                replacement: Optional[str] = None
+                magic_vars = {"rule_index": str(rule_index)}
+                try:
+                    if rule.operator == Operator.SUBSTITUTE:
+                        replacement = self._expand_template(rule.rhs, groups, magic_vars)
+                        self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.READ:
+                        parts = rule.rhs.strip().split()
+                        if len(parts) != 2:
+                            raise RuntimeError(f"Line {rule.line_number}: ::< requires read_spec and literal resource")
+                        read_spec, resource = parts
+                        try:
+                            read_timeout = float(read_spec)
+                        except ValueError as exc:
+                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'") from exc
+                        if not math.isfinite(read_timeout) or read_timeout <= 0:
+                            raise RuntimeError(f"Line {rule.line_number}: invalid read timeout '{read_spec}'")
+                        if not py_re.fullmatch(r"[A-Za-z_]\w*", resource):
+                            raise RuntimeError(f"Line {rule.line_number}: ::< resource must be a literal binding name")
+                        binding = self.bindings.get(resource)
+                        if not binding:
+                            raise RuntimeError(f"Unknown resource '{resource}'")
+                        content, error = self._read_line(binding, read_timeout)
+                        if error:
+                            if error.startswith("ERR:resource:") and error.endswith(":timeout"):
+                                raise LimitExceeded("timeout", EXIT_READ_TIMEOUT, error)
+                            raise RuntimeError(error)
+                        replacement = self._pct_encode(content)
+                        self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.WRITE:
+                        expanded = self._expand_template(rule.rhs, groups, magic_vars)
+                        space_idx = -1
+                        for pos, ch in enumerate(expanded):
+                            if ch in " \t":
+                                space_idx = pos
+                                break
+                        if space_idx >= 0:
+                            resource = expanded[:space_idx]
+                            content = expanded[space_idx + 1:]
+                        else:
+                            resource = expanded
+                            content = ""
+                        binding = self.bindings.get(resource)
+                        write_error = None
+                        if not binding:
+                            replacement = f"ERR:resource:{resource}"
+                        else:
+                            write_error = self._write_string(binding, content)
+                            replacement = write_error or ""
+                        if binding and not write_error:
+                            self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.BUILTIN:
+                        values = []
+                        for arg in rule.builtin_args:
+                            if arg not in groups:
+                                raise RuntimeError(
+                                    f"Line {rule.line_number}: ::! argument '{arg}' was not captured"
+                                )
+                            values.append(groups[arg])
+                        replacement = self._eval_builtin(rule.builtin_name, values)
+                        self._record_rule_coverage(rule)
+                    elif rule.operator == Operator.EXIT:
+                        code_str = rule.rhs.strip()
+                        if code_str.startswith("{") and code_str.endswith("}"):
+                            code_str = code_str[1:-1]
+                        try:
+                            exit_code = int(code_str)
+                        except ValueError:
+                            self._record_rule_coverage(rule)
+                            self._record_trace(rule, rule_index, match, state_before, "")
+                            return 1
+                        self._record_rule_coverage(rule)
+                        self._record_trace(rule, rule_index, match, state_before, "", exit_code=exit_code)
+                        return exit_code
+                    else:
+                        raise RuntimeError(f"Line {rule.line_number}: unsupported operator {rule.operator.value}")
+                    self._set_state(self.state[:match.start()] + (replacement or "") + self.state[match.end():])
+                except RuntimeError as exc:
+                    self._record_trace(rule, rule_index, match, state_before, replacement or "", error=str(exc))
+                    raise
+                self._record_trace(rule, rule_index, match, state_before, replacement or "")
+                self.applied_steps += 1
+                if self.max_steps is not None and self.applied_steps >= self.max_steps:
+                    raise LimitExceeded(
+                        "steps",
+                        EXIT_STEP_LIMIT,
+                        f"Applied step limit ({self.max_steps}) exceeded",
+                    )
+
+                if self.debug:
+                    escaped_result = self.state.replace("\n", "\\n")
+                    print(f"[{self.eval_count}] RESULT: {escaped_result}", file=sys.stderr)
+                    print(file=sys.stderr)
+
+                break
+
+            if not applied:
+                return 0
+
+    def cleanup(self) -> None:
+        """Clean up resources."""
+        for binding in self.bindings.values():
+            if binding.process:
+                try:
+                    binding.process.terminate()
+                    binding.process.wait(timeout=1)
+                except Exception:
+                    pass
+

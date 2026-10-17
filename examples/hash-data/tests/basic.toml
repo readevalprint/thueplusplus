@@ -1,5 +1,5 @@
 name = "hash is ordinary source and state data"
-program = "../hash-data.tpp"
+program = "../hash-data.thue"
 timeout = 5
 
 [[case]]

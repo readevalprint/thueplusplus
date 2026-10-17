@@ -18,7 +18,7 @@ function playgroundPath(program: string): string {
     <template #mark>
       <Boxes />
     </template>
-    <p class="leading-7">A host runs the Thue++ engine. The engine runs a program, any <code>.tpp</code> file, and the program handles input and output. Some programs are interpreters that run scripts. Others are apps written directly in Thue++.</p>
+    <p class="leading-7">A host runs the Thue++ engine. The engine runs a program, any <code>.thue</code> file, and the program handles input and output. Some programs are interpreters that run scripts. Others are apps written directly in Thue++.</p>
     <div data-test="project-cards" class="flex flex-col gap-4">
       <RouterLink
         v-for="project in projects"

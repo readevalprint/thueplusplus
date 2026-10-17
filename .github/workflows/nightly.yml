@@ -32,8 +32,8 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: |
-            build/go-thuepp
-            build/thuepp.wasm
+            build/go-thue
+            build/thue.wasm
           key: hosts-${{ hashFiles('go/**/*.go', 'go/go.mod', 'go/go.sum') }}
       - name: Install the C++ toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libre2-dev

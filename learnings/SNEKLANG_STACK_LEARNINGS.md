@@ -8,7 +8,7 @@ Do not pursue toy lambda substitution. It is useful only as a negative example a
 
 ## Attempt G: Python semantic model with real closures
 
-File: `/tmp/thuepp-lisp-pda/attempt-g-python-stack-model.py`
+File: `/tmp/thue-lisp-pda/attempt-g-python-stack-model.py`
 
 Purpose: validate desired language semantics before encoding them into Thue++ rules.
 
@@ -39,7 +39,7 @@ Learning: target semantics are coherent. The correct lambda shape is closure + c
 
 ## Attempt H: Thue++ EV/RET over original packed LIST(...) pseudo-AST
 
-File: `/tmp/thuepp-lisp-pda/attempt-h-thuepp-ev-math.tpp`
+File: `/tmp/thue-lisp-pda/attempt-h-thue-ev-math.thue`
 
 Purpose: test explicit `EV`/`RET` continuations over the earlier packed pseudo-AST.
 
@@ -64,7 +64,7 @@ Learning: original `LIST(...)` packed pseudo-AST is okay for bottom-up arithmeti
 
 ## Attempt I: Thue++ encoded child-list items + EV/RET
 
-File: `/tmp/thuepp-lisp-pda/attempt-i-encoded-list-items-ev.tpp`
+File: `/tmp/thue-lisp-pda/attempt-i-encoded-list-items-ev.thue`
 
 Key design change:
 
@@ -92,7 +92,7 @@ Learning: atomic `L:<pct(payload)>` child items are the correct compact AST repr
 
 ## Attempt J: Thue++ lazy booleans/if with EV continuations
 
-File: `/tmp/thuepp-lisp-pda/attempt-j-lazy-booleans-ev.tpp`
+File: `/tmp/thue-lisp-pda/attempt-j-lazy-booleans-ev.thue`
 
 Built on Attempt I.
 
@@ -119,7 +119,7 @@ Learning: sneklang-style node dispatch maps well to Thue++ when children are ato
 
 ## Attempt K: discarded toy lambda substitution
 
-File: `/tmp/thuepp-lisp-pda/attempt-k-toy-nary-lambda-subst.tpp`
+File: `/tmp/thue-lisp-pda/attempt-k-toy-nary-lambda-subst.thue`
 
 Started and then stopped after user correction: "no toys".
 

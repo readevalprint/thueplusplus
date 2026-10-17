@@ -1,5 +1,5 @@
 name = "write then newline read through process"
-program = "../write-read-line.tpp"
+program = "../write-read-line.thue"
 timeout = 10
 
 [bindings.procs]

@@ -203,7 +203,7 @@ def run_benchmarks(suite: dict) -> dict:
         if not program.is_file():
             raise RecordError(f"benchmark program does not exist: {program}")
         timeout = host_timeout(float(workload["timeout_seconds"]), host)
-        with tempfile.TemporaryDirectory(prefix=f"thuepp-bench-{workload['id']}-{host}-") as tmpname:
+        with tempfile.TemporaryDirectory(prefix=f"thue-bench-{workload['id']}-{host}-") as tmpname:
             counts_path = Path(tmpname) / "counts.json"
             argv = [*interpreter.argv, str(program)]
             if workload["input"]:

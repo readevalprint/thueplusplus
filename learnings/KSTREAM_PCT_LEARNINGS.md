@@ -4,7 +4,7 @@ Disposable. No repo files changed.
 
 ## Attempt P: `::%` frame payload construction
 
-File: `/tmp/thuepp-lisp-pda/attempt-p-data-kframe-probe.tpp`
+File: `/tmp/thue-lisp-pda/attempt-p-data-kframe-probe.thue`
 
 Goal: verify source correction: use `::%` for frame payloads.
 
@@ -30,7 +30,7 @@ Learning:
 
 ## Attempt Q: Thue++ generic binary nested CALL/APPLY over prebuilt AST
 
-File: `/tmp/thuepp-lisp-pda/attempt-q-kstream-generic-binary-prebuilt.tpp`
+File: `/tmp/thue-lisp-pda/attempt-q-kstream-generic-binary-prebuilt.thue`
 
 Goal: rebuild generic call with atomic K frames and `::%` frame builders.
 
@@ -118,7 +118,7 @@ RET[v|env|top%20rest]
 
 ## Attempt R: Python explicit model with pct K-frame stream
 
-File: `/tmp/thuepp-lisp-pda/attempt-r-python-pct-kstream-lambda.py`
+File: `/tmp/thue-lisp-pda/attempt-r-python-pct-kstream-lambda.py`
 
 Goal: prove exact target model with atomic pct K frames, n-ary args, lazy forms, closures.
 
@@ -177,7 +177,7 @@ Rules:
 
 ## Attempt Q2: corrected TPP confirmation
 
-File: `/tmp/thuepp-lisp-pda/attempt-q2-kstream-rest-outside.tpp`
+File: `/tmp/thue-lisp-pda/attempt-q2-kstream-rest-outside.thue`
 
 This is the first TPP confirmation of the corrected continuation shape.
 
@@ -236,7 +236,7 @@ Current tradeoffs:
 
 ## Attempt S: n-ary builtin surface desugaring in TPP
 
-File: `/tmp/thuepp-lisp-pda/attempt-s-nary-desugar.tpp`
+File: `/tmp/thue-lisp-pda/attempt-s-nary-desugar.thue`
 
 Goal: test a cheap route to n-ary math without changing the confirmed binary `KCALL2/KARG1/KARG2` evaluator.
 
@@ -274,7 +274,7 @@ Learning:
 
 ## Attempt T: limited env-backed n-ary lambda in TPP
 
-File: `/tmp/thuepp-lisp-pda/attempt-t-env-lambda-narity.tpp`
+File: `/tmp/thue-lisp-pda/attempt-t-env-lambda-narity.thue`
 
 Goal: move beyond `lam3add` substitution-ish direct body construction by introducing an explicit env scratch payload and variable lookup.
 
@@ -307,7 +307,7 @@ Confirmed in TPP:
 (lam3envadd 10 20 30) -> 60
 ```
 
-Full confirmation matrix in TPP using `/tmp/thuepp-lisp-pda/attempt-t-env-lambda-narity.tpp`:
+Full confirmation matrix in TPP using `/tmp/thue-lisp-pda/attempt-t-env-lambda-narity.thue`:
 
 ```text
 basic_math_nested: 21 OK
@@ -354,7 +354,7 @@ Dynamic-rule generation note:
 
 ## Attempt X: PDA plus dynamic one-shot transition rules
 
-File: `/tmp/thuepp-lisp-pda/attempt-x-pda-dynamic-rules.tpp`
+File: `/tmp/thue-lisp-pda/attempt-x-pda-dynamic-rules.thue`
 
 Goal: prove that current Thue++ can already demonstrate a pushdown automaton with dynamically generated rule rows.
 
@@ -425,7 +425,7 @@ Production implication for Lisp:
 
 ## Attempt Y: dynamic parser/framer front-end into item stream
 
-File: `/tmp/thuepp-lisp-pda/attempt-y-dynamic-raw-framer.tpp`
+File: `/tmp/thue-lisp-pda/attempt-y-dynamic-raw-framer.thue`
 
 Goal: test dynamic rule generation as the parser/framer boundary, while preserving the already-confirmed `EV/RET/APPLY` evaluator.
 
@@ -467,7 +467,7 @@ Tradeoffs:
 
 ## Attempt Z: dynamic scoped lambda apply helper and dynamic curried front-end
 
-File: `/tmp/thuepp-lisp-pda/attempt-z-dynamic-curried-apply.tpp`
+File: `/tmp/thue-lisp-pda/attempt-z-dynamic-curried-apply.thue`
 
 Goal: test generated, id-scoped lambda/application helpers for 3-argument lambda-shaped calls.
 
@@ -509,14 +509,14 @@ Tradeoffs:
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-ax-arbitrary-vtypes-strict-lazy-array.tpp
-/tmp/thuepp-lisp-pda/attempt-ay-python-oracle-full-acceptance.py
-/tmp/thuepp-lisp-pda/attempt-az-inversion-array-value-representation.tpp
+/tmp/thue-lisp-pda/attempt-ax-arbitrary-vtypes-strict-lazy-array.thue
+/tmp/thue-lisp-pda/attempt-ay-python-oracle-full-acceptance.py
+/tmp/thue-lisp-pda/attempt-az-inversion-array-value-representation.thue
 ```
 
 Prerequisite source reading:
 
-- `python/thuepp.py` uses google-re2, so no lookahead/lookbehind. A failed attempt to guard broad source-entry with `(?!...)` was invalid.
+- `python/thue.py` uses google-re2, so no lookahead/lookbehind. A failed attempt to guard broad source-entry with `(?!...)` was invalid.
 - Pattern definitions are expanded textually once. If `VAL <- ... $PCT ...`, later `$VAL` insertion does not recursively expand the nested `$PCT` reference. Inline nested pattern bodies in composite pattern definitions.
 - `::%` decodes each captured PCT variable before constructing and pct-encoding the whole template. Useful for frame construction, dangerous if the field should stay opaque/double-encoded.
 - `::!` builtins return untyped raw strings (`numeq`, `lt`, `gt` return `1`/`0`), so boolean results need wrapper states such as `VBOOL%5BEQ[...]%5D` before normalization.
@@ -630,11 +630,11 @@ Accumulated direction after AX/AY/AZ:
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-as-arbitrary-parser-roundtrip.tpp
-/tmp/thuepp-lisp-pda/attempt-at-arbitrary-strict-eval.tpp
-/tmp/thuepp-lisp-pda/attempt-au-arbitrary-parser-lazy-core.tpp
-/tmp/thuepp-lisp-pda/attempt-av-parser-subst-lambda-let.tpp
-/tmp/thuepp-lisp-pda/attempt-aw-delimited-values-array-lambda-let.tpp
+/tmp/thue-lisp-pda/attempt-as-arbitrary-parser-roundtrip.thue
+/tmp/thue-lisp-pda/attempt-at-arbitrary-strict-eval.thue
+/tmp/thue-lisp-pda/attempt-au-arbitrary-parser-lazy-core.thue
+/tmp/thue-lisp-pda/attempt-av-parser-subst-lambda-let.thue
+/tmp/thue-lisp-pda/attempt-aw-delimited-values-array-lambda-let.thue
 ```
 
 Attempt AS built an actual pushdown parser for arbitrary balanced Lisp input, including nested lists and quoted strings with spaces.
@@ -775,9 +775,9 @@ Accumulated direction:
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-ap-marked-entry-typed-prim.tpp
-/tmp/thuepp-lisp-pda/attempt-aq-array-fuller.tpp
-/tmp/thuepp-lisp-pda/attempt-ar-integrated-fuller-acceptance.tpp
+/tmp/thue-lisp-pda/attempt-ap-marked-entry-typed-prim.thue
+/tmp/thue-lisp-pda/attempt-aq-array-fuller.thue
+/tmp/thue-lisp-pda/attempt-ar-integrated-fuller-acceptance.thue
 ```
 
 Attempt AP tested a safer split between source literals and primitive results. Source enters marked `SRC_*` rows; primitive builtin results stay inside continuation wrappers such as `RETNUM[...]`, `RETBOOL[...]`, `KADD[...]`, `KEQ[...]`.
@@ -911,9 +911,9 @@ Accumulated direction:
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-am-array-head-rest.tpp
-/tmp/thuepp-lisp-pda/attempt-an-if-lazy-bool-ops.tpp
-/tmp/thuepp-lisp-pda/attempt-ao-integrated-acceptance-array.tpp
+/tmp/thue-lisp-pda/attempt-am-array-head-rest.thue
+/tmp/thue-lisp-pda/attempt-an-if-lazy-bool-ops.thue
+/tmp/thue-lisp-pda/attempt-ao-integrated-acceptance-array.thue
 ```
 
 Attempt AM isolated arrays as typed values with `head` and `rest`.
@@ -1021,9 +1021,9 @@ Accumulated direction:
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-aj-typed-values-lisp-smoke.tpp
-/tmp/thuepp-lisp-pda/attempt-ak-narity-generated-helpers.tpp
-/tmp/thuepp-lisp-pda/attempt-al-integrated-acceptance-lisp.tpp
+/tmp/thue-lisp-pda/attempt-aj-typed-values-lisp-smoke.thue
+/tmp/thue-lisp-pda/attempt-ak-narity-generated-helpers.thue
+/tmp/thue-lisp-pda/attempt-al-integrated-acceptance-lisp.thue
 ```
 
 Attempt AJ tested typed runtime constructors (`NUM`, `BOOL`, `NIL`, `STR`, `LIST`) to avoid confusing numeric `1`/`0` with booleans.
@@ -1119,9 +1119,9 @@ Accumulated direction:
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-ag-lisp-literals-list.tpp
-/tmp/thuepp-lisp-pda/attempt-ah-lisp-let-narity.tpp
-/tmp/thuepp-lisp-pda/attempt-ai-integrated-lisp-smoke.tpp
+/tmp/thue-lisp-pda/attempt-ag-lisp-literals-list.thue
+/tmp/thue-lisp-pda/attempt-ah-lisp-let-narity.thue
+/tmp/thue-lisp-pda/attempt-ai-integrated-lisp-smoke.thue
 ```
 
 Attempt AG proved Lisp-shaped literal/list rendering with fixed-pattern dynamic rules:
@@ -1187,7 +1187,7 @@ Next production direction:
 
 ## Attempt AF: FIN-delimited dynamic rule lifecycle
 
-File: `/tmp/thuepp-lisp-pda/attempt-af-rule-fin-cleanup-demo.tpp`
+File: `/tmp/thue-lisp-pda/attempt-af-rule-fin-cleanup-demo.thue`
 
 Goal: demonstrate simple input logic that creates, updates, and removes generated rules whose LHS uses a single lifecycle delimiter/suffix ending in `_FIN`.
 
@@ -1222,7 +1222,7 @@ Tradeoffs:
 
 ## Attempt AE: dynamic K/V database using rules as records
 
-File: `/tmp/thuepp-lisp-pda/attempt-ae-dynamic-kv-db.tpp`
+File: `/tmp/thue-lisp-pda/attempt-ae-dynamic-kv-db.thue`
 
 Goal: demonstrate a dynamic key/value database where each record is represented by a generated rule row.
 
@@ -1270,7 +1270,7 @@ Tradeoffs:
 
 ## Attempt AD: rule CRUD demo (create/update/remove generated rules)
 
-File: `/tmp/thuepp-lisp-pda/attempt-ad-rule-crud-demo.tpp`
+File: `/tmp/thue-lisp-pda/attempt-ad-rule-crud-demo.thue`
 
 Goal: demonstrate rules creating, updating, and removing other rules based on simple input logic.
 
@@ -1326,17 +1326,17 @@ Next implementation order:
 Files:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bc1-escaped-rule-edit.tpp
-/tmp/thuepp-lisp-pda/attempt-bc3-stack-lazy-raw-control.tpp
-/tmp/thuepp-lisp-pda/attempt-ba-lisp.tpp              # reused as BC2 arbitrary parser/core evaluator
-/tmp/thuepp-lisp-pda/attempt-bb-lisp.tpp              # reused as BC4 env/closure/array probe
-/tmp/thuepp-lisp-pda/attempt-ar-integrated-fuller-acceptance.tpp  # reused as BC5 integrated fixed-surface matrix
+/tmp/thue-lisp-pda/attempt-bc1-escaped-rule-edit.thue
+/tmp/thue-lisp-pda/attempt-bc3-stack-lazy-raw-control.thue
+/tmp/thue-lisp-pda/attempt-ba-lisp.thue              # reused as BC2 arbitrary parser/core evaluator
+/tmp/thue-lisp-pda/attempt-bb-lisp.thue              # reused as BC4 env/closure/array probe
+/tmp/thue-lisp-pda/attempt-ar-integrated-fuller-acceptance.thue  # reused as BC5 integrated fixed-surface matrix
 ```
 
 Source reread before these attempts:
 
-- `examples/lisp/lisp.tpp` is currently a small raw `S:` reducer, not a full parser/evaluator. It supports literals and scalar binary arithmetic/compare by innermost raw regex collapse, then fail-loud fallback.
-- `python/thuepp.py` now parses rule rows by scanning for the first unescaped standalone operator. Escaped literal operators such as `\::=` in a rule LHS are therefore usable to match generated rule rows as data.
+- `examples/lisp/lisp.thue` is currently a small raw `S:` reducer, not a full parser/evaluator. It supports literals and scalar binary arithmetic/compare by innermost raw regex collapse, then fail-loud fallback.
+- `python/thue.py` now parses rule rows by scanning for the first unescaped standalone operator. Escaped literal operators such as `\::=` in a rule LHS are therefore usable to match generated rule rows as data.
 - Runtime row semantics remain the key constraint: rules are rows, lower rule rows are mutable state, comments are skipped, and the active rule rewrites the first matching non-comment row below it.
 
 ### Attempt BC1: escaped literal operator rule editing
@@ -1395,7 +1395,7 @@ Learning:
 
 ### Attempt BC3: current `S:` stack reducer plus lazy raw control probe
 
-Goal: test whether the current small `examples/lisp/lisp.tpp` stack shape can protect unchosen branches without full AST/K-stream plumbing.
+Goal: test whether the current small `examples/lisp/lisp.thue` stack shape can protect unchosen branches without full AST/K-stream plumbing.
 
 Confirmed in a disposable copy:
 
@@ -1494,7 +1494,7 @@ Overall tradeoff matrix:
    - Must be ported into BA rather than used as a surface-regex implementation.
 
 4. BC3 raw `S:` lazy control
-   - Good tiny teaching slice for current `lisp.tpp` phases.
+   - Good tiny teaching slice for current `lisp.thue` phases.
    - Not a production route for arbitrary control or closures.
 
 ### Accumulated next integrated direction

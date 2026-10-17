@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "name": "thuepp",
+  "name": "thue",
   "version": "0.5.0",
   "description": "C++17 host for Thue++. Not published to the vcpkg registry.",
   "dependencies": [

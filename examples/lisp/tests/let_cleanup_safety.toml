@@ -1,6 +1,6 @@
 # Focused deletion-first safety cases for the let binding-stream iterator.
 # These pin sequential, non-recursive let semantics while KLETLAST is deleted.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

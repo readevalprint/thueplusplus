@@ -1,4 +1,4 @@
-program = "../pct.tpp"
+program = "../pct.thue"
 timeout = 5
 
 [[case]]

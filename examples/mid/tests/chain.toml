@@ -1,5 +1,5 @@
 name = "mid chain"
-program = "../chain.tpp"
+program = "../chain.thue"
 
 [expect]
 stdout = "1-2\n"

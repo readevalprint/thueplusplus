@@ -4,11 +4,11 @@ Date: current session.
 
 Workflow followed:
 
-- Read current `python/thuepp.py` implementation source, especially rule parsing/runtime row semantics, `::!`, `::%`, and replacement/write behavior.
+- Read current `python/thue.py` implementation source, especially rule parsing/runtime row semantics, `::!`, `::%`, and replacement/write behavior.
 - Read prior Lisp evaluator references: arbitrary parser/evaluator probes, BC integration, dynamic PDA/rule probes, Sneklang EV/RET direction, pushdown parser probes, and inversion hard-acceptance notes.
 - Created reusable hard acceptance harness:
-  - `/tmp/thuepp-lisp-pda/hard_acceptance_cases.tsv`
-  - `/tmp/thuepp-lisp-pda/run_hard_acceptance.py`
+  - `/tmp/thue-lisp-pda/hard_acceptance_cases.tsv`
+  - `/tmp/thue-lisp-pda/run_hard_acceptance.py`
 
 Hard acceptance matrix currently covers:
 
@@ -32,17 +32,17 @@ true
 
 ## Baseline attempt comparison
 
-- `attempt-ba-lisp.tpp`: 7/15. Best arbitrary parser + EV/RET scalar/lazy trunk, but binary-only strict call and no arrays/lambda/let.
-- `attempt-ar-integrated-fuller-acceptance.tpp`: 9/15. Broad fixed-surface smoke: useful evidence, not acceptable arbitrary trunk; misses nested n-ary math, closures/shadowing, array rest/mixed, let-array.
-- `attempt-ax-arbitrary-vtypes-strict-lazy-array.tpp`: 8/15. Best arbitrary scalar/lazy/n-ary trunk; array representation stuck because semicolon was pct-encoded and value token regex greedily swallowed adjacent pct-encoded constructors.
-- `attempt-bb-lisp.tpp`: direct inversion probe, not arbitrary input. Proves closure/env/array mechanics but does not accept source syntax.
+- `attempt-ba-lisp.thue`: 7/15. Best arbitrary parser + EV/RET scalar/lazy trunk, but binary-only strict call and no arrays/lambda/let.
+- `attempt-ar-integrated-fuller-acceptance.thue`: 9/15. Broad fixed-surface smoke: useful evidence, not acceptable arbitrary trunk; misses nested n-ary math, closures/shadowing, array rest/mixed, let-array.
+- `attempt-ax-arbitrary-vtypes-strict-lazy-array.thue`: 8/15. Best arbitrary scalar/lazy/n-ary trunk; array representation stuck because semicolon was pct-encoded and value token regex greedily swallowed adjacent pct-encoded constructors.
+- `attempt-bb-lisp.thue`: direct inversion probe, not arbitrary input. Proves closure/env/array mechanics but does not accept source syntax.
 
 ## Attempt BD: AX + AZ array representation
 
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bd-ax-az-arrays.tpp
+/tmp/thue-lisp-pda/attempt-bd-ax-az-arrays.thue
 ```
 
 Change from AX:

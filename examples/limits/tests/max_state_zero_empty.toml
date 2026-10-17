@@ -1,4 +1,4 @@
-program = "../max-state-zero-empty.tpp"
+program = "../max-state-zero-empty.thue"
 
 [[case]]
 name = "zero limit allows empty state"

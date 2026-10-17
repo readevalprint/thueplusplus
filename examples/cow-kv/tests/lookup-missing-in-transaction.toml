@@ -1,5 +1,5 @@
 name = "transaction lookup misses unrelated overlay and base entries"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "set b base; begin; set c child; get a"
 
 [expect]

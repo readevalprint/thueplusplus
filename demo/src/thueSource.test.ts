@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { splitProgramSource } from './thueSource'
-import lispSource from '../../examples/lisp/lisp.tpp?raw'
+import lispSource from '../../examples/lisp/lisp.thue?raw'
 
 describe('splitProgramSource', () => {
   it('preserves exact rules and derives empty state when there is no separator', () => {

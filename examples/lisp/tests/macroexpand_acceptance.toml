@@ -1,5 +1,5 @@
 # Explicit recursive macro expansion over Lisp code-as-data.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "160000"]
 

@@ -1,9 +1,9 @@
 # BASIC
 
-`basic.tpp` is a small line-oriented BASIC interpreter written as Thue++ rewrite rules. The task runner passes a `.bas` program as `--input`.
+`basic.thue` is a small line-oriented BASIC interpreter written as Thue++ rewrite rules. The task runner passes a `.bas` program as `--input`.
 
 ```bash
-uv run thuepp examples/basic/basic.tpp \
+uv run thue examples/basic/basic.thue \
   --input 'PRINT "Hello, World!"' \
   --max-steps 1000 --max-evals 10000 --max-state-bytes 65536
 ```

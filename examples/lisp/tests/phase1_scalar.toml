@@ -2,7 +2,7 @@
 # This manifest keeps scalar behavior implemented by the canonical evaluator.
 # Unsupported legacy scalar operators/comparisons remain out of scope;
 # fail-loud gaps remain in fail_loud_debt.toml.
-program = "../lisp.tpp"
+program = "../lisp.thue"
 timeout = 10
 args = ["--max-evals", "60000"]
 

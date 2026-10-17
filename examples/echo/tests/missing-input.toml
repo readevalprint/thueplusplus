@@ -1,5 +1,5 @@
 name = "echo missing input binding fails loudly"
-program = "../echo.tpp"
+program = "../echo.thue"
 
 [expect]
 stdout = ""

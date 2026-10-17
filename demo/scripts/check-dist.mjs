@@ -5,7 +5,7 @@ import { readGeneratedCatalog, taskPages } from './build-catalog.mjs'
 const dist = new URL('../dist/', import.meta.url).pathname
 const pages = JSON.parse(readFileSync(new URL('../src/pages.json', import.meta.url), 'utf8'))
 const tasks = taskPages(readGeneratedCatalog())
-const requiredAssets = ['thuepp.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thuepp-mark.svg']
+const requiredAssets = ['thue.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thue-mark.svg']
 const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...tasks.map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {
@@ -70,7 +70,7 @@ for (const task of tasks) {
 const jsFiles = readdirSync(join(dist, 'assets')).filter(name => name.endsWith('.js'))
 for (const fileName of jsFiles) {
   const text = readFileSync(join(dist, 'assets', fileName), 'utf8')
-  if (!text.includes('/thuepp.wasm') && !text.includes('/wasm_exec.js')) {
+  if (!text.includes('/thue.wasm') && !text.includes('/wasm_exec.js')) {
     continue
   }
   if (text.includes('new Worker("data:text/javascript') || text.includes("new Worker('data:text/javascript")) {

@@ -1,5 +1,5 @@
 name = "invalid command reports error and continues"
-program = "../cow-kv.tpp"
+program = "../cow-kv.thue"
 input = "set a base; frob a; get a"
 
 [expect]

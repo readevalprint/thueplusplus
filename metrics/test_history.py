@@ -31,7 +31,7 @@ def entry(commit: str, timestamp: str, *, tasks=None, benchmarks=None) -> dict:
         "author": "Ada Lovelace <ada@example.com>",
         "timestamp": timestamp,
         "machine": None,
-        "guests": {"forth": {"program": "examples/forth/forth.tpp", "rule_lines": 3}},
+        "guests": {"forth": {"program": "examples/forth/forth.thue", "rule_lines": 3}},
         "tasks": tasks,
         "benchmarks": benchmarks,
     }
@@ -52,7 +52,7 @@ def _host(host: str, *, steps: int = 10, probes: int = 12, memory: int | None = 
 def _workload(*hosts: str, workload_id: str = "probe-cost", steps: int = 10, probes: int = 12) -> dict:
     return {
         "id": workload_id,
-        "program": "metrics/workloads/probe-cost.tpp",
+        "program": "metrics/workloads/probe-cost.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,
@@ -233,7 +233,7 @@ class HistoryTests(unittest.TestCase):
         ids = [row["id"] for row in suite["workloads"]]
         self.assertEqual(ids, ["probe-cost", "state-rewrite", "regex", "io", "guest"])
         guest = suite["workloads"][-1]
-        self.assertEqual(guest["program"], "examples/forth/forth.tpp")
+        self.assertEqual(guest["program"], "examples/forth/forth.thue")
         self.assertEqual(guest["input"], "1 2 + .")
         self.assertGreater(guest["max_steps"], 0)
         self.assertGreater(guest["max_evals"], 0)
@@ -285,14 +285,14 @@ class HistoryTests(unittest.TestCase):
     def test_python_counts_file_under_explicit_limits(self) -> None:
         program = "a ::= b\nb ::- 0\n\n::=\na\n"
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "tiny.tpp"
+            path = Path(tmp) / "tiny.thue"
             counts = Path(tmp) / "counts.json"
             path.write_text(program, encoding="utf-8")
             completed = bounded_run(
                 [
                     "uv",
                     "run",
-                    "thuepp",
+                    "thue",
                     str(path),
                     "--counts",
                     str(counts),
@@ -317,7 +317,7 @@ def _latest_document() -> dict:
     return {
         "schema_version": 2,
         "machine": {"os": "Linux", "release": "6.12.0", "arch": "x86_64", "cpu": "Example CPU", "cpus": 2},
-        "guests": {"forth": {"program": "examples/forth/forth.tpp", "rule_lines": 3}},
+        "guests": {"forth": {"program": "examples/forth/forth.thue", "rule_lines": 3}},
         "tasks": historylib.tasks_document([historylib.task_row("factorial", "lisp", "pass", 1, 1)]),
         "benchmarks": _benchmarks("go"),
     }

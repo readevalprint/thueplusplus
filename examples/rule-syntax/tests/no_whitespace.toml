@@ -1,4 +1,4 @@
-program = "../no-whitespace.tpp"
+program = "../no-whitespace.thue"
 
 [[case]]
 name = "rule operators do not require surrounding whitespace"

@@ -4,7 +4,7 @@ Date: current continuation turn.
 
 Inputs read this turn:
 
-- `python/thuepp.py` runtime source around rule parsing, PCT filters, `::!`, `::%`, and row probing.
+- `python/thue.py` runtime source around rule parsing, PCT filters, `::!`, `::%`, and row probing.
 - `BG_BH_LEARNINGS.md`
 - `BI_BIDIRECTIONAL_PIPELINE_DESIGN.md`
 - skill reference `bg-bh-inside-out-pct-framing.md`
@@ -14,7 +14,7 @@ Inputs read this turn:
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bi-bidirectional-string-protected.tpp
+/tmp/thue-lisp-pda/attempt-bi-bidirectional-string-protected.thue
 ```
 
 Purpose:
@@ -48,7 +48,7 @@ Tradeoff:
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bj-bidir-arrays-compare-bool.tpp
+/tmp/thue-lisp-pda/attempt-bj-bidir-arrays-compare-bool.thue
 ```
 
 Purpose:
@@ -105,7 +105,7 @@ Important edgecases:
 File:
 
 ```text
-/tmp/thuepp-lisp-pda/attempt-bk-immediate-lambda-let-env.tpp
+/tmp/thue-lisp-pda/attempt-bk-immediate-lambda-let-env.thue
 ```
 
 Purpose:

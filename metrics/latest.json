@@ -9,19 +9,19 @@
   },
   "guests": {
     "forth": {
-      "program": "examples/forth/forth.tpp",
+      "program": "examples/forth/forth.thue",
       "rule_lines": 86
     },
     "lisp": {
-      "program": "examples/lisp/lisp.tpp",
+      "program": "examples/lisp/lisp.thue",
       "rule_lines": 441
     },
     "brainfuck": {
-      "program": "examples/brainfuck/brainfuck.tpp",
+      "program": "examples/brainfuck/brainfuck.thue",
       "rule_lines": 68
     },
     "basic": {
-      "program": "examples/basic/basic.tpp",
+      "program": "examples/basic/basic.thue",
       "rule_lines": 62
     }
   },
@@ -356,7 +356,7 @@
     "workloads": [
       {
         "id": "probe-cost",
-        "program": "metrics/workloads/probe-cost.tpp",
+        "program": "metrics/workloads/probe-cost.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,
@@ -414,7 +414,7 @@
       },
       {
         "id": "state-rewrite",
-        "program": "metrics/workloads/state-rewrite.tpp",
+        "program": "metrics/workloads/state-rewrite.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,
@@ -472,7 +472,7 @@
       },
       {
         "id": "regex",
-        "program": "metrics/workloads/regex.tpp",
+        "program": "metrics/workloads/regex.thue",
         "input": "",
         "stdin": "",
         "max_steps": 20,
@@ -530,7 +530,7 @@
       },
       {
         "id": "io",
-        "program": "metrics/workloads/io.tpp",
+        "program": "metrics/workloads/io.thue",
         "input": "",
         "stdin": "alpha\nbeta\ngamma\ndelta\nepsilon\nzeta\neta\ntheta\n",
         "max_steps": 100,
@@ -588,7 +588,7 @@
       },
       {
         "id": "guest",
-        "program": "examples/forth/forth.tpp",
+        "program": "examples/forth/forth.thue",
         "input": "1 2 + .",
         "stdin": "",
         "max_steps": 100000,

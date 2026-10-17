@@ -25,5 +25,5 @@ jobs:
           # Same stretch the Rust workflow uses. A heavy Lisp case misses
           # the 10s budget on a GitHub-hosted core. Local make test leaves
           # this unset.
-          THUEPP_TIMEOUT_SCALE: "2"
+          THUE_TIMEOUT_SCALE: "2"
         run: make test

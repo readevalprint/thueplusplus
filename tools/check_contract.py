@@ -15,13 +15,13 @@ import example_runner
 
 
 README_MARKER_RE = re.compile(
-    r"<!--\s*thuepp-readme-example:\s*"
+    r"<!--\s*thue-readme-example:\s*"
     r"source=(?P<source>\S+)"
     r"(?:\s+source-lines=(?P<source_lines>[0-9]+-[0-9]+))?"
     r"\s+expected-output=(?P<expected_output>\S+)\s*-->"
 )
-README_START = "<!-- thuepp-readme-example:start -->"
-README_END = "<!-- thuepp-readme-example:end -->"
+README_START = "<!-- thue-readme-example:start -->"
+README_END = "<!-- thue-readme-example:end -->"
 NUMERIC_CONTRACT_RE = re.compile(r"```regex\n(?P<regex>[^\n]+)\n```")
 UNSUPPORTED_RE2_RE = re.compile(r"\(\?P=|\(\?!|\(\?=|\(\?<=|\(\?<!|(?<!\\)\\[1-9]")
 
@@ -92,7 +92,7 @@ def render_readme_example(root: Path, source_path: str, expected_output_path: st
         "Run it now in the browser playground:\n"
         f"{playground_url(source_path)}\n\n"
         f"See the source: [{source_path}]({gitlab_source_url(source_path)})\n\n"
-        "```thuepp\n"
+        "```thue\n"
         f"{source.rstrip(chr(10))}\n"
         "```\n\n"
         "Expected output:\n\n"
@@ -107,7 +107,7 @@ def updated_readme(root: Path) -> str:
     text = read(readme)
     matches = list(README_MARKER_RE.finditer(text))
     if not matches:
-        raise ValueError("README marker not found: <!-- thuepp-readme-example: source=... expected-output=... -->")
+        raise ValueError("README marker not found: <!-- thue-readme-example: source=... expected-output=... -->")
     pieces: list[str] = []
     pos = 0
     for marker in matches:
@@ -149,7 +149,7 @@ def check_makefile(root: Path) -> list[Failure]:
         "test-code-coverage",
         "tools/check-rule-coverage",
         "tools/check-code-coverage",
-        "tools/thuepp-contract.toml",
+        "tools/thue-contract.toml",
         "--manifest-glob",
         "--contract",
         "--parity",
@@ -203,7 +203,7 @@ def check_readme(root: Path) -> list[Failure]:
             failures.append(Failure(path, "generated quickstart example is out of date; run uv run python tools/check_contract.py --update-readme"))
     except ValueError as exc:
         failures.append(Failure(path, str(exc)))
-    required = ["## Verification", "make test", "uv run thuepp", "pyproject.toml", "uv.lock", "github.com/readevalprint/thueplusplus/go/thuepp"]
+    required = ["## Verification", "make test", "uv run thue", "pyproject.toml", "uv.lock", "github.com/thuelang/thueplusplus/go/thue"]
     for snippet in required:
         if snippet not in text:
             failures.append(Failure(path, f"missing README verification text: {snippet}"))
@@ -223,7 +223,7 @@ def check_contract(root: Path) -> list[Failure]:
     except SyntaxError as exc:
         failures.append(Failure(runner_path, f"shared runner is not parseable Python: {exc}"))
         runner_tree = ast.Module(body=[], type_ignores=[])
-    forbidden_modules = {"thuepp", "python.thuepp"}
+    forbidden_modules = {"thue", "python.thue"}
     for node in ast.walk(runner_tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -232,8 +232,8 @@ def check_contract(root: Path) -> list[Failure]:
         elif isinstance(node, ast.ImportFrom) and node.module in forbidden_modules:
             failures.append(Failure(runner_path, f"shared runner must not import Python implementation module {node.module}"))
     required_runner = [
-        'Interpreter("python", ("uv", "run", "thuepp"))',
-        '["go", "build", "-o", str(go_artifact), "./cmd/thuepp"]',
+        'Interpreter("python", ("uv", "run", "thue"))',
+        '["go", "build", "-o", str(go_artifact), "./cmd/thue"]',
         'DEFAULT_MANIFEST_GLOB = "examples/**/tests/*.toml"',
         '"--list-rules"',
         '"--rule-coverage"',
@@ -251,12 +251,12 @@ def check_contract(root: Path) -> list[Failure]:
         "--jobs",
         "--parity",
         "contract_interpreters",
-        "thuepp-contract.toml",
+        "thue-contract.toml",
     ]
     for snippet in forbidden_runner:
         if snippet in runner_text:
             failures.append(Failure(runner_path, f"shared runner must not expose stale customization layer: {snippet}"))
-    python_path = root / "python" / "thuepp" / "cli.py"
+    python_path = root / "python" / "thue" / "cli.py"
     python_text = read(python_path)
     if '"--list-rules"' not in python_text:
         failures.append(Failure(python_path, "Python external command must expose --list-rules for runner-owned coverage enumeration"))
@@ -289,11 +289,11 @@ def check_numeric_regex(root: Path) -> list[Failure]:
     except re.error as exc:
         failures.append(Failure(root / "docs" / "numeric-builtins.md", f"canonical numeric regex does not compile in Python: {exc}"))
     checks = [
-        (root / "python" / "thuepp" / "interpreter.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
-        (root / "go" / "thuepp" / "interpreter.go", 1, None),
+        (root / "python" / "thue" / "interpreter.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
+        (root / "go" / "thue" / "interpreter.go", 1, None),
         (root / "rust" / "src" / "builtin.rs", 1, None),
-        (root / "examples" / "builtin" / "builtin.tpp", 1, f"N <- {grammar}"),
-        (root / "examples" / "lisp" / "lisp.tpp", 1, None),
+        (root / "examples" / "builtin" / "builtin.thue", 1, f"N <- {grammar}"),
+        (root / "examples" / "lisp" / "lisp.thue", 1, None),
     ]
     for path, expected_count, required_snippet in checks:
         text = read(path)
@@ -309,13 +309,13 @@ def check_numeric_regex(root: Path) -> list[Failure]:
         r"-?(?:[0-9]+|[0-9]+\\.[0-9]+)",
         r"@ADD\\[\\(?<a>[^|]+\\)\\|\\(?<b>[^\\]]+\\)\\]@",
     ]:
-        if stale in read(root / "examples" / "lisp" / "lisp.tpp"):
-            failures.append(Failure(root / "examples" / "lisp" / "lisp.tpp", f"stale numeric pattern remains: {stale}"))
+        if stale in read(root / "examples" / "lisp" / "lisp.thue"):
+            failures.append(Failure(root / "examples" / "lisp" / "lisp.thue", f"stale numeric pattern remains: {stale}"))
     return failures
 
 
 def check_lisp_coverage_policy(root: Path) -> list[Failure]:
-    path = root / "examples" / "lisp" / "lisp.tpp"
+    path = root / "examples" / "lisp" / "lisp.thue"
     text = read(path)
     failures: list[Failure] = []
     if "coverage: ignore" in text:
@@ -352,7 +352,7 @@ def check_lisp_coverage_policy(root: Path) -> list[Failure]:
 
 
 def check_lisp_nested_alias_cleanup(root: Path) -> list[Failure]:
-    path = root / "examples" / "lisp" / "lisp.tpp"
+    path = root / "examples" / "lisp" / "lisp.thue"
     text = read(path)
     failures: list[Failure] = []
     forbidden = [

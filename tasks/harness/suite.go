@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/readevalprint/thueplusplus/go/thuepp"
+	"github.com/thuelang/thueplusplus/go/thue"
 )
 
 // Case is one stdin the harness passes to the guest. Seed is set when the
@@ -92,7 +92,7 @@ func Run(t *testing.T, task Task) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if os.Getenv("THUEPP_TASK_RECORD") == "1" {
+	if os.Getenv("THUE_TASK_RECORD") == "1" {
 		if err := writePart(part); err != nil {
 			t.Fatal(err)
 		}
@@ -264,7 +264,7 @@ func runSolution(binary, program, solution, stdin string, limits Limits) Program
 }
 
 func runHost(binary, program string, input *string, stdin string, limits Limits) ProgramRun {
-	dir, err := os.MkdirTemp("", "thuepp-task-")
+	dir, err := os.MkdirTemp("", "thue-task-")
 	if err != nil {
 		return ProgramRun{Err: err}
 	}
@@ -310,7 +310,7 @@ func RunProgram(program, stdin string, limits Limits) ProgramRun {
 }
 
 func ruleCount(program string) (int, error) {
-	interp := thuepp.New()
+	interp := thue.New()
 	defer interp.Cleanup()
 	steps, evals, state := listRulesSteps, listRulesEvals, listRulesStateBytes
 	interp.MaxSteps = &steps
@@ -399,7 +399,7 @@ func mustProgram(rel string) string {
 var binaryOnce sync.Mutex
 
 func ensureBinary(root string) (string, error) {
-	path := filepath.Join(root, "build", "go-thuepp")
+	path := filepath.Join(root, "build", "go-thue")
 	binaryOnce.Lock()
 	defer binaryOnce.Unlock()
 	if _, err := os.Stat(path); err == nil {
@@ -421,7 +421,7 @@ func ensureBinary(root string) (string, error) {
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	}
-	cmd := exec.Command("go", "build", "-o", path, "./cmd/thuepp")
+	cmd := exec.Command("go", "build", "-o", path, "./cmd/thue")
 	cmd.Dir = filepath.Join(root, "go")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

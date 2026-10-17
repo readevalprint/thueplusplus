@@ -189,22 +189,22 @@
   "guests": [
     {
       "id": "forth",
-      "program": "examples/forth/forth.tpp",
+      "program": "examples/forth/forth.thue",
       "rule_count": 86
     },
     {
       "id": "lisp",
-      "program": "examples/lisp/lisp.tpp",
+      "program": "examples/lisp/lisp.thue",
       "rule_count": 441
     },
     {
       "id": "brainfuck",
-      "program": "examples/brainfuck/brainfuck.tpp",
+      "program": "examples/brainfuck/brainfuck.thue",
       "rule_count": 68
     },
     {
       "id": "basic",
-      "program": "examples/basic/basic.tpp",
+      "program": "examples/basic/basic.thue",
       "rule_count": 62
     }
   ],
