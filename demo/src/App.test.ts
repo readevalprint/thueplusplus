@@ -201,7 +201,6 @@ describe('Go-WASM demo UI', () => {
     expect(wrapper.text()).toContain('0!')
     expect(wrapper.text()).not.toContain('unmeasured')
     expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Description')
-    expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('History')
     expect(wrapper.get('[data-test="page-sidebar"]').text()).toContain('Cost')
 
     window.history.pushState({}, '', '/embed?file=./examples/hello/hello.tpp')

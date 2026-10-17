@@ -128,7 +128,7 @@ describe('catalog pages', () => {
     expect(links).toEqual(['Description', 'Cost', 'direct', 'Lisp', 'Forth', 'BASIC'])
     expect(page.get('[data-test="problem-legend"]').text()).toContain('direct')
     expect(page.get('[data-test="problem-legend"]').text()).not.toContain('Lisp')
-    const swatch = page.get('[data-test="problem-legend"]').find('div')
+    const swatch = page.get('[data-test="problem-legend"]').find('[style]')
     expect(swatch.attributes('style')).toContain(VERSION_COLORS.direct)
     const chart = page.get('[data-test="problem-chart-cost"]')
     expect(chart.find('svg').exists()).toBe(true)
