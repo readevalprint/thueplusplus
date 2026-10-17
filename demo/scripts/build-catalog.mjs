@@ -341,7 +341,7 @@ function displayName(id) {
 }
 
 function requireSlug(value, label) {
-  if (typeof value !== 'string' || !/^[a-z][a-z0-9-]*$/.test(value)) throw new CatalogError(`${label} must be a lowercase slug`)
+  if (typeof value !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) throw new CatalogError(`${label} must be a lowercase slug`)
   return value
 }
 
