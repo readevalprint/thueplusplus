@@ -115,6 +115,13 @@ export const siteHosts: SiteHost[] = SITE_ORDER.map(id => {
   }
 })
 
+// hosts.toml order. The landing pillars render this list, so a new host shows up when the registry gains a line.
+export const registryHosts: readonly SiteHost[] = registryIds.map(id => {
+  const host = siteHosts.find(item => item.id === id)
+  if (!host) throw new Error(`hosts.toml host ${id} has no site entry`)
+  return host
+})
+
 const hostTitles = siteHosts.map(host => host.title)
 export const shippedHosts = englishList(hostTitles, 'and')
 export const hostProseList = englishList(hostTitles, 'or')

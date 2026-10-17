@@ -92,9 +92,10 @@ describe('Go-WASM demo UI', () => {
     expect(languages.findAll('a')).toHaveLength(5)
     const speech = wrapper.get('[data-test="speech-text"]').text().replace(/\s+/g, ' ').trim()
     expect(speech).toBe("i guess we sandboxin' now")
-    expect(wrapper.findAll('[data-test="rex-eye"]')).toHaveLength(2)
-    expect(wrapper.findAll('[data-test="rex-dot"]')).toHaveLength(4)
-    expect(wrapper.find('[data-test="hard-hat"]').exists()).toBe(true)
+    const scene = wrapper.get('[data-test="sandbox-scene"]')
+    expect(scene.findAll('[data-test="rex-eye"]')).toHaveLength(2)
+    expect(scene.findAll('[data-test="rex-dot"]')).toHaveLength(4)
+    expect(scene.find('[data-test="hard-hat"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('RE2')
     const nav = wrapper.get('[data-test="site-nav"]')
     expect(nav.findAll('a').map(link => `${link.text()} ${link.attributes('href')}`)).toEqual([
