@@ -67,7 +67,7 @@ describe('heroes', () => {
       }
       wrapper.unmount()
     }
-  })
+  }, 15_000)
 
   it('keeps the embed free of a hero', async () => {
     window.history.pushState({}, '', '/embed?file=./examples/hello/hello.thue')

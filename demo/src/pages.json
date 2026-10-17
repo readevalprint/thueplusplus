@@ -173,6 +173,21 @@
       { "title": "API", "href": "#api" }
     ]
   },
+  "installCsharp": {
+    "path": "/install/csharp",
+    "kicker": "Install",
+    "title": "C#.",
+    "description": "Install the C# host, a short library example, the CLI, and the API.",
+    "documentTitle": "Thue++ Install — C#",
+    "canonical": "https://thuelang.org/install/csharp",
+    "robots": "index,follow",
+    "links": [
+      { "title": "Install", "href": "#install" },
+      { "title": "Library", "href": "#library" },
+      { "title": "CLI", "href": "#cli" },
+      { "title": "API", "href": "#api" }
+    ]
+  },
   "projects": {
     "path": "/projects",
     "kicker": "Projects",

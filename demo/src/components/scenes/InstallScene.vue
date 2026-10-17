@@ -18,7 +18,11 @@ function pick(id: string): void {
 }
 
 function socketX(index: number): number {
-  return 318 + index * 62
+  const count = siteHosts.length
+  const left = 250
+  const right = 604
+  if (count <= 1) return right
+  return left + index * ((right - left) / (count - 1))
 }
 </script>
 

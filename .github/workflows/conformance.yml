@@ -19,6 +19,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
       cpp: ${{ steps.filter.outputs.cpp }}
       ruby: ${{ steps.filter.outputs.ruby }}
+      csharp: ${{ steps.filter.outputs.csharp }}
       guests: ${{ steps.filter.outputs.guests }}
       solutions: ${{ steps.filter.outputs.solutions }}
     steps:
@@ -35,7 +36,7 @@ jobs:
             BASE=""
           fi
           if [ -z "$BASE" ]; then
-            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nruby=true\nguests=true\nsolutions=true\n' >> "$GITHUB_OUTPUT"
+            printf 'python=true\ngo=true\nwasm=true\nrust=true\ncpp=false\nruby=true\ncsharp=true\nguests=true\nsolutions=true\n' >> "$GITHUB_OUTPUT"
           else
             git diff --name-only "$BASE" HEAD | python3 tools/ci_paths.py >> "$GITHUB_OUTPUT"
           fi
@@ -125,6 +126,25 @@ jobs:
           enable-cache: true
       - run: make test-core HOST=rust
 
+  csharp:
+    needs: changes
+    if: needs.changes.outputs.csharp == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.24.6"
+          cache-dependency-path: go/go.sum
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: make test-core HOST=csharp
+
   cpp:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
@@ -203,6 +223,9 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
       - name: Install the C++ toolchain and RE2
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake g++ pkg-config libre2-dev
       - uses: ruby/setup-ruby@v1
@@ -241,4 +264,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
       - run: make release-check

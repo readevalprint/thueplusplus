@@ -18,7 +18,7 @@ def expect(paths: list[str], **wanted: bool) -> None:
 
 
 def main() -> None:
-    expect(["docs/host-api.md"], python=False, go=False, wasm=False, rust=False, guests=False, cpp=False, ruby=False, solutions=False)
+    expect(["docs/host-api.md"], python=False, go=False, wasm=False, rust=False, guests=False, cpp=False, ruby=False, csharp=False, solutions=False)
     expect(["CHANGELOG.md", "README.md"], python=False, go=False, wasm=False, rust=False, guests=False)
     expect(["go/thuelang/interpreter.go"], python=False, go=True, wasm=True, rust=False, guests=True)
     expect(["js/src/cli.js"], python=False, go=False, wasm=True, rust=False, guests=False)
@@ -29,7 +29,8 @@ def main() -> None:
     expect(["metrics/runs.py"], python=False, go=False, wasm=False, rust=False, guests=False, solutions=True)
     expect(["examples/brainfuck/brainfuck.thue"], python=True, go=True, wasm=True, rust=True, guests=True)
     expect(["examples/hello/tests/basic.toml"], python=True, go=True, wasm=True, rust=True, guests=True)
-    expect(["Makefile"], python=True, go=True, wasm=True, rust=True, guests=True)
+    expect(["Makefile"], python=True, go=True, wasm=True, rust=True, csharp=True, guests=True)
+    expect(["csharp/src/Thuelang/Interpreter.cs"], python=False, go=False, wasm=False, rust=False, cpp=False, csharp=True, guests=False)
     expect(["cpp/CMakeLists.txt"], python=False, go=False, wasm=False, rust=False, cpp=False, guests=False)
     with_cpp = ci_paths.classify(["cpp/src/main.cpp"], cpp_present=True, ruby_present=False)
     if not with_cpp["cpp"] or with_cpp["go"] or with_cpp["ruby"]:

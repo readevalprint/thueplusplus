@@ -292,6 +292,7 @@ def check_numeric_regex(root: Path) -> list[Failure]:
         (root / "python" / "thuelang" / "interpreter.py", 1, f'py_re.fullmatch(r"{grammar}", value)'),
         (root / "go" / "thuelang" / "interpreter.go", 1, None),
         (root / "rust" / "src" / "builtin.rs", 1, None),
+        (root / "csharp" / "src" / "Thuelang" / "Builtin.cs", 1, None),
         (root / "examples" / "builtin" / "builtin.thue", 1, f"N <- {grammar}"),
         (root / "langs" / "lisp" / "lisp.thue", 1, None),
     ]

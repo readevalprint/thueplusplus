@@ -55,6 +55,7 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -89,6 +90,7 @@
   --chart-4: #8d8880;
   --chart-5: #ff9a80;
   --chart-6: #7d9a78;
+  --chart-7: #7eb6ff;
   --error-text: #ff9a80;
   --diff-removed-line: rgb(255 90 70 / 0.14);
   --diff-removed-char: rgb(255 70 55 / 0.46);
@@ -117,6 +119,7 @@ html:not(.dark) {
   --chart-4: #8a7268;
   --chart-5: #b4331a;
   --chart-6: #3d6b4f;
+  --chart-7: #1d4e89;
   --error-text: #b4331a;
   --diff-removed-line: rgb(180 40 30 / 0.1);
   --diff-removed-char: rgb(180 40 30 / 0.32);

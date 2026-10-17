@@ -20,6 +20,7 @@ TAG = re.compile(r"v(\d+\.\d+\.\d+)")
 CMAKE = re.compile(r"^project\(thuelang VERSION (\S+) LANGUAGES CXX\)$", re.M)
 CONAN = re.compile(r'^    version = "([^"]+)"$', re.M)
 RUBY = re.compile(r'^  VERSION = "([^"]+)"$', re.M)
+PROPS = re.compile(r"<Version>([^<]+)</Version>")
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,6 +39,7 @@ def read_version(root: Path) -> str:
         "cpp/vcpkg.json": _json_version(root / "cpp" / "vcpkg.json"),
         "cpp/conanfile.py": _conan_version(root / "cpp" / "conanfile.py"),
         "ruby/lib/thuelang/version.rb": _ruby_version(root / "ruby" / "lib" / "thuelang" / "version.rb"),
+        "csharp/Directory.Build.props": _props_version(root / "csharp" / "Directory.Build.props"),
     }
     values = set(found.values())
     if len(values) != 1:
@@ -125,6 +127,15 @@ def _ruby_version(path: Path) -> str:
     if match is None:
         raise VersionError(f"{path}: missing VERSION")
     return _string_version(path, match.group(1))
+
+
+def _props_version(path: Path) -> str:
+    if not path.is_file():
+        raise VersionError(f"missing {path}")
+    found = PROPS.findall(path.read_text())
+    if len(found) != 1:
+        raise VersionError(f"{path}: expected one Version element")
+    return _string_version(path, found[0])
 
 
 def _toml(path: Path) -> dict:

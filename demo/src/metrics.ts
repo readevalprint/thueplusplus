@@ -11,6 +11,7 @@ const REQUIRED_ENVIRONMENTS: Record<string, string> = {
   rust: 'rust',
   cpp: 'cpp',
   ruby: 'ruby',
+  csharp: 'csharp',
 }
 
 export class HistoryError extends Error {

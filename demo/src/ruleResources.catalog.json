@@ -763,6 +763,16 @@
     "errors": []
   },
   {
+    "path": "examples/trace/unicode-rule-failure.thue",
+    "resources": [],
+    "errors": []
+  },
+  {
+    "path": "examples/trace/unicode-state-limit.thue",
+    "resources": [],
+    "errors": []
+  },
+  {
     "path": "langs/basic/basic.thue",
     "resources": [
       {

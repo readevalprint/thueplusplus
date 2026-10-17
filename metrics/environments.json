@@ -4,5 +4,6 @@
   "wasm": "wasm (node)",
   "rust": "rust",
   "cpp": "cpp",
-  "ruby": "ruby"
+  "ruby": "ruby",
+  "csharp": "csharp"
 }

@@ -7,6 +7,7 @@ export const installNotes: Record<string, string> = {
   rust: 'The thuelang package with the thue CLI.',
   cpp: 'The CMake library and the thue command.',
   ruby: 'The thuelang gem and the thue command.',
+  csharp: 'The Thuelang library and the thue command.',
 }
 
 for (const host of siteHosts) {
@@ -177,6 +178,24 @@ code = interp.run`,
 make ruby
 ruby/exe/thue program.thue`,
     api: [hostApi, { href: `${blob}/ruby/README.md`, label: 'ruby/README.md' }],
+  },
+  csharp: {
+    prose: 'The C# host is a native implementation on the current .NET LTS. The NuGet package id is Thuelang and the command is thue. It uses the .NET regex engine and the same default limits. Process bindings stay opt-in. The package is not published.',
+    installLead: 'The package is not published, so dotnet add package Thuelang cannot find it. Reference the project from a checkout:',
+    install: `dotnet add reference csharp/src/Thuelang/Thuelang.csproj`,
+    moreInstall: [],
+    libraryLead: 'A new Interpreter binds stdin, stdout, and stderr, and starts with the default step, probe, and state limits. null clears one.',
+    library: `using Thuelang;
+
+using var interp = new Interpreter();
+interp.LoadProgram("hello.thue");
+var code = interp.Run();`,
+    cliLead: 'From a checkout of this repository. Omitted limits use the defaults.',
+    cli: `thue <program.thue> [--max-steps N] [--max-evals N] [--max-state-bytes N]
+
+dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/csharp
+build/csharp/thue program.thue`,
+    api: [hostApi, { href: `${blob}/csharp/README.md`, label: 'csharp/README.md' }],
   },
 }
 
