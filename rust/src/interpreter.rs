@@ -190,6 +190,8 @@ pub fn format_trace(events: &[TraceEvent]) -> Result<String, Error> {
             exit_code: event.exit_code,
         };
         let line = serde_json::to_string(&wire).map_err(|err| Error::new(err.to_string()))?;
+        // Go's encoding/json writes these two separators as escapes. serde_json does not.
+        let line = line.replace('\u{2028}', "\\u2028").replace('\u{2029}', "\\u2029");
         out.push_str(&line);
         out.push('\n');
     }

@@ -116,7 +116,7 @@ Trace is off unless the host enables it. Every host records an event and then re
 | `ruleIndex` | index in the rule list |
 | `sourcePath`, `lineNumber`, `lhs` | the rule |
 | `operator` | `::=`, `::<`, `::>`, `::-`, or `::!` |
-| `matchStart`, `matchEnd`, `groups` | the match |
+| `matchStart`, `matchEnd`, `groups` | the match. `matchStart` and `matchEnd` are UTF-8 byte offsets into `stateBefore` |
 | `stateBefore` | state before the rule ran |
 | `replacement` | replacement text. Empty when the operator fails before a replacement exists. On a state-limit rejection, the text that was not written |
 | `stateAfter` | state after a successful rewrite. On a failure, the unchanged state |
@@ -125,7 +125,7 @@ Trace is off unless the host enables it. Every host records an event and then re
 
 A failure before a replacement exists leaves the state unchanged, does not increment the applied-step count, and then returns 1, or 13 when the failure is a `::<` timeout. A state-limit rejection does the same and then returns 12: the event is recorded first, with `error` set to `State size (N bytes) exceeds maximum (M bytes)`, and the oversized state is not installed. The host does not return 12 with an empty trace, and it does not change the state before recording the event.
 
-`--trace` prints that log to stderr as one JSON object per event, before any `Error:` line. Keys, in order, with no extra whitespace: `step`, `ruleIndex`, `lineNumber`, `operator`, `matchStart`, `matchEnd`, `error`, `stateBefore`, `replacement`, `stateAfter`, `exitCode`. `error` is `""` when unset. `exitCode` is JSON `null` except for `::-`. `examples/trace` locks this text.
+`--trace` prints that log to stderr as one JSON object per event, before any `Error:` line. Keys, in order, with no extra whitespace: `step`, `ruleIndex`, `lineNumber`, `operator`, `matchStart`, `matchEnd`, `error`, `stateBefore`, `replacement`, `stateAfter`, `exitCode`. `error` is `""` when unset. `exitCode` is JSON `null` except for `::-`. String values are UTF-8. U+2028 and U+2029 are `\u2028` and `\u2029`. Every other non-ASCII character is written as itself. `<`, `>`, and `&` are not escaped. `examples/trace` locks this text.
 
 ## Packages
 

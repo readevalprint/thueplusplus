@@ -307,7 +307,7 @@ function formatTrace(events) {
     replacement: event.replacement || '',
     stateAfter: event.stateAfter,
     exitCode: event.exitCode == null ? null : event.exitCode,
-  }))
+  }).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029'))
   return lines.join('\n') + '\n'
 }
 
