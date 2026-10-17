@@ -8,7 +8,7 @@ const catalog = readGeneratedCatalog()
 const problems = problemPages(catalog)
 const solutions = solutionPages(catalog)
 const rulesets = rulesetPages(catalog)
-const requiredAssets = ['thue.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'brand/thue-mark.svg']
+const requiredAssets = ['thue.wasm', 'wasm_exec.js', 'robots.txt', 'sitemap.xml', 'og-image.png', 'favicon.svg', 'favicon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'brand/thue-mark.svg']
 const staticRoutes = [...Object.values(pages).filter(page => page.path !== '/').map(page => page.path.replace(/^\//, '')), ...problems.map(page => page.path.replace(/^\//, '')), ...solutions.map(page => page.path.replace(/^\//, '')), ...rulesets.map(page => page.path.replace(/^\//, '')), 'embed']
 
 for (const asset of requiredAssets) {
@@ -26,6 +26,9 @@ if (fallback !== index) {
 }
 if (!index.includes('src="/assets/') || !index.includes('href="/assets/')) {
   throw new Error('demo production index must use origin-root asset URLs so nested static routes load assets from the site root')
+}
+if (!index.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
+  throw new Error('demo production index must link the Rex SVG favicon')
 }
 if (!index.includes(pages.home.title) || !index.includes(pages.home.canonical)) {
   throw new Error('demo production index must include the landing heading and canonical URL')

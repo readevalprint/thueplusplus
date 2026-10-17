@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img">
+  <title>Rex</title>
+  <style>
+    :root { color-scheme: light dark; }
+    .ink { fill: #000000; }
+    .hat { fill: #ff5a36; }
+    @media (prefers-color-scheme: dark) {
+      .ink { fill: #ffffff; }
+    }
+  </style>
+  <g class="hat" transform="translate(8 5.93) scale(0.17)">
+    <path d="M-16 -13 C-20 -34 20 -34 16 -13 Z"/>
+    <ellipse cx="0" cy="-12" rx="24" ry="5.2"/>
+  </g>
+  <g class="ink">
+    <rect x="4" y="4.85" width="3" height="5" rx="1"/>
+    <rect x="9" y="4.85" width="3" height="5" rx="1"/>
+    <circle cx="2.15" cy="10.35" r="1.6"/>
+    <circle cx="13.85" cy="10.35" r="1.6"/>
+    <circle cx="5.5" cy="13.9" r="1.6"/>
+    <circle cx="10.5" cy="13.9" r="1.6"/>
+  </g>
+</svg>
