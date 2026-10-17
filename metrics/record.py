@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run every solution case on every host, then write schema 4 metrics/latest.json.
+"""Run every solution case on every host, then write schema 5 metrics/latest.json.
 
 When metrics/latest.json is already committed, the script first resolves
 `git log -1 --format=%H -- metrics/latest.json` and moves that file to
@@ -118,15 +118,44 @@ def move_latest(root: Path, sha: str, document: dict) -> Path:
     return root / rel
 
 
+def _same_measurement(current: dict, runs: list[dict], machine: dict) -> bool:
+    if current.get("schema_version") != historylib.SCHEMA_VERSION:
+        return False
+    if current.get("machine") != machine:
+        return False
+    stored = current.get("runs")
+    if not isinstance(stored, list) or len(stored) != len(runs):
+        return False
+    volatile = {"duration_ms", "memory_bytes"}
+    for left, right in zip(stored, runs):
+        if not isinstance(left, dict) or set(left) != set(right):
+            return False
+        for key, value in right.items():
+            if key in volatile:
+                continue
+            if left[key] != value:
+                return False
+    return True
+
+
 def measure(*, allow_dirty: bool = False) -> int:
     if not allow_dirty and git_text(["status", "--porcelain"]):
         raise RecordError("make metrics refuses a dirty work tree")
     head = git_text(["rev-parse", "HEAD"])
-    pending = read_committed_latest(ROOT) if not allow_dirty else None
     runs = measure_runs(write_metrics=True, commit=head)
     for row in runs:
         if row["pass"] is True:
             require_memory(f"{row['problem']}/{row['case']}", row["host"], row["memory_bytes"])
+    machine = machine_info()
+    latest_path = ROOT / historylib.LATEST_REL
+    if latest_path.is_file():
+        try:
+            current = json.loads(latest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise RecordError(f"{historylib.LATEST_REL} is not JSON: {exc}") from exc
+        if isinstance(current, dict) and _same_measurement(current, runs, machine):
+            return 0
+    pending = read_committed_latest(ROOT) if not allow_dirty else None
     if pending is not None:
         sha, previous = pending
         archived = move_latest(ROOT, sha, previous)
@@ -134,7 +163,7 @@ def measure(*, allow_dirty: bool = False) -> int:
     latest = {
         "schema_version": historylib.SCHEMA_VERSION,
         "commit": head,
-        "machine": machine_info(),
+        "machine": machine,
         "runs": runs,
     }
     historylib.save_latest(ROOT, latest)

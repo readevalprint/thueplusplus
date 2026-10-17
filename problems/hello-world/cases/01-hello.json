@@ -1,7 +1,8 @@
 {
   "name": "hello",
-  "stdin": "",
-  "stdout": "Hello, World!\n",
-  "stderr": "",
+  "reads": {},
+  "writes": {
+    "stdout": "Hello, World!\n"
+  },
   "exit_code": 0
 }

@@ -1,7 +1,12 @@
 {
   "name": "fifteen",
-  "stdin": "15\n",
-  "stdout": "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "15"
+    ]
+  },
+  "writes": {
+    "stdout": "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n"
+  },
   "exit_code": 0
 }

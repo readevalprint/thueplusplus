@@ -2,10 +2,12 @@ package fizzbuzz
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/thuelang/thueplusplus/problems/harness"
+	"pgregory.net/rapid"
 )
 
 func TestProblem(t *testing.T) {
@@ -14,27 +16,36 @@ func TestProblem(t *testing.T) {
 
 func spec() harness.Problem {
 	cases := []harness.Case{
-		{Name: "one", Stdin: "1\n"},
-		{Name: "fifteen", Stdin: "15\n"},
+		{Name: "one", Reads: harness.Stdin("1")},
+		{Name: "fifteen", Reads: harness.Stdin("15")},
 	}
 	for _, seed := range []uint64{3, 8, 20} {
 		cases = append(cases, harness.Case{
-			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Stdin: fmt.Sprintf("%d\n", int(seed)),
+			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Reads: harness.Stdin(strconv.Itoa(int(seed))),
 		})
 	}
 	return harness.Problem{
 		ID: "fizzbuzz",
-		Cases: cases, Reference: reference,
+		Resources: []harness.Resource{
+			{Name: "stdin", Read: true},
+			{Name: "stdout", Write: true},
+		},
+		Cases:    cases,
+		Baseline: baseline,
+		Draw: func(t *rapid.T) harness.Case {
+			n := rapid.IntRange(1, 20).Draw(t, "n")
+			return harness.Case{Name: "rapid", Reads: harness.Stdin(strconv.Itoa(n))}
+		},
 	}
 }
 
-func reference(stdin string) (string, error) {
-	n, err := harness.IntLine(stdin)
+func baseline(reads map[string][]string) (harness.Outcome, error) {
+	n, err := harness.OneInt(reads["stdin"])
 	if err != nil {
-		return "", err
+		return harness.Outcome{}, err
 	}
 	if n < 1 || n > 20 {
-		return "", fmt.Errorf("fizzbuzz case %d is outside 1..20", n)
+		return harness.Outcome{}, fmt.Errorf("fizzbuzz case %d is outside 1..20", n)
 	}
 	var b strings.Builder
 	for i := 1; i <= n; i++ {
@@ -49,5 +60,5 @@ func reference(stdin string) (string, error) {
 			fmt.Fprintf(&b, "%d\n", i)
 		}
 	}
-	return b.String(), nil
+	return harness.Stdout(b.String()), nil
 }

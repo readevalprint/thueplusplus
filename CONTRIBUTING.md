@@ -5,7 +5,7 @@
 `problems/<slug>/` is one Rosetta Code problem.
 
 - `README.md` states the contract. Metadata is YAML frontmatter. `title` is required. The body links the Rosetta task and credits that task under the GNU Free Documentation License 1.3.
-- `cases/` holds the shared inputs and expected outputs, one `NN-name.json` per case. `problem_test.go` owns the reference that those files must match, including the seeded inputs. A constant answer must fail a seeded case.
+- `cases/` holds the committed cases, one `NN-name.json` per case. Each file is `name`, `reads`, `writes`, and `exit_code`. `problem_test.go` is the spec those files must match.
 - `solutions/<ruleset>/` is one solution. `direct` is Thue++. Any other ruleset is an interpreter in `langs/<ruleset>/`. The folder holds the solution file, `metric.json`, and `README.md`.
 
 A solution `README.md` starts with frontmatter:
@@ -22,7 +22,41 @@ The body is the approach notes. `ruleset` matches the directory. `entry` is the 
 
 `langs/<ruleset>/README.md` frontmatter is `name`, `description`, and `extension`. The body is the language notes.
 
-`make problems` builds the native Go host and runs the problem tests. `make langs` runs the language cases on native Go.
+`make problems` runs the problem tests on the native Go interpreter, in process. `make langs` runs the language cases on native Go.
+
+## Adding a problem
+
+Add `problems/<slug>/` and one line in `problems/suite.toml`. `problem_test.go` in that directory declares the problem. Nothing is discovered.
+
+```go
+func TestProblem(t *testing.T) {
+    harness.Run(t, harness.Problem{
+        ID: "slug",
+        Resources: []harness.Resource{
+            {Name: "stdin", Read: true},
+            {Name: "stdout", Write: true},
+        },
+        Cases: []harness.Case{
+            {Name: "zero", Reads: harness.Stdin("0")},
+        },
+        Baseline: func(item harness.Case) (harness.Outcome, error) {
+            return harness.Stdout("0\n"), nil
+        },
+        Draw: func(t *rapid.T) harness.Case {
+            n := rapid.IntRange(0, 10).Draw(t, "n")
+            return harness.Case{Reads: harness.Stdin(fmt.Sprintf("%d", n))}
+        },
+    })
+}
+```
+
+The baseline is the spec. The README explains it. A readable resource serves a scripted list of lines. A writable resource records its writes. The harness binds those to in-memory fakes. A solution passes only when every writable resource and the exit code match the baseline on every case.
+
+Fixed cases are the edge cases plus the fixed seeds. Commit them. `THUEPP_DUMP_CASES=1` rewrites `cases/` from the baseline. A later run fails if a file differs. Every host replays those files. Their Go cost is the only cost. The rapid generator decides pass or fail and does not add cost. `make problems` caps it at 100 checks.
+
+When a rapid check fails, the library shrinks the reads. Paste that shrunk case into `Cases` as a fixed regression, dump the cases, and commit it. Do not leave the failure as a generator-only check.
+
+A direct solution is `solutions/direct/solution.thue`. The rapid check runs that file. Other rulesets are replayed on the committed cases by `make metrics`. Limits live only in `metrics/limits.toml`.
 
 ## Limits
 
@@ -66,7 +100,7 @@ A ruleset's cost is the sum of its passing solution costs on the common problems
 
 ## Acceptance
 
-A changed solution must still pass, and its Go cost must be strictly lower than the committed `metric.json` on the base. A new ruleset folder must pass. An equal cost is not lower.
+A changed solution must still pass, and its Go cost must be strictly lower than the committed `metric.json` on the base. A new ruleset folder must pass. An equal cost is not lower. That comparison stops when `problem_test.go` or a file in `cases/` changed in the same diff: the contract moved, the solution must still pass, and the new cost replaces the old one.
 
 A change to an interpreter `langs/<ruleset>/*.thue` re-records that ruleset. It must still pass every problem it passed on the previous common set, and the sum of those costs must not go up.
 
@@ -80,7 +114,7 @@ Lower the Go cost of one solution. Cost is UTF-8 bytes: each regex eval adds len
 
 ## Metrics
 
-`make metrics` refuses a dirty work tree. It runs every solution case on every host and writes schema 4 `metrics/latest.json` as `{schema_version, commit, machine, runs}`. Each run is one program, one case, and one host, with `pass`, `cost`, the diagnostic counters, and the global limits. Pass and cost must match Go. The previous file moves to `metrics/YYYY/MM/DD/{sha}/bench.json`. Commit `latest.json` and any changed `metric.json` with the change. Schema 2 and 3 benches stay valid. A schema 4 bench without `runs` is the older problem and language record. The site reads `runs` and ignores the older keys.
+`make metrics` refuses a dirty work tree. It runs every committed solution case on every host and writes schema 5 `metrics/latest.json` as `{schema_version, commit, machine, runs}`. Each run is one program, one case, and one host, with `pass`, `cost`, the diagnostic counters, `reads`, and the global limits. Pass and cost must match Go. Cost is the sum of those fixed cases. The previous file moves to `metrics/YYYY/MM/DD/{sha}/bench.json`. A second run that measures the same counters leaves the tree clean. Commit `latest.json` and any changed `metric.json` with the change. Schema 2 and 3 benches stay valid. A schema 4 bench without `runs` is the older problem and language record. A schema 4 runs document stores `stdin` and stays valid. The site reads `runs` and ignores the older keys.
 
 ## Tests
 

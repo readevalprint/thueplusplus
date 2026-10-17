@@ -1,7 +1,12 @@
 {
   "name": "four",
-  "stdin": "4\n",
-  "stdout": "false\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "4"
+    ]
+  },
+  "writes": {
+    "stdout": "false\n"
+  },
   "exit_code": 0
 }

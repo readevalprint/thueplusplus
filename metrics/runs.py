@@ -1,4 +1,4 @@
-"""Run every solution case on every host and record schema 4 runs."""
+"""Run every solution case on every host and record schema 5 runs."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ RUN_FIELDS = (
     "host",
     "environment",
     "state",
-    "stdin",
+    "reads",
     "max_steps",
     "max_evals",
     "max_state_bytes",
@@ -125,7 +125,7 @@ def _run_one(interpreter, solution: Solution, case: Case, limits: Limits) -> dic
         "host": interpreter.name,
         "environment": environment,
         "state": solution.state,
-        "stdin": case.stdin,
+        "reads": {name: list(lines) for name, lines in case.reads.items()},
         "max_steps": limits.max_steps,
         "max_evals": limits.max_evals,
         "max_state_bytes": limits.max_state_bytes,
@@ -135,7 +135,21 @@ def _run_one(interpreter, solution: Solution, case: Case, limits: Limits) -> dic
     }
     with tempfile.TemporaryDirectory(prefix="thuepp-run-") as tmp:
         metrics_path = Path(tmp) / "metrics.json"
+        resources_path = Path(tmp) / "resources.json"
+        resource_out = Path(tmp) / "resource-out.json"
+        resources_path.write_text(
+            json.dumps(
+                {
+                    "reads": {name: list(lines) for name, lines in case.reads.items()},
+                    "writes": sorted(case.writes),
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         argv = [*interpreter.argv, str(ROOT / solution.program), "--metrics", str(metrics_path)]
+        argv.extend(["--resources", str(resources_path), "--resource-out", str(resource_out)])
         if not solution.direct:
             argv.extend(["--input", solution.state])
         argv.extend([
@@ -152,7 +166,7 @@ def _run_one(interpreter, solution: Solution, case: Case, limits: Limits) -> dic
                 timeout=limits.timeout_seconds,
                 cwd=ROOT,
                 env=child_env,
-                input_text=case.stdin,
+                input_text="",
                 memory_cap=limits.memory_cap_bytes,
             )
         except RuntimeError as exc:
@@ -170,25 +184,31 @@ def _run_one(interpreter, solution: Solution, case: Case, limits: Limits) -> dic
                 if interpreter.name == "go":
                     raise RunError(f"{solution.problem}/{solution.ruleset}/{case.name} failed on go: {exc}") from exc
                 return _finish(base, passed=False, metrics=None, duration=duration, memory=memory, exit_code=completed.returncode, detail=str(exc))
+        recorded = None
+        if resource_out.is_file():
+            try:
+                recorded = json.loads(resource_out.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                recorded = None
         passed = (
             completed.returncode == case.exit_code
-            and completed.stderr == case.stderr
-            and completed.stdout == case.stdout
+            and completed.stderr == ""
+            and recorded == case.writes
             and metrics is not None
         )
-        detail = "" if passed else _mismatch(case, completed, metrics)
+        detail = "" if passed else _mismatch(case, completed, recorded, metrics)
         row = _finish(base, passed=passed, metrics=metrics if passed else None, duration=duration, memory=memory, exit_code=completed.returncode, detail=detail)
         if interpreter.name == "go" and not passed:
             raise RunError(f"{solution.problem}/{solution.ruleset}/{case.name} failed on go: {detail}")
         return row
 
 
-def _mismatch(case: Case, completed, metrics: dict | None) -> str:
+def _mismatch(case: Case, completed, recorded, metrics: dict | None) -> str:
     parts = [f"exit {completed.returncode}"]
     if completed.stderr:
         parts.append(completed.stderr.strip())
-    if completed.stdout != case.stdout:
-        parts.append("stdout mismatch")
+    if recorded != case.writes:
+        parts.append("writes mismatch")
     if metrics is None:
         parts.append("missing metrics")
     return "; ".join(parts)

@@ -35,6 +35,22 @@ Max steps counts applied rewrites. The Nth rewrite exits `10` with `Applied step
 
 A `::<` read that exceeds its timeout exits `13` with `ERR:resource:NAME:timeout`. The CLI prints that as `Error: ERR:resource:NAME:timeout`.
 
+## Scripted resources
+
+`--resources FILE` replaces stdin, stdout, and stderr with one in-memory resource set. The file is JSON: `reads` maps a name to the lines that resource serves, without newlines, and `writes` names the resources whose output is recorded. A name in both is readable and writable. The host binds only those names. It does not start a process for them.
+
+`--resource-out FILE` writes one JSON object, the text recorded for each writable resource. The process exit code is still the process exit code. `--resource-out` without `--resources` is an error. Omitting both flags keeps the real stdin, stdout, and stderr streams.
+
+A read past the scripted lines is `EOF before newline`. A read of a write-only script is `ERR:resource:cannot_read_output_stream`. A write to a read-only script is `write requires process or output stream binding`.
+
+| Host | Call |
+| --- | --- |
+| Go | `UseScripts` and `ScriptWrites` |
+| Python | `bind_scripts` and `script_writes` |
+| Rust | `bind_scripts` and `script_writes` |
+| C++ | `BindScripts` and `ScriptWrites` |
+| wasm Node CLI | `--resources` and `--resource-out` |
+
 These names are `MaxEvals`, `MaxStateBytes`, and `MaxSteps` in Go; `max_evals`, `max_state_bytes`, and `max_steps` in Python and Rust; `set_max_evals`, `set_max_state_bytes`, and `set_max_steps` in C++; `maxEvals`, `maxStateBytes`, and `maxSteps` in the wasm `run` options. Omitting a wasm option keeps the default. JSON `null` clears it. Rust uses `None`. C++ uses `std::nullopt`.
 
 ## Exit codes

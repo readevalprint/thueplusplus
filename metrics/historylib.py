@@ -17,8 +17,8 @@ sys.path.insert(0, str(_ROOT / "tools"))
 
 from hosts import host_ids  # noqa: E402
 
-SCHEMA_VERSION = 4
-SCHEMA_ACCEPTED = frozenset({2, 3, 4})
+SCHEMA_VERSION = 5
+SCHEMA_ACCEPTED = frozenset({2, 3, 4, 5})
 TASK_HOST = "go"
 TASK_STATUSES = frozenset({"pass", "fail", "unsupported"})
 TASK_SOURCE = "make tasks"
@@ -31,7 +31,7 @@ BENCH_KEYS_V3 = BENCH_KEYS | {"problems", "langs"}
 LATEST_KEYS_V3 = LATEST_KEYS | {"problems", "langs"}
 LATEST_RUN_KEYS = frozenset({"schema_version", "commit", "machine", "runs"})
 BENCH_RUN_KEYS = frozenset({"schema_version", "commit", "author", "timestamp", "machine", "runs"})
-RUN_KEYS = frozenset({
+RUN_KEYS_V4 = frozenset({
     "program", "problem", "ruleset", "case", "host", "environment",
     "state", "stdin",
     "max_steps", "max_evals", "max_state_bytes", "timeout_seconds", "memory_cap_bytes", "host_timeout_seconds",
@@ -39,6 +39,8 @@ RUN_KEYS = frozenset({
     "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars",
     "duration_ms", "memory_bytes", "exit_code",
 })
+RUN_KEYS = (RUN_KEYS_V4 - {"stdin"}) | {"reads"}
+RESOURCE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 RUN_DIAGNOSTICS = (
     "applied_steps", "regex_evals", "regex_matches", "state_bytes", "state_peak", "rule_count", "rule_chars",
 )
@@ -376,8 +378,9 @@ def validate_machine(machine, label: str, *, allow_null: bool) -> None:
 def _validate_runs_document(document: dict, keys: frozenset[str], label: str, *, bench: bool) -> None:
     if not isinstance(document, dict) or set(document) != keys:
         raise HistoryError(f"{label}: run document keys must be {', '.join(sorted(keys))}")
-    if document["schema_version"] != SCHEMA_VERSION:
-        raise HistoryError(f"{label}: a runs document is schema {SCHEMA_VERSION}")
+    version = document["schema_version"]
+    if version not in (4, 5):
+        raise HistoryError(f"{label}: a runs document is schema 4 or 5")
     commit = _commit(document["commit"], label)
     if bench:
         _author(document["author"], commit)
@@ -391,7 +394,7 @@ def _validate_runs_document(document: dict, keys: frozenset[str], label: str, *,
     grouped: dict[tuple[str, str, str], list[dict]] = {}
     limits = None
     for index, run in enumerate(runs):
-        _validate_run(label, index, run)
+        _validate_run(label, index, run, version)
         identity = (run["problem"], run["ruleset"], run["case"], run["host"])
         if identity in seen:
             raise HistoryError(f"{label}: duplicate run {'/'.join(identity)}")
@@ -416,9 +419,23 @@ def _validate_runs_document(document: dict, keys: frozenset[str], label: str, *,
                 )
 
 
-def _validate_run(label: str, index: int, run) -> None:
-    if not isinstance(run, dict) or set(run) != RUN_KEYS:
-        raise HistoryError(f"{label}: run #{index} keys must be {', '.join(sorted(RUN_KEYS))}")
+def _validate_reads(reads, where: str) -> None:
+    if not isinstance(reads, dict):
+        raise HistoryError(f"{where}: reads must be an object")
+    for name, lines in reads.items():
+        if not isinstance(name, str) or RESOURCE_NAME.fullmatch(name) is None:
+            raise HistoryError(f"{where}: resource {name!r} is not a name")
+        if not isinstance(lines, list):
+            raise HistoryError(f"{where}: reads.{name} must be a list of lines")
+        for line in lines:
+            if not isinstance(line, str) or "\n" in line or "\r" in line:
+                raise HistoryError(f"{where}: reads.{name} lines must be strings without newlines")
+
+
+def _validate_run(label: str, index: int, run, version: int) -> None:
+    keys = RUN_KEYS if version == 5 else RUN_KEYS_V4
+    if not isinstance(run, dict) or set(run) != keys:
+        raise HistoryError(f"{label}: run #{index} keys must be {', '.join(sorted(keys))}")
     where = f"{label} run #{index}"
     _relative_program(run["program"], where)
     for key in ("problem", "ruleset", "case"):
@@ -427,8 +444,12 @@ def _validate_run(label: str, index: int, run) -> None:
     if run["host"] not in host_ids():
         raise HistoryError(f"{where}: unknown host {run['host']}")
     assert_environment(run["host"], run["environment"])
-    if not isinstance(run["state"], str) or not isinstance(run["stdin"], str):
-        raise HistoryError(f"{where}: state and stdin must be strings")
+    if not isinstance(run["state"], str):
+        raise HistoryError(f"{where}: state must be a string")
+    if version == 5:
+        _validate_reads(run["reads"], where)
+    elif not isinstance(run["stdin"], str):
+        raise HistoryError(f"{where}: stdin must be a string")
     for key in RUN_LIMITS:
         _positive_int(run[key], f"{where} {key}")
     if not isinstance(run["pass"], bool):
@@ -532,7 +553,7 @@ def _schema_version(document: dict) -> int:
         raise HistoryError("metrics document must be an object")
     version = document.get("schema_version")
     if version not in SCHEMA_ACCEPTED:
-        raise HistoryError(f"schema_version must be 2, 3, or 4, got {version!r}")
+        raise HistoryError(f"schema_version must be 2, 3, 4, or 5, got {version!r}")
     return version
 
 
@@ -636,13 +657,13 @@ def _validate_guest(commit: str, guest_id: str, guest: dict) -> None:
 
 
 def _suite_row_keys(version: int) -> tuple[frozenset, frozenset]:
-    if version >= SCHEMA_VERSION:
+    if version >= 4:
         return PROBLEM_ROW_KEYS, LANG_ROW_KEYS
     return PROBLEM_ROW_KEYS_V3, LANG_ROW_KEYS_V3
 
 
 def _counter_axes(version: int) -> tuple[str, ...]:
-    if version >= SCHEMA_VERSION:
+    if version >= 4:
         return COUNTER_AXES
     return COUNTER_AXES_V3
 

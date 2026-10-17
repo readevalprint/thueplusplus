@@ -1,7 +1,12 @@
 {
   "name": "one-two-one",
-  "stdin": "121\n",
-  "stdout": "true\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "121"
+    ]
+  },
+  "writes": {
+    "stdout": "true\n"
+  },
   "exit_code": 0
 }

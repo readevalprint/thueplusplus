@@ -10,36 +10,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"testing"
-	"time"
 )
-
-// Case is one stdin. Seed is set when a generator drew that stdin. The
-// program does not see the seed.
-type Case struct {
-	Name  string
-	Seed  *uint64
-	Stdin string
-}
-
-func Seed(v uint64) *uint64 { return &v }
-
-// Problem is one Rosetta adaptation. Reference reads the same stdin the
-// solution receives.
-type Problem struct {
-	ID        string
-	Limits    Limits
-	Cases     []Case
-	Reference func(stdin string) (string, error)
-}
-
-type Sample struct {
-	Name     string `json:"name"`
-	Stdin    string `json:"stdin"`
-	Stdout   string `json:"stdout"`
-	Stderr   string `json:"stderr"`
-	ExitCode int    `json:"exit_code"`
-}
 
 type CaseResult struct {
 	Name               string  `json:"name"`
@@ -92,183 +63,26 @@ type Part struct {
 	Duration  int64    `json:"duration_ms"`
 }
 
-func Run(t *testing.T, problem Problem) {
-	t.Helper()
-	part, err := Execute(problem)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, row := range part.Rows {
-		if row.Status != "pass" && row.Error != nil {
-			t.Errorf("%s/%s\n%s", problem.ID, row.Solution, *row.Error)
-		}
-	}
-}
-
-func Execute(problem Problem) (Part, error) {
-	started := time.Now()
-	root, err := RepoRoot()
-	if err != nil {
-		return Part{}, err
-	}
-	limits, err := GlobalLimits(root)
-	if err != nil {
-		return Part{}, err
-	}
-	problem.Limits = limits
-	if err := problem.Limits.validate(); err != nil {
-		return Part{}, fmt.Errorf("%s: %w", problem.ID, err)
-	}
-	if len(problem.Cases) == 0 {
-		return Part{}, fmt.Errorf("%s: no cases", problem.ID)
-	}
-	if problem.Reference == nil {
-		return Part{}, fmt.Errorf("%s: no reference", problem.ID)
-	}
-	seen := map[string]struct{}{}
-	samples := make([]Sample, 0, len(problem.Cases))
-	for _, item := range problem.Cases {
-		if item.Name == "" {
-			return Part{}, fmt.Errorf("%s: a case has no name", problem.ID)
-		}
-		if _, ok := seen[item.Name]; ok {
-			return Part{}, fmt.Errorf("%s: duplicate case %s", problem.ID, item.Name)
-		}
-		seen[item.Name] = struct{}{}
-		stdout, err := problem.Reference(item.Stdin)
-		if err != nil {
-			return Part{}, fmt.Errorf("%s case %s: reference: %w", problem.ID, item.Name, err)
-		}
-		samples = append(samples, Sample{
-			Name: item.Name, Stdin: item.Stdin, Stdout: stdout, Stderr: "", ExitCode: 0,
-		})
-	}
-	if filepath.Base(mustWd()) != problem.ID {
-		return Part{}, fmt.Errorf("test working directory must be problems/%s", problem.ID)
-	}
-	if err := syncCases(filepath.Join(mustWd(), "cases"), samples); err != nil {
-		return Part{}, err
-	}
-	if err := RequireNativeGo(root); err != nil {
-		return Part{}, err
-	}
-	title, err := ReadmeTitle(mustWd())
-	if err != nil {
-		return Part{}, err
-	}
-	solutions, err := loadSolutions(root, problem.ID)
-	if err != nil {
-		return Part{}, err
-	}
-	binary, err := ensureBinary(root)
-	if err != nil {
-		return Part{}, err
-	}
-	rows := make([]Row, 0, len(solutions))
-	for _, solution := range solutions {
-		rows = append(rows, runSolution(problem, solution, samples, binary))
-	}
-	return Part{
-		ID: problem.ID, Title: title, CaseCount: len(samples), Cases: samples, Rows: rows,
-		Duration: time.Since(started).Milliseconds(),
-	}, nil
-}
-
-func runSolution(problem Problem, solution Solution, samples []Sample, binary string) Row {
-	row := Row{
-		Problem: problem.ID, Solution: solution.Name, Host: "go", Environment: "go native",
-		SolutionPath: solution.Path, Cases: []CaseResult{},
-	}
-	var steps, cost, evals, matches, stateBytes, statePeak, rules, chars int
-	var duration time.Duration
-	var failures []string
-	ok := true
-	for i, item := range problem.Cases {
-		run := runProgram(binary, solution.PathAbs, nil, item.Stdin, problem.Limits)
-		duration += run.Duration
-		result := CaseResult{
-			Name: item.Name, Seed: item.Seed,
-			MaxSteps: problem.Limits.MaxSteps, MaxEvals: problem.Limits.MaxEvals,
-			MaxStateBytes: problem.Limits.MaxStateBytes, TimeoutSeconds: problem.Limits.TimeoutSeconds,
-			HostTimeoutSeconds: problem.Limits.TimeoutSeconds, DurationMs: run.Duration.Milliseconds(),
-		}
-		message := Failure(item, run, samples[i].Stdout)
-		if message != "" {
-			ok = false
-			result.Status = "fail"
-			result.Error = &message
-			failures = append(failures, message)
-		} else {
-			result.Status = "pass"
-			result.Steps = &run.Metrics.Steps
-			result.Cost = &run.Metrics.Cost
-			result.RegexEvals = &run.Metrics.RegexEvals
-			result.RegexMatches = &run.Metrics.RegexMatches
-			result.StateBytes = &run.Metrics.StateBytes
-			result.StatePeak = &run.Metrics.StatePeak
-			result.RuleCount = &run.Metrics.RuleCount
-			result.RuleChars = &run.Metrics.RuleChars
-			steps += run.Metrics.Steps
-			cost += run.Metrics.Cost
-			evals += run.Metrics.RegexEvals
-			matches += run.Metrics.RegexMatches
-			stateBytes += run.Metrics.StateBytes
-			if run.Metrics.StatePeak > statePeak {
-				statePeak = run.Metrics.StatePeak
-			}
-			rules = run.Metrics.RuleCount
-			chars = run.Metrics.RuleChars
-		}
-		if run.Err == nil {
-			result.ExitCode = &run.Exit
-		}
-		row.Cases = append(row.Cases, result)
-	}
-	row.DurationMs = duration.Milliseconds()
-	if ok {
-		row.Status = "pass"
-		row.Steps = &steps
-		row.Cost = &cost
-		row.RegexEvals = &evals
-		row.RegexMatches = &matches
-		row.StateBytes = &stateBytes
-		row.StatePeak = &statePeak
-		row.RuleCount = &rules
-		row.RuleChars = &chars
-		return row
-	}
-	row.Status = "fail"
-	text := strings.Join(failures, "\n")
-	row.Error = &text
-	return row
-}
-
-func Failure(item Case, run ProgramRun, want string) string {
-	prefix := item.Name
-	if item.Seed != nil {
-		prefix = fmt.Sprintf("seed %d", *item.Seed)
+func programFailure(name string, seed *uint64, run ProgramRun, want string) string {
+	label := name
+	if seed != nil {
+		label = fmt.Sprintf("seed %d", *seed)
 	}
 	if run.Err != nil {
-		return prefix + ": " + run.Err.Error()
+		return label + ": " + run.Err.Error()
 	}
-	if run.Exit == 0 && run.Stderr == "" && run.Stdout == want && run.Metrics != nil {
-		if run.Metrics.RuleCount < 1 || run.Metrics.RuleChars < 1 {
-			return prefix + ": rule count and rule chars must come from the solution source"
+	got := Outcome{ExitCode: run.Exit, Writes: map[string]string{"stdout": run.Stdout, "stderr": run.Stderr}}
+	wantOut := Outcome{ExitCode: 0, Writes: map[string]string{"stdout": want, "stderr": ""}}
+	if message := Compare(label, got, wantOut); message != "" {
+		if run.Metrics == nil {
+			message += "\nmissing metrics"
 		}
-		return ""
+		return message
 	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s: exit %d\n", prefix, run.Exit)
-	if run.Stderr != "" {
-		fmt.Fprintf(&b, "stderr:\n%s\n", run.Stderr)
+	if run.Metrics == nil || run.Metrics.RuleCount < 1 || run.Metrics.RuleChars < 1 {
+		return label + ": rule count and rule chars must come from the solution source"
 	}
-	if run.Metrics == nil {
-		b.WriteString("missing metrics\n")
-	}
-	if run.Stdout != want {
-		fmt.Fprintf(&b, "stdout mismatch\n--- stdin\n%s--- expected\n%s--- got\n%s", item.Stdin, want, run.Stdout)
-	}
-	return b.String()
+	return ""
 }
 
 func runProgram(binary, program string, input *string, stdin string, limits Limits) ProgramRun {
@@ -297,22 +111,6 @@ func runProgram(binary, program string, input *string, stdin string, limits Limi
 	}
 	run.Metrics = &got
 	return run
-}
-
-// RunProgram runs one Thue++ program on the native Go host.
-func RunProgram(program, stdin string, limits Limits) ProgramRun {
-	root, err := RepoRoot()
-	if err != nil {
-		return ProgramRun{Err: err}
-	}
-	if err := limits.validate(); err != nil {
-		return ProgramRun{Err: err}
-	}
-	binary, err := ensureBinary(root)
-	if err != nil {
-		return ProgramRun{Err: err}
-	}
-	return runProgram(binary, program, nil, stdin, limits)
 }
 
 func IntLine(stdin string) (int, error) {

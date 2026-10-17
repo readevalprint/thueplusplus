@@ -1,7 +1,12 @@
 {
   "name": "none",
-  "stdin": "0\n",
-  "stdout": "0\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "0"
+    ]
+  },
+  "writes": {
+    "stdout": "0\n"
+  },
   "exit_code": 0
 }

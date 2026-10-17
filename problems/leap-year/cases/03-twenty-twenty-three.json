@@ -1,7 +1,12 @@
 {
   "name": "twenty-twenty-three",
-  "stdin": "2023\n",
-  "stdout": "false\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "2023"
+    ]
+  },
+  "writes": {
+    "stdout": "false\n"
+  },
   "exit_code": 0
 }

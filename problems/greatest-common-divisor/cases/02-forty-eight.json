@@ -1,7 +1,13 @@
 {
   "name": "forty-eight",
-  "stdin": "48\n18\n",
-  "stdout": "6\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "48",
+      "18"
+    ]
+  },
+  "writes": {
+    "stdout": "6\n"
+  },
   "exit_code": 0
 }

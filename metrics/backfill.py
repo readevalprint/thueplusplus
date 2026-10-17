@@ -197,7 +197,10 @@ def _main() -> int:
                 else:
                     guest_entries[guest["id"]] = {"program": guest["program"], "rule_lines": counted}
             previous = existing.get(commit)
-            version = 2 if previous is None or previous.get("schema_version") != historylib.SCHEMA_VERSION else historylib.SCHEMA_VERSION
+            if previous is not None and "runs" in previous:
+                skipped += 1
+                continue
+            version = 2 if previous is None or previous.get("schema_version") != 4 else 4
             document = {
                 "schema_version": version,
                 "commit": commit,
@@ -208,7 +211,7 @@ def _main() -> int:
                 "tasks": None if previous is None else previous["tasks"],
                 "benchmarks": None if previous is None else previous["benchmarks"],
             }
-            if version == historylib.SCHEMA_VERSION:
+            if version == 4:
                 document["problems"] = previous["problems"]
                 document["langs"] = previous["langs"]
             historylib.save_bench(ROOT, document)

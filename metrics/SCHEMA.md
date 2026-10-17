@@ -2,7 +2,7 @@
 
 `make metrics` writes `metrics/latest.json`. The next run archives that file to `metrics/YYYY/MM/DD/{sha}/bench.json`. The date is the UTC author date of the commit that added `latest.json`, from `git log -1 --format=%H -- metrics/latest.json`. `/metrics` does not import these files one by one. `demo/scripts/build-site.mjs` globs `metrics/**/bench.json` and `metrics/latest.json` at build time and writes `demo/src/generated/summary.json` from documents that contain `runs`. The host charts on `/metrics` read that summary. The same summary is published at `/metrics/summary.json`.
 
-A new `latest.json` is schema 4: `schema_version`, `commit`, `machine`, and `runs`. Each run is one solution case on one host. `pass` and `cost` match the Go run. The global limits from `metrics/limits.toml` are on every run, and `host_timeout_seconds` equals `timeout_seconds`. Older benches stay valid. A schema 4 bench without `runs` is the earlier problem and language record.
+A new `latest.json` is schema 5: `schema_version`, `commit`, `machine`, and `runs`. Each run is one solution case on one host. `pass` and `cost` match the Go run. The global limits from `metrics/limits.toml` are on every run, and `host_timeout_seconds` equals `timeout_seconds`. `reads` is the scripted resource set. A schema 4 run document stores `stdin` instead of `reads` and stays valid. Older benches stay valid. A schema 4 bench without `runs` is the earlier problem and language record.
 
 | Path | Role |
 | --- | --- |
@@ -29,11 +29,33 @@ Every Thue++ process uses explicit `--max-steps`, `--max-evals`, and `--max-stat
 
 The host workloads are `metrics/workloads.toml`. There is no omitted-limit fallback. `memory_cap_bytes` in that file must equal `RUN_MEMORY_CAP_BYTES`. Each workload names its program, its `input`, its `stdin`, and the four limits.
 
-`make problems` and `make langs` run on the native Go host. A problem pass is an exact stdout match on every case that test chose. A language pass is the same match on the shared cases. The metrics script calls each target, wrapped in `timeout(1)` for 1200 seconds. Schema 4 stores `problems.source` as `make problems` and `langs.source` as `make langs`. Schema 3 benches store the same objects without `cost`. Schema 2 benches still store the older `make tasks` rows. Each run keeps its own step, probe, and state limits, OS timeout, and memory cap. Host benchmark workloads are unchanged. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
+`make problems` and `make langs` run on the native Go host. A problem pass matches the Go baseline on every writable resource and the exit code, for every committed case. A language pass is an exact stdout match on the shared cases. The metrics script calls each target, wrapped in `timeout(1)` for 1200 seconds. Schema 4 stores `problems.source` as `make problems` and `langs.source` as `make langs`. Schema 3 benches store the same objects without `cost`. Schema 2 benches still store the older `make tasks` rows. Each run keeps its own step, probe, and state limits, OS timeout, and memory cap. Host benchmark workloads are unchanged. A workload's wasm (node) host uses `max(timeout_seconds * timeout_scale, timeout_floor)` from `hosts.toml`. The browser playground is wasm (browser). It is not a row in a bench file.
 
 Steps and probes are properties of the program and the host. Durations and resident memory are properties of the machine that ran `make metrics`. `machine` records that machine. An archived row converted from the old history has `machine: null` because that file did not record one.
 
+## Runs
+
+Schema 5 is the current runs document. Schema 4 runs documents are the same object with `stdin` in place of `reads`.
+
+| Field | Meaning |
+| --- | --- |
+| `program` | Repo-relative `.thue` path |
+| `problem`, `ruleset`, `case` | Slugs. `ruleset` is `direct` or a language |
+| `host`, `environment` | Host id and its environment label |
+| `state` | `--input` text for a language solution. Empty for a direct solution |
+| `reads` | Schema 5. Object of resource name to the lines that resource served, without newlines |
+| `stdin` | Schema 4 only. Bytes written to standard input |
+| `max_steps`, `max_evals`, `max_state_bytes`, `timeout_seconds`, `memory_cap_bytes`, `host_timeout_seconds` | The global limits. `host_timeout_seconds` equals `timeout_seconds` |
+| `pass` | The writable resources and the exit code matched the committed case |
+| `cost` | Go cost of that case. `null` when `pass` is false. Other hosts store the same number |
+| `duration_ms`, `memory_bytes` | Wall clock and peak resident memory. Not part of cost |
+| `exit_code` | Process exit code. A passing run is 0 |
+
+Cost on a solution is the sum of its passing fixed-case costs. Property checks are not in that sum.
+
 ## latest.json
+
+The tables in this section describe a schema 2, 3, or 4 document that has no `runs`. A new measurement is the runs document above.
 
 | Field | Meaning |
 | --- | --- |

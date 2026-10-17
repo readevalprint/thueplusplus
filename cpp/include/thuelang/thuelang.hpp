@@ -107,6 +107,10 @@ class Interpreter {
   void set_rule_coverage_path(std::string path);
 
   void AddProcBinding(const std::string& name, const std::string& command);
+  // Replace every binding with in-memory scripts. No process is started.
+  void BindScripts(const std::map<std::string, std::vector<std::string>>& reads,
+                   const std::vector<std::string>& writes);
+  std::map<std::string, std::string> ScriptWrites() const;
 
   void LoadProgram(const std::string& path);
   void LoadProgramText(const std::string& source_path, const std::string& content);

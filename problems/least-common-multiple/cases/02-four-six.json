@@ -1,7 +1,13 @@
 {
   "name": "four-six",
-  "stdin": "4\n6\n",
-  "stdout": "12\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "4",
+      "6"
+    ]
+  },
+  "writes": {
+    "stdout": "12\n"
+  },
   "exit_code": 0
 }

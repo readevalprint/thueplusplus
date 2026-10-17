@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/thuelang/thueplusplus/problems/harness"
+	"pgregory.net/rapid"
 )
 
 func TestProblem(t *testing.T) {
@@ -15,10 +16,10 @@ func TestProblem(t *testing.T) {
 
 func spec() harness.Problem {
 	cases := []harness.Case{
-		{Name: "zero-zero", Stdin: "0\n0\n"},
-		{Name: "two-eight", Stdin: "2\n8\n"},
-		{Name: "five-zero", Stdin: "5\n0\n"},
-		{Name: "zero-five", Stdin: "0\n5\n"},
+		{Name: "zero-zero", Reads: harness.Stdin("0", "0")},
+		{Name: "two-eight", Reads: harness.Stdin("2", "8")},
+		{Name: "five-zero", Reads: harness.Stdin("5", "0")},
+		{Name: "zero-five", Reads: harness.Stdin("0", "5")},
 	}
 	for _, seed := range []uint64{1, 6, 9} {
 		r := rand.New(rand.NewPCG(seed, 1))
@@ -26,36 +27,46 @@ func spec() harness.Problem {
 		exp := r.IntN(9)
 		cases = append(cases, harness.Case{
 			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed),
-			Stdin: fmt.Sprintf("%d\n%d\n", base, exp),
+			Reads: harness.Stdin(strconv.Itoa(base), strconv.Itoa(exp)),
 		})
 	}
 	return harness.Problem{
-		ID:     "exponentiation-operator",
-		Cases:  cases, Reference: reference,
+		ID: "exponentiation-operator",
+		Resources: []harness.Resource{
+			{Name: "stdin", Read: true},
+			{Name: "stdout", Write: true},
+		},
+		Cases:    cases,
+		Baseline: baseline,
+		Draw: func(t *rapid.T) harness.Case {
+			base := rapid.IntRange(0, 12).Draw(t, "base")
+			exp := rapid.IntRange(0, 8).Draw(t, "exp")
+			return harness.Case{Name: "rapid", Reads: harness.Stdin(strconv.Itoa(base), strconv.Itoa(exp))}
+		},
 	}
 }
 
-func reference(stdin string) (string, error) {
-	lines, err := harness.Lines(stdin)
-	if err != nil || len(lines) != 2 {
-		return "", fmt.Errorf("exponentiation-operator wants two lines")
+func baseline(reads map[string][]string) (harness.Outcome, error) {
+	lines := reads["stdin"]
+	if len(lines) != 2 {
+		return harness.Outcome{}, fmt.Errorf("exponentiation-operator wants two lines")
 	}
 	base, err := canon(lines[0])
 	if err != nil {
-		return "", err
+		return harness.Outcome{}, err
 	}
 	exp, err := canon(lines[1])
 	if err != nil {
-		return "", err
+		return harness.Outcome{}, err
 	}
 	if base > 12 || exp > 8 {
-		return "", fmt.Errorf("exponentiation-operator base is 0..12 and exponent is 0..8")
+		return harness.Outcome{}, fmt.Errorf("exponentiation-operator base is 0..12 and exponent is 0..8")
 	}
 	acc := 1
 	for i := 0; i < exp; i++ {
 		acc *= base
 	}
-	return fmt.Sprintf("%d\n", acc), nil
+	return harness.Stdout(fmt.Sprintf("%d\n", acc)), nil
 }
 
 func canon(text string) (int, error) {

@@ -1,7 +1,12 @@
 {
   "name": "seed-2",
-  "stdin": "bljbl\n",
-  "stdout": "lbjlb\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "bljbl"
+    ]
+  },
+  "writes": {
+    "stdout": "lbjlb\n"
+  },
   "exit_code": 0
 }

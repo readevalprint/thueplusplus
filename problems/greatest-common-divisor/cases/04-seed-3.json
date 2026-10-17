@@ -1,7 +1,13 @@
 {
   "name": "seed-3",
-  "stdin": "16\n78\n",
-  "stdout": "2\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "16",
+      "78"
+    ]
+  },
+  "writes": {
+    "stdout": "2\n"
+  },
   "exit_code": 0
 }

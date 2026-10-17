@@ -2,7 +2,7 @@
 // Thin Node host. It speaks the same argv contract as the Go and Python CLIs.
 // Process bindings are opt-in: the wasm module never spawns a process itself.
 
-import { writeFileSync, readFileSync, writeSync } from 'node:fs'
+import { writeFileSync, readFileSync, writeSync, mkdirSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { fileURLToPath } from 'node:url'
@@ -27,10 +27,20 @@ async function main() {
     const wasmPath = process.env.THUE_WASM || resolve(here, '..', '..', 'build', 'thue.wasm')
     const sourceText = readProgram(options.program)
     const thue = await initThue({ wasmPath })
-    const resources = {
-      stdin: { readLine: (timeoutSeconds) => readStdinLine(timeoutSeconds) },
-      stdout: { write: (content) => { writeSync(1, String(content)); return '' } },
-      stderr: { write: (content) => { writeSync(2, String(content)); return '' } },
+    let resources
+    let recorded = null
+    if (options.resources) {
+      const script = scriptResources(loadResourceFile(options.resources))
+      resources = script.resources
+      recorded = script.recorded
+    } else if (options.resourceOut) {
+      throw new Error('--resource-out requires --resources')
+    } else {
+      resources = {
+        stdin: { readLine: (timeoutSeconds) => readStdinLine(timeoutSeconds) },
+        stdout: { write: (content) => { writeSync(1, String(content)); return '' } },
+        stderr: { write: (content) => { writeSync(2, String(content)); return '' } },
+      }
     }
     for (const proc of options.procs) {
       resources[proc.name] = {
@@ -49,6 +59,7 @@ async function main() {
       trace: options.trace,
       listRules: options.listRules,
       coverage: Boolean(options.ruleCoverage),
+      replaceBindings: Boolean(options.resources),
       resources,
     }
     if (Object.prototype.hasOwnProperty.call(options, 'input')) runOptions.input = options.input
@@ -56,8 +67,11 @@ async function main() {
     if (options.ruleCoverage) writeFileSync(options.ruleCoverage, result.coverageTSV || '', 'utf8')
     if (options.counts && !options.listRules) writeCounts(options.counts, result)
     if (options.metrics && !options.listRules) writeMetrics(options.metrics, result)
-    process.stdout.write(result.stdout || '')
-    process.stderr.write(result.stderr || '')
+    if (recorded && options.resourceOut && !options.listRules) writeResourceOutput(options.resourceOut, recorded)
+    if (!recorded) {
+      process.stdout.write(result.stdout || '')
+      process.stderr.write(result.stderr || '')
+    }
     if (options.trace) process.stderr.write(formatTrace(result.trace))
     if (result.error) process.stderr.write(`Error: ${result.error}\n`)
     await cleanup()
@@ -95,6 +109,12 @@ function parseArgs(argv) {
     } else if (arg === '--metrics' || arg.startsWith('--metrics=')) {
       options.metrics = takeValue(argv, index, '--metrics')
       index += arg.startsWith('--metrics=') ? 1 : 2
+    } else if (arg === '--resources' || arg.startsWith('--resources=')) {
+      options.resources = takeValue(argv, index, '--resources')
+      index += arg.startsWith('--resources=') ? 1 : 2
+    } else if (arg === '--resource-out' || arg.startsWith('--resource-out=')) {
+      options.resourceOut = takeValue(argv, index, '--resource-out')
+      index += arg.startsWith('--resource-out=') ? 1 : 2
     } else if (arg === '--input' || arg.startsWith('--input=')) {
       options.input = takeValue(argv, index, '--input')
       index += arg.startsWith('--input=') ? 1 : 2
@@ -140,6 +160,77 @@ function writeMetrics(path, result) {
     payload[key] = metrics[key]
   }
   writeFileSync(path, `${JSON.stringify(payload)}\n`)
+}
+
+function loadResourceFile(path) {
+  const payload = JSON.parse(readFileSync(path, 'utf8'))
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('resources file keys must be reads and writes')
+  }
+  const keys = Object.keys(payload).sort()
+  if (keys.length !== 2 || keys[0] !== 'reads' || keys[1] !== 'writes') {
+    throw new Error('resources file keys must be reads and writes')
+  }
+  if (!payload.reads || typeof payload.reads !== 'object' || Array.isArray(payload.reads)) {
+    throw new Error('resources file needs reads and writes')
+  }
+  if (!Array.isArray(payload.writes)) {
+    throw new Error('resources file needs reads and writes')
+  }
+  return payload
+}
+
+function scriptResources(payload) {
+  const names = []
+  const seen = new Set()
+  for (const name of [...Object.keys(payload.reads), ...payload.writes]) {
+    if (!seen.has(name)) {
+      seen.add(name)
+      names.push(name)
+    }
+  }
+  if (names.length === 0) throw new Error('no resources')
+  const writeSet = new Set()
+  for (const name of payload.writes) {
+    if (writeSet.has(name)) throw new Error('duplicate writable resource')
+    writeSet.add(name)
+  }
+  const resources = {}
+  const recorded = new Map()
+  for (const name of names) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+      throw new Error(`invalid resource ${JSON.stringify(name)}`)
+    }
+    const readable = Object.prototype.hasOwnProperty.call(payload.reads, name)
+    const lines = readable ? payload.reads[name] : null
+    if (readable && (!Array.isArray(lines) || lines.some((line) => typeof line !== 'string' || /[\r\n]/.test(line)))) {
+      throw new Error(`resource ${name} lines must be strings without newlines`)
+    }
+    let index = 0
+    if (writeSet.has(name)) recorded.set(name, '')
+    resources[name] = {
+      readLine() {
+        if (!readable) return { error: 'cannot_read_output_stream', omitName: true }
+        if (index >= lines.length) return { error: 'EOF before newline' }
+        const line = lines[index]
+        index += 1
+        return line
+      },
+      write(content) {
+        if (!recorded.has(name)) return { error: 'write requires process or output stream binding' }
+        recorded.set(name, recorded.get(name) + String(content))
+        return ''
+      },
+    }
+  }
+  return { resources, recorded }
+}
+
+function writeResourceOutput(path, recorded) {
+  mkdirSync(dirname(path), { recursive: true })
+  const payload = {}
+  for (const [name, text] of recorded) payload[name] = text
+  writeFileSync(path, `${JSON.stringify(payload, null, 2)}\n`)
 }
 
 function writeCounts(path, result) {

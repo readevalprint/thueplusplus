@@ -1,7 +1,12 @@
 {
   "name": "punct",
-  "stdin": "a.b\n",
-  "stdout": "n.o\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "a.b"
+    ]
+  },
+  "writes": {
+    "stdout": "n.o\n"
+  },
   "exit_code": 0
 }

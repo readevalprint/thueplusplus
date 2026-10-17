@@ -1479,6 +1479,39 @@ class OutputResource {
   std::ostream& out_;
 };
 
+class ScriptResource {
+ public:
+  ScriptResource(std::vector<std::string> lines, bool readable, bool writable)
+      : lines_(std::move(lines)), readable_(readable), writable_(writable) {}
+
+  std::string ReadLine(std::chrono::nanoseconds) {
+    if (!readable_) {
+      throw ResourceFailure("cannot_read_output_stream", true);
+    }
+    if (index_ >= lines_.size()) {
+      throw std::runtime_error("EOF before newline");
+    }
+    return lines_[index_++];
+  }
+
+  void WriteString(const std::string& content) {
+    if (!writable_) {
+      throw std::runtime_error("write requires process or output stream binding");
+    }
+    recorded_ += content;
+  }
+
+  bool writable() const { return writable_; }
+  const std::string& recorded() const { return recorded_; }
+
+ private:
+  std::vector<std::string> lines_;
+  size_t index_ = 0;
+  bool readable_ = false;
+  bool writable_ = false;
+  std::string recorded_;
+};
+
 class ProcessResource {
  public:
   explicit ProcessResource(std::string command) : command_(std::move(command)) {}
@@ -1700,8 +1733,12 @@ struct Binding {
   std::unique_ptr<StdinResource> stdin_resource;
   std::unique_ptr<OutputResource> output;
   std::unique_ptr<ProcessResource> process;
+  std::unique_ptr<ScriptResource> script;
 
   std::string ReadLine(std::chrono::nanoseconds timeout) {
+    if (script) {
+      return script->ReadLine(timeout);
+    }
     if (stdin_resource) {
       return stdin_resource->ReadLine(timeout);
     }
@@ -1716,7 +1753,9 @@ struct Binding {
 
   std::string Write(const std::string& content) {
     try {
-      if (stdin_resource) {
+      if (script) {
+        script->WriteString(content);
+      } else if (stdin_resource) {
         stdin_resource->WriteString(content);
       } else if (output) {
         output->WriteString(content);
@@ -1988,6 +2027,7 @@ struct Interpreter::Impl {
   std::string rule_coverage_path;
   std::map<std::string, int> rule_coverage;
   std::string program_path;
+  bool scripted = false;
   std::ostream* stdout_stream = &std::cout;
   std::ostream* stderr_stream = &std::cerr;
 
@@ -2347,6 +2387,69 @@ void Interpreter::AddProcBinding(const std::string& name, const std::string& com
   binding->name = name;
   binding->process = std::make_unique<ProcessResource>(command);
   impl_->bindings[name] = std::move(binding);
+}
+
+void Interpreter::BindScripts(const std::map<std::string, std::vector<std::string>>& reads,
+                              const std::vector<std::string>& writes) {
+  std::map<std::string, int> write_set;
+  for (const auto& name : writes) {
+    if (!IsName(name)) {
+      throw std::runtime_error("invalid resource \"" + name + "\"");
+    }
+    if (!write_set.emplace(name, 1).second) {
+      throw std::runtime_error("duplicate writable resource " + name);
+    }
+  }
+  for (const auto& item : reads) {
+    if (!IsName(item.first)) {
+      throw std::runtime_error("invalid resource \"" + item.first + "\"");
+    }
+    for (const auto& line : item.second) {
+      if (line.find('\n') != std::string::npos || line.find('\r') != std::string::npos) {
+        throw std::runtime_error("resource " + item.first + " line contains a newline");
+      }
+    }
+  }
+  std::map<std::string, int> names;
+  for (const auto& item : reads) {
+    names.emplace(item.first, 1);
+  }
+  for (const auto& name : writes) {
+    names.emplace(name, 1);
+  }
+  if (names.empty()) {
+    throw std::runtime_error("no resources");
+  }
+  Cleanup();
+  impl_->bindings.clear();
+  for (const auto& item : names) {
+    const std::string& name = item.first;
+    bool readable = reads.find(name) != reads.end();
+    bool writable = write_set.find(name) != write_set.end();
+    std::vector<std::string> lines;
+    auto found = reads.find(name);
+    if (found != reads.end()) {
+      lines = found->second;
+    }
+    auto binding = std::make_unique<Binding>();
+    binding->name = name;
+    binding->script = std::make_unique<ScriptResource>(std::move(lines), readable, writable);
+    impl_->bindings[name] = std::move(binding);
+  }
+  impl_->scripted = true;
+}
+
+std::map<std::string, std::string> Interpreter::ScriptWrites() const {
+  if (!impl_->scripted) {
+    throw std::runtime_error("this run has no scripted resources");
+  }
+  std::map<std::string, std::string> out;
+  for (const auto& item : impl_->bindings) {
+    if (item.second->script && item.second->script->writable()) {
+      out[item.first] = item.second->script->recorded();
+    }
+  }
+  return out;
 }
 
 void Interpreter::LoadProgram(const std::string& path) {

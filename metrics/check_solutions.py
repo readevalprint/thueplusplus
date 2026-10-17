@@ -27,6 +27,7 @@ def main() -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
     print(f"solutions: {len(runs)} runs match metric.json")
+    print("solutions: runs match metric.json")
     return 0
 
 

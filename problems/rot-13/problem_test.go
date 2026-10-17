@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/thuelang/thueplusplus/problems/harness"
+	"pgregory.net/rapid"
 )
 
 func TestProblem(t *testing.T) {
@@ -15,17 +16,32 @@ func TestProblem(t *testing.T) {
 
 func spec() harness.Problem {
 	cases := []harness.Case{
-		{Name: "hello", Stdin: "Hello, World!\n"},
-		{Name: "punct", Stdin: "a.b\n"},
+		{Name: "hello", Reads: harness.Stdin("Hello, World!")},
+		{Name: "punct", Reads: harness.Stdin("a.b")},
 	}
 	for _, seed := range []uint64{3, 11} {
 		cases = append(cases, harness.Case{
-			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Stdin: text(seed),
+			Name: fmt.Sprintf("seed-%d", seed), Seed: harness.Seed(seed), Reads: harness.Stdin(text(seed)),
 		})
 	}
 	return harness.Problem{
-		ID:     "rot-13",
-		Cases:  cases, Reference: reference,
+		ID: "rot-13",
+		Resources: []harness.Resource{
+			{Name: "stdin", Read: true},
+			{Name: "stdout", Write: true},
+		},
+		Cases:    cases,
+		Baseline: baseline,
+		Draw: func(t *rapid.T) harness.Case {
+			alphabet := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,! "
+			n := rapid.IntRange(1, 12).Draw(t, "len")
+			buf := make([]rune, n)
+			for i := range buf {
+				index := rapid.IntRange(0, len(alphabet)-1).Draw(t, fmt.Sprintf("c-%d", i))
+				buf[i] = rune(alphabet[index])
+			}
+			return harness.Case{Name: "rapid", Reads: harness.Stdin(string(buf))}
+		},
 	}
 }
 
@@ -37,13 +53,13 @@ func text(seed uint64) string {
 	for i := range buf {
 		buf[i] = alphabet[r.IntN(len(alphabet))]
 	}
-	return string(buf) + "\n"
+	return string(buf)
 }
 
-func reference(stdin string) (string, error) {
-	lines, err := harness.Lines(stdin)
-	if err != nil || len(lines) != 1 {
-		return "", fmt.Errorf("rot-13 wants one line")
+func baseline(reads map[string][]string) (harness.Outcome, error) {
+	lines := reads["stdin"]
+	if len(lines) != 1 {
+		return harness.Outcome{}, fmt.Errorf("rot-13 wants one line")
 	}
 	var b strings.Builder
 	for _, c := range lines[0] {
@@ -56,5 +72,5 @@ func reference(stdin string) (string, error) {
 			b.WriteRune(c)
 		}
 	}
-	return b.String() + "\n", nil
+	return harness.Stdout(b.String() + "\n"), nil
 }

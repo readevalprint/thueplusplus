@@ -1,7 +1,12 @@
 {
   "name": "seed-9",
-  "stdin": "hojwj\n",
-  "stdout": "jwjoh\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "hojwj"
+    ]
+  },
+  "writes": {
+    "stdout": "jwjoh\n"
+  },
   "exit_code": 0
 }

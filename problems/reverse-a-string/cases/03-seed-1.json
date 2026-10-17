@@ -1,7 +1,12 @@
 {
   "name": "seed-1",
-  "stdin": "cwx\n",
-  "stdout": "xwc\n",
-  "stderr": "",
+  "reads": {
+    "stdin": [
+      "cwx"
+    ]
+  },
+  "writes": {
+    "stdout": "xwc\n"
+  },
   "exit_code": 0
 }

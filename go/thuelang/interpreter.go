@@ -93,6 +93,7 @@ type Interpreter struct {
 	Rules         []Rule
 	State         string
 	Bindings      map[string]*Binding
+	scripts       map[string]*scriptResource
 	MaxEvals      *int
 	MaxStateBytes *int
 	MaxSteps      *int
