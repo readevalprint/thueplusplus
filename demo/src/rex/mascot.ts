@@ -29,7 +29,8 @@ export interface ReachState {
   handRY: number
   eyeX: number
   eyeY: number
-  radius: number
+  radiusL: number
+  radiusR: number
 }
 
 export interface HatSwap {
@@ -60,7 +61,8 @@ export function restReach(): ReachState {
     handRY: MARK.handDy,
     eyeX: 0,
     eyeY: 0,
-    radius: MARK.dotR,
+    radiusL: MARK.dotR,
+    radiusR: MARK.dotR,
   }
 }
 
@@ -94,7 +96,8 @@ function poseToReach(pose: ReturnType<typeof reachPose>): ReachState {
     handRY: pose.handRY,
     eyeX: pose.eyeX,
     eyeY: pose.eyeY,
-    radius: pose.radius,
+    radiusL: pose.radiusL,
+    radiusR: pose.radiusR,
   }
 }
 
@@ -134,12 +137,13 @@ function easeReach(current: ReachState, target: ReachState, dt: number): ReachSt
     handRY: easeToward(current.handRY, target.handRY, dt, REACH_RATE),
     eyeX: easeToward(current.eyeX, target.eyeX, dt, REACH_RATE),
     eyeY: easeToward(current.eyeY, target.eyeY, dt, REACH_RATE),
-    radius: easeToward(current.radius, target.radius, dt, REACH_RATE),
+    radiusL: easeToward(current.radiusL, target.radiusL, dt, REACH_RATE),
+    radiusR: easeToward(current.radiusR, target.radiusR, dt, REACH_RATE),
   }
 }
 
 function settled(current: ReachState, target: ReachState): boolean {
-  const fields: (keyof ReachState)[] = ['handLX', 'handLY', 'handRX', 'handRY', 'eyeX', 'eyeY', 'radius']
+  const fields: (keyof ReachState)[] = ['handLX', 'handLY', 'handRX', 'handRY', 'eyeX', 'eyeY', 'radiusL', 'radiusR']
   return fields.every(field => {
     const left = current[field]
     const right = target[field]
@@ -291,9 +295,10 @@ export function reachSide(): 'left' | 'right' | 'none' {
   return reach.value.side
 }
 
-export function reachRadius(): number {
-  if (swap.value && !prefersReduced()) return MARK.dotR * 1.12
-  return reach.value.radius
+/** Each hand eases its own stretch, so the reach can cross Rex without a snap. */
+export function reachRadiusFor(side: 'left' | 'right'): number {
+  if (swap.value && !prefersReduced()) return swap.value.side === side ? MARK.dotR * 1.12 : MARK.dotR
+  return side === 'left' ? reach.value.radiusL : reach.value.radiusR
 }
 
 export function resetMascot(): void {

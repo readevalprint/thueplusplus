@@ -331,7 +331,8 @@ export function reachAmount(distancePx, flags) {
 /**
  * Header reach target. `pointer` is in the header viewBox. Null means the
  * pointer has left the window. The nearer hand slides out along the pointer
- * and stretches. The eyes glance the same way.
+ * and stretches, and the two hands trade that reach smoothly across x = 0.
+ * The eyes glance. The body, the eye sides, and the hat do not mirror.
  * @param {{ pointer: { x: number, y: number } | null, distancePx: number, reduced: boolean, touch: boolean }} input
  */
 export function reachPose(input) {
@@ -350,34 +351,55 @@ export function reachPose(input) {
     handRY: right.y,
     eyeX: 0,
     eyeY: 0,
-    radius: MARK.dotR,
+    radiusL: MARK.dotR,
+    radiusR: MARK.dotR,
   }
   if (amount === 0 || !input.pointer) return rest
   const pointer = input.pointer
-  const toLeft = Math.hypot(pointer.x - left.x, pointer.y - left.y)
-  const toRight = Math.hypot(pointer.x - right.x, pointer.y - right.y)
-  const side = toLeft <= toRight ? 'left' : 'right'
-  const hand = side === 'left' ? left : right
-  const dx = pointer.x - hand.x
-  const dy = pointer.y - hand.y
-  const length = Math.hypot(dx, dy)
-  const slide = REACH_MAX * REACH_STRETCH * amount
-  const offset = length < 1e-6 ? { x: 0, y: 0 } : { x: (dx / length) * slide, y: (dy / length) * slide }
+  // Shares are a continuous function of pointer x. Crossing the vertical
+  // center trades the reach from one hand to the other. It never mirrors
+  // the body, the eyes, or the hat, and neither hand's target jumps.
+  const span = right.x - left.x
+  const across = clamp01((pointer.x - left.x) / span)
+  const rightShare = smooth(across)
+  const leftShare = 1 - rightShare
+  const leftOff = handReach(left, pointer, amount * leftShare)
+  const rightOff = handReach(right, pointer, amount * rightShare)
   const ex = pointer.x
   const ey = pointer.y - MARK.eyeDy
   const eyeLength = Math.hypot(ex, ey)
   const glance = GLANCE_MAX * amount
   const eye = eyeLength < 1e-6 ? { x: 0, y: 0 } : { x: (ex / eyeLength) * glance, y: (ey / eyeLength) * glance }
   return {
-    side,
-    handLX: left.x + (side === 'left' ? offset.x : 0),
-    handLY: left.y + (side === 'left' ? offset.y : 0),
-    handRX: right.x + (side === 'right' ? offset.x : 0),
-    handRY: right.y + (side === 'right' ? offset.y : 0),
+    side: leftShare >= rightShare ? 'left' : 'right',
+    handLX: left.x + leftOff.x,
+    handLY: left.y + leftOff.y,
+    handRX: right.x + rightOff.x,
+    handRY: right.y + rightOff.y,
     eyeX: eye.x,
     eyeY: eye.y,
-    radius: MARK.dotR * (1 + 0.22 * amount),
+    radiusL: MARK.dotR * (1 + 0.22 * amount * leftShare),
+    radiusR: MARK.dotR * (1 + 0.22 * amount * rightShare),
   }
+}
+
+/**
+ * Slide one hand toward the pointer. `scaled` is the reach amount times
+ * that hand's share, so a zero share stays at rest.
+ * @param {{ x: number, y: number }} hand
+ * @param {{ x: number, y: number }} pointer
+ * @param {number} scaled
+ */
+function handReach(hand, pointer, scaled) {
+  const dx = pointer.x - hand.x
+  const dy = pointer.y - hand.y
+  const length = Math.hypot(dx, dy)
+  const slide = REACH_MAX * REACH_STRETCH * scaled
+  if (length < 1e-6 || slide === 0) return { x: 0, y: 0 }
+  // Stop at the pointer. A fixed-length slide flips sign as the pointer
+  // passes the hand, which is the mirror.
+  const dist = Math.min(length, slide)
+  return { x: (dx / length) * dist, y: (dy / length) * dist }
 }
 
 /**

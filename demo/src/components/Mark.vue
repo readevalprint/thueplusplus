@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { markModel, viewBoxString } from '@/rex/geometry.mjs'
-import { bindMascot, headerPose, reachRadius, reachSide } from '@/rex/mascot'
+import { MARK, markModel, viewBoxString } from '@/rex/geometry.mjs'
+import { bindMascot, headerPose, reachRadiusFor } from '@/rex/mascot'
 import RexFigure from './RexFigure.vue'
 
 const layout = markModel('header')
@@ -22,8 +22,10 @@ bindMascot()
       :pose="pose"
       hat-paint="var(--signal)"
       mark-paint="currentColor"
-      :reach-side="reachSide()"
-      :reach-radius="reachRadius()"
+      :hat-origin-x="0"
+      :hat-origin-y="MARK.eyeDy"
+      :reach-radius-l="reachRadiusFor('left')"
+      :reach-radius-r="reachRadiusFor('right')"
     />
   </svg>
 </template>
@@ -33,6 +35,12 @@ bindMascot()
    compiles to `button:hover`, and scaleY then flattens the whole figure.
    The button is outside this component, so the hover selector cannot carry
    Mark's scope id. Only the header svg has `.rex-mark`. */
+/* Bone is the same token as the page background's pair, so a theme change
+   repaints Rex with the page instead of leaving currentColor on the old ink. */
+.rex-mark {
+  color: var(--bone);
+}
+
 .rex-mark .rex-eye {
   transform-box: fill-box;
   transform-origin: center;
