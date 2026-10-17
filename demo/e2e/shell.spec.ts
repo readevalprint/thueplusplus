@@ -76,7 +76,7 @@ test('home keeps the landing copy and stays dark by default', async ({ page }) =
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect(page.getByRole('heading', { level: 1, name: 'Thue++' })).toBeVisible()
   await expect(page.getByText('The safest, smallest, sandbox.')).toBeVisible()
-  await expect(page.getByTestId('landing-languages')).toContainText('Available in go, python, js, rust, cpp, ruby, and soon erlang, ocaml, perl, haskell')
+  await expect(page.getByTestId('landing-languages')).toContainText('Available in go, python, js, rust, cpp, ruby, csharp, and soon erlang, ocaml, perl, haskell')
   await expect(page.getByTestId('sandbox-scene')).toBeVisible()
   await expect(page.getByTestId('speech-text')).toContainText("i guess we sandboxin' now")
   await expect(page.locator('body')).not.toContainText(/RE2/)
@@ -126,6 +126,7 @@ test('deep links render their own heading', async ({ page }) => {
     ['/docs/language', 'Operators, resources, and limits.'],
     ['/install', 'Install a host.'],
     ['/install/rust', 'Rust.'],
+    ['/install/csharp', 'C#.'],
     ['/projects', 'Sandboxed projects.'],
     ['/metrics', 'What each commit measured.'],
     ['/problems', 'Programs with a finish line.'],

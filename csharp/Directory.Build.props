@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>thuelang</Authors>
+    <Company>thuelang</Company>
+    <Product>Thuelang</Product>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/thuelang/thueplusplus</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>Thue++ interpreter: ordered regex rewrites over one state string</Description>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

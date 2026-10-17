@@ -539,9 +539,13 @@ build/cpp/thue <program.thue>
 # Ruby gem thuelang (executable ruby/exe/thue)
 make ruby
 ruby/exe/thue <program.thue>
+
+# C# library Thuelang (CLI build/csharp/thue)
+dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/csharp
+build/csharp/thue <program.thue>
 ```
 
-`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package name is `thuelang`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. The Ruby gem is `thuelang` under `ruby/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
+`uv run thue` is the Python console script. The PyPI distribution and the import module are `thuelang`. The Go library import is `github.com/thuelang/thueplusplus/go/thuelang`. The npm package name is `thuelang`. The Rust crate and library are `thuelang` under `rust/`. The C++ library target and namespace are `thuelang`. The Ruby gem is `thuelang` under `ruby/`. The C# package and namespace are `Thuelang` under `csharp/`. See [docs/releasing.md](docs/releasing.md) and [docs/host-api.md](docs/host-api.md).
 
 Browser resources are callbacks: `readLine`, `write`, and optional `close`. Browser and `GOOS=js/wasm` runs do not support OS subprocesses. Subprocess-style bindings fail loudly instead of emulating a shell.
 
@@ -555,7 +559,7 @@ make test
 
 `make test` is the per-PR check. It has two tiers.
 
-Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thue`), when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thue`), and, when `ruby/thuelang.gemspec` is present, the Ruby executable (`--impl ruby=./ruby/exe/thue`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
+Host conformance runs a small core suite on every host: Python, native Go, wasm (node), the Rust release binary (`--impl rust=./rust/target/release/thue`), when `cpp/CMakeLists.txt` is present, the C++ binary (`--impl cpp=./build/cpp/thue`), when `ruby/thuelang.gemspec` is present, the Ruby executable (`--impl ruby=./ruby/exe/thue`), and the C# binary (`--impl csharp=./build/csharp/thue`). The core cases cover rules, `::|` steps, templates and filters, aliases, the initial state, exit codes 0, 1, 2, 10, 11, 12, and 13, I/O, and the trace format. Explicit step, probe, and state limits, `timeout(1)`, and the 256 MiB cap stay on every case.
 
 Forth, Lisp, and BASIC live in `langs/`. Brainfuck stays in `examples/brainfuck/` as an esolang demo. `make problems` and `make langs` measure solutions and language cases on the native Go host. Wasm is that same Go interpreter compiled to WebAssembly. It is not a second copy of that suite.
 
@@ -641,6 +645,7 @@ js/              npm package thuelang (ESM, types, Node CLI, browser worker)
 rust/            Rust library thuelang and the thue CLI. Not published.
 cpp/             C++17 library thuelang and the thue CLI. Not published.
 ruby/            Ruby gem thuelang and the thue CLI. Not published.
+csharp/          C# library Thuelang and the thue CLI. Not published.
 demo/            Playground. It depends on the thuelang package.
 docs/            Language contracts, host API, and release steps
 tools/           Repository conformance checker and shared manifest runner
@@ -662,6 +667,7 @@ Project docs and examples:
 - [`rust/README.md`](rust/README.md) — Rust crate API, regex gaps, and the crates.io steps
 - [`cpp/README.md`](cpp/README.md) — C++ build, and the unpublished vcpkg and Conan sketches
 - [`ruby/README.md`](ruby/README.md) — Ruby gem API and the unpublished gem
+- [`csharp/README.md`](csharp/README.md) — C# library, CLI, and regex gaps
 - [`docs/releasing.md`](docs/releasing.md) — tag publish for PyPI, npm, crates.io, and the GitHub Release
 - [`js/README.md`](js/README.md) — npm package API
 
@@ -676,7 +682,7 @@ External context:
 
 ## Installation
 
-Python, npm, and the Rust crate publish when a `vX.Y.Z` tag is pushed. That GitHub Release also carries the Go, Rust, and C++ `thue` binaries and the editor `.vsix`. C++ is not a vcpkg or Conan package. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). The one-time registry setup is in [`CONTRIBUTING.md`](CONTRIBUTING.md). From a checkout:
+Python, npm, and the Rust crate publish when a `vX.Y.Z` tag is pushed. That GitHub Release also carries the Go, Rust, and C++ `thue` binaries and the editor `.vsix`. C++ is not a vcpkg or Conan package. The C# packages are not published to NuGet. Publishing steps are in [`docs/releasing.md`](docs/releasing.md). The one-time registry setup is in [`CONTRIBUTING.md`](CONTRIBUTING.md). From a checkout:
 
 ```bash
 uv run thue <program.thue>
@@ -685,9 +691,10 @@ node js/src/cli.js <program.thue>
 cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
 build/cpp/thue <program.thue>
 make ruby && ruby/exe/thue <program.thue>
+dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/csharp && build/csharp/thue <program.thue>
 ```
 
-Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from crates.io. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. Ruby requires `thuelang` and runs `ruby/exe/thue`. The playground depends on the npm package in this repository.
+Import `thuelang` in Python, `github.com/thuelang/thueplusplus/go/thuelang` in Go, `thuelang` from npm, and `thuelang` from crates.io. C++ includes `thuelang/thuelang.hpp` and links `thuelang::thuelang`. Ruby requires `thuelang` and runs `ruby/exe/thue`. C# references the `Thuelang` project. The playground depends on the npm package in this repository.
 
 Copy-pasteable agent prompt:
 
@@ -704,6 +711,7 @@ node js/src/cli.js <program.thue>
 cargo build --release --manifest-path rust/Cargo.toml && ./rust/target/release/thue <program.thue>
 build/cpp/thue <program.thue>
 make ruby && ruby/exe/thue <program.thue>
+dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/csharp && build/csharp/thue <program.thue>
 ```
 
 Repository development requirements:
@@ -716,6 +724,7 @@ Repository development requirements:
 - Node.js only for Go-WASM adapter and browser-demo checks
 - `g++`, CMake, `pkg-config`, and `libre2-dev` for the C++ host
 - Ruby 3.1+ and Bundler for the Ruby host
+- .NET SDK 10 for the C# host
 
 ## Editor install
 

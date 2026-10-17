@@ -466,5 +466,36 @@ class LatestTests(unittest.TestCase):
                 check_history.assert_archives(root, loaded)
 
 
+class RunsHostSubsetTest(unittest.TestCase):
+    def test_a_runs_document_may_omit_a_later_host(self) -> None:
+        path = ROOT / "metrics" / "latest.json"
+        document = json.loads(path.read_text(encoding="utf-8"))
+        historylib._validate_runs_document(document, historylib.LATEST_RUN_KEYS, "metrics/latest.json", bench=False)
+        dropped = json.loads(path.read_text(encoding="utf-8"))
+        dropped["runs"] = [row for row in dropped["runs"] if row["host"] != "cpp"]
+        historylib._validate_runs_document(dropped, historylib.LATEST_RUN_KEYS, "subset", bench=False)
+        unknown = json.loads(path.read_text(encoding="utf-8"))
+        unknown["runs"][0]["host"] = "not-a-host"
+        with self.assertRaises(historylib.HistoryError) as caught:
+            historylib._validate_runs_document(unknown, historylib.LATEST_RUN_KEYS, "unknown", bench=False)
+        self.assertIn("unknown host", str(caught.exception))
+        missing_go = json.loads(path.read_text(encoding="utf-8"))
+        missing_go["runs"] = [row for row in missing_go["runs"] if row["host"] != "go"]
+        with self.assertRaises(historylib.HistoryError) as caught:
+            historylib._validate_runs_document(missing_go, historylib.LATEST_RUN_KEYS, "no-go", bench=False)
+        self.assertIn("must include go", str(caught.exception))
+        mixed = json.loads(path.read_text(encoding="utf-8"))
+        first = mixed["runs"][0]
+        identity = (first["problem"], first["ruleset"], first["case"])
+        mixed["runs"] = [
+            row
+            for row in mixed["runs"]
+            if row["host"] != "cpp" or (row["problem"], row["ruleset"], row["case"]) != identity
+        ]
+        with self.assertRaises(historylib.HistoryError) as caught:
+            historylib._validate_runs_document(mixed, historylib.LATEST_RUN_KEYS, "mixed", bench=False)
+        self.assertIn("same hosts", str(caught.exception))
+
+
 if __name__ == "__main__":
     raise SystemExit(unittest.main())

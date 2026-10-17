@@ -18,3 +18,5 @@ rust/target/
 ruby/vendor/
 ruby/.bundle/
 *.gem
+csharp/**/bin/
+csharp/**/obj/

@@ -4,7 +4,7 @@ Spec version: **v0.5** (`SPEC_VERSION` at the repository root).
 
 The language behavior is the executable manifests under `examples/**/tests/*.toml`, read with [conformance.md](conformance.md). [rfc-language.md](rfc-language.md) is the narrative spec. When they disagree, a manifest that `make test` runs is the authority.
 
-The site is [thuelang.org](https://thuelang.org). The reference implementations are the Python distribution `thuelang` (module `thuelang`, `uv run thue`), the Go package `github.com/thuelang/thueplusplus/go/thuelang` (`go/cmd/thue`), the npm package `thuelang` (`node js/src/cli.js`), the Rust crate and library `thuelang` (`rust/target/release/thue`), the C++ library `thuelang` (`cpp/`, CLI `build/cpp/thue`), and the Ruby gem `thuelang` (`ruby/exe/thue`). `make test` runs the core suite on all six and the guest programs on native Go. `make test-full` runs every manifest on all six. Both require identical results. The embedder API is [host-api.md](host-api.md).
+The site is [thuelang.org](https://thuelang.org). The reference implementations are the Python distribution `thuelang` (module `thuelang`, `uv run thue`), the Go package `github.com/thuelang/thueplusplus/go/thuelang` (`go/cmd/thue`), the npm package `thuelang` (`node js/src/cli.js`), the Rust crate and library `thuelang` (`rust/target/release/thue`), the C++ library `thuelang` (`cpp/`, CLI `build/cpp/thue`), the Ruby gem `thuelang` (`ruby/exe/thue`), and the C# library `Thuelang` (`csharp/`, CLI `build/csharp/thue`). `make test` runs the core suite on all seven and the guest programs on native Go. `make test-full` runs every manifest on all seven. Both require identical results. The embedder API is [host-api.md](host-api.md).
 
 Patterns are compiled by the regex engine. The syntax reference is <https://github.com/google/re2/wiki/Syntax>. Do not use backreferences, lookaround, or recursion.
 
@@ -75,7 +75,7 @@ uv run python tools/example_runner.py \
 
 `NAME` is an identifier and must not be `python`, `go`, or `wasm`. The runner still builds those three, then runs your command in the same parity set. A mismatch prints both results and exits non-zero.
 
-Omit the manifest paths to run every `examples/**/tests/*.toml` file. `make test-full` does that after it builds `rust/target/release/thue`, `build/cpp/thue`, and `ruby/exe/thue`, then passes `--impl rust=./rust/target/release/thue`, `--impl cpp=./build/cpp/thue`, and `--impl ruby=./ruby/exe/thue`. `make test` runs the core tier on those hosts and the guest programs on native Go. The runner still builds Python, Go, and wasm itself.
+Omit the manifest paths to run every `examples/**/tests/*.toml` file. `make test-full` does that after it builds `rust/target/release/thue`, `build/cpp/thue`, `ruby/exe/thue`, and `build/csharp/thue`, then passes `--impl rust=./rust/target/release/thue`, `--impl cpp=./build/cpp/thue`, `--impl ruby=./ruby/exe/thue`, and `--impl csharp=./build/csharp/thue`. `make test` runs the core tier on those hosts and the guest programs on native Go. The runner still builds Python, Go, and wasm itself.
 
 Rule coverage is computed from the Python interpreter. Your command does not need `--rule-coverage` for the gate. It does need to apply the same rules, because parity compares the observable output of every case, including cases whose only purpose is to cover a rule.
 

@@ -12,11 +12,12 @@ Pull requests run `make release-check` and do not publish. Do not run `uv publis
 | Rust | crate and library `thuelang`, binary `thue` | `rust/Cargo.toml` `version` |
 | C++ | CMake project and library `thuelang`, CLI `thue` | `cpp/CMakeLists.txt` `VERSION` |
 | Ruby | gem `thuelang`, executable `thue` | `ruby/lib/thuelang/version.rb` `VERSION` |
+| C# | NuGet `Thuelang`, CLI tool `Thuelang.Cli` (`thue`) | `csharp/Directory.Build.props` `Version` |
 | Editor | `.vsix` `thue` | `editors/vscode/package.json` `version` |
 | vcpkg sketch | `thuelang` | `cpp/vcpkg.json` `version` |
 | Conan sketch | `thuelang` | `cpp/conanfile.py` `version` |
 
-`make release-check` deletes `dist/`, runs `uv build`, then `twine check dist/*`, `npm pack --dry-run` in `js/`, and `cargo publish --dry-run --manifest-path rust/Cargo.toml`. `RELEASE_TAG=vX.Y.Z` makes the version check require that tag.
+`make release-check` deletes `dist/`, runs `uv build`, then `twine check dist/*`, `npm pack --dry-run` in `js/`, `cargo publish --dry-run --manifest-path rust/Cargo.toml`, and `dotnet pack` for `Thuelang` and `Thuelang.Cli`. `RELEASE_TAG=vX.Y.Z` makes the version check require that tag. The workflow does not upload the NuGet packages.
 
 ## What the tag publishes
 
@@ -45,3 +46,7 @@ Push that tag at the same commit as `v0.1.0`. A root tag does not version this m
 ## RubyGems
 
 `ruby/lib/thuelang/version.rb` keeps the same version as the other manifests so the tag check can see it. This repository does not upload the gem. `ruby/README.md` is the build note.
+
+## NuGet
+
+`csharp/Directory.Build.props` sets `<Version>0.1.0</Version>` for the library package `Thuelang` and the tool package `Thuelang.Cli`. `make release-check` runs `dotnet pack` and does not upload. This repository does not publish to NuGet. `csharp/README.md` is the build note.

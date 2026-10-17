@@ -1,29 +1,33 @@
 SHELL := /bin/sh
 
-.PHONY: test test-static test-core test-guests test-full cpp ruby wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
+.PHONY: test test-static test-core test-guests test-full cpp ruby csharp wasm wasm-smoke wasm-adapter-test demo-test demo-build problems langs metrics release-check
 
 RUST_BIN := ./rust/target/release/thue
 RUST_IMPL := --impl rust=$(RUST_BIN)
+CSHARP_BIN := ./build/csharp/thue
+CSHARP_IMPL := --impl csharp=$(CSHARP_BIN)
 
-# HOST selects one conformance host: python, go, wasm, rust, cpp, or ruby.
+# HOST selects one conformance host: python, go, wasm, rust, cpp, ruby, or csharp.
 # Empty runs every host that is present. Guest programs run on native Go.
 ifeq ($(HOST),)
-  CORE_ARGS := --tier core $(RUST_IMPL)
+  CORE_ARGS := --tier core $(RUST_IMPL) $(CSHARP_IMPL)
 else ifeq ($(HOST),rust)
   CORE_ARGS := --tier core --only rust $(RUST_IMPL)
+else ifeq ($(HOST),csharp)
+  CORE_ARGS := --tier core --only csharp $(CSHARP_IMPL)
 else
   CORE_ARGS := --tier core --only $(HOST)
 endif
 
 ifneq ($(wildcard cpp/CMakeLists.txt),)
-  FULL_IMPL := $(RUST_IMPL) --impl cpp=./build/cpp/thue
+  FULL_IMPL := $(RUST_IMPL) $(CSHARP_IMPL) --impl cpp=./build/cpp/thue
   ifeq ($(HOST),)
     CORE_ARGS += --impl cpp=./build/cpp/thue
   else ifeq ($(HOST),cpp)
     CORE_ARGS := --tier core --only cpp --impl cpp=./build/cpp/thue
   endif
 else
-  FULL_IMPL := $(RUST_IMPL)
+  FULL_IMPL := $(RUST_IMPL) $(CSHARP_IMPL)
 endif
 
 ifneq ($(wildcard ruby/thuelang.gemspec),)
@@ -43,6 +47,10 @@ ifeq ($(THUELANG_RE2_STATIC),)
 else
   CPP_RE2_FLAG := -DTHUELANG_RE2_STATIC=ON
 endif
+csharp:
+	@command -v dotnet >/dev/null 2>&1 || { echo "Error: dotnet is required to build the C# host" >&2; exit 127; }
+	dotnet publish csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release -o build/csharp --nologo
+
 cpp:
 	@command -v cmake >/dev/null 2>&1 || { echo "Error: cmake is required to build the C++ host" >&2; exit 127; }
 	@command -v g++ >/dev/null 2>&1 || { echo "Error: g++ is required to build the C++ host" >&2; exit 127; }
@@ -89,6 +97,10 @@ test-core:
 	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "wasm" ]; then \
 	  command -v node >/dev/null 2>&1 || { echo "Error: node is required to run repository verification" >&2; exit 127; }; \
 	fi
+	@if [ -z "$(HOST)" ] || [ "$(HOST)" = "csharp" ]; then \
+	  command -v dotnet >/dev/null 2>&1 || { echo "Error: dotnet is required to run repository verification" >&2; exit 127; }; \
+	  dotnet test csharp/src/Thuelang.Tests/Thuelang.Tests.csproj -c Release --nologo; \
+	fi
 	uv run python tools/example_runner.py $(CORE_ARGS)
 	uv run python tools/test_metrics_cli.py
 	uv run python metrics/check_solutions.py
@@ -104,8 +116,10 @@ test-full: test-static
 	@command -v go >/dev/null 2>&1 || { echo "Error: go is required to run repository verification" >&2; exit 127; }
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to run repository verification" >&2; exit 127; }
 	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to run repository verification" >&2; exit 127; }
+	@command -v dotnet >/dev/null 2>&1 || { echo "Error: dotnet is required to run repository verification" >&2; exit 127; }
 	cargo test --manifest-path rust/Cargo.toml
 	cargo build --release --manifest-path rust/Cargo.toml
+	dotnet test csharp/src/Thuelang.Tests/Thuelang.Tests.csproj -c Release --nologo
 	uv run python tools/example_runner.py --tier full $(FULL_IMPL)
 
 # Problems and languages. Both are native Go tests. Hosts are not part of these counters.
@@ -125,6 +139,7 @@ metrics:
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to record metrics" >&2; exit 127; }
 	@command -v timeout >/dev/null 2>&1 || { echo "Error: timeout(1) is required to record metrics" >&2; exit 127; }
 	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required to record metrics" >&2; exit 127; }
+	@command -v dotnet >/dev/null 2>&1 || { echo "Error: dotnet is required to record metrics" >&2; exit 127; }
 	uv run python metrics/record.py
 
 # Package dry run. Does not publish. RELEASE_TAG=vX.Y.Z also requires every
@@ -133,12 +148,16 @@ release-check:
 	@command -v uv >/dev/null 2>&1 || { echo "Error: uv is required for release-check" >&2; exit 127; }
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required for release-check" >&2; exit 127; }
 	@command -v cargo >/dev/null 2>&1 || { echo "Error: cargo is required for release-check" >&2; exit 127; }
+	@command -v dotnet >/dev/null 2>&1 || { echo "Error: dotnet is required for release-check" >&2; exit 127; }
 	uv run python tools/check_versions.py
 	rm -rf dist
 	uv build
 	uvx twine check dist/*
 	cd js && npm pack --dry-run
 	cargo publish --dry-run --manifest-path rust/Cargo.toml
+	rm -rf build/csharp-nupkg
+	dotnet pack csharp/src/Thuelang/Thuelang.csproj -c Release --nologo -o build/csharp-nupkg
+	dotnet pack csharp/src/Thuelang.Cli/Thuelang.Cli.csproj -c Release --nologo -o build/csharp-nupkg
 
 wasm:
 	@command -v node >/dev/null 2>&1 || { echo "Error: node is required to build WASM" >&2; exit 127; }
@@ -179,4 +198,11 @@ test-core: ruby
 else ifeq ($(HOST),ruby)
 test-core: ruby
 endif
+endif
+
+test-full: csharp
+ifeq ($(HOST),)
+test-core: csharp
+else ifeq ($(HOST),csharp)
+test-core: csharp
 endif

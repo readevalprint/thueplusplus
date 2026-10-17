@@ -151,6 +151,7 @@ REQUIRED_ENVIRONMENTS = {
     "rust": "rust",
     "cpp": "cpp",
     "ruby": "ruby",
+    "csharp": "csharp",
 }
 ENVIRONMENTS_PATH = Path(__file__).resolve().parent / "environments.json"
 
@@ -408,19 +409,26 @@ def _validate_runs_document(document: dict, keys: frozenset[str], label: str, *,
             raise HistoryError(f"{label}: run limits differ at {'/'.join(identity)}")
         if run["host_timeout_seconds"] != run["timeout_seconds"]:
             raise HistoryError(f"{label}: host timeout must equal the global timeout")
+    shapes: set[tuple[str, ...]] = set()
     for identity, rows in grouped.items():
         got = [row["host"] for row in rows]
-        if "go" not in got:
-            raise HistoryError(f"{label}: {'/'.join(identity)} must include the go host")
+        host_set = set(got)
+        if len(host_set) != len(got):
+            raise HistoryError(f"{label}: {'/'.join(identity)} repeats a host")
         unknown = [name for name in got if name not in registered]
         if unknown:
             raise HistoryError(f"{label}: {'/'.join(identity)} unknown host(s) {', '.join(unknown)}")
+        if "go" not in host_set:
+            raise HistoryError(f"{label}: {'/'.join(identity)} hosts must include go")
+        shapes.add(tuple(sorted(host_set)))
         go = next(row for row in rows if row["host"] == "go")
         for row in rows:
             if row["pass"] != go["pass"] or row["cost"] != go["cost"]:
                 raise HistoryError(
                     f"{label}: {'/'.join(identity)} {row['host']} cost {row['cost']} != go {go['cost']}"
                 )
+    if len(shapes) != 1:
+        raise HistoryError(f"{label}: every case must list the same hosts")
 
 
 def _validate_reads(reads, where: str) -> None:

@@ -30,6 +30,9 @@ def write_tree(root: Path, version: str) -> None:
     ruby = root / "ruby" / "lib" / "thuelang"
     ruby.mkdir(parents=True)
     (ruby / "version.rb").write_text(f'module Thuelang\n  VERSION = "{version}"\nend\n')
+    csharp = root / "csharp"
+    csharp.mkdir()
+    (csharp / "Directory.Build.props").write_text(f"<Project><PropertyGroup><Version>{version}</Version></PropertyGroup></Project>\n")
 
 
 def expect_error(fn) -> None:

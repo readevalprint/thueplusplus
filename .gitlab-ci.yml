@@ -61,7 +61,18 @@ test:
         tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
       fi
       node --version
+    - |
+      if ! command -v dotnet >/dev/null 2>&1; then
+        curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+        bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet
+        ln -sf /usr/share/dotnet/dotnet /usr/bin/dotnet
+      fi
+      export DOTNET_ROOT=/usr/share/dotnet
+      export PATH="$DOTNET_ROOT:$PATH"
+      dotnet --version
   script:
+    - export DOTNET_ROOT=/usr/share/dotnet
+    - export PATH="$DOTNET_ROOT:$PATH"
     - export PATH="$CARGO_HOME/bin:$PATH"
     - make test
 

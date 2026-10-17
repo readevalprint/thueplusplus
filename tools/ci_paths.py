@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 LANG_DIRS = frozenset({"forth", "lisp", "basic"})
-HOST_JOBS = ("python", "go", "wasm", "rust", "cpp", "ruby", "guests", "solutions")
+HOST_JOBS = ("python", "go", "wasm", "rust", "cpp", "ruby", "csharp", "guests", "solutions")
 
 
 def classify(paths: list[str], *, cpp_present: bool, ruby_present: bool | None = None) -> dict[str, bool]:
@@ -45,6 +45,9 @@ def classify(paths: list[str], *, cpp_present: bool, ruby_present: bool | None =
         if path.startswith("ruby/"):
             jobs["ruby"] = True
             continue
+        if path.startswith("csharp/"):
+            jobs["csharp"] = True
+            continue
         if path.startswith("examples/"):
             shared = True
             continue
@@ -59,6 +62,7 @@ def classify(paths: list[str], *, cpp_present: bool, ruby_present: bool | None =
         jobs["go"] = True
         jobs["wasm"] = True
         jobs["rust"] = True
+        jobs["csharp"] = True
         jobs["guests"] = True
         if cpp_present:
             jobs["cpp"] = True
