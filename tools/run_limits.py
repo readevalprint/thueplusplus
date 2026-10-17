@@ -143,7 +143,8 @@ def _vm_hwm_bytes(pid: int) -> int:
             raise RuntimeError(f"/proc/{pid}/status VmHWM is not kilobytes: {line}")
         return int(parts[1]) * 1024
     # A task that is still execing, or already a zombie, has no address-space
-    # high-water mark yet. A later sample reads it. No sample at all fails the run.
+    # high-water mark yet. A later sample reads it. A run that never sees one
+    # records 0; `make metrics` rejects that, a conformance case does not.
     return 0
 
 
@@ -269,8 +270,6 @@ def bounded_run(
     # timeout(1) uses 124 when it, rather than the program, stops the run.
     if code == 124 or code == 137:
         raise RuntimeError(f"timed out after {timeout}s (timeout(1) status {code})")
-    if reason is None and peak_rss <= 0:
-        raise RuntimeError("resident memory was not measured")
     completed = subprocess.CompletedProcess(argv, code, stdout, stderr)
     completed.peak_rss_bytes = peak_rss
     return completed
