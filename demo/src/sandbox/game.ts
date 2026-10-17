@@ -1,10 +1,11 @@
 /**
  * Lever-timing game for the home sandbox.
  *
- * Rex waits. The player pulls the lever. Boxes arrive at seeded random
- * intervals. A pull while a box is in the capture zone scores. An empty
- * pull is a miss. The belt speeds up, the gaps shrink, and the capture zone
- * tightens as the score grows. A box that reaches the mouth breaks the run.
+ * Rex autoplays on load: the belt runs and he pulls for every box, so the
+ * demo loops and the page does not break. A click, the your-turn control, or
+ * the keyboard hands the lever to the player and resets the score. Only the
+ * player's missed box breaks the run. After the break, or after the player
+ * goes idle, Rex takes the demo back.
  * Nothing here reads the clock, the DOM, or storage.
  */
 
@@ -15,6 +16,15 @@ export const GRACE = 0.8
 export const MISS_COOLDOWN = 0.42
 export const MILESTONE = 5
 export const DANGER = 0.84
+/**
+ * Seconds without a player pull before Rex resumes the demo.
+ * Past the moment the first reduced-motion box reaches the scanner, and
+ * short of that box leaving the belt, so a quiet takeover ends in the demo
+ * and does not break the page on its own.
+ */
+export const IDLE = 20
+/** Seconds the break stays up before the demo resumes. */
+export const RETURN = BREAK_BEAT + 1.6
 /**
  * The page-wide belt is longer than the old machine-side belt.
  * Progress speed and the capture fraction both divide by this, so a box
@@ -37,6 +47,7 @@ export interface Cage {
 }
 
 export type Phase = 'waiting' | 'playing' | 'broken'
+export type Control = 'auto' | 'player'
 export type RexMode = 'idle' | 'to-lever' | 'ready' | 'yank' | 'cheer' | 'nervous' | 'startled'
 
 export interface Game {
@@ -67,6 +78,10 @@ export interface Game {
   showRebuild: boolean
   reduced: boolean
   beltOn: boolean
+  /** Rex runs the demo, or the player has the lever. */
+  control: Control
+  /** Seconds since the player's last pull. */
+  idle: number
 }
 
 export interface Difficulty {
@@ -184,6 +199,8 @@ export function createGame(options: GameOptions): Game {
     showRebuild: false,
     reduced: options.reduced,
     beltOn: false,
+    control: 'auto',
+    idle: 0,
   }
 }
 
@@ -191,40 +208,83 @@ function openingDelay(reduced: boolean): number {
   return reduced ? GRACE : WALK_DURATION + GRACE
 }
 
-export function pull(game: Game): Game {
-  if (game.phase === 'broken') return game
-  if (game.phase === 'waiting') {
-    if (game.reduced) {
-      return {
-        ...game,
-        phase: 'playing',
-        beltOn: true,
-        rex: 'ready',
-        rexT: 0,
-        spawnIn: openingDelay(true),
-        lever: 1,
-        leverT: 0.12,
-      }
-    }
-    return {
-      ...game,
-      phase: 'playing',
-      beltOn: true,
-      rex: 'to-lever',
-      rexT: 0,
-      spawnIn: openingDelay(false),
-      lever: 0,
-      leverT: 0,
-    }
+function nextSeed(seed: number): number {
+  return seed === 0xffffffff ? 1 : seed + 1
+}
+
+function arm(game: Game, control: Control): Game {
+  const reduced = game.reduced
+  return {
+    ...createGame({ seed: nextSeed(game.seed), reduced, best: game.best }),
+    control,
+    phase: 'playing',
+    beltOn: true,
+    rex: reduced ? 'ready' : 'to-lever',
+    rexT: 0,
+    spawnIn: openingDelay(reduced),
+    lever: reduced ? 1 : 0,
+    leverT: reduced ? 0.12 : 0,
+    idle: 0,
   }
-  if (game.rex === 'to-lever' || game.rex === 'yank' || game.rex === 'cheer') return game
-  if (game.cooldown > 0) return game
-  const hit = game.boxes
+}
+
+/** Rex starts the demo. The score climbs and a missed box does not break the page. */
+export function beginAutoplay(game: Game): Game {
+  return arm(game, 'auto')
+}
+
+/** The player takes the lever. The score resets. Their misses can break the page. */
+export function beginPlayer(game: Game): Game {
+  return arm(game, 'player')
+}
+
+function hottest(game: Game): Box | undefined {
+  return game.boxes
     .filter(box => inZone(box.progress, game.score, game.reduced))
     .sort((a, b) => b.progress - a.progress || a.id - b.id)[0]
+}
+
+function scoreHit(game: Game, hit: Box): Game {
+  const score = game.score + 1
+  const milestone = score % MILESTONE === 0
+  let cages = [...game.cages, { id: hit.id }]
+  if (game.control === 'auto' && cages.length > 8) cages = cages.slice(cages.length - 8)
+  return {
+    ...game,
+    score,
+    boxes: game.boxes.filter(box => box.id !== hit.id),
+    cages,
+    flash: 1,
+    jolt: 1,
+    pop: 1,
+    streak: game.streak + 1,
+    miss: 0,
+    cooldown: 0,
+    idle: 0,
+    rex: milestone ? 'cheer' : 'yank',
+    rexT: 0,
+    lever: game.reduced ? 1 : 0,
+    leverT: game.reduced ? 0.12 : 0,
+  }
+}
+
+/** Rex catches the box in the scanner. He does not miss. */
+function autoCatch(game: Game): Game {
+  if (game.control !== 'auto' || game.phase !== 'playing') return game
+  const hit = hottest(game)
+  if (!hit) return game
+  return scoreHit(game, hit)
+}
+
+export function pull(game: Game): Game {
+  if (game.phase !== 'playing' || game.control !== 'player') return game
+  if (game.rex === 'to-lever' || game.rex === 'yank' || game.rex === 'cheer') return game
+  if (game.cooldown > 0) return game
+  const hit = hottest(game)
   if (!hit) {
     return {
       ...game,
+      idle: 0,
       cooldown: MISS_COOLDOWN,
       miss: 1,
       streak: 0,
@@ -234,30 +294,25 @@ export function pull(game: Game): Game {
       leverT: game.reduced ? 0.12 : 0,
     }
   }
-  const score = game.score + 1
-  const milestone = score % MILESTONE === 0
-  return {
-    ...game,
-    score,
-    boxes: game.boxes.filter(box => box.id !== hit.id),
-    cages: [...game.cages, { id: hit.id }],
-    flash: 1,
-    jolt: 1,
-    pop: 1,
-    streak: game.streak + 1,
-    miss: 0,
-    cooldown: 0,
-    rex: milestone ? 'cheer' : 'yank',
-    rexT: 0,
-    lever: game.reduced ? 1 : 0,
-    leverT: game.reduced ? 0.12 : 0,
-  }
+  return scoreHit(game, hit)
+}
+
+/** The demo steps only while the tab is visible and the hero is on screen. */
+export function demoRuns(hidden: boolean, inView: boolean): boolean {
+  if (typeof hidden !== 'boolean') throw new Error(`hidden must be a boolean, got ${hidden}`)
+  if (typeof inView !== 'boolean') throw new Error(`inView must be a boolean, got ${inView}`)
+  return !hidden && inView
+}
+
+/** Lever, your-turn, or the keyboard. Autoplay and a break become the player's run. */
+export function playerAct(game: Game): Game {
+  if (game.control === 'player' && game.phase === 'playing') return pull(game)
+  return beginPlayer(game)
 }
 
 export function rebuild(game: Game): Game {
   if (game.phase !== 'broken') return game
-  const seed = game.seed === 0xffffffff ? 1 : game.seed + 1
-  return createGame({ seed, reduced: game.reduced, best: game.best })
+  return beginAutoplay(game)
 }
 
 function settle(game: Game): Game {
@@ -301,6 +356,7 @@ function advanceBoxes(game: Game, dt: number): Game {
   const boxes = game.boxes.map(box => ({ ...box, progress: box.progress + beltRate * dt }))
   const escaped = boxes.find(box => box.progress >= 1)
   if (!escaped) return { ...game, boxes }
+  if (game.control === 'auto') return scoreHit({ ...game, boxes }, escaped)
   return {
     ...game,
     phase: 'broken',
@@ -356,12 +412,25 @@ function decay(game: Game, dt: number): Game {
 }
 
 function stepOnce(game: Game, dt: number): Game {
-  if (game.phase === 'broken') return decay(advanceBroken(game, dt), dt)
+  if (game.phase === 'broken') {
+    const held = advanceBroken(game, dt)
+    if (held.brokenT >= RETURN) return beginAutoplay(held)
+    return decay(held, dt)
+  }
   if (game.phase === 'waiting') return game
-  let next = advanceRex(game, dt)
+  let next = game
+  if (next.control === 'player') {
+    const idle = next.idle + dt
+    if (idle >= IDLE) return beginAutoplay(next)
+    next = { ...next, idle }
+  }
+  if (next.control === 'auto') next = autoCatch(next)
+  next = advanceRex(next, dt)
+  if (next.control === 'auto') next = autoCatch(next)
   next = advanceBoxes(next, dt)
   if (next.phase === 'broken') return decay(next, dt)
   next = advanceSpawn(next, dt)
+  if (next.control === 'auto') next = autoCatch(next)
   return decay(settle(next), dt)
 }
 

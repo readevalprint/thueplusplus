@@ -2,7 +2,8 @@ import { nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SandboxScene from '@/components/SandboxScene.vue'
-import { BELT_TOP, MACHINE, VIEW_W, walkDistance } from './layout'
+import { BELT_TOP, VIEW_W, beltPoint, scannerAperture, walkDistance } from './layout'
+import { difficulty } from './game'
 import { WALK_DURATION, blinkCurve, framePose, settledSpring, stepSpring } from './motion'
 import { inZone, type Game } from './game'
 
@@ -17,6 +18,48 @@ function exposed(wrapper: VueWrapper): Exposed {
 
 function mountScene(): VueWrapper {
   return mount(SandboxScene, { attachTo: document.body })
+}
+
+function canAct(game: Game): boolean {
+  return game.cooldown === 0 && game.rex !== 'yank' && game.rex !== 'cheer' && game.rex !== 'to-lever'
+}
+
+async function scoreZoned(wrapper: VueWrapper, api: Exposed): Promise<void> {
+  await missUntilZone(wrapper, api)
+  let guard = 0
+  while (!canAct(api.game) && guard < 90) {
+    api.advance(1 / 30)
+    guard += 1
+  }
+  if (!canAct(api.game) || !api.game.boxes.some(box => inZone(box.progress, api.game.score, true))) {
+    throw new Error('scanner window closed before the pull')
+  }
+  await wrapper.get('[data-test="lever-hit"]').trigger('click')
+}
+
+async function missUntilZone(wrapper: VueWrapper, api: Exposed): Promise<void> {
+  let guard = 0
+  while (!api.game.boxes.some(box => inZone(box.progress, api.game.score, true)) && guard < 4000) {
+    if (api.game.phase !== 'playing' || api.game.control !== 'player') {
+      throw new Error(`left the player's run at ${api.game.phase} ${api.game.control}`)
+    }
+    if (canAct(api.game)) await wrapper.get('[data-test="lever-hit"]').trigger('click')
+    api.advance(1 / 30)
+    guard += 1
+  }
+  if (!api.game.boxes.some(box => inZone(box.progress, api.game.score, true))) {
+    throw new Error('box never reached the scanner')
+  }
+}
+
+async function fumbleUntilBroken(wrapper: VueWrapper, api: Exposed): Promise<void> {
+  let guard = 0
+  while (api.game.phase !== 'broken' && guard < 4000) {
+    const zoned = api.game.boxes.some(box => inZone(box.progress, api.game.score, true))
+    if (!zoned && canAct(api.game)) await wrapper.get('[data-test="lever-hit"]').trigger('click')
+    api.advance(1 / 30)
+    guard += 1
+  }
 }
 
 describe('rex sandbox scene', () => {
@@ -36,14 +79,15 @@ describe('rex sandbox scene', () => {
     expect(wrapper.find('[data-test="hard-hat"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="rex-mark"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="lever"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="belt"]').attributes('data-running')).toBe('no')
-    expect(wrapper.find('[data-test="machine"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="grille"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="porthole"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="belt"]').attributes('data-running')).toBe('yes')
+    expect(wrapper.find('[data-test="scanner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="capture-zone"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="scanner-flap"]')).toHaveLength(10)
     expect(wrapper.find('[data-test="jail"]').exists()).toBe(true)
-    const speech = wrapper.get('[data-test="speech-text"]').text().replace(/\s+/g, ' ').trim()
-    expect(speech).toBe("i guess we sandboxin' now")
-    expect(wrapper.get('[data-test="start-hint"]').text()).toBe('pull the lever')
+    expect(wrapper.find('[data-test="speech-text"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="start-hint"]').text()).toBe('your turn')
+    expect(wrapper.get('[data-test="your-turn"]').text()).toBe('your turn')
+    expect(wrapper.get('[data-test="your-turn"]').attributes('aria-label')).toBe('Your turn. Take over the lever.')
     expect(wrapper.get('[data-test="score"]').text()).toBe('0')
     expect(wrapper.find('video').exists()).toBe(false)
     expect(wrapper.find('[data-kind]').exists()).toBe(false)
@@ -53,11 +97,13 @@ describe('rex sandbox scene', () => {
     const rex = wrapper.get('[data-test="rex"]')
     expect(rex.element.tagName).toBe('BUTTON')
     expect(rex.attributes('type')).toBe('button')
-    expect(rex.attributes('aria-label')).toMatch(/Pull the lever/)
-    expect(wrapper.get('[data-test="lever-hit"]').attributes('aria-label')).toMatch(/Pull/)
+    expect(rex.attributes('aria-label')).toBe('Your turn. Take over the lever.')
+    expect(wrapper.get('[data-test="lever-hit"]').attributes('aria-label')).toBe('Your turn. Take over the lever.')
     const scene = wrapper.get('[data-test="sandbox-scene"]')
-    expect(scene.attributes('data-belt')).toBe('off')
-    expect(scene.attributes('data-phase')).toBe('waiting')
+    expect(scene.attributes('data-belt')).toBe('on')
+    expect(scene.attributes('data-phase')).toBe('playing')
+    expect(scene.attributes('data-control')).toBe('auto')
+    expect(scene.attributes('data-paused')).toBe('no')
     expect(scene.attributes('data-score')).toBe('0')
     wrapper.unmount()
   })
@@ -67,27 +113,35 @@ describe('rex sandbox scene', () => {
     await click.get('[data-test="rex"]').trigger('click')
     expect(click.get('[data-test="sandbox-scene"]').attributes('data-belt')).toBe('on')
     expect(click.get('[data-test="sandbox-scene"]').attributes('data-phase')).toBe('playing')
+    expect(click.get('[data-test="sandbox-scene"]').attributes('data-control')).toBe('player')
     expect(click.get('[data-test="lever"]').attributes('data-on')).toBe('yes')
-    expect(click.find('[data-test="speech-text"]').exists()).toBe(false)
-    expect(click.get('[data-test="machine"]').attributes('transform')).toBe(`translate(${MACHINE.x} ${MACHINE.y})`)
+    expect(click.find('[data-test="your-turn"]').exists()).toBe(false)
+    expect(click.get('[data-test="start-hint"]').text()).toBe('pull the lever')
+    expect(click.get('[data-test="scanner"]').attributes('transform')).toBe('translate(0 0)')
     click.unmount()
 
     const keyed = mountScene()
     await keyed.get('[data-test="lever-hit"]').trigger('keydown', { key: 'Enter' })
-    expect(keyed.get('[data-test="sandbox-scene"]').attributes('data-phase')).toBe('playing')
+    expect(keyed.get('[data-test="sandbox-scene"]').attributes('data-control')).toBe('player')
     expect(keyed.get('[data-test="sandbox-scene"]').attributes('data-miss')).toBe('no')
     keyed.unmount()
 
     const spaced = mountScene()
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }))
     await nextTick()
-    expect(spaced.get('[data-test="sandbox-scene"]').attributes('data-belt')).toBe('on')
-    expect(exposed(spaced).game.phase).toBe('playing')
+    expect(spaced.get('[data-test="sandbox-scene"]').attributes('data-control')).toBe('player')
+    expect(exposed(spaced).game.score).toBe(0)
     spaced.unmount()
+
+    const button = mountScene()
+    await button.get('[data-test="your-turn"]').trigger('click')
+    expect(button.get('[data-test="sandbox-scene"]').attributes('data-control')).toBe('player')
+    expect(exposed(button).game.score).toBe(0)
+    button.unmount()
 
     const touched = mountScene()
     await touched.get('[data-test="lever-hit"]').trigger('click')
-    expect(touched.get('[data-test="sandbox-scene"]').attributes('data-phase')).toBe('playing')
+    expect(touched.get('[data-test="sandbox-scene"]').attributes('data-control')).toBe('player')
     touched.unmount()
 
     const ignored = mountScene()
@@ -97,97 +151,141 @@ describe('rex sandbox scene', () => {
     document.body.appendChild(link)
     link.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     await nextTick()
-    expect(ignored.get('[data-test="sandbox-scene"]').attributes('data-phase')).toBe('waiting')
+    expect(ignored.get('[data-test="sandbox-scene"]').attributes('data-control')).toBe('auto')
     ignored.unmount()
 
     const scene = mountScene()
-    await scene.get('[data-test="rex"]').trigger('click')
     const api = exposed(scene)
-    let guard = 0
-    while (api.game.score < 1 && api.game.phase === 'playing' && guard < 4000) {
-      const ready = api.game.cooldown === 0
-        && api.game.rex !== 'yank'
-        && api.game.rex !== 'cheer'
-        && api.game.boxes.some(box => inZone(box.progress, api.game.score, true))
-      if (ready) await scene.get('[data-test="lever-hit"]').trigger('click')
+    let elapsed = 0
+    while (elapsed < 8) {
       api.advance(1 / 30)
-      guard += 1
+      elapsed += 1 / 30
     }
+    expect(api.game.control).toBe('auto')
+    expect(api.game.phase).toBe('playing')
+    expect(api.game.score).toBe(0)
+    await scene.get('[data-test="rex"]').trigger('click')
+    expect(api.game.control).toBe('player')
+    expect(api.game.score).toBe(0)
+    await missUntilZone(scene, api)
+    await nextTick()
+    expect(scene.get('[data-test="scanner"]').attributes('transform')).toBe('translate(0 0)')
+    expect(scene.find('[data-test="x-ray"]').exists()).toBe(true)
+    expect(scene.find('[data-test="scan-line"]').exists()).toBe(true)
+    const tunnel = scannerAperture(difficulty(api.game.score, true).span)
+    const progress = Number(scene.get('[data-test="box"][data-zone="yes"]').attributes('data-progress'))
+    const x = beltPoint(progress).x
+    expect(x).toBeGreaterThanOrEqual(tunnel.entrance)
+    expect(x).toBeLessThan(tunnel.exit)
+    await scoreZoned(scene, api)
     expect(api.game.score).toBe(1)
+    expect(api.game.control).toBe('player')
     expect(api.game.jolt).toBeGreaterThan(0)
     await nextTick()
-    expect(scene.get('[data-test="machine"]').attributes('transform')).toBe(`translate(${MACHINE.x} ${MACHINE.y})`)
     expect(scene.find('[data-test="cage"]').exists()).toBe(true)
     expect(scene.get('[data-test="score"]').text()).toBe('1')
     scene.unmount()
   })
 
   it('gate break', async () => {
+    const quiet = mountScene()
+    const demo = exposed(quiet)
+    let elapsed = 0
+    while (elapsed < 30) {
+      demo.advance(1 / 30)
+      elapsed += 1 / 30
+      expect(demo.game.phase).not.toBe('broken')
+      expect(demo.game.control).toBe('auto')
+      expect(demo.game.miss).toBe(0)
+    }
+    expect(demo.game.score).toBeGreaterThan(0)
+    const climbed = demo.game.score
+    quiet.unmount()
+
     const wrapper = mountScene()
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
-    await wrapper.get('[data-test="rex"]').trigger('click')
+    await wrapper.get('[data-test="your-turn"]').trigger('click')
     const api = exposed(wrapper)
-    let guard = 0
-    while (api.game.phase !== 'broken' && guard < 4000) {
-      api.advance(1 / 30)
-      guard += 1
-    }
+    expect(api.game.control).toBe('player')
+    expect(api.game.score).toBe(0)
+    await fumbleUntilBroken(wrapper, api)
     expect(api.game.phase).toBe('broken')
+    expect(api.game.control).toBe('player')
     expect(api.game.score).toBe(0)
     expect(wrapper.emitted('break')).toEqual([[true]])
-    expect(api.game.showRebuild).toBe(false)
-    await nextTick()
-    expect(document.body.querySelector('[data-test="rebuild"]')).toBeNull()
-    api.advance(0.9)
-    expect(api.game.showRebuild).toBe(true)
-    await nextTick()
-    const finalScore = document.body.querySelector('[data-test="final-score"]')
-    expect(finalScore?.textContent).toBe('score 0')
     expect(setItem).not.toHaveBeenCalled()
     setItem.mockRestore()
-    const rebuild = document.body.querySelector('[data-test="rebuild"]')
-    if (!(rebuild instanceof HTMLButtonElement)) throw new Error('missing rebuild')
-    rebuild.click()
+    expect(wrapper.get('[data-test="score"]').text()).toBe('0')
+    expect(wrapper.get('[data-test="your-turn"]').text()).toBe('your turn')
+    api.advance(3)
     await nextTick()
+    expect(api.game.control).toBe('auto')
+    expect(api.game.phase).toBe('playing')
+    expect(api.game.score).toBe(0)
+    expect(api.game.beltOn).toBe(true)
     expect(wrapper.emitted('rebuilt')).toHaveLength(1)
-    expect(api.game.phase).toBe('waiting')
-    expect(api.game.beltOn).toBe(false)
-    expect(wrapper.get('[data-test="speech-text"]').text().replace(/\s+/g, ' ').trim()).toBe("i guess we sandboxin' now")
-    expect(document.body.querySelector('[data-test="rebuild"]')).toBeNull()
     wrapper.unmount()
 
     const scored = mountScene()
-    await scored.get('[data-test="rex"]').trigger('click')
+    await scored.get('[data-test="lever-hit"]').trigger('click')
     const play = exposed(scored)
-    let steps = 0
-    while (play.game.score < 1 && play.game.phase === 'playing' && steps < 4000) {
-      const ready = play.game.cooldown === 0
-        && play.game.rex !== 'yank'
-        && play.game.rex !== 'cheer'
-        && play.game.boxes.some(box => inZone(box.progress, play.game.score, true))
-      if (ready) await scored.get('[data-test="lever-hit"]').trigger('click')
-      play.advance(1 / 30)
-      steps += 1
-    }
+    await scoreZoned(scored, play)
     expect(play.game.score).toBe(1)
-    while (play.game.phase !== 'broken' && steps < 8000) {
-      play.advance(1 / 30)
-      steps += 1
-    }
+    expect(play.game.control).toBe('player')
+    await fumbleUntilBroken(scored, play)
     expect(play.game.phase).toBe('broken')
+    expect(play.game.control).toBe('player')
     expect(play.game.score).toBe(1)
     expect(localStorage.getItem('rex-sandbox-best')).toBe('1')
-    play.advance(0.9)
+    expect(scored.get('[data-test="score"]').text()).toBe('1')
+    play.advance(3)
     await nextTick()
-    expect(document.body.querySelector('[data-test="final-score"]')?.textContent).toBe('score 1')
-    const again = document.body.querySelector('[data-test="rebuild"]')
-    if (!(again instanceof HTMLButtonElement)) throw new Error('missing rebuild')
-    again.click()
-    await nextTick()
-    expect(play.game.phase).toBe('waiting')
+    expect(play.game.control).toBe('auto')
+    expect(play.game.phase).toBe('playing')
     expect(play.game.best).toBe(1)
+    expect(play.game.score).toBe(0)
     expect(scored.get('[data-test="best"]').text()).toBe('best 1')
+    expect(climbed).toBeGreaterThan(0)
     scored.unmount()
+  })
+
+  it('gate pause', async () => {
+    const callbacks: IntersectionObserverCallback[] = []
+    class MockObserver implements IntersectionObserver {
+      readonly root = null
+      readonly rootMargin = ''
+      readonly scrollMargin = ''
+      readonly thresholds = []
+      constructor(callback: IntersectionObserverCallback) {
+        callbacks.push(callback)
+      }
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+      takeRecords(): IntersectionObserverEntry[] { return [] }
+    }
+    vi.stubGlobal('IntersectionObserver', MockObserver)
+    const wrapper = mountScene()
+    const scene = () => wrapper.get('[data-test="sandbox-scene"]')
+    expect(scene().attributes('data-paused')).toBe('no')
+    const callback = callbacks[0]
+    if (!callback) throw new Error('hero was not observed')
+    callback([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver)
+    await nextTick()
+    expect(scene().attributes('data-paused')).toBe('yes')
+    callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    await nextTick()
+    expect(scene().attributes('data-paused')).toBe('no')
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    await nextTick()
+    expect(scene().attributes('data-paused')).toBe('yes')
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false })
+    document.dispatchEvent(new Event('visibilitychange'))
+    await nextTick()
+    expect(scene().attributes('data-paused')).toBe('no')
+    wrapper.unmount()
+    vi.unstubAllGlobals()
   })
 
   it('gate side', async () => {
