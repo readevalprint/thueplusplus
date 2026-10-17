@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import DocPage from '@/components/DocPage.vue'
 import GuestRewrite from '@/components/GuestRewrite.vue'
 import MetricChart from '@/components/MetricChart.vue'
@@ -31,6 +31,8 @@ import {
   type SeriesPoint,
   type WorkloadCommit,
 } from '@/metrics'
+import TrendChart from '@/components/metrics/TrendChart.vue'
+import { formatCount, formatOverhead, overview } from '@/overview'
 import { pages } from '@/site'
 
 const route = useRoute()
@@ -125,6 +127,20 @@ function hostTitle(commit: CommitRef & { machine?: WorkloadCommit['machine'] }):
   return machine ? `${base} · ${machine}` : base
 }
 
+function latestTrend(points: readonly { value: number | null }[]): number | null {
+  for (let index = points.length - 1; index >= 0; index -= 1) {
+    const value = points[index]?.value
+    if (value !== null && value !== undefined) return value
+  }
+  return null
+}
+
+function trendText(points: readonly { value: number | null }[], format: (value: number) => string): string {
+  const value = latestTrend(points)
+  if (value === null) throw new HistoryError('trend text has no value')
+  return format(value)
+}
+
 function durationLine(commit: WorkloadCommit, hostId: string, environment: string): string {
   const ratio = hostRatio(commit, hostId, 'durationMs')
   if (ratio === null) return `${environment} · gap`
@@ -133,13 +149,99 @@ function durationLine(commit: WorkloadCommit, hostId: string, environment: strin
 </script>
 
 <template>
-  <DocPage fold :kicker="page.kicker" :title="page.title">
+  <DocPage :kicker="page.kicker" :title="page.title">
     <template #mark>
       <RewriteArrow />
     </template>
     <template #graphic>
       <GuestRewrite :commits="rules.commits" :order="rules.order" :series="rules.series" />
     </template>
+    <div data-test="metrics-overview" class="flex flex-col gap-10">
+      <section id="languages" data-test="language-cards" class="flex flex-col gap-3">
+        <h2 class="text-xl font-semibold tracking-tight">Languages</h2>
+        <p class="leading-7">Size is the rule count and rule characters of that interpreter. Overhead is the geometric mean, over every problem that passes directly and in Lisp, Forth, and BASIC, of that language's regex evals divided by the direct solution. The mean changes when a problem joins the set. Coverage is how many problems that language passes.</p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <article
+            v-for="lang in overview.languages"
+            :key="lang.id"
+            data-test="language-card"
+            :data-lang="lang.id"
+            class="border-line bg-surface flex flex-col gap-3 border p-3"
+          >
+            <div class="flex flex-col gap-1">
+              <p class="text-base font-semibold tracking-tight">{{ lang.label }}</p>
+              <p v-if="lang.ruleCount !== null && lang.ruleChars !== null" data-test="language-size" class="font-mono text-[13px] tabular-nums">{{ formatCount(lang.ruleCount) }} rules · {{ formatCount(lang.ruleChars) }} chars</p>
+              <p v-else data-test="language-size">No size.</p>
+              <p data-test="language-overhead" class="font-mono text-[13px] tabular-nums">
+                <template v-if="lang.overhead !== null">{{ formatOverhead(lang.overhead) }} direct</template>
+                <template v-else>No shared set.</template>
+              </p>
+              <p data-test="language-coverage" class="text-ash font-mono text-[13px] tabular-nums">{{ lang.coverage }} of {{ overview.problemCount }} problems</p>
+            </div>
+            <TrendChart
+              v-if="latestTrend(lang.trend) !== null"
+              :points="lang.trend"
+              :label="`${lang.label} overhead`"
+              series-label="Overhead"
+              :test-id="`overhead-${lang.id}`"
+              :format-value="formatOverhead"
+              class="h-16"
+            />
+          </article>
+        </div>
+      </section>
+      <section id="problems" data-test="problem-cards" class="flex flex-col gap-3">
+        <h2 class="text-xl font-semibold tracking-tight">Problems</h2>
+        <p class="leading-7">Sorted by the most missing versions, then by the newest improvement. The line is the lowest regex evals among passing solutions on the native Go host. A dot marks an improvement. A mark is filled when that version passes.</p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <RouterLink
+            v-for="problem in overview.problems"
+            :key="problem.id"
+            :to="problem.path"
+            data-test="problem-card"
+            :data-problem="problem.id"
+            :data-gaps="problem.gaps"
+            class="border-line bg-surface text-bone hover:border-bone flex flex-col no-underline transition-colors duration-150"
+          >
+            <div class="border-line relative h-16 border-b">
+              <TrendChart
+                v-if="latestTrend(problem.trend) !== null"
+                :points="problem.trend"
+                :label="`${problem.title} best regex evals`"
+                series-label="Regex evals"
+                :test-id="`spark-${problem.id}`"
+                :format-value="formatCount"
+                class="h-16"
+              />
+              <p v-else class="text-ash px-3 py-4 font-mono text-[12px]">No passing run.</p>
+              <span v-if="latestTrend(problem.trend) !== null" data-test="problem-best" class="text-ash pointer-events-none absolute top-1 right-2 font-mono text-[11px] tabular-nums">{{ trendText(problem.trend, formatCount) }}</span>
+            </div>
+            <div class="flex flex-col gap-2 p-3">
+              <p class="font-medium leading-5">{{ problem.title }}</p>
+              <p class="text-ash line-clamp-1 text-sm">{{ problem.summary }}</p>
+              <div class="flex flex-wrap gap-x-3 gap-y-1">
+                <span
+                  v-for="mark in problem.marks"
+                  :key="mark.id"
+                  data-test="coverage-mark"
+                  :data-version="mark.id"
+                  :data-filled="mark.filled ? 'true' : 'false'"
+                  class="inline-flex items-center gap-1.5 font-mono text-[11px]"
+                >
+                  <span
+                    class="inline-block size-2 rounded-full border"
+                    :class="mark.filled ? 'border-signal bg-signal' : 'border-ash bg-transparent'"
+                    aria-hidden="true"
+                  />
+                  {{ mark.label }}
+                  <span class="sr-only">{{ mark.filled ? 'passes' : 'missing' }}</span>
+                </span>
+              </div>
+            </div>
+          </RouterLink>
+        </div>
+      </section>
+    </div>
     <section id="rule-lines" data-test="rule-lines" class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold tracking-tight">Rule lines</h2>
       <p class="leading-7">A point is the first commit where that program's compiled rule-line count changed. The line stays flat through the later commits with the same count. The point tooltip is that commit through the last unchanged commit. A break is a commit where that program was absent, or the host could not list its rules.</p>

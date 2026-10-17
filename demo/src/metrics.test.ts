@@ -178,6 +178,8 @@ function benchEntry(commit: string, timestamp: string, hosts: string[], duration
     machine: null as null | { os: string, release: string, arch: string, cpu: string, cpus: number },
     guests: {},
     tasks: null,
+    problems: null,
+    langs: null,
     benchmarks: [{
       id: 'rewrite',
       steps: 10000,
@@ -206,6 +208,8 @@ function blank(commit: string, timestamp: string) {
     machine: null as null | { os: string, release: string, arch: string, cpu: string, cpus: number },
     guests: {},
     tasks: null,
+    problems: null,
+    langs: null,
     benchmarks: null,
   }
 }

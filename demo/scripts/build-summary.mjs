@@ -60,6 +60,7 @@ function summarizeFile(file, ids) {
   if (timestamp.slice(0, 10) !== `${year}-${month}-${day}`) {
     throw new SummaryError(`${file.rel}: date does not match ${timestamp}`)
   }
+  const version = bench.schema_version
   return {
     commit: sha,
     author: requireText(bench.author, `${sha} author`),
@@ -67,6 +68,8 @@ function summarizeFile(file, ids) {
     machine: summarizeMachine(sha, bench.machine),
     guests: summarizeGuests(sha, bench.guests),
     tasks: summarizeTasks(sha, bench.tasks),
+    problems: summarizeProblems(sha, version, bench.problems),
+    langs: summarizeLangs(sha, version, bench.langs),
     benchmarks: summarizeBenchmarks(sha, bench.benchmarks, ids),
   }
 }
@@ -132,6 +135,108 @@ function summarizeTasks(commit, tasks) {
     guests[guest] = bucket
   }
   return guests
+}
+
+const COUNTER_AXES = ['regex_evals', 'regex_matches', 'state_bytes', 'rule_count', 'rule_chars']
+const PROBLEM_ROW_KEYS = ['problem', 'solution', 'status', 'applied_steps', 'regex_evals', 'regex_matches', 'state_bytes', 'state_peak', 'rule_count', 'rule_chars', 'duration_ms']
+const LANG_ROW_KEYS = ['lang', 'program', 'status', 'applied_steps', 'regex_evals', 'regex_matches', 'state_bytes', 'state_peak', 'rule_count', 'rule_chars', 'duration_ms']
+
+function summarizeProblems(commit, version, problems) {
+  if (version === 2) {
+    if (problems !== undefined) throw new SummaryError(`${commit}: schema 2 must not store problems`)
+    return null
+  }
+  return summarizeCounters(commit, 'problems', problems, 'make problems', PROBLEM_ROW_KEYS, row => {
+    const problem = slug(row.problem, `${commit} problem`)
+    const solution = slug(row.solution, `${commit} ${problem} solution`)
+    return [`${problem}/${solution}`, { problem, solution }]
+  })
+}
+
+function summarizeLangs(commit, version, langs) {
+  if (version === 2) {
+    if (langs !== undefined) throw new SummaryError(`${commit}: schema 2 must not store langs`)
+    return null
+  }
+  return summarizeCounters(commit, 'langs', langs, 'make langs', LANG_ROW_KEYS, row => {
+    const lang = langId(row.lang, `${commit} lang`)
+    const program = programPath(row.program, `${commit} ${lang} program`)
+    return [`${lang}/${program}`, { lang, program }]
+  })
+}
+
+function summarizeCounters(commit, field, suite, source, rowKeys, identityOf) {
+  if (suite == null || typeof suite !== 'object' || Array.isArray(suite)) {
+    throw new SummaryError(`${commit}: ${field} must be an object`)
+  }
+  const suiteKeys = ['source', 'host', 'environment', 'results']
+  const present = Object.keys(suite)
+  if (present.length !== suiteKeys.length || suiteKeys.some(key => !Object.hasOwn(suite, key))) {
+    throw new SummaryError(`${commit}: ${field} keys must be source, host, environment, and results`)
+  }
+  if (suite.source !== source) throw new SummaryError(`${commit}: ${field} source must be ${source}`)
+  if (suite.host !== 'go' || suite.environment !== 'go native') {
+    throw new SummaryError(`${commit}: ${field} is recorded from native Go`)
+  }
+  if (!Array.isArray(suite.results) || suite.results.length === 0) {
+    throw new SummaryError(`${commit}: ${field} results must be a non-empty array`)
+  }
+  const seen = new Set()
+  return suite.results.map(row => {
+    if (row == null || typeof row !== 'object' || Array.isArray(row)) {
+      throw new SummaryError(`${commit}: ${field} row must be an object`)
+    }
+    const rowPresent = Object.keys(row)
+    if (rowPresent.length !== rowKeys.length || rowKeys.some(key => !Object.hasOwn(row, key))) {
+      throw new SummaryError(`${commit}: ${field} row keys must be ${rowKeys.join(', ')}`)
+    }
+    const [identity, names] = identityOf(row)
+    if (seen.has(identity)) throw new SummaryError(`${commit}: duplicate ${field} row ${identity}`)
+    seen.add(identity)
+    count(row.duration_ms, `${commit} ${identity} duration_ms`)
+    return { ...names, ...counterFields(commit, identity, row) }
+  })
+}
+
+function counterFields(commit, identity, row) {
+  const status = row.status
+  if (status !== 'pass' && status !== 'fail') throw new SummaryError(`${commit} ${identity}: status ${status}`)
+  const out = { status }
+  for (const key of ['applied_steps', 'state_peak', ...COUNTER_AXES]) {
+    if (status === 'fail') {
+      if (row[key] !== null) throw new SummaryError(`${commit} ${identity}: fail clears ${key}`)
+      continue
+    }
+    const value = count(row[key], `${commit} ${identity} ${key}`)
+    if (COUNTER_AXES.includes(key)) out[key] = value
+  }
+  if (status === 'pass' && (out.rule_count < 1 || out.rule_chars < 1)) {
+    throw new SummaryError(`${commit} ${identity}: rule count and rule chars come from the source`)
+  }
+  if (status === 'fail') {
+    for (const key of COUNTER_AXES) out[key] = null
+  }
+  return out
+}
+
+function slug(value, label) {
+  const text = requireText(value, label)
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(text)) throw new SummaryError(`${label} must be a lowercase slug`)
+  return text
+}
+
+function langId(value, label) {
+  const text = requireText(value, label)
+  if (!/^[a-z][a-z0-9-]*$/.test(text)) throw new SummaryError(`${label} must be a lowercase slug`)
+  return text
+}
+
+function programPath(value, label) {
+  const text = requireText(value, label)
+  if (text.includes('\\') || text.startsWith('/') || text.includes('..') || !(text.endsWith('.thue') || text.endsWith('.tpp'))) {
+    throw new SummaryError(`${label} must be a repo-relative .thue or .tpp path`)
+  }
+  return text
 }
 
 function summarizeBenchmarks(commit, benchmarks, ids) {
