@@ -57,11 +57,11 @@ def main() -> None:
                 if host == "wasm" and row["environment"] != "wasm (node)":
                     raise SystemExit(f"{entry['commit']}: wasm duration stored as {row['environment']}")
 
-    guests = (ROOT / "demo" / "src" / "pages" / "GuestsPage.vue").read_text(encoding="utf-8")
-    if "label: host.id" in guests or "{{ host.id }} ·" in guests:
-        raise SystemExit("guest chart still labels a time with the bare host id")
-    if "host.environment" not in guests:
-        raise SystemExit("guest chart must show the environment label")
+    metrics_page = (ROOT / "demo" / "src" / "pages" / "MetricsPage.vue").read_text(encoding="utf-8")
+    if "label: host.id" in metrics_page or "{{ host.id }} ·" in metrics_page:
+        raise SystemExit("metrics chart still labels a time with the bare host id")
+    if "host.environment" not in metrics_page:
+        raise SystemExit("metrics chart must show the environment label")
     chart = (ROOT / "demo" / "src" / "metrics.ts").read_text(encoding="utf-8")
     if "label: id," in chart or "label: host.id" in chart:
         raise SystemExit("host duration series labels a time with the bare host id")
