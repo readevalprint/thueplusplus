@@ -64,6 +64,7 @@ function blink() {
 function faviconFile() {
   const svg = read('demo/public/favicon.svg')
   assert(svg === faviconSvg(), 'favicon.svg drifted from the shared geometry')
+  assert(svg.includes('color-scheme: light dark'), 'favicon.svg does not opt into both schemes')
   assert(svg.includes('@media (prefers-color-scheme: dark)'), 'favicon.svg has no dark scheme')
   assert(svg.includes(paint.boneLight.hex) && svg.includes(paint.boneDark.hex), 'favicon.svg misses a scheme ink')
   assert(svg.includes(paint.hat.hex), 'favicon.svg misses the hat color')
@@ -185,7 +186,7 @@ function pose() {
 
 function html() {
   const index = read('demo/index.html')
-  assert(index.includes('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />'), 'missing svg icon link')
+  assert(index.includes('<link rel="icon" type="image/svg+xml" href="/favicon.svg" sizes="any" />'), 'missing svg icon link')
   assert(index.includes('<link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />'), 'missing png fallback')
   assert(index.includes('<link rel="apple-touch-icon" href="/apple-touch-icon.png" />'), 'missing apple touch icon')
   assert(index.includes('<link rel="manifest" href="/site.webmanifest" />'), 'missing manifest link')

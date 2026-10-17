@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-28 -102 56 56" role="img">
   <title>Rex</title>
   <style>
+    :root { color-scheme: light dark; }
     .ink { fill: #1a1916; }
     .hat { fill: #ff5a36; }
     @media (prefers-color-scheme: dark) {

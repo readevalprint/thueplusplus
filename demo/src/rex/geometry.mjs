@@ -332,6 +332,7 @@ export function faviconSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBoxString('icon')}" role="img">
   <title>Rex</title>
   <style>
+    :root { color-scheme: light dark; }
     .ink { fill: ${paint.boneLight.hex}; }
     .hat { fill: ${paint.hat.hex}; }
     @media (prefers-color-scheme: dark) {
